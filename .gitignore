@@ -31,3 +31,7 @@ htmlcov/
 # OS
 .DS_Store
 Thumbs.db
+
+# Instance folder (local-only)
+instance/*
+!instance/.gitkeep

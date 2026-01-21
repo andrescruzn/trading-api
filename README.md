@@ -38,6 +38,10 @@ source .venv/bin/activate
 
 pip install -r requirements.txt
 
+### Congelar dependencias
+
+pip freeze > requirements.txt
+
 ### Ejecución en desarrollo
 
 uvicorn app.main:app --reload

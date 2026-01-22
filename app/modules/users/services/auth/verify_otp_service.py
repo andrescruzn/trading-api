@@ -14,18 +14,17 @@
 # - Comparación de hashes con compare_digest (anti timing)
 #
 # FIX IMPORTANTE (MySQL + SQLAlchemy):
-# - MySQL suele devolver TIMESTAMP como datetime "naive" (sin tzinfo).
-# - Nosotros calculamos `now` como datetime "aware" (UTC).
-# - Comparar naive vs aware lanza:
-#   TypeError: can't compare offset-naive and offset-aware datetimes
-# - Solución: normalizar fechas del usuario a UTC-aware antes de comparar.
+# - MySQL suele devolver datetimes "naive" (sin tzinfo).
+# - El sistema calcula `now` como UTC-aware.
+# - Comparar naive vs aware rompe.
+# - Solución: normalizar fechas desde DB con ensure_aware_utc().
 # ======================================================================
 
 from __future__ import annotations
 
 import secrets
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime
 
 from sqlalchemy.orm import Session
 
@@ -33,26 +32,9 @@ from app.common.config.settings import Settings
 from app.common.contracts import ServiceResult
 from app.common.security.jwt import create_access_token
 from app.common.security.otp import hash_otp_sha1_hex
-from app.common.utils.input_cleaner import clean_email, clean_str
+from app.common.utils import clean_email, clean_str, ensure_aware_utc, utc_now
 
 from app.modules.users.domain import UserRepository
-
-
-# ----------------------------------------------------------------------
-# Helper: normalización TZ
-# ----------------------------------------------------------------------
-def _as_utc_aware(dt: datetime) -> datetime:
-    """
-    Normaliza un datetime a UTC "aware".
-
-    Regla:
-    - Si dt viene naive (sin tzinfo), asumimos que representa UTC.
-      (Esto es consistente con el resto del proyecto: tokens/servicios trabajan en UTC)
-    - Si dt viene aware, lo convertimos a UTC.
-    """
-    if dt.tzinfo is None:
-        return dt.replace(tzinfo=timezone.utc)
-    return dt.astimezone(timezone.utc)
 
 
 @dataclass(frozen=True)
@@ -113,25 +95,28 @@ class VerifyOtpService:
         # --------------------------------------------------------------
         user = self._repo.get_by_email(email_clean)
         if user is None:
-            # Anti-enumeration: puedes mantener INVALID_REQUEST como ya lo tienes
+            # Anti-enumeration: mantenemos tu decisión actual
             return ServiceResult.fail(code="INVALID_REQUEST", http_status=400)
 
         # --------------------------------------------------------------
         # 3) "Ahora" del sistema: SIEMPRE UTC-aware (consistente)
         # --------------------------------------------------------------
-        now = datetime.now(timezone.utc)
+        now = utc_now()
 
         # --------------------------------------------------------------
         # 4) Lockout + estado
         # --------------------------------------------------------------
         if user.is_login_locked(now=now):
+            # Nota:
+            # - user.login_locked_until podría ser naive desde DB
+            # - lo normalizamos para no romper isoformat()
+            locked_until = ensure_aware_utc(user.login_locked_until)
+
             return ServiceResult.fail(
                 code="LOGIN_LOCKED",
                 http_status=429,
                 meta={
-                    "locked_until": user.login_locked_until.isoformat()
-                    if user.login_locked_until
-                    else None
+                    "locked_until": locked_until.isoformat() if locked_until else None
                 },
             )
 
@@ -151,7 +136,10 @@ class VerifyOtpService:
         # --------------------------------------------------------------
         # 6) Validar expiración (FIX: normalizar a UTC-aware)
         # --------------------------------------------------------------
-        expires_at = _as_utc_aware(user.otp_expires_at)
+        expires_at = ensure_aware_utc(user.otp_expires_at)
+        if expires_at is None:
+            # Defensivo: si DB viene raro, tratamos como no solicitado
+            return ServiceResult.fail(code="OTP_NOT_REQUESTED", http_status=400)
 
         if expires_at < now:
             # Fallo real: cuenta para lockout

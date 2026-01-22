@@ -6,13 +6,17 @@
 # ----------------------------------------------------------------------
 # Patrón aplicado: Repository Pattern (Adaptador)
 #
-# CAMBIOS:
-# - Mapear role_id
-# - Mapear login_locked_until (lockout)
+# FIX CRÍTICO (TIMEZONES):
+# - MySQL/SQLAlchemy suele retornar TIMESTAMP/DATETIME como "naive"
+#   (sin tzinfo).
+# - Nuestro dominio/services trabajan con "UTC aware" (timezone.utc).
+# - Normalizamos aquí para evitar errores de comparación y mantener
+#   consistencia en todo el sistema.
 # ======================================================================
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from typing import Optional
 
 from sqlalchemy.orm import Session
@@ -29,19 +33,43 @@ class SqlAlchemyUserRepository(UserRepository):
     Responsabilidad (SRP):
     - Ejecutar queries (infra)
     - Mapear ORM <-> Dominio
+    - Normalizar tipos infra (ej: datetimes) a lo esperado por el dominio
     """
 
     def __init__(self, session: Session):
         self._session = session
 
     # ==================================================================
-    # Mappers (Infra <-> Dominio)
+    # Helpers (Infra): Normalización de datetimes
     # ==================================================================
 
     @staticmethod
-    def _to_domain(model: UserModel) -> User:
+    def _as_utc_aware(dt: Optional[datetime]) -> Optional[datetime]:
         """
-        Convierte ORM -> Dominio.
+        Convierte datetime potencialmente naive -> UTC aware.
+
+        Decisión:
+        - Si dt viene sin tzinfo (naive), asumimos que representa UTC.
+          (Esto es correcto SI tu conexión/DB opera en UTC; abajo te dejo
+          el ajuste recomendado en engine).
+        """
+        if dt is None:
+            return None
+
+        # Si viene naive (lo típico con MySQL), lo marcamos como UTC.
+        if dt.tzinfo is None:
+            return dt.replace(tzinfo=timezone.utc)
+
+        # Si viene aware, lo convertimos a UTC por consistencia.
+        return dt.astimezone(timezone.utc)
+
+    # ==================================================================
+    # Mappers (Infra <-> Dominio)
+    # ==================================================================
+
+    def _to_domain(self, model: UserModel) -> User:
+        """
+        Convierte ORM -> Dominio (normalizando timestamps).
         """
         return User(
             id=model.id,
@@ -51,14 +79,14 @@ class SqlAlchemyUserRepository(UserRepository):
             role_id=model.role_id,
             status=model.status,
             failed_attempts=model.failed_attempts,
-            login_locked_until=model.login_locked_until,
-            last_login_at=model.last_login_at,
+            login_locked_until=self._as_utc_aware(model.login_locked_until),
+            last_login_at=self._as_utc_aware(model.last_login_at),
             token_current_jti=model.token_current_jti,
             otp_code=model.otp_code,
-            otp_created_at=model.otp_created_at,
-            otp_expires_at=model.otp_expires_at,
-            created_at=model.created_at,
-            updated_at=model.updated_at,
+            otp_created_at=self._as_utc_aware(model.otp_created_at),
+            otp_expires_at=self._as_utc_aware(model.otp_expires_at),
+            created_at=self._as_utc_aware(model.created_at),
+            updated_at=self._as_utc_aware(model.updated_at),
         )
 
     @staticmethod
@@ -66,8 +94,10 @@ class SqlAlchemyUserRepository(UserRepository):
         """
         Copia Dominio -> ORM.
 
-        Decisiones:
+        Decisión:
         - created_at/updated_at NO se setean manualmente (DB manda).
+        - Guardamos datetimes tal cual vengan del dominio.
+          (Como el dominio ya opera en UTC aware, esto queda consistente)
         """
         model.email = user.email
         model.full_name = user.full_name

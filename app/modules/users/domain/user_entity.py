@@ -22,6 +22,9 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
+from app.common.utils import ensure_aware_utc, utc_now
+
+
 
 class User:
     """
@@ -103,19 +106,19 @@ class User:
 
     def is_login_locked(self, now: Optional[datetime] = None) -> bool:
         """
-        Indica si el usuario está temporalmente bloqueado para autenticar.
-
-        Parámetros:
-        - now: permite testear determinísticamente sin depender del reloj real.
-
         Regla:
         - Si login_locked_until existe y está en el futuro -> locked.
         """
         if self.login_locked_until is None:
             return False
 
-        now = now or datetime.now(timezone.utc)
-        return self.login_locked_until > now
+        now = now or utc_now()
+
+        locked_until = ensure_aware_utc(self.login_locked_until)
+        if locked_until is None:
+            return False
+
+        return locked_until > now
 
     def lock_login_for(self, minutes: int, now: Optional[datetime] = None) -> None:
         """

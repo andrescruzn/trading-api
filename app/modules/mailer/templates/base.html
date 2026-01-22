@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>{{ title or "Trading AI" }}</title>
+  </head>
+  <body style="font-family: Arial, sans-serif; background:#f6f6f6; padding:20px;">
+    <div style="max-width:640px;margin:0 auto;background:#ffffff;border-radius:12px;padding:24px;">
+      {% block content %}{% endblock %}
+      <hr style="margin:24px 0;border:none;border-top:1px solid #eee;" />
+      <p style="color:#666;font-size:12px;">
+        Este correo fue enviado por Trading AI.
+      </p>
+    </div>
+  </body>
+</html>

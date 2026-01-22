@@ -2,57 +2,25 @@
 
 # ======================================================================
 # app/app_factory.py
-#
-# PROPÓSITO:
-# - Centralizar el bootstrap de la aplicación FastAPI.
-#
-# RESPONSABILIDAD:
-# - Crear la instancia FastAPI.
-# - Registrar routers por módulo (screaming architecture).
-# - Registrar middlewares / handlers transversales (cuando existan).
-#
-# POR QUÉ:
-# - main.py se mantiene mínimo.
-# - Escala bien cuando el sistema crece.
-#
-# NOTA ARQUITECTÓNICA:
-# - NO contiene lógica de negocio.
-# - NO contiene configuración de DB.
-# - NO contiene lectura de variables de entorno.
 # ======================================================================
+
+# 1) Registro de modelos ORM (necesario para FKs)
+import app.extensions.db.models_registry  # noqa: F401
 
 from fastapi import FastAPI
 
 from app.common.config import settings
+from app.common.errors import register_error_handlers
 from app.modules.users.rest import auth_router
 
 
 def create_app() -> FastAPI:
-    """
-    Application Factory.
+    app = FastAPI(title=settings.API_TITLE, version=settings.API_VERSION)
 
-    Retorna:
-    - Instancia configurada de FastAPI.
-    """
-
-    # ------------------------------------------------------------------
-    # Crear aplicación
-    # ------------------------------------------------------------------
-    app = FastAPI(
-        title=settings.API_TITLE,
-        version=settings.API_VERSION,
-    )
-
-    # ------------------------------------------------------------------
-    # Routers (por módulo / bounded context)
-    # ------------------------------------------------------------------
+    # Routers
     app.include_router(auth_router)
 
-    # ------------------------------------------------------------------
-    # (Futuro)
-    # - Middlewares
-    # - Exception handlers globales
-    # - Lifespan events
-    # ------------------------------------------------------------------
+    # ✅ Handlers globales (AuthException/JwtCodecError -> envelope)
+    register_error_handlers(app)
 
     return app

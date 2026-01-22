@@ -1,26 +1,28 @@
+# -*- coding: utf-8 -*-
+
 # ======================================================================
 # app/common/security/jwt/__init__.py
-# -*- coding: utf-8 -*-
 #
-# PROPÓSITO:
-# - Barrel exports para imports limpios.
-#
-# POR QUÉ:
-# - Evita rutas largas en imports.
-# - Reduce duplicación y ordena la API pública del submódulo JWT.
+# Barrel exports del submódulo JWT (alineado a tus archivos reales).
 # ======================================================================
 
-from .jwt_settings import JwtSettings, load_jwt_settings
-from .jwt_codec import create_access_token, decode_access_token, JwtCodecError
-from .jwt_dependency import JwtIdentity, require_jwt_identity, token_required
+from .jwt_utils import (
+    JwtCodecError,
+    create_access_token,
+    decode_access_token,
+    generate_jti,
+)
+
+from .jwt_guard import token_required_actual
+from .role_guard import admin_required
+from .auth_exceptions import AuthException
 
 __all__ = [
-    "JwtSettings",
-    "load_jwt_settings",
+    "JwtCodecError",
     "create_access_token",
     "decode_access_token",
-    "JwtCodecError",
-    "JwtIdentity",
-    "require_jwt_identity",
-    "token_required",
+    "generate_jti",
+    "token_required_actual",
+    "admin_required",
+    "AuthException",
 ]

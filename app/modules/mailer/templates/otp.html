@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block content %}
+  <h2 style="margin:0 0 12px 0;">Tu código OTP</h2>
+  <p style="margin:0 0 12px 0;">
+    Usa este código para continuar:
+  </p>
+  <p style="font-size:28px; font-weight:bold; letter-spacing:4px; margin:0 0 12px 0;">
+    {{ otp_code }}
+  </p>
+  <p style="color:#666; margin:0;">
+    Este código expira en {{ expires_minutes }} minutos.
+  </p>
+{% endblock %}

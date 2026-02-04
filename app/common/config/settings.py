@@ -92,7 +92,35 @@ class Settings:
         # --------------------------------------------------------------
         # CORS
         # --------------------------------------------------------------
-        self.CORS_ORIGINS: str = os.getenv("CORS_ORIGINS", "*").strip()
+        # SEGURIDAD:
+        # - En producción, CORS_ORIGINS debe estar configurado explícitamente.
+        # - En desarrollo, permite localhost por defecto.
+        # - Formato: lista separada por comas (ej: "https://app.com,https://admin.app.com")
+        # --------------------------------------------------------------
+        cors_raw = os.getenv("CORS_ORIGINS", "").strip()
+
+        if cors_raw:
+            # Parsear lista de orígenes permitidos
+            self.CORS_ORIGINS: list[str] = [
+                origin.strip()
+                for origin in cors_raw.split(",")
+                if origin.strip()
+            ]
+        else:
+            # Fail-fast en producción si no está configurado
+            if self.APP_ENV not in ("development", "testing"):
+                raise RuntimeError(
+                    "CORS_ORIGINS is required in production environments. "
+                    "Set it to a comma-separated list of allowed origins."
+                )
+            # Default seguro para desarrollo
+            self.CORS_ORIGINS: list[str] = [
+                "http://localhost:3000",
+                "http://localhost:5173",
+                "http://127.0.0.1:3000",
+                "http://127.0.0.1:5173",
+                "http://127.0.0.1:8000",
+            ]
 
         # --------------------------------------------------------------
         # OpenAPI / Docs

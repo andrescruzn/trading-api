@@ -9,7 +9,7 @@
 # SEGURIDAD:
 # - Si login está bloqueado -> fail LOGIN_LOCKED
 # - Pedir OTP NO incrementa failed_attempts (no es fallo de auth)
-# - Persistimos OTP hasheado (nunca OTP plano)
+# - Persistimos OTP hasheado con HMAC-SHA256 (nunca OTP plano)
 #
 # DECISIÓN DE CONSISTENCIA (anti-errores):
 # - Persistimos OTP (commit) antes de enviar email, para que el OTP
@@ -28,7 +28,7 @@ from sqlalchemy.orm import Session
 from app.common.config.settings import Settings
 from app.common.contracts import ServiceResult
 from app.common.utils.input_cleaner import clean_email
-from app.common.security.otp import generate_numeric_otp, hash_otp_sha1_hex
+from app.common.security.otp import generate_numeric_otp, hash_otp
 
 from app.modules.mailer.domain import OTP_TEMPLATE
 from app.modules.mailer.services import MailerService
@@ -135,7 +135,7 @@ class LoginOtpService:
         # 5) Persistir OTP hasheado (commit)
         # - Garantiza consistencia si el usuario recibe el código.
         # --------------------------------------------------------------
-        user.otp_code = hash_otp_sha1_hex(otp_plain)
+        user.otp_code = hash_otp(otp_plain)
         user.otp_created_at = now
         user.otp_expires_at = expires_at
 

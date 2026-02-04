@@ -3,18 +3,14 @@
 # ======================================================================
 # app/modules/users/rest/auth/error_messages.py
 #
-# Mensajes de UI (solo REST).
-# Los services retornan SOLO codes estables.
+# Mensajes de error para el módulo de autenticación.
+#
+# NOTA:
+# - Usa AUTH_ERROR_MESSAGES de common/errors como base.
+# - Solo agrega mensajes específicos si es necesario.
 # ======================================================================
 
-DEFAULT_AUTH_ERROR_MESSAGES = {
-    "VALIDATION_ERROR": "Invalid request",
-    "INVALID_REQUEST": "Invalid request",
-    "USER_NOT_ALLOWED": "User not allowed",
-    "LOGIN_LOCKED": "Too many failed attempts. Please try again later.",
-    "INVALID_CREDENTIALS": "Invalid credentials",
-    "OTP_NOT_REQUESTED": "OTP not requested",
-    "OTP_EXPIRED": "OTP expired",
-    "OTP_INVALID": "Invalid OTP",
-    "OTP_EMAIL_SEND_FAILED": "Could not send OTP email",
-}
+from app.common.errors import AUTH_ERROR_MESSAGES
+
+# Re-exportar para uso local (incluye todos los mensajes de auth)
+DEFAULT_AUTH_ERROR_MESSAGES = AUTH_ERROR_MESSAGES

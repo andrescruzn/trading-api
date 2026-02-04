@@ -48,9 +48,18 @@ class LoginRequest(BaseModel):
 class VerifyOtpRequest(BaseModel):
     """
     Request para verificar OTP y finalizar login.
+
+    Validaciones:
+    - otp_code debe ser exactamente 6 dígitos numéricos.
     """
     email: EmailStr = Field(..., description="User email")
-    otp_code: str = Field(..., min_length=4, max_length=12, description="OTP code sent to email")
+    otp_code: str = Field(
+        ...,
+        min_length=6,
+        max_length=6,
+        pattern=r"^\d{6}$",
+        description="6-digit OTP code sent to email",
+    )
 
 
 # ======================================================================

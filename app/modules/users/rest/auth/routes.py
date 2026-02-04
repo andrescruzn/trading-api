@@ -21,14 +21,13 @@
 #
 # RESPONSABILIDAD REST (UI/presentación):
 # - Validar schemas (Pydantic)
-# - Instanciar repo + services (DI manual)
-# - Traducir ServiceResult -> send()
-# - Formatear "salidas" para el cliente (ej: fechas a Bogotá)
+# - Usar factory para servicios (DI)
+# - Usar response_builder para respuestas (presentación)
 # - NO meter lógica de negocio aquí
 #
-# NOTA TZ (Bogotá):
-# - Dominio/servicios trabajan en UTC (recomendado).
-# - REST puede "presentar" timestamps en America/Bogota usando utc_to_bogota().
+# PATRÓN:
+# - Factory para DI de servicios
+# - Response Builder para construcción de respuestas
 # ======================================================================
 
 from __future__ import annotations
@@ -36,22 +35,18 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
-from app.common.config import settings
-from app.common.http import send
-from app.common.security.jwt import token_required_actual
-from app.common.utils import utc_to_bogota
-from app.extensions.db import get_db
-from app.modules.mailer.providers import build_mailer
-from app.modules.users.infrastructure import SqlAlchemyUserRepository
-from app.modules.users.services.auth import (
-    LoginOtpService,
-    LoginPasswordService,
-    VerifyOtpService,
-    LogoutService,
-    RotateTokenService,
+from app.common.http import (
+    build_error_response,
+    build_internal_error_response,
+    build_success_response,
+    build_token_response,
+    build_otp_required_response,
 )
+from app.common.security.jwt import token_required_actual
+from app.common.security.rate_limiter import check_auth_rate_limit
+from app.extensions.db import get_db
+from app.modules.users.providers import AuthServiceFactory
 
-from .error_messages import DEFAULT_AUTH_ERROR_MESSAGES
 from .schemas import (
     LoginRequest,
     LoginResponse,
@@ -64,6 +59,18 @@ from .schemas import (
 # ----------------------------------------------------------------------
 router = APIRouter(prefix="/users", tags=["Auth"])
 
+
+# ----------------------------------------------------------------------
+# Dependency para factory de servicios
+# ----------------------------------------------------------------------
+def get_factory(db: Session = Depends(get_db)) -> AuthServiceFactory:
+    """Crea factory de servicios de autenticación."""
+    return AuthServiceFactory(session=db)
+
+
+# ======================================================================
+# POST /users/login
+# ======================================================================
 
 @router.post(
     "/login",
@@ -80,123 +87,54 @@ router = APIRouter(prefix="/users", tags=["Auth"])
 )
 def login(
     payload: LoginRequest,
-    db: Session = Depends(get_db),
+    factory: AuthServiceFactory = Depends(get_factory),
+    _rate_limit: None = Depends(check_auth_rate_limit),
 ):
     """
     Login unificado.
 
     Flujo:
-    1) Si payload.password viene:
-       - valida password
-       - devuelve token
-    2) Si payload.password NO viene:
-       - inicia OTP (envía correo)
-       - devuelve otp_required=true + otp_expires_at
+    1) Si payload.password viene -> valida password -> devuelve token
+    2) Si payload.password NO viene -> inicia OTP -> devuelve otp_required
     """
-
-    # --------------------------------------------------------------
-    # 1) Repo (infra) para el módulo users
-    # --------------------------------------------------------------
-    repo = SqlAlchemyUserRepository(db)
-
-    # --------------------------------------------------------------
-    # 2) Login por password (si viene password)
-    # --------------------------------------------------------------
+    # ------------------------------------------------------------------
+    # 1) Login por password (si viene password)
+    # ------------------------------------------------------------------
     if payload.password is not None and payload.password.strip() != "":
-        service = LoginPasswordService(
-            repo=repo,
-            session=db,
-            settings=settings,
-            max_failed_attempts=3,
-            lock_minutes=60,
-        )
+        result = factory.login_password().login(payload.email, payload.password)
 
-        result = service.login(payload.email, payload.password)
-
-        # ----------------------------------------------------------
-        # 2.1) Error -> traducimos con send()
-        # ----------------------------------------------------------
         if not result.success:
-            err = result.error
-            msg = DEFAULT_AUTH_ERROR_MESSAGES.get(err.code, "Error") if err else "Error"
-            return send(
-                msg=msg,
-                status_code=(err.http_status if err else 400),
-                data=[],
-            )
+            return build_error_response(result)
 
-        # ----------------------------------------------------------
-        # 2.2) Success -> payload normalizado
-        # ----------------------------------------------------------
-        data = result.data
-        if data is None:
-            return send(msg="Error", status_code=500, data=[])
+        if result.data is None:
+            return build_internal_error_response()
 
-        # Presentación: expiración en Bogotá (pero token sigue siendo UTC)
-        expires_at_bogota = utc_to_bogota(data.expires_at)
-
-        return send(
-            msg="OK",
-            status_code=200,
-            data={
-                "access_token": data.access_token,
-                "token_type": "bearer",
-                "expires_at": expires_at_bogota.isoformat() if expires_at_bogota else None,
-            },
+        return build_token_response(
+            access_token=result.data.access_token,
+            expires_at=result.data.expires_at,
         )
 
-    # --------------------------------------------------------------
-    # 3) Login por OTP (si no viene password)
-    # --------------------------------------------------------------
-    # DI Manual:
-    # - MailerService requiere mail_client + template_renderer.
-    # - build_mailer(settings) arma adaptadores (SMTP + Jinja) y retorna el service listo.
-    mailer = build_mailer(settings)
+    # ------------------------------------------------------------------
+    # 2) Login por OTP (si no viene password)
+    # ------------------------------------------------------------------
+    result = factory.login_otp().request_login_otp(payload.email)
 
-    otp_service = LoginOtpService(
-        repo=repo,
-        session=db,
-        settings=settings,
-        mailer=mailer,
-        otp_length=6,
-        otp_ttl_minutes=10,
-    )
-
-    result = otp_service.request_login_otp(payload.email)
-
-    # --------------------------------------------------------------
-    # 3.1) Error -> traducimos con send()
-    # --------------------------------------------------------------
     if not result.success:
-        err = result.error
-        msg = DEFAULT_AUTH_ERROR_MESSAGES.get(err.code, "Error") if err else "Error"
-        return send(
-            msg=msg,
-            status_code=(err.http_status if err else 400),
-            data=[],
-        )
+        return build_error_response(result)
 
-    # --------------------------------------------------------------
-    # 3.2) Success -> payload normalizado
-    # --------------------------------------------------------------
-    data = result.data
-    if data is None:
-        return send(msg="Error", status_code=500, data=[])
+    if result.data is None:
+        return build_internal_error_response()
 
-    # Presentación: expiración OTP en Bogotá (UI)
-    otp_expires_at_bogota = utc_to_bogota(data.otp_expires_at)
-
-    return send(
-        msg="OK",
-        status_code=200,
-        data={
-            "otp_required": True,
-            "email": data.email,
-            "otp_expires_at": otp_expires_at_bogota.isoformat() if otp_expires_at_bogota else None,
-            "otp_code": data.otp_code,  # solo dev (⚠️ quitar en prod)
-        },
+    return build_otp_required_response(
+        email=result.data.email,
+        otp_expires_at=result.data.otp_expires_at,
+        otp_code=result.data.otp_code,
     )
 
+
+# ======================================================================
+# POST /users/login/otp/verify
+# ======================================================================
 
 @router.post(
     "/login/otp/verify",
@@ -212,74 +150,42 @@ def login(
 )
 def verify_otp(
     payload: VerifyOtpRequest,
-    db: Session = Depends(get_db),
+    factory: AuthServiceFactory = Depends(get_factory),
+    _rate_limit: None = Depends(check_auth_rate_limit),
 ):
     """
     Finaliza login por OTP.
 
     Flujo:
-    1) valida OTP (hash + expiración)
-    2) si OK -> emite token
-    3) si FAIL -> incrementa failed_attempts y lock al 3er fallo
+    1) Valida OTP (hash + expiración)
+    2) Si OK -> emite token
+    3) Si FAIL -> incrementa failed_attempts y lock al 3er fallo
     """
+    result = factory.verify_otp().verify(payload.email, payload.otp_code)
 
-    # --------------------------------------------------------------
-    # 1) Repo (infra)
-    # --------------------------------------------------------------
-    repo = SqlAlchemyUserRepository(db)
-
-    # --------------------------------------------------------------
-    # 2) Service (caso de uso)
-    # --------------------------------------------------------------
-    service = VerifyOtpService(
-        repo=repo,
-        session=db,
-        settings=settings,
-        max_failed_attempts=3,
-        lock_minutes=60,
-    )
-
-    result = service.verify(payload.email, payload.otp_code)
-
-    # --------------------------------------------------------------
-    # 3) Error -> send()
-    # --------------------------------------------------------------
     if not result.success:
-        err = result.error
-        msg = DEFAULT_AUTH_ERROR_MESSAGES.get(err.code, "Error") if err else "Error"
-        return send(
-            msg=msg,
-            status_code=(err.http_status if err else 400),
-            data=[],
-        )
+        return build_error_response(result)
 
-    # --------------------------------------------------------------
-    # 4) Success -> payload normalizado
-    # --------------------------------------------------------------
-    data = result.data
-    if data is None:
-        return send(msg="Error", status_code=500, data=[])
+    if result.data is None:
+        return build_internal_error_response()
 
-    expires_at_bogota = utc_to_bogota(data.expires_at)
-
-    return send(
-        msg="OK",
-        status_code=200,
-        data={
-            "access_token": data.access_token,
-            "token_type": "bearer",
-            "expires_at": expires_at_bogota.isoformat() if expires_at_bogota else None,
-        },
+    return build_token_response(
+        access_token=result.data.access_token,
+        expires_at=result.data.expires_at,
     )
 
+
+# ======================================================================
+# POST /users/logout
+# ======================================================================
 
 @router.post(
     "/logout",
     status_code=status.HTTP_200_OK,
 )
 def logout(
-    identity: dict = Depends(token_required_actual),  # ✅ candado + exige Authorization: Bearer <token>
-    db: Session = Depends(get_db),
+    identity: dict = Depends(token_required_actual),
+    factory: AuthServiceFactory = Depends(get_factory),
 ):
     """
     Logout (revoca sesión actual).
@@ -287,25 +193,19 @@ def logout(
     Reglas:
     - Requiere token válido (firma/exp) + sesión activa (JTI en DB)
     - Al hacer logout: token_current_jti = NULL
-      => cualquier token emitido antes queda muerto inmediatamente.
+      => cualquier token emitido antes queda muerto inmediatamente
     """
-
-    repo = SqlAlchemyUserRepository(db)
-    service = LogoutService(repo=repo, session=db)
-
-    result = service.logout(user_id=int(identity["user_id"]))
+    result = factory.logout().logout(user_id=int(identity["user_id"]))
 
     if not result.success:
-        err = result.error
-        msg = DEFAULT_AUTH_ERROR_MESSAGES.get(err.code, "Error") if err else "Error"
-        return send(
-            msg=msg,
-            status_code=(err.http_status if err else 400),
-            data=[],
-        )
+        return build_error_response(result)
 
-    return send(msg="OK", status_code=200, data=[])
+    return build_success_response()
 
+
+# ======================================================================
+# POST /users/token/rotate
+# ======================================================================
 
 @router.post(
     "/token/rotate",
@@ -316,8 +216,8 @@ def logout(
     },
 )
 def rotate_token(
-    identity: dict = Depends(token_required_actual),  # ✅ candado + exige Authorization: Bearer <token>
-    db: Session = Depends(get_db),
+    identity: dict = Depends(token_required_actual),
+    factory: AuthServiceFactory = Depends(get_factory),
 ):
     """
     Rotación de token (refresh simple sin refresh-token separado).
@@ -328,40 +228,17 @@ def rotate_token(
     Efecto:
     - Emite un token nuevo (nuevo JTI)
     - Actualiza DB con nuevo token_current_jti
-    - El token anterior queda inválido inmediatamente.
+    - El token anterior queda inválido inmediatamente
     """
-
-    repo = SqlAlchemyUserRepository(db)
-
-    service = RotateTokenService(
-        repo=repo,
-        session=db,
-        settings=settings,
-    )
-
-    result = service.rotate(user_id=int(identity["user_id"]))
+    result = factory.rotate_token().rotate(user_id=int(identity["user_id"]))
 
     if not result.success:
-        err = result.error
-        msg = DEFAULT_AUTH_ERROR_MESSAGES.get(err.code, "Error") if err else "Error"
-        return send(
-            msg=msg,
-            status_code=(err.http_status if err else 400),
-            data=[],
-        )
+        return build_error_response(result)
 
-    data = result.data
-    if data is None:
-        return send(msg="Error", status_code=500, data=[])
+    if result.data is None:
+        return build_internal_error_response()
 
-    expires_at_bogota = utc_to_bogota(data.expires_at)
-
-    return send(
-        msg="OK",
-        status_code=200,
-        data={
-            "access_token": data.access_token,
-            "token_type": "bearer",
-            "expires_at": expires_at_bogota.isoformat() if expires_at_bogota else None,
-        },
+    return build_token_response(
+        access_token=result.data.access_token,
+        expires_at=result.data.expires_at,
     )

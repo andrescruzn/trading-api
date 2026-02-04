@@ -12,7 +12,8 @@
 #
 # SEGURIDAD:
 # - Anti-enumeration: si no existe usuario, INVALID_CREDENTIALS
-# - Password legacy: sha1_hex (según tu requisito actual)
+# - Password: bcrypt (cost factor 12)
+# - Migración transparente: sha1 legacy -> bcrypt automático en login exitoso
 # ======================================================================
 
 from __future__ import annotations
@@ -25,7 +26,7 @@ from sqlalchemy.orm import Session
 from app.common.config.settings import Settings
 from app.common.contracts import ServiceResult
 from app.common.utils.input_cleaner import clean_email, clean_str
-from app.common.security import sha1_hex
+from app.common.security import verify_password, hash_password
 from app.common.security.jwt import create_access_token
 
 from app.modules.users.domain import UserRepository
@@ -108,12 +109,11 @@ class LoginPasswordService:
             )
 
         # --------------------------------------------------------------
-        # 4) Verificar password (legacy sha1)
+        # 4) Verificar password (bcrypt + migración transparente de sha1)
         # --------------------------------------------------------------
-        expected_hash = user.password_hash
-        provided_hash = sha1_hex(password_clean)
+        is_valid, needs_rehash = verify_password(password_clean, user.password_hash)
 
-        if provided_hash != expected_hash:
+        if not is_valid:
             # Fallo real: incrementa y puede lockear
             user.register_failed_attempt(
                 max_attempts=self._max_failed_attempts,
@@ -124,6 +124,12 @@ class LoginPasswordService:
             self._session.commit()
 
             return ServiceResult.fail(code="INVALID_CREDENTIALS", http_status=401)
+
+        # --------------------------------------------------------------
+        # 4.1) Migración transparente: si usaba sha1, actualizar a bcrypt
+        # --------------------------------------------------------------
+        if needs_rehash:
+            user.password_hash = hash_password(password_clean)
 
         # --------------------------------------------------------------
         # 5) Éxito: reset intentos, limpiar OTP y emitir token

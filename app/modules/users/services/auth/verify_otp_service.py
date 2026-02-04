@@ -11,7 +11,8 @@
 # - OTP correcto -> reset_failed_attempts() + limpiar otp_* + token
 #
 # SEGURIDAD:
-# - Comparación de hashes con compare_digest (anti timing)
+# - Verificación HMAC-SHA256 con soporte legacy SHA1
+# - Comparación de tiempo constante (anti timing attacks)
 #
 # FIX IMPORTANTE (MySQL + SQLAlchemy):
 # - MySQL suele devolver datetimes "naive" (sin tzinfo).
@@ -22,7 +23,6 @@
 
 from __future__ import annotations
 
-import secrets
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -31,7 +31,7 @@ from sqlalchemy.orm import Session
 from app.common.config.settings import Settings
 from app.common.contracts import ServiceResult
 from app.common.security.jwt import create_access_token
-from app.common.security.otp import hash_otp_sha1_hex
+from app.common.security.otp import verify_otp_hash
 from app.common.utils import clean_email, clean_str, ensure_aware_utc, utc_now
 
 from app.modules.users.domain import UserRepository
@@ -154,11 +154,9 @@ class VerifyOtpService:
             return ServiceResult.fail(code="OTP_EXPIRED", http_status=401)
 
         # --------------------------------------------------------------
-        # 7) Validar OTP por hash (compare_digest anti-timing)
+        # 7) Validar OTP (HMAC-SHA256 con soporte legacy SHA1)
         # --------------------------------------------------------------
-        provided_hash = hash_otp_sha1_hex(otp_clean)
-
-        if not secrets.compare_digest(provided_hash, user.otp_code):
+        if not verify_otp_hash(otp_clean, user.otp_code):
             user.register_failed_attempt(
                 max_attempts=self._max_failed_attempts,
                 lock_minutes=self._lock_minutes,

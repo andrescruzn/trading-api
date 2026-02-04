@@ -1,11 +1,9 @@
 # -*- coding: utf-8 -*-
 
 # ======================================================================
-# app/modules/users/rest/auth/__init__.py
-#
-# Barrel exports del submódulo auth.
+# app/modules/health/rest/__init__.py
 # ======================================================================
 
-from .routes import router
+from .routes import router as health_router
 
-__all__ = ["router"]
+__all__ = ["health_router"]

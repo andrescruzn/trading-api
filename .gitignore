@@ -1,37 +1,62 @@
+# =========================
 # Python
+# =========================
 __pycache__/
 *.py[cod]
 
-# Virtual env
+# =========================
+# Virtual environment
+# =========================
 .venv/
 
-# Env vars
+# =========================
+# Environment variables
+# =========================
 .env
 .env.*
 !.env.example
 
+# =========================
 # Logs
+# =========================
 *.log
 logs/
 
+# =========================
 # Tests / coverage
+# =========================
 .pytest_cache/
 .coverage*
 htmlcov/
 
+# =========================
 # Type check / lint caches
+# =========================
 .mypy_cache/
 .pyright/
 .ruff_cache/
 
-# IDEs
+# =========================
+# IDEs / Editors
+# =========================
 .vscode/
 .idea/
 
-# OS
+# =========================
+# OS files
+# =========================
 .DS_Store
 Thumbs.db
 
+# =========================
 # Instance folder (local-only)
+# =========================
 instance/*
 !instance/.gitkeep
+
+# =========================
+# Claude Code
+# =========================
+.claude/*
+!.claude/.gitkeep
+CLAUDE.md

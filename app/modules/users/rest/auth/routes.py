@@ -5,42 +5,37 @@
 #
 # ENDPOINTS:
 # - POST /users/login
-#   - con password -> token
-#   - sin password -> otp_required
-#
 # - POST /users/login/otp/verify
-#   - valida OTP -> token
-#
 # - POST /users/logout
-#   - requiere Bearer token
-#   - revoca sesión (token_current_jti=None)
-#
 # - POST /users/token/rotate
-#   - requiere Bearer token
-#   - emite nuevo token y revoca el anterior (nuevo JTI)
 #
-# RESPONSABILIDAD REST (UI/presentación):
-# - Validar schemas (Pydantic)
-# - Usar factory para servicios (DI)
-# - Usar response_builder para respuestas (presentación)
-# - NO meter lógica de negocio aquí
+# BANDERA ?response=token:
+# - Sin bandera (default) → Cookie HTTP-only (React SPA)
+# - Con ?response=token   → Token en body JSON (Postman/Swagger/móvil)
 #
-# PATRÓN:
-# - Factory para DI de servicios
-# - Response Builder para construcción de respuestas
+# SEGURIDAD:
+# - El guard acepta token desde cookie O header Bearer.
+# - Cookies HTTP-only protegen contra XSS.
+# - Bearer header para clientes sin soporte de cookies.
 # ======================================================================
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, status
+from typing import Optional, Union
+
+from fastapi import APIRouter, Depends, Query, status
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
+from app.common.config import settings
 from app.common.http import (
     build_error_response,
     build_internal_error_response,
-    build_success_response,
-    build_token_response,
     build_otp_required_response,
+    build_cookie_auth_response,
+    build_logout_response,
+    build_token_response,
+    build_success_response,
 )
 from app.common.security.jwt import token_required_actual
 from app.common.security.rate_limiter import check_auth_rate_limit
@@ -55,17 +50,51 @@ from .schemas import (
 )
 
 # ----------------------------------------------------------------------
-# Router principal del submódulo auth dentro de users
+# Router
 # ----------------------------------------------------------------------
 router = APIRouter(prefix="/users", tags=["Auth"])
 
 
 # ----------------------------------------------------------------------
-# Dependency para factory de servicios
+# Dependencies
 # ----------------------------------------------------------------------
 def get_factory(db: Session = Depends(get_db)) -> AuthServiceFactory:
     """Crea factory de servicios de autenticación."""
     return AuthServiceFactory(session=db)
+
+
+def _get_cookie_max_age() -> int:
+    """Max-age de cookie sincronizado con JWT TTL."""
+    return int(settings.JWT_ACCESS_TOKEN_EXPIRES.total_seconds())
+
+
+# ----------------------------------------------------------------------
+# Helper: construir respuesta según bandera
+# ----------------------------------------------------------------------
+def _build_auth_response(
+    access_token: str,
+    expires_at,
+    response_type: Optional[str],
+) -> Union[JSONResponse, dict]:
+    """
+    Construye respuesta de autenticación según bandera.
+
+    - response_type=None (default) → Cookie HTTP-only
+    - response_type="token"        → Token en body JSON
+    """
+    if response_type == "token":
+        # Postman/Swagger/móvil: devolver token en body
+        return build_token_response(
+            access_token=access_token,
+            expires_at=expires_at,
+        )
+
+    # React SPA: setear cookie HTTP-only
+    return build_cookie_auth_response(
+        access_token=access_token,
+        expires_at=expires_at,
+        max_age_seconds=_get_cookie_max_age(),
+    )
 
 
 # ======================================================================
@@ -87,18 +116,27 @@ def get_factory(db: Session = Depends(get_db)) -> AuthServiceFactory:
 )
 def login(
     payload: LoginRequest,
+    response: Optional[str] = Query(
+        default=None,
+        description="Tipo de respuesta: omitir para cookie, 'token' para JSON",
+        examples=["token"],
+    ),
     factory: AuthServiceFactory = Depends(get_factory),
     _rate_limit: None = Depends(check_auth_rate_limit),
 ):
     """
     Login unificado.
 
-    Flujo:
-    1) Si payload.password viene -> valida password -> devuelve token
-    2) Si payload.password NO viene -> inicia OTP -> devuelve otp_required
+    **Bandera `?response=token`:**
+    - Sin bandera → Cookie HTTP-only (para React)
+    - `?response=token` → Token en body (para Postman/Swagger/móvil)
+
+    **Flujo:**
+    1. Si viene password → valida → respuesta según bandera
+    2. Si NO viene password → inicia OTP → devuelve otp_required
     """
     # ------------------------------------------------------------------
-    # 1) Login por password (si viene password)
+    # 1) Login por password
     # ------------------------------------------------------------------
     if payload.password is not None and payload.password.strip() != "":
         result = factory.login_password().login(payload.email, payload.password)
@@ -109,13 +147,14 @@ def login(
         if result.data is None:
             return build_internal_error_response()
 
-        return build_token_response(
+        return _build_auth_response(
             access_token=result.data.access_token,
             expires_at=result.data.expires_at,
+            response_type=response,
         )
 
     # ------------------------------------------------------------------
-    # 2) Login por OTP (si no viene password)
+    # 2) Login por OTP
     # ------------------------------------------------------------------
     result = factory.login_otp().request_login_otp(payload.email)
 
@@ -150,16 +189,20 @@ def login(
 )
 def verify_otp(
     payload: VerifyOtpRequest,
+    response: Optional[str] = Query(
+        default=None,
+        description="Tipo de respuesta: omitir para cookie, 'token' para JSON",
+        examples=["token"],
+    ),
     factory: AuthServiceFactory = Depends(get_factory),
     _rate_limit: None = Depends(check_auth_rate_limit),
 ):
     """
-    Finaliza login por OTP.
+    Verificar OTP y completar login.
 
-    Flujo:
-    1) Valida OTP (hash + expiración)
-    2) Si OK -> emite token
-    3) Si FAIL -> incrementa failed_attempts y lock al 3er fallo
+    **Bandera `?response=token`:**
+    - Sin bandera → Cookie HTTP-only (para React)
+    - `?response=token` → Token en body (para Postman/Swagger/móvil)
     """
     result = factory.verify_otp().verify(payload.email, payload.otp_code)
 
@@ -169,9 +212,10 @@ def verify_otp(
     if result.data is None:
         return build_internal_error_response()
 
-    return build_token_response(
+    return _build_auth_response(
         access_token=result.data.access_token,
         expires_at=result.data.expires_at,
+        response_type=response,
     )
 
 
@@ -188,19 +232,18 @@ def logout(
     factory: AuthServiceFactory = Depends(get_factory),
 ):
     """
-    Logout (revoca sesión actual).
+    Logout (revoca sesión).
 
-    Reglas:
-    - Requiere token válido (firma/exp) + sesión activa (JTI en DB)
-    - Al hacer logout: token_current_jti = NULL
-      => cualquier token emitido antes queda muerto inmediatamente
+    - Acepta token desde cookie O header Bearer.
+    - Invalida token en DB (token_current_jti = NULL).
+    - Limpia cookie si existe.
     """
     result = factory.logout().logout(user_id=int(identity["user_id"]))
 
     if not result.success:
         return build_error_response(result)
 
-    return build_success_response()
+    return build_logout_response()
 
 
 # ======================================================================
@@ -216,19 +259,20 @@ def logout(
     },
 )
 def rotate_token(
+    response: Optional[str] = Query(
+        default=None,
+        description="Tipo de respuesta: omitir para cookie, 'token' para JSON",
+        examples=["token"],
+    ),
     identity: dict = Depends(token_required_actual),
     factory: AuthServiceFactory = Depends(get_factory),
 ):
     """
-    Rotación de token (refresh simple sin refresh-token separado).
+    Rotar token (emitir nuevo, invalidar anterior).
 
-    Requiere:
-    - Authorization: Bearer <token válido>
-
-    Efecto:
-    - Emite un token nuevo (nuevo JTI)
-    - Actualiza DB con nuevo token_current_jti
-    - El token anterior queda inválido inmediatamente
+    **Bandera `?response=token`:**
+    - Sin bandera → Cookie HTTP-only (para React)
+    - `?response=token` → Token en body (para Postman/Swagger/móvil)
     """
     result = factory.rotate_token().rotate(user_id=int(identity["user_id"]))
 
@@ -238,7 +282,8 @@ def rotate_token(
     if result.data is None:
         return build_internal_error_response()
 
-    return build_token_response(
+    return _build_auth_response(
         access_token=result.data.access_token,
         expires_at=result.data.expires_at,
+        response_type=response,
     )

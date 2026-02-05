@@ -11,13 +11,17 @@
 #   4) jti presente
 #   5) DB: user.token_current_jti == jti
 #   6) Role del usuario existe y está activo (roles.is_active=1)
+#
+# FUENTES DEL TOKEN (en orden de prioridad):
+# - Cookie HTTP-only (para React SPA)
+# - Bearer header (para APIs, mobile, testing)
 # ======================================================================
 
 from __future__ import annotations
 
 from typing import Any, Dict, Optional
 
-from fastapi import Depends
+from fastapi import Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -33,24 +37,58 @@ from .jwt_utils import decode_access_token, JwtCodecError
 _bearer = HTTPBearer(auto_error=False)
 
 
+def _extract_token_from_request(
+    request: Request,
+    credentials: Optional[HTTPAuthorizationCredentials],
+) -> Optional[str]:
+    """
+    Extrae el token JWT de la request en orden de prioridad:
+    1. Cookie HTTP-only (para React SPA)
+    2. Bearer header (para APIs, mobile, testing)
+
+    Retorna:
+    - Token string si se encontró
+    - None si no hay token en ninguna fuente
+    """
+    # --------------------------------------------------------------
+    # 1) Intentar cookie HTTP-only (prioridad para SPA)
+    # --------------------------------------------------------------
+    cookie_token = request.cookies.get(settings.AUTH_COOKIE_NAME)
+    if cookie_token:
+        return cookie_token
+
+    # --------------------------------------------------------------
+    # 2) Fallback a Bearer header (APIs, mobile, testing)
+    # --------------------------------------------------------------
+    if credentials and credentials.credentials:
+        return credentials.credentials
+
+    return None
+
+
 def token_required_actual(
+    request: Request,
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(_bearer),
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
     """
     Dependency fuerte (con DB).
 
+    FUENTES DEL TOKEN:
+    - Cookie HTTP-only (para React SPA con credentials: 'include')
+    - Bearer header (para APIs, mobile, testing con Authorization header)
+
     Retorna identity dict estándar:
     - {"user_id": int, "role_id": int, "jti": str}
     """
 
     # --------------------------------------------------------------
-    # 1) Token presente
+    # 1) Extraer token (cookie o bearer)
     # --------------------------------------------------------------
-    if credentials is None or not credentials.credentials:
-        raise AuthException(code="AUTH_MISSING_TOKEN", http_status=401)
+    token = _extract_token_from_request(request, credentials)
 
-    token = credentials.credentials
+    if not token:
+        raise AuthException(code="AUTH_MISSING_TOKEN", http_status=401)
 
     # --------------------------------------------------------------
     # 2) Validación criptográfica (firma + exp)
@@ -62,7 +100,6 @@ def token_required_actual(
             algorithm=settings.JWT_ALGORITHM,
         )
     except JwtCodecError:
-        # ✅ siempre code estable (no msg del codec)
         raise AuthException(code="AUTH_INVALID_TOKEN", http_status=401)
 
     # --------------------------------------------------------------

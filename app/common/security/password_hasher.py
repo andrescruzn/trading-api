@@ -6,20 +6,12 @@
 # PROPÓSITO:
 # - Hashing seguro de passwords con bcrypt.
 #
-# MIGRACIÓN TRANSPARENTE:
-# - Soporta verificación dual (bcrypt + sha1 legacy).
-# - Al verificar exitosamente con sha1, indica que necesita rehash.
-# - El service decide si actualiza el hash en DB.
-#
 # SEGURIDAD:
 # - bcrypt con cost factor 12 (recomendado para 2024+).
-# - SHA1 solo para compatibilidad con passwords existentes.
+# - Sin soporte legacy SHA1 (aplicación nueva, sin usuarios existentes).
 # ======================================================================
 
 from __future__ import annotations
-
-import hashlib
-from typing import Tuple
 
 import bcrypt
 
@@ -44,62 +36,34 @@ def hash_password(password: str) -> str:
     return hashed.decode("utf-8")
 
 
-def verify_password(password: str, stored_hash: str) -> Tuple[bool, bool]:
+def verify_password(password: str, stored_hash: str) -> bool:
     """
-    Verifica password contra hash almacenado.
+    Verifica password contra hash bcrypt almacenado.
 
-    Soporta:
-    - bcrypt ($2b$, $2a$, $2y$) - 60 caracteres
-    - sha1 legacy - 40 caracteres hex
+    Parámetros:
+    - password: password en texto plano
+    - stored_hash: hash bcrypt almacenado ($2b$, $2a$, $2y$)
 
     Retorna:
-    - Tuple[is_valid, needs_rehash]
-    - needs_rehash=True si el password era válido pero usa sha1 legacy.
+    - True si el password es válido, False en caso contrario.
 
-    Ejemplo de uso en service:
-        is_valid, needs_rehash = verify_password(password, user.password_hash)
-        if not is_valid:
-            return fail("INVALID_CREDENTIALS")
-        if needs_rehash:
-            user.password_hash = hash_password(password)
+    Seguridad:
+    - bcrypt usa comparación de tiempo constante internamente.
     """
     # --------------------------------------------------------------
-    # 1) Detectar bcrypt por prefijo estándar
+    # Validar que es un hash bcrypt válido
     # --------------------------------------------------------------
-    if stored_hash.startswith(("$2b$", "$2a$", "$2y$")):
-        try:
-            is_valid = bcrypt.checkpw(
-                password.encode("utf-8"),
-                stored_hash.encode("utf-8"),
-            )
-            return (is_valid, False)
-        except (ValueError, TypeError):
-            # Hash corrupto o inválido
-            return (False, False)
+    if not stored_hash.startswith(("$2b$", "$2a$", "$2y$")):
+        return False
 
     # --------------------------------------------------------------
-    # 2) Fallback a SHA1 legacy (40 chars hex)
+    # Verificar password contra bcrypt
     # --------------------------------------------------------------
-    if len(stored_hash) == 40 and _is_hex(stored_hash):
-        sha1_hash = hashlib.sha1(password.encode("utf-8")).hexdigest()
-        is_valid = sha1_hash == stored_hash.lower()
-        # Si es válido, necesita migrar a bcrypt
-        return (is_valid, is_valid)
-
-    # --------------------------------------------------------------
-    # 3) Formato desconocido -> inválido
-    # --------------------------------------------------------------
-    return (False, False)
-
-
-# ======================================================================
-# Helpers internos
-# ======================================================================
-
-def _is_hex(s: str) -> bool:
-    """Verifica si un string es hexadecimal válido."""
     try:
-        int(s, 16)
-        return True
-    except ValueError:
+        return bcrypt.checkpw(
+            password.encode("utf-8"),
+            stored_hash.encode("utf-8"),
+        )
+    except (ValueError, TypeError):
+        # Hash corrupto o inválido
         return False

@@ -20,6 +20,8 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional, TypeVar
 
+from fastapi.responses import JSONResponse
+
 from app.common.contracts import ServiceResult
 from app.common.http.http_responder import send
 from app.common.utils import utc_to_bogota
@@ -205,6 +207,101 @@ def build_otp_required_response(
         data["otp_code"] = otp_code
 
     return build_data_response(data=data, datetime_fields=["otp_expires_at"])
+
+
+# ======================================================================
+# Respuestas de autenticación con cookies HTTP-only
+# ======================================================================
+
+def build_cookie_auth_response(
+    access_token: str,
+    expires_at: datetime,
+    max_age_seconds: int,
+) -> JSONResponse:
+    """
+    Respuesta de login exitoso con cookie HTTP-only.
+
+    SEGURIDAD:
+    - El token NO se devuelve en el body (evita almacenamiento en localStorage).
+    - Se setea como cookie HttpOnly (JavaScript no puede leerla).
+    - Secure=True en producción (solo HTTPS).
+    - SameSite=Lax (protección CSRF básica).
+
+    Parámetros:
+    - access_token: JWT emitido
+    - expires_at: datetime UTC de expiración del token
+    - max_age_seconds: TTL de la cookie en segundos (sincronizado con JWT)
+
+    Uso en React:
+        fetch('/api/login', { credentials: 'include' })
+        // No necesitas guardar nada, el browser maneja la cookie
+    """
+    from app.common.config import settings
+
+    # --------------------------------------------------------------
+    # 1) Construir body de respuesta (sin token)
+    # --------------------------------------------------------------
+    bogota_dt = utc_to_bogota(expires_at)
+    body = {
+        "msg": "OK",
+        "errorCode": 200,
+        "data": {
+            "authenticated": True,
+            "expires_at": bogota_dt.isoformat() if bogota_dt else None,
+        },
+    }
+
+    # --------------------------------------------------------------
+    # 2) Crear JSONResponse
+    # --------------------------------------------------------------
+    response = JSONResponse(content=body, status_code=200)
+
+    # --------------------------------------------------------------
+    # 3) Setear cookie HTTP-only con el token
+    # --------------------------------------------------------------
+    response.set_cookie(
+        key=settings.AUTH_COOKIE_NAME,
+        value=access_token,
+        max_age=max_age_seconds,
+        path=settings.AUTH_COOKIE_PATH,
+        domain=settings.AUTH_COOKIE_DOMAIN,
+        secure=settings.AUTH_COOKIE_SECURE,
+        httponly=True,  # JavaScript NO puede leer esta cookie
+        samesite=settings.AUTH_COOKIE_SAMESITE,
+    )
+
+    return response
+
+
+def build_logout_response() -> JSONResponse:
+    """
+    Respuesta de logout: limpia la cookie de autenticación.
+
+    Setea la cookie con Max-Age=0 para que el browser la elimine.
+    """
+    from app.common.config import settings
+
+    body = {
+        "msg": "OK",
+        "errorCode": 200,
+        "data": {"authenticated": False},
+    }
+
+    response = JSONResponse(content=body, status_code=200)
+
+    # --------------------------------------------------------------
+    # Limpiar cookie (Max-Age=0 la elimina del browser)
+    # --------------------------------------------------------------
+    response.delete_cookie(
+        key=settings.AUTH_COOKIE_NAME,
+        path=settings.AUTH_COOKIE_PATH,
+        domain=settings.AUTH_COOKIE_DOMAIN,
+        secure=settings.AUTH_COOKIE_SECURE,
+        httponly=True,
+        samesite=settings.AUTH_COOKIE_SAMESITE,
+    )
+
+    return response
 
 
 # ======================================================================

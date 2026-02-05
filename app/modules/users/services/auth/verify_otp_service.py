@@ -11,7 +11,7 @@
 # - OTP correcto -> reset_failed_attempts() + limpiar otp_* + token
 #
 # SEGURIDAD:
-# - Verificación HMAC-SHA256 con soporte legacy SHA1
+# - Verificación HMAC-SHA256
 # - Comparación de tiempo constante (anti timing attacks)
 #
 # FIX IMPORTANTE (MySQL + SQLAlchemy):
@@ -154,7 +154,7 @@ class VerifyOtpService:
             return ServiceResult.fail(code="OTP_EXPIRED", http_status=401)
 
         # --------------------------------------------------------------
-        # 7) Validar OTP (HMAC-SHA256 con soporte legacy SHA1)
+        # 7) Validar OTP (HMAC-SHA256)
         # --------------------------------------------------------------
         if not verify_otp_hash(otp_clean, user.otp_code):
             user.register_failed_attempt(

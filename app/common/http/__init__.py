@@ -22,9 +22,12 @@ from .response_builder import (
     # Listados
     build_list_response,
     build_paginated_response,
-    # Autenticación
+    # Autenticación (legacy: devuelve token en body)
     build_token_response,
     build_otp_required_response,
+    # Autenticación con cookies HTTP-only (recomendado para SPA)
+    build_cookie_auth_response,
+    build_logout_response,
     # Helper
     build_from_service_result,
 )
@@ -46,9 +49,13 @@ __all__ = [
     "build_list_response",
     "build_paginated_response",
 
-    # Autenticación
+    # Autenticación (legacy: devuelve token en body)
     "build_token_response",
     "build_otp_required_response",
+
+    # Autenticación con cookies HTTP-only (recomendado para SPA)
+    "build_cookie_auth_response",
+    "build_logout_response",
 
     # Helper completo
     "build_from_service_result",

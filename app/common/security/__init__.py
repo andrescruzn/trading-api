@@ -16,9 +16,8 @@ from .jwt import (
     token_required_actual,
 )
 
-from .otp import generate_numeric_otp, hash_otp, verify_otp_hash, hash_otp_sha1_hex
+from .otp import generate_numeric_otp, hash_otp, verify_otp_hash
 from .sanitization import sanitize_html
-from .crypto_hash import sha1_hex
 from .password_hasher import hash_password, verify_password
 from .rate_limiter import (
     RateLimiter,
@@ -41,12 +40,11 @@ __all__ = [
     "generate_numeric_otp",
     "hash_otp",
     "verify_otp_hash",
-    "hash_otp_sha1_hex",  # Deprecado
 
     # Sanitization
     "sanitize_html",
 
-    # Password hashing (bcrypt + legacy migration)
+    # Password hashing (bcrypt)
     "hash_password",
     "verify_password",
 
@@ -56,7 +54,4 @@ __all__ = [
     "default_rate_limiter",
     "rate_limit_dependency",
     "check_auth_rate_limit",
-
-    # Legacy hashing (deprecated, use verify_password instead)
-    "sha1_hex",
 ]

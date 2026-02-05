@@ -7,15 +7,10 @@
 # ======================================================================
 
 from .otp_generator import generate_numeric_otp
-from .otp_hasher import (
-    hash_otp,
-    verify_otp_hash,
-    hash_otp_sha1_hex,  # Deprecado, solo para migración
-)
+from .otp_hasher import hash_otp, verify_otp_hash
 
 __all__ = [
     "generate_numeric_otp",
     "hash_otp",
     "verify_otp_hash",
-    "hash_otp_sha1_hex",  # Deprecado
 ]

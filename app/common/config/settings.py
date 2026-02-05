@@ -160,3 +160,36 @@ class Settings:
 
         self.AUTH_ADMIN_ROLE_ID: int = int(admin_role_raw) if admin_role_raw.isdigit() else 1
         self.AUTH_USER_ROLE_ID: int = int(user_role_raw) if user_role_raw.isdigit() else 2
+
+        # --------------------------------------------------------------
+        # AUTH / Cookie Settings
+        # --------------------------------------------------------------
+        # PROPÓSITO:
+        # - Configuración de cookies HTTP-only para autenticación segura.
+        # - El frontend React NO necesita acceder al token (protección XSS).
+        #
+        # SEGURIDAD:
+        # - HttpOnly: JavaScript no puede leer la cookie.
+        # - Secure: Solo se envía por HTTPS (producción).
+        # - SameSite=Lax: Protección CSRF básica (cookies no se envían
+        #   en requests cross-site excepto navegación top-level).
+        # --------------------------------------------------------------
+        self.AUTH_COOKIE_NAME: str = os.getenv("AUTH_COOKIE_NAME", "access_token").strip()
+
+        # Secure=True en producción (HTTPS requerido)
+        self.AUTH_COOKIE_SECURE: bool = self.APP_ENV not in ("development", "testing")
+
+        # SameSite: Lax es el balance entre seguridad y usabilidad
+        # - "Lax": cookie se envía en navegación top-level (links) pero NO en
+        #   requests cross-site (iframes, AJAX desde otro dominio).
+        # - "Strict": más seguro pero puede romper flujos de OAuth.
+        # - "None": requiere Secure=True, permite cross-site (solo si es necesario).
+        self.AUTH_COOKIE_SAMESITE: str = os.getenv("AUTH_COOKIE_SAMESITE", "Lax").strip()
+
+        # Path: "/" para que la cookie se envíe en todas las rutas
+        self.AUTH_COOKIE_PATH: str = os.getenv("AUTH_COOKIE_PATH", "/").strip()
+
+        # Domain: None = dominio del servidor que emite la cookie
+        # En producción puede ser ".tudominio.com" para subdominios
+        cookie_domain_raw = os.getenv("AUTH_COOKIE_DOMAIN", "").strip()
+        self.AUTH_COOKIE_DOMAIN: str | None = cookie_domain_raw if cookie_domain_raw else None

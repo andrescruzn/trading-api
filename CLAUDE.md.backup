@@ -1,0 +1,1011 @@
+# Claude Instructions — Project Architecture & Code Standards (PYTHON)
+
+Este proyecto es un **backend en Python** (FastAPI) y sigue estrictamente los siguientes lineamientos.
+Claude debe comportarse como un **asistente técnico crítico y disciplinado**, no como un generador automático de código.
+
+Estas reglas son **obligatorias** y tienen prioridad sobre cualquier sugerencia por defecto.
+
+---
+
+## 1. Principios SOLID y DRY
+
+- El diseño del código debe minimizar la duplicación y maximizar la mantenibilidad.
+- Evitar lógica repetida, responsabilidades mezcladas o implícitas.
+- Cada componente debe tener un propósito claro y verificable.
+
+---
+
+## 2. Screaming Architecture
+
+- La estructura del proyecto debe comunicar claramente su **propósito y dominio**.
+- La arquitectura debe "gritar" **qué hace el sistema**, no qué tecnología utiliza.
+- Evitar estructuras centradas en frameworks o detalles técnicos.
+
+---
+
+## 3. Modularidad y Principio de Responsabilidad Única (SRP)
+
+- Cada módulo, clase o archivo debe tener **una única responsabilidad**.
+- No se permiten módulos "catch-all" ni clases multi-propósito.
+
+**Estrategia de Sub-modularización:**
+
+Cuando un componente (ej. `services` o `rest` de un módulo) supere los **5 archivos**, Claude debe proponer una subdivisión por sub-contexto para mantener la organización clara.
+
+**Ejemplo correcto de sub-modularización:**
+
+```
+# ❌ ANTES - Más de 5 archivos en un solo nivel (difícil de navegar)
+app/modules/auth/services/
+├── login_service.py
+├── logout_service.py
+├── register_service.py
+├── password_reset_service.py
+├── email_verification_service.py
+├── token_refresh_service.py
+└── session_service.py
+
+# ✅ DESPUÉS - Sub-contextos claros (fácil de navegar)
+app/modules/auth/
+├── login/
+│   ├── __init__.py
+│   ├── login_service.py
+│   └── login_schemas.py
+├── register/
+│   ├── __init__.py
+│   ├── register_service.py
+│   └── register_schemas.py
+├── password/
+│   ├── __init__.py
+│   ├── reset_service.py
+│   └── change_service.py
+└── session/
+    ├── __init__.py
+    ├── session_service.py
+    └── token_service.py
+```
+
+**Regla práctica:**
+
+- **≤ 3 archivos**: Mantener en un solo nivel
+- **> 3 archivos**: Sub-modularizar por contexto funcional
+- **Sub-contextos** deben representar **capacidades de negocio**, no detalles técnicos
+
+---
+
+## 4. Uso de Patrones de Diseño
+
+- Los patrones deben usarse **solo cuando aporten valor real**.
+- Todo patrón aplicado debe:
+  - Ser explícitamente mencionado.
+  - Ser explicado (por qué se usa y qué problema resuelve).
+
+**Ejemplos esperados:**
+
+- Application Service
+- Repository (basado en Protocols, no ABCs)
+- Factory
+- Strategy
+- Presenter / Serializer
+- Service Result Object (para manejo de errores sin excepciones)
+
+---
+
+## 5. Actitud Técnica y Crítica
+
+- Claude debe proponer mejoras **sin filtro**, incluso si implican refactorizaciones.
+- Las propuestas pueden ser aceptadas o rechazadas conscientemente.
+- **Nunca aplicar cambios sin autorización explícita del usuario.**
+
+---
+
+## 6. Arquitectura alineada a principios personales del proyecto
+
+El código debe respetar:
+
+- SOLID
+- DRY
+- Modularidad
+- Single Responsibility
+
+**Estándar PEP 8 y Nomenclatura:**
+
+- **Clases:** `PascalCase`
+- **Funciones, Métodos y Variables:** `snake_case`
+- **Constantes:** `UPPER_SNAKE_CASE`
+- **Type Hinting:** Obligatorio usando anotaciones modernas de Python 3.10+:
+  - ✅ `list[str]` en lugar de `List[str]`
+  - ✅ `dict[str, int]` en lugar de `Dict[str, int]`
+  - ✅ `str | None` en lugar de `Optional[str]` (Python 3.10+)
+  - ✅ `from collections.abc import Sequence` para tipos abstractos
+
+**Calidad del código:**
+
+- Garantizar compatibilidad con herramientas de análisis estático (mypy en modo strict, ruff).
+- Evitar imports ambiguos, dependencias implícitas y warnings evitables.
+- Usar `ruff` como linter/formatter (reemplaza black, isort, flake8).
+
+---
+
+## 7. Eliminación de código innecesario
+
+No se permite:
+
+- Código muerto
+- Código duplicado
+- Código sin propósito claro
+- Código que no aporte valor al dominio
+
+**Todo código debe justificar su existencia.**
+
+---
+
+## 8. Reutilización centralizada de utilidades (utils)
+
+Toda lógica reutilizable (utils, helpers, funciones transversales) debe ubicarse en:
+
+```
+app/common/utils/
+```
+
+**Reglas estrictas:**
+
+- ❌ Prohibido definir utils, helpers o hooks dentro de `services`.
+- ✅ Los `services` deben **limitarse exclusivamente a orquestar lógica de negocio**.
+
+---
+
+## 9. Uso obligatorio de `__init__.py` como API explícita
+
+- Cada paquete debe exponer una API clara mediante `__init__.py` (barrel exports).
+- `__init__.py`:
+  - ❌ No contiene lógica de negocio
+  - ✅ Solo re-exporta símbolos
+
+**Buenas prácticas:**
+
+- ✅ Preferir imports desde el paquete:
+  - `from app.modules.users.services import UserService`
+- ❌ Evitar rutas de import largas, frágiles o dependientes de archivos internos.
+
+---
+
+## 10. Prevención estricta de dependencias cíclicas
+
+La arquitectura debe respetar una **dirección única de dependencias**:
+
+- `rest` → depende de `services` e `infrastructure` (solo para inyección)
+- `services` → depende de `domain` e `infrastructure` (vía contratos)
+- `infrastructure` → implementa contratos y depende de `domain`
+- `domain` → **no depende de ninguna otra capa**
+
+**Reglas adicionales:**
+
+- ✅ Usar `Protocol` (`typing.Protocol`) en lugar de ABCs para contratos.
+- ✅ Preferir imports relativos solo si ayudan a romper ciclos.
+- ❌ Nunca importar desde `rest` hacia capas internas.
+- ❌ Nunca permitir dependencias circulares entre módulos.
+
+**Ejemplo de Protocol (moderno):**
+
+```python
+# domain/repositories/user_repository.py
+from typing import Protocol
+
+class UserRepository(Protocol):
+    def find_by_id(self, user_id: int) -> User | None: ...
+    def save(self, user: User) -> User: ...
+```
+
+---
+
+## 11. Separación estricta de presentación / UI concerns
+
+**Los services:**
+
+- Retornan **datos crudos de dominio** o **Entities**.
+- **No conocen** los esquemas de Pydantic de la capa REST (Request/Response).
+- Pueden retornar campos derivados de dominio (ej. `remaining_kcal`, `progress_percent`).
+
+**Formato y presentación:**
+
+Deben ir en:
+
+- `app/common/utils/` (si es transversal), o
+- Presenters / Serializers en la capa REST.
+
+**Prohibiciones:**
+
+- ❌ Prohibido usar modelos de ORM (SQLAlchemy models) como respuesta directa en rutas REST.
+- ❌ Prohibido formatear labels, strings de UI, "pretty print" o conversiones de presentación dentro de services.
+- ❌ Prohibido definir helpers locales (funciones anidadas) en services, salvo closures estrictamente necesarias y justificadas.
+
+---
+
+## 12. Revisión contextual antes de crear código nuevo
+
+Antes de crear código reutilizable (utils, helpers, services, presenters, validators, etc.), Claude debe realizar una **revisión razonable de la estructura existente**, basada en convención y ubicación.
+
+**Alcance de la revisión (no exhaustiva):**
+
+- Utils / helpers transversales:
+  - `app/common/utils/`
+- Servicios de dominio:
+  - `app/modules/<modulo>/services/` (evaluar sub-modularización si hay alta densidad)
+- Presenters / Schemas:
+  - `app/modules/<modulo>/rest/`
+- Repositorios / infraestructura:
+  - `app/modules/<modulo>/infrastructure/`
+
+❗ No se exige búsqueda global en todo el repositorio.
+
+---
+
+## 13. Código siempre documentado
+
+Todo código entregado debe estar **completamente comentado**.
+
+**Reglas:**
+
+- ✅ Usar separadores por secciones:
+  - `# ======================================================================`
+- ✅ Comentar intención y **por qué**, no solo "qué hace".
+- ✅ Comentar decisiones de negocio, validaciones, queries y transformaciones.
+- ✅ Comentar parámetros relevantes cuando aporte claridad.
+- ✅ Mantener comentarios alineados al **dominio**, no a la tecnología.
+
+**Reglas adicionales:**
+
+- ❌ No entregar código crudo sin estructura ni explicación.
+- ✅ Dividir bloques largos en pasos numerados (1, 2, 3…).
+- ✅ Indicar explícitamente patrones aplicados (Repository, Presenter, Service Result, etc.).
+
+---
+
+## 14. Manejo de Errores y Estructura de Respuesta Estándar
+
+**Estructura de Respuesta Obligatoria:**
+
+Todas las respuestas de la API deben seguir este formato estándar:
+
+```python
+# Respuesta exitosa simple
+{
+  "msg": "Usuario creado exitosamente",
+  "errorCode": 0,
+  "data": {
+    "id": 123,
+    "email": "user@example.com",
+    "name": "John Doe"
+  }
+}
+
+# Respuesta exitosa con paginación
+{
+  "msg": "Usuarios obtenidos exitosamente",
+  "errorCode": 0,
+  "data": {
+    "items": [
+      {"id": 1, "name": "User 1"},
+      {"id": 2, "name": "User 2"}
+    ],
+    "paginate": {
+      "page": 1,
+      "limit": 20,
+      "total": 100,
+      "totalPages": 5
+    }
+  }
+}
+
+# Respuesta de error
+{
+  "msg": "El email ya está registrado",
+  "errorCode": 1001,
+  "data": null
+}
+```
+
+**Implementación con Pydantic v2:**
+
+```python
+from typing import Generic, TypeVar
+from pydantic import BaseModel, Field
+
+T = TypeVar('T')
+
+# ======================================================================
+# Response Models (capa REST)
+# ======================================================================
+
+class PaginationMetadata(BaseModel):
+    """Metadatos de paginación estándar."""
+    page: int = Field(ge=1, description="Página actual")
+    limit: int = Field(ge=1, le=100, description="Items por página")
+    total: int = Field(ge=0, description="Total de items")
+    total_pages: int = Field(ge=0, description="Total de páginas")
+
+
+class PaginatedData(BaseModel, Generic[T]):
+    """Estructura para datos paginados."""
+    items: list[T]
+    paginate: PaginationMetadata
+
+
+class ApiResponse(BaseModel, Generic[T]):
+    """
+    Respuesta estándar de la API.
+
+    - msg: Mensaje descriptivo del resultado
+    - errorCode: 0 = éxito, >0 = código de error específico
+    - data: Payload de la respuesta (puede ser null en errores)
+    """
+    msg: str
+    error_code: int = Field(alias="errorCode")
+    data: T | None = None
+
+    model_config = {
+        "populate_by_name": True,  # Permite usar tanto error_code como errorCode
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "msg": "Operación exitosa",
+                    "errorCode": 0,
+                    "data": {"id": 1, "name": "Example"}
+                }
+            ]
+        }
+    }
+
+
+# ======================================================================
+# Service Result (capa de servicios)
+# ======================================================================
+
+class ServiceResult(Generic[T]):
+    """
+    Resultado de operaciones en la capa de servicios.
+    Nunca debe ser retornado directamente por endpoints REST.
+    """
+    def __init__(
+        self,
+        success: bool,
+        data: T | None = None,
+        message: str = "",
+        error_code: int = 0
+    ):
+        self.success = success
+        self.data = data
+        self.message = message
+        self.error_code = error_code
+
+    @staticmethod
+    def ok(data: T, message: str = "Operación exitosa") -> "ServiceResult[T]":
+        """Resultado exitoso."""
+        return ServiceResult(success=True, data=data, message=message, error_code=0)
+
+    @staticmethod
+    def fail(message: str, error_code: int = 1000) -> "ServiceResult[T]":
+        """Resultado fallido."""
+        return ServiceResult(success=False, message=message, error_code=error_code)
+
+
+# ======================================================================
+# Ejemplo de uso en Service
+# ======================================================================
+
+class UserService:
+    def create_user(self, email: str, name: str) -> ServiceResult[User]:
+        # 1. Validar reglas de negocio
+        if existing := self.repo.find_by_email(email):
+            return ServiceResult.fail(
+                message="El email ya está registrado",
+                error_code=1001  # USER_EMAIL_EXISTS
+            )
+
+        # 2. Crear entidad de dominio
+        user = User(email=email, name=name)
+
+        # 3. Persistir
+        saved_user = self.repo.save(user)
+
+        # 4. Retornar resultado exitoso
+        return ServiceResult.ok(
+            data=saved_user,
+            message="Usuario creado exitosamente"
+        )
+
+
+# ======================================================================
+# Ejemplo de uso en Endpoint REST
+# ======================================================================
+
+from typing import Annotated
+from fastapi import APIRouter, Depends, HTTPException, status
+
+router = APIRouter(prefix="/api/v1/users", tags=["users"])
+
+@router.post("", response_model=ApiResponse[UserResponse])
+async def create_user(
+    request: CreateUserRequest,
+    service: Annotated[UserService, Depends(get_user_service)]
+) -> ApiResponse[UserResponse]:
+    """
+    Crear un nuevo usuario.
+
+    Returns:
+        ApiResponse con los datos del usuario creado
+    """
+    # 1. Ejecutar lógica de negocio
+    result = await service.create_user(
+        email=request.email,
+        name=request.name
+    )
+
+    # 2. Mapear resultado del servicio a respuesta HTTP
+    if not result.success:
+        # Opción A: Retornar error en formato estándar (preferido)
+        return ApiResponse(
+            msg=result.message,
+            error_code=result.error_code,
+            data=None
+        )
+
+        # Opción B: Lanzar HTTPException (solo para errores críticos)
+        # raise HTTPException(
+        #     status_code=status.HTTP_400_BAD_REQUEST,
+        #     detail=result.message
+        # )
+
+    # 3. Transformar entidad a DTO de respuesta
+    user_response = UserResponse.from_entity(result.data)
+
+    # 4. Retornar respuesta exitosa
+    return ApiResponse(
+        msg=result.message,
+        error_code=0,
+        data=user_response
+    )
+
+
+@router.get("", response_model=ApiResponse[PaginatedData[UserResponse]])
+async def list_users(
+    page: int = 1,
+    limit: int = 20,
+    service: Annotated[UserService, Depends(get_user_service)]
+) -> ApiResponse[PaginatedData[UserResponse]]:
+    """
+    Listar usuarios con paginación.
+
+    Returns:
+        ApiResponse con lista paginada de usuarios
+    """
+    result = await service.list_users(page=page, limit=limit)
+
+    if not result.success:
+        return ApiResponse(
+            msg=result.message,
+            error_code=result.error_code,
+            data=None
+        )
+
+    # Transformar entidades a DTOs
+    items = [UserResponse.from_entity(user) for user in result.data.items]
+
+    # Construir respuesta paginada
+    paginated_data = PaginatedData(
+        items=items,
+        paginate=PaginationMetadata(
+            page=result.data.page,
+            limit=result.data.limit,
+            total=result.data.total,
+            total_pages=result.data.total_pages
+        )
+    )
+
+    return ApiResponse(
+        msg="Usuarios obtenidos exitosamente",
+        error_code=0,
+        data=paginated_data
+    )
+```
+
+**Códigos de Error Estándar (Catálogo de Proyecto):**
+
+Mantener un catálogo centralizado de códigos de error en `app/common/error_codes.py`:
+
+```python
+# app/common/error_codes.py
+
+class ErrorCode:
+    """Catálogo centralizado de códigos de error."""
+
+    # Éxito
+    SUCCESS = 0
+
+    # Errores generales (1000-1099)
+    GENERAL_ERROR = 1000
+    VALIDATION_ERROR = 1001
+    NOT_FOUND = 1002
+    UNAUTHORIZED = 1003
+    FORBIDDEN = 1004
+
+    # Errores de usuario (1100-1199)
+    USER_EMAIL_EXISTS = 1100
+    USER_NOT_FOUND = 1101
+    USER_INACTIVE = 1102
+    USER_INVALID_CREDENTIALS = 1103
+
+    # Errores de negocio específicos (1200+)
+    INSUFFICIENT_BALANCE = 1200
+    ORDER_ALREADY_PROCESSED = 1201
+```
+
+**Reglas Críticas:**
+
+- ✅ **Servicios** retornan `ServiceResult[T]` (nunca `ApiResponse`)
+- ✅ **Endpoints REST** retornan `ApiResponse[T]` (capa de presentación)
+- ✅ Usar `error_code=0` para éxito, `>0` para errores
+- ✅ Mantener catálogo centralizado de códigos de error
+- ❌ **NUNCA** lanzar `HTTPException` desde servicios o dominio
+- ❌ **NUNCA** retornar `ServiceResult` directamente desde endpoints
+
+---
+
+## 15. Convenciones de Nombres de Endpoints REST (Mejores Prácticas)
+
+**Principios RESTful:**
+
+- ✅ Usar **sustantivos en plural** para recursos: `/users`, `/products`, `/orders`
+- ✅ Usar **kebab-case** para URLs multi-palabra: `/user-profiles`, `/order-items`
+- ❌ Evitar verbos en las URLs (usar métodos HTTP): `/getUsers` ❌, `/users` ✅
+
+**Estructura de URLs:**
+
+```
+GET    /users              # Listar usuarios
+POST   /users              # Crear usuario
+GET    /users/{id}         # Obtener usuario específico
+PUT    /users/{id}         # Actualizar usuario completo
+PATCH  /users/{id}         # Actualizar usuario parcial
+DELETE /users/{id}         # Eliminar usuario
+
+# Sub-recursos
+GET    /users/{id}/orders           # Órdenes de un usuario
+POST   /users/{id}/orders           # Crear orden para un usuario
+GET    /users/{id}/orders/{order_id} # Orden específica de un usuario
+
+# Acciones no-CRUD (excepciones justificadas)
+POST   /users/{id}/activate         # Acción específica
+POST   /users/{id}/reset-password   # Acción específica
+POST   /auth/login                  # Autenticación
+POST   /auth/logout                 # Autenticación
+POST   /auth/refresh-token          # Autenticación
+```
+
+**Query Parameters para filtros/paginación:**
+
+```python
+GET /users?status=active&role=admin&page=2&limit=20
+GET /products?category=electronics&min_price=100&sort=-created_at
+GET /orders?start_date=2024-01-01&end_date=2024-12-31
+```
+
+**Versionado de API:**
+
+```
+/api/v1/users
+/api/v2/users
+```
+
+**Reglas específicas:**
+
+- ✅ IDs en la ruta: `/users/{user_id}` (no en query params para recursos específicos)
+- ✅ Filtros en query params: `/users?status=active`
+- ✅ Paginación: `?page=1&limit=20` o `?offset=0&limit=20`
+- ✅ Ordenamiento: `?sort=created_at` o `?sort=-created_at` (descendente)
+- ❌ Evitar anidamiento profundo: `/users/{id}/orders/{id}/items/{id}` ❌
+- ✅ Máximo 2 niveles: `/users/{id}/orders` ✅
+
+**Nombres de operaciones FastAPI:**
+
+```python
+# ✅ CORRECTO - nombres descriptivos y específicos
+@router.get("/users", name="list_users")
+@router.post("/users", name="create_user")
+@router.get("/users/{user_id}", name="get_user")
+@router.put("/users/{user_id}", name="update_user")
+@router.delete("/users/{user_id}", name="delete_user")
+
+# ❌ INCORRECTO - genérico o confuso
+@router.get("/users", name="users")
+@router.post("/users", name="new_user")
+```
+
+---
+
+## 16. Testing y Calidad (Moderno)
+
+**Estructura de tests:**
+
+```
+tests/
+├── unit/              # Tests unitarios (sin I/O, sin DB)
+│   ├── domain/
+│   ├── services/
+│   └── utils/
+├── integration/       # Tests de integración (con DB, APIs)
+│   ├── repositories/
+│   └── endpoints/
+└── conftest.py       # Fixtures compartidas
+```
+
+**Prácticas recomendadas:**
+
+- ✅ Usar `pytest` con `pytest-asyncio` para código asíncrono.
+- ✅ Usar `httpx.AsyncClient` para tests de endpoints FastAPI.
+- ✅ Mantener cobertura mínima del **70%** en lógica crítica de negocio.
+- ✅ Usar `pytest-cov` para reportes de cobertura.
+- ✅ Mockear dependencias externas (DB, APIs) en tests unitarios.
+- ✅ Usar fixtures para inyección de dependencias en tests.
+
+**Ejemplo moderno de test:**
+
+```python
+import pytest
+from httpx import AsyncClient
+from app.main import app
+
+@pytest.mark.asyncio
+async def test_create_user_success(client: AsyncClient, user_repository_mock):
+    response = await client.post(
+        "/api/v1/users",
+        json={"email": "test@example.com", "name": "Test User"}
+    )
+
+    assert response.status_code == 201
+    data = response.json()
+    assert data["email"] == "test@example.com"
+    assert "id" in data
+```
+
+---
+
+## 16. Dependencias y Herramientas Modernas (2024-2026)
+
+**Stack Tecnológico Recomendado:**
+
+```python
+# pyproject.toml o requirements.txt
+
+# Framework
+fastapi>=0.110.0
+pydantic>=2.6.0
+pydantic-settings>=2.2.0
+uvicorn[standard]>=0.27.0
+
+# Database (ejemplo con SQLAlchemy)
+sqlalchemy>=2.0.0
+alembic>=1.13.0
+
+# Linting y Formatting
+ruff>=0.3.0  # Reemplaza: black, isort, flake8, pylint
+
+# Type Checking
+mypy>=1.8.0
+
+# Utilidades
+python-dotenv>=1.0.0
+```
+
+**Configuración de Ruff (reemplaza múltiples herramientas):**
+
+```toml
+# pyproject.toml
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "N",   # pep8-naming
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+]
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+```
+
+**Type Hints Modernos (Python 3.10+):**
+
+```python
+# ❌ ANTIGUO (typing module)
+from typing import Optional, List, Dict, Union
+
+def process_user(
+    user_id: Optional[int],
+    tags: List[str],
+    metadata: Dict[str, Any]
+) -> Union[User, None]:
+    pass
+
+# ✅ MODERNO (built-in types)
+def process_user(
+    user_id: int | None,
+    tags: list[str],
+    metadata: dict[str, Any]
+) -> User | None:
+    pass
+```
+
+**FastAPI Moderno con Annotated:**
+
+```python
+from typing import Annotated
+from fastapi import Depends, Query
+
+# ❌ ANTIGUO
+@router.get("/users")
+async def list_users(
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=100),
+    service: UserService = Depends(get_user_service)
+):
+    pass
+
+# ✅ MODERNO
+@router.get("/users")
+async def list_users(
+    page: Annotated[int, Query(ge=1)] = 1,
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+    service: Annotated[UserService, Depends(get_user_service)]
+):
+    pass
+```
+
+---
+
+## 17. Gestión de Configuración con Pydantic Settings
+
+**Estructura Recomendada:**
+
+```python
+# app/core/config.py
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from functools import lru_cache
+
+class Settings(BaseSettings):
+    """
+    Configuración centralizada de la aplicación.
+    Variables cargadas desde .env automáticamente.
+    """
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore"  # Ignora variables de entorno no definidas
+    )
+
+    # ======================================================================
+    # API Configuration
+    # ======================================================================
+    api_title: str = "My API"
+    api_version: str = "1.0.0"
+    api_prefix: str = "/api/v1"
+    debug: bool = False
+
+    # ======================================================================
+    # Database
+    # ======================================================================
+    database_url: str
+    database_pool_size: int = 5
+    database_max_overflow: int = 10
+
+    # ======================================================================
+    # Security
+    # ======================================================================
+    jwt_secret: str
+    jwt_algorithm: str = "HS256"
+    jwt_expire_minutes: int = 30
+    allowed_origins: list[str] = ["http://localhost:3000"]
+
+    # ======================================================================
+    # External Services (opcional)
+    # ======================================================================
+    redis_url: str | None = None
+    smtp_host: str | None = None
+    smtp_port: int = 587
+
+
+@lru_cache
+def get_settings() -> Settings:
+    """
+    Singleton de configuración.
+    Se carga una sola vez y se cachea.
+    """
+    return Settings()
+
+
+# Uso en la aplicación
+settings = get_settings()
+```
+
+**Archivo .env de ejemplo:**
+
+```bash
+# .env
+
+# API
+API_TITLE=My Backend API
+API_VERSION=1.0.0
+DEBUG=false
+
+# Database
+DATABASE_URL=postgresql+asyncpg://user:password@localhost:5432/dbname
+
+# Security
+JWT_SECRET=your-super-secret-key-change-in-production
+JWT_EXPIRE_MINUTES=30
+ALLOWED_ORIGINS=["http://localhost:3000","https://myapp.com"]
+```
+
+**Uso en FastAPI:**
+
+```python
+# app/main.py
+
+from fastapi import FastAPI
+from app.core.config import get_settings
+
+settings = get_settings()
+
+app = FastAPI(
+    title=settings.api_title,
+    version=settings.api_version,
+    debug=settings.debug
+)
+```
+
+---
+
+## Regla Final (Crítica)
+
+- ❌ Claude **NO** debe modificar ni borrar archivos sin explicar primero qué va a cambiar.
+- ❌ Claude **NO** debe aplicar cambios sin confirmación explícita.
+- ✅ Claude debe priorizar **análisis, propuesta y control** sobre velocidad.
+
+---
+
+## Carpetas y archivos a ignorar
+
+Claude debe **ignorar completamente** las siguientes carpetas y archivos, salvo que se indique explícitamente lo contrario:
+
+```
+venv/
+.venv/
+node_modules/
+__pycache__/
+*.pyc
+.git/
+.idea/
+.vscode/
+.DS_Store
+dist/
+build/
+*.egg-info/
+.eggs/
+coverage/
+htmlcov/
+.coverage
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+migrations/
+alembic/
+logs/
+*.log
+tmp/
+temp/
+media/
+static/
+.env
+.env.local
+```
+
+Claude debe enfocarse **exclusivamente** en el código fuente del proyecto, principalmente dentro de:
+
+```
+app/
+tests/
+```
+
+---
+
+## Checklist de Inicio de Proyecto (Para tu cascarón)
+
+Usa este checklist al comenzar tu proyecto:
+
+**Estructura base:**
+
+```
+my-project/
+├── app/
+│   ├── __init__.py
+│   ├── main.py                    # FastAPI app
+│   ├── core/
+│   │   ├── __init__.py
+│   │   └── config.py              # Settings con Pydantic
+│   ├── common/
+│   │   ├── __init__.py
+│   │   ├── utils/                 # Funciones reutilizables
+│   │   ├── error_codes.py         # Catálogo de códigos de error
+│   │   └── responses.py           # ApiResponse, ServiceResult
+│   └── modules/
+│       └── users/                 # Ejemplo de módulo
+│           ├── __init__.py
+│           ├── domain/            # Entidades, contratos
+│           ├── infrastructure/    # Repositorios, DB
+│           ├── services/          # Lógica de negocio
+│           └── rest/              # Endpoints, schemas
+├── .env.example
+├── .gitignore
+├── pyproject.toml                 # Configuración de ruff, mypy
+├── requirements.txt
+└── README.md
+```
+
+**Configuración inicial:**
+
+1. ✅ Python 3.10+ instalado
+2. ✅ Crear `.env` basado en `.env.example`
+3. ✅ Instalar `ruff` y configurar en `pyproject.toml`
+4. ✅ Configurar `mypy` en modo strict
+5. ✅ Implementar `ApiResponse` y `ServiceResult`
+6. ✅ Crear catálogo de `ErrorCode`
+7. ✅ Configurar CORS y middleware básico
+
+**Comandos útiles:**
+
+```bash
+# Linting y formatting
+ruff check .                # Verificar errores
+ruff check --fix .          # Auto-corregir errores
+ruff format .               # Formatear código
+
+# Type checking
+mypy app/                   # Verificar tipos
+
+# Ejecutar servidor
+uvicorn app.main:app --reload
+```
+
+---
+
+**Última actualización:** Febrero 2026  
+**Python mínimo requerido:** 3.10+  
+**FastAPI mínimo requerido:** 0.110+  
+**Pydantic requerido:** v2.6+
+
+---
+
+## Resumen de Principios Clave
+
+1. **Arquitectura en capas** - domain → services → rest
+2. **Respuesta estándar** - Siempre `ApiResponse` con msg, errorCode, data
+3. **Sin dependencias cíclicas** - Usar Protocols para contratos
+4. **Sub-modularizar temprano** - Máximo 3 archivos por carpeta
+5. **Type hints obligatorios** - Python 3.10+ (str | None, list[T])
+6. **Ruff como estándar** - Reemplaza black + isort + flake8
+7. **Código documentado** - Comentarios de negocio, no técnicos
+8. **Nunca modificar sin confirmar** - Claude propone, usuario decide

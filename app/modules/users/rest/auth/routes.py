@@ -28,6 +28,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from app.common.config import settings
+from app.common.errors import AUTH_ERROR_MESSAGES
 from app.common.http import (
     build_error_response,
     build_internal_error_response,
@@ -47,6 +48,9 @@ from .schemas import (
     LoginResponse,
     VerifyOtpRequest,
     VerifyOtpResponse,
+    UserProfileResponse,
+    ChangePasswordRequest,
+    ChangePasswordResponse,
 )
 
 # ----------------------------------------------------------------------
@@ -244,6 +248,115 @@ def logout(
         return build_error_response(result)
 
     return build_logout_response()
+
+
+# ======================================================================
+# GET /users/me
+# ======================================================================
+
+@router.get(
+    "/me",
+    response_model=UserProfileResponse,
+    status_code=status.HTTP_200_OK,
+    responses={
+        401: {"model": UserProfileResponse},
+        403: {"model": UserProfileResponse},
+        404: {"model": UserProfileResponse},
+    },
+)
+def get_me(
+    identity: dict = Depends(token_required_actual),
+    factory: AuthServiceFactory = Depends(get_factory),
+):
+    """
+    Obtener el perfil del usuario autenticado.
+
+    Retorna datos del usuario actual extraídos del token JWT.
+    Útil para cargar el dashboard y verificar el estado de la sesión.
+    """
+    result = factory.get_me().get(user_id=int(identity["user_id"]))
+
+    if not result.success:
+        return build_error_response(result, AUTH_ERROR_MESSAGES)
+
+    if result.data is None:
+        return build_internal_error_response()
+
+    profile = result.data
+
+    return build_success_response(
+        data={
+            "id": profile.id,
+            "email": profile.email,
+            "full_name": profile.full_name,
+            "role_id": profile.role_id,
+            "role_code": profile.role_code,   # "user" | "admin"
+            "role_label": profile.role_name,  # "Usuario" | "Administrador" (desde BD)
+            "status": profile.status,
+            "last_login_at": profile.last_login_at.isoformat() if profile.last_login_at else None,
+            "created_at": profile.created_at.isoformat() if profile.created_at else None,
+        },
+        msg="OK",
+    )
+
+
+# ======================================================================
+# PATCH /users/me/password
+# ======================================================================
+
+@router.patch(
+    "/me/password",
+    response_model=ChangePasswordResponse,
+    status_code=status.HTTP_200_OK,
+    responses={
+        401: {"model": ChangePasswordResponse},
+        422: {"model": ChangePasswordResponse},
+    },
+)
+def change_password(
+    payload: ChangePasswordRequest,
+    identity: dict = Depends(token_required_actual),
+    factory: AuthServiceFactory = Depends(get_factory),
+):
+    """
+    Cambiar la contraseña del usuario autenticado.
+
+    - Verifica la contraseña actual.
+    - Valida política de seguridad (8+ chars, mayúscula, minúscula, número).
+    - Al cambiar con éxito: revoca la sesión actual (requiere nuevo login).
+    """
+    result = factory.change_password().change(
+        user_id=int(identity["user_id"]),
+        current_password=payload.current_password,
+        new_password=payload.new_password,
+    )
+
+    if not result.success:
+        # Sin AUTH_ERROR_MESSAGES: json.msg llega como código crudo
+        # ("PASSWORD_TOO_WEAK", "INVALID_CREDENTIALS", etc.) para que
+        # el JS del frontend lo mapee a mensajes en español.
+        return build_error_response(result)
+
+    # Limpiar cookie: el JTI fue revocado en DB, pero el browser
+    # aún tiene la cookie. Si no la borramos aquí, /login la ve
+    # como válida (JWT signature ok) y redirige a /dashboard → loop.
+    response = JSONResponse(
+        status_code=200,
+        content={
+            "msg": "Password changed successfully",
+            "errorCode": 200,
+            "data": {"password_changed": True},
+        },
+    )
+    response.delete_cookie(
+        key=settings.AUTH_COOKIE_NAME,
+        path=settings.AUTH_COOKIE_PATH,
+        domain=settings.AUTH_COOKIE_DOMAIN,
+        secure=settings.AUTH_COOKIE_SECURE,
+        httponly=True,
+        samesite=settings.AUTH_COOKIE_SAMESITE,
+    )
+    return response
 
 
 # ======================================================================

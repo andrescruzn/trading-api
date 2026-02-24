@@ -33,6 +33,8 @@ from app.modules.users.services.auth import (
     LogoutService,
     RotateTokenService,
     VerifyOtpService,
+    GetMeService,
+    ChangePasswordService,
 )
 
 
@@ -170,6 +172,29 @@ class AuthServiceFactory:
             repo=self._repo,
             session=self._session,
             settings=self._config,
+        )
+
+    def get_me(self) -> GetMeService:
+        """
+        Crea servicio para obtener el perfil del usuario autenticado.
+
+        Caso de uso:
+        - Usuario autenticado solicita sus propios datos
+        - Alimenta el dashboard con datos reales del rol desde BD
+        """
+        return GetMeService(repo=self._repo, session=self._session)
+
+    def change_password(self) -> ChangePasswordService:
+        """
+        Crea servicio para cambiar la contraseña.
+
+        Caso de uso:
+        - Usuario autenticado cambia su contraseña
+        - Verifica password actual + política + revoca sesión
+        """
+        return ChangePasswordService(
+            repo=self._repo,
+            session=self._session,
         )
 
 

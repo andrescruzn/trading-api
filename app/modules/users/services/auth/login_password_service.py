@@ -18,13 +18,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime
 
 from sqlalchemy.orm import Session
 
 from app.common.config.settings import Settings
 from app.common.contracts import ServiceResult
 from app.common.utils.input_cleaner import clean_email, clean_str
+from app.common.utils import utc_now
 from app.common.security import verify_password
 from app.common.security.jwt import create_access_token
 
@@ -84,7 +85,7 @@ class LoginPasswordService:
         if user is None:
             return ServiceResult.fail(code="INVALID_CREDENTIALS", http_status=401)
 
-        now = datetime.now(timezone.utc)
+        now = utc_now()
 
         # --------------------------------------------------------------
         # 3) Lockout + estado

@@ -85,6 +85,13 @@ AUTH_ERROR_MESSAGES: Dict[str, str] = {
     # Sesión
     "SESSION_EXPIRED": "Session has expired",
     "SESSION_INVALID": "Invalid session",
+
+    # Usuario
+    "USER_NOT_FOUND": "User not found",
+
+    # Password
+    "PASSWORD_SAME_AS_CURRENT": "New password must be different from current password",
+    "PASSWORD_TOO_WEAK": "Password must be at least 8 characters with uppercase, lowercase and a number",
 }
 
 

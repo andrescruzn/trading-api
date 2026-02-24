@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+
+{% block title %}Iniciar sesión — Trading AI{% endblock %}
+
+{% block body %}
+<div class="login-wrap">
+  <div class="container">
+
+    <!-- Logo / Brand -->
+    <div class="text-center mb-2">
+      <h1>Trading AI</h1>
+      <p class="text-muted mt-1">Plataforma de trading algorítmico</p>
+    </div>
+
+    <div class="card mt-3">
+
+      <!-- ============================================================
+           STEP 1: Login form (password o OTP)
+           ============================================================ -->
+      <div id="step-login">
+
+        <!-- Tabs -->
+        <div class="tabs" role="tablist">
+          <button
+            class="tab active"
+            id="tab-password"
+            type="button"
+            role="tab"
+            aria-selected="true"
+            aria-controls="panel-password"
+          >Contraseña</button>
+          <button
+            class="tab"
+            id="tab-otp"
+            type="button"
+            role="tab"
+            aria-selected="false"
+            aria-controls="panel-otp-request"
+          >Código OTP</button>
+        </div>
+
+        <!-- Alert global -->
+        <div id="login-alert" class="alert" role="alert"></div>
+
+        <!-- ---- Panel: Password ---- -->
+        <div id="panel-password" role="tabpanel" aria-labelledby="tab-password">
+          <form id="form-password" novalidate>
+            <div class="form-group">
+              <label for="pw-email">Correo electrónico</label>
+              <input
+                type="email"
+                id="pw-email"
+                name="email"
+                placeholder="tu@correo.com"
+                autocomplete="email"
+                required
+              >
+            </div>
+            <div class="form-group">
+              <label for="pw-password">Contraseña</label>
+              <div class="input-with-icon">
+                <input
+                  type="password"
+                  id="pw-password"
+                  name="password"
+                  placeholder="••••••••"
+                  autocomplete="current-password"
+                  required
+                >
+                <button type="button" class="toggle-password" data-target="pw-password" aria-label="Mostrar contraseña">Ver</button>
+              </div>
+            </div>
+            <button type="submit" class="btn btn--primary" id="btn-password-submit">
+              Iniciar sesión
+            </button>
+          </form>
+        </div>
+
+        <!-- ---- Panel: OTP Request ---- -->
+        <div id="panel-otp-request" role="tabpanel" aria-labelledby="tab-otp" class="hidden">
+          <form id="form-otp-request" novalidate>
+            <div class="form-group">
+              <label for="otp-email">Correo electrónico</label>
+              <input
+                type="email"
+                id="otp-email"
+                name="email"
+                placeholder="tu@correo.com"
+                autocomplete="email"
+                required
+              >
+            </div>
+            <p class="text-muted mb-2" style="font-size:0.85rem;">
+              Te enviaremos un código de 6 dígitos a tu correo.
+            </p>
+            <button type="submit" class="btn btn--primary" id="btn-otp-request-submit">
+              Enviar código
+            </button>
+          </form>
+        </div>
+
+      </div><!-- /step-login -->
+
+
+      <!-- ============================================================
+           STEP 2: OTP verification
+           ============================================================ -->
+      <div id="step-otp" class="hidden">
+        <div class="text-center mb-2">
+          <h2>Verifica tu código</h2>
+          <p class="text-muted mt-1">
+            Ingresa el código de 6 dígitos enviado a<br>
+            <strong id="otp-sent-email"></strong>
+          </p>
+        </div>
+
+        <div id="otp-alert" class="alert" role="alert"></div>
+
+        <form id="form-otp-verify" novalidate>
+          <div class="form-group">
+            <label for="otp-code" class="text-center w-full">Código OTP</label>
+            <input
+              type="text"
+              id="otp-code"
+              name="otp_code"
+              class="otp-input"
+              placeholder="000000"
+              maxlength="6"
+              inputmode="numeric"
+              pattern="[0-9]{6}"
+              autocomplete="one-time-code"
+              required
+            >
+          </div>
+
+          <!-- Dev hint: muestra el OTP en development -->
+          <div id="otp-dev-hint" class="alert alert--info" style="display:none; font-size:0.8rem;">
+            <strong>DEV:</strong> Tu código OTP es: <strong id="otp-dev-code"></strong>
+          </div>
+
+          <div class="mt-2">
+            <button type="submit" class="btn btn--primary" id="btn-otp-verify-submit">
+              Verificar código
+            </button>
+          </div>
+
+          <div class="text-center mt-2">
+            <button type="button" class="btn btn--ghost" id="btn-back-to-login">
+              ← Volver al inicio de sesión
+            </button>
+          </div>
+        </form>
+      </div><!-- /step-otp -->
+
+    </div><!-- /card -->
+  </div><!-- /container -->
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const APP_ENV = "{{ app_env }}";
+</script>
+<script src="/static/js/auth.js"></script>
+{% endblock %}

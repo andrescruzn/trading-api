@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard — Trading AI{% endblock %}
+
+{% block body %}
+<div class="page">
+
+  <!-- Nav -->
+  <nav class="nav">
+    <a href="/dashboard" class="nav__brand">Trading AI</a>
+    <div class="nav__actions">
+      <span id="nav-role-badge"></span>
+      <button class="btn btn--secondary" id="btn-logout-nav" type="button" style="width:auto;padding:0.45rem 1rem;">
+        Cerrar sesión
+      </button>
+    </div>
+  </nav>
+
+  <!-- Body -->
+  <main class="page__body">
+    <div class="container container--wide">
+
+      <!-- Loading state -->
+      <div id="dashboard-loading" class="text-center mt-3">
+        <span class="spinner"></span>
+        <p class="text-muted mt-1">Cargando...</p>
+      </div>
+
+      <!-- Content (hidden until data loads) -->
+      <div id="dashboard-content" class="hidden">
+
+        <!-- Header -->
+        <div class="flex items-center justify-between mb-2" style="flex-wrap:wrap;gap:0.5rem;">
+          <div>
+            <h1 id="dash-greeting">Bienvenido</h1>
+            <p id="dash-email" class="text-muted mt-1"></p>
+          </div>
+        </div>
+
+        <hr class="divider">
+
+        <!-- Info cards -->
+        <div class="dashboard-grid">
+          <div class="info-card">
+            <div class="info-card__label">Correo</div>
+            <div class="info-card__value" id="info-email">—</div>
+          </div>
+          <div class="info-card">
+            <div class="info-card__label">Rol</div>
+            <div class="info-card__value" id="info-role">—</div>
+          </div>
+          <div class="info-card">
+            <div class="info-card__label">Estado</div>
+            <div class="info-card__value" id="info-status">—</div>
+          </div>
+          <div class="info-card">
+            <div class="info-card__label">Último acceso</div>
+            <div class="info-card__value" id="info-last-login">—</div>
+          </div>
+        </div>
+
+        <hr class="divider">
+
+        <!-- Acciones -->
+        <h2 class="mb-2">Acciones</h2>
+        <div style="display:flex;flex-wrap:wrap;gap:0.75rem;">
+          <a href="/profile" class="btn btn--secondary" style="width:auto;padding:0.6rem 1.25rem;">
+            Cambiar contraseña
+          </a>
+          <button class="btn btn--primary" id="btn-logout-main" type="button" style="width:auto;padding:0.6rem 1.25rem;">
+            Cerrar sesión
+          </button>
+        </div>
+
+      </div><!-- /dashboard-content -->
+
+      <!-- Error state -->
+      <div id="dashboard-error" class="hidden">
+        <div class="alert alert--error show">
+          No se pudo cargar tu información. <a href="/login">Volver al inicio</a>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/dashboard.js"></script>
+{% endblock %}

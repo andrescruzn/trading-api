@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block title %}Cambiar contraseña — Trading AI{% endblock %}
+
+{% block body %}
+<div class="page">
+
+  <!-- Nav -->
+  <nav class="nav">
+    <a href="/dashboard" class="nav__brand">Trading AI</a>
+    <div class="nav__actions">
+      <a href="/dashboard" class="btn btn--ghost" style="color:#555;">← Dashboard</a>
+    </div>
+  </nav>
+
+  <!-- Body -->
+  <main class="page__body">
+    <div class="container">
+
+      <h1 class="mb-1">Cambiar contraseña</h1>
+      <p class="text-muted mb-3">
+        Al guardar, tu sesión actual se cerrará y deberás iniciar sesión de nuevo.
+      </p>
+
+      <div class="card">
+
+        <div id="profile-alert" class="alert" role="alert"></div>
+
+        <form id="form-change-password" novalidate>
+
+          <div class="form-group">
+            <label for="current-password">Contraseña actual</label>
+            <div class="input-with-icon">
+              <input
+                type="password"
+                id="current-password"
+                name="current_password"
+                placeholder="••••••••"
+                autocomplete="current-password"
+                required
+              >
+              <button type="button" class="toggle-password" data-target="current-password" aria-label="Mostrar contraseña">Ver</button>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="new-password">Nueva contraseña</label>
+            <div class="input-with-icon">
+              <input
+                type="password"
+                id="new-password"
+                name="new_password"
+                placeholder="••••••••"
+                autocomplete="new-password"
+                required
+              >
+              <button type="button" class="toggle-password" data-target="new-password" aria-label="Mostrar contraseña">Ver</button>
+            </div>
+            <small>Mínimo 8 caracteres, 1 mayúscula, 1 minúscula y 1 número.</small>
+          </div>
+
+          <div class="form-group">
+            <label for="confirm-password">Confirmar nueva contraseña</label>
+            <div class="input-with-icon">
+              <input
+                type="password"
+                id="confirm-password"
+                name="confirm_password"
+                placeholder="••••••••"
+                autocomplete="new-password"
+                required
+              >
+              <button type="button" class="toggle-password" data-target="confirm-password" aria-label="Mostrar contraseña">Ver</button>
+            </div>
+          </div>
+
+          <div class="mt-2">
+            <button type="submit" class="btn btn--primary" id="btn-change-submit">
+              Guardar contraseña
+            </button>
+          </div>
+
+          <div class="text-center mt-2">
+            <a href="/dashboard" class="btn btn--ghost">Cancelar</a>
+          </div>
+
+        </form>
+      </div>
+
+    </div>
+  </main>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/profile.js"></script>
+{% endblock %}

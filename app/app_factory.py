@@ -13,12 +13,15 @@ import app.extensions.db.models_registry  # noqa: F401
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from app.common.config import settings
 from app.common.errors import register_error_handlers
 from app.common.logging import configure_logging, LoggingMiddleware
+from app.common.security.security_headers import SecurityHeadersMiddleware
 from app.modules.health import health_router
 from app.modules.users.rest import auth_router
+from app.modules.web import web_router
 
 
 def create_app() -> FastAPI:
@@ -33,8 +36,16 @@ def create_app() -> FastAPI:
     app = FastAPI(title=settings.API_TITLE, version=settings.API_VERSION)
 
     # ------------------------------------------------------------------
+    # Static files (CSS, JS)
+    # ------------------------------------------------------------------
+    app.mount("/static", StaticFiles(directory="app/static"), name="static")
+
+    # ------------------------------------------------------------------
     # Middlewares (orden importa: se ejecutan en orden inverso)
     # ------------------------------------------------------------------
+
+    # Security headers (CSP, HSTS, X-Frame-Options, etc.)
+    app.add_middleware(SecurityHeadersMiddleware)
 
     # CORS Middleware
     app.add_middleware(
@@ -53,6 +64,7 @@ def create_app() -> FastAPI:
     # ------------------------------------------------------------------
     app.include_router(health_router)
     app.include_router(auth_router)
+    app.include_router(web_router)      # Páginas HTML
 
     # ------------------------------------------------------------------
     # Handlers globales (AuthException/JwtCodecError -> envelope)

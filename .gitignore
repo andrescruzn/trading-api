@@ -57,6 +57,16 @@ instance/*
 # =========================
 # Claude Code
 # =========================
+# Ignorar configuración local (settings, cache, etc.)
 .claude/*
-!.claude/.gitkeep
-CLAUDE.md
+# Pero compartir el contexto del proyecto con el equipo
+!.claude/main_instructions.md
+!.claude/db_schema.sql
+!.claude/skills/
+!.claude/skills/**
+!.claude/memory/
+!.claude/memory/**
+# settings.local.json siempre local — no commitear
+.claude/settings.local.json
+# CLAUDE.md es el archivo de entrada — compartirlo
+!CLAUDE.md

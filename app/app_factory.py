@@ -15,10 +15,13 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
+from app.common.audit import AuditMiddleware
+from app.common.audit.audit_repository import AuditRepository
 from app.common.config import settings
 from app.common.errors import register_error_handlers
 from app.common.logging import configure_logging, LoggingMiddleware
 from app.common.security.security_headers import SecurityHeadersMiddleware
+from app.extensions.db.session import engine
 from app.modules.health import health_router
 from app.modules.users.rest import auth_router
 from app.modules.web import web_router
@@ -58,6 +61,10 @@ def create_app() -> FastAPI:
 
     # Logging Middleware (request_id, duración, logs)
     app.add_middleware(LoggingMiddleware)
+
+    # Audit Middleware (HTTP audit dinámico por año — más externo = duración real)
+    audit_repo = AuditRepository(engine=engine)
+    app.add_middleware(AuditMiddleware, repository=audit_repo)
 
     # ------------------------------------------------------------------
     # Routers

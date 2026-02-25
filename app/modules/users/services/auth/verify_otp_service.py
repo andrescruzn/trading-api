@@ -179,7 +179,7 @@ class VerifyOtpService:
         user.otp_expires_at = None
 
         token_pack = create_access_token(
-            subject={"user_id": user.id},
+            subject={"user_id": user.id, "role_id": user.role_id},
             secret_key=self._settings.JWT_SECRET_KEY,
             expires_delta=self._settings.JWT_ACCESS_TOKEN_EXPIRES,
             algorithm=self._settings.JWT_ALGORITHM,

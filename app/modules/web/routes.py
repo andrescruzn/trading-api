@@ -121,3 +121,89 @@ def profile_page(request: Request):
         return RedirectResponse(url="/login", status_code=302)
 
     return templates.TemplateResponse(request, "profile.html")
+
+
+# ======================================================================
+# GET /market/symbols
+# ======================================================================
+
+@web_router.get("/market/symbols", response_class=HTMLResponse, include_in_schema=False)
+def market_symbols_page(request: Request):
+    """Lista de símbolos activos. Cualquier usuario autenticado."""
+    identity = _get_identity_from_cookie(request)
+    if not identity:
+        return RedirectResponse(url="/login", status_code=302)
+    return templates.TemplateResponse(request, "market/symbols.html")
+
+
+# ======================================================================
+# GET /market/candles
+# ======================================================================
+
+@web_router.get("/market/candles", response_class=HTMLResponse, include_in_schema=False)
+def market_candles_page(request: Request):
+    """Consulta de velas OHLCV. Cualquier usuario autenticado."""
+    identity = _get_identity_from_cookie(request)
+    if not identity:
+        return RedirectResponse(url="/login", status_code=302)
+    return templates.TemplateResponse(request, "market/candles.html")
+
+
+# ======================================================================
+# GET /admin/exchanges   (solo admin — redirige si no es admin)
+# ======================================================================
+
+@web_router.get("/admin/exchanges", response_class=HTMLResponse, include_in_schema=False)
+def admin_exchanges_page(request: Request):
+    """Gestión de exchanges. Redirige a /dashboard si no es admin."""
+    identity = _get_identity_from_cookie(request)
+    if not identity:
+        return RedirectResponse(url="/login", status_code=302)
+    if int(identity.get("role_id", 0)) != int(settings.AUTH_ADMIN_ROLE_ID):
+        return RedirectResponse(url="/dashboard", status_code=302)
+    return templates.TemplateResponse(request, "admin/exchanges.html")
+
+
+# ======================================================================
+# GET /admin/symbols
+# ======================================================================
+
+@web_router.get("/admin/symbols", response_class=HTMLResponse, include_in_schema=False)
+def admin_symbols_page(request: Request):
+    """Gestión de símbolos. Solo admin."""
+    identity = _get_identity_from_cookie(request)
+    if not identity:
+        return RedirectResponse(url="/login", status_code=302)
+    if int(identity.get("role_id", 0)) != int(settings.AUTH_ADMIN_ROLE_ID):
+        return RedirectResponse(url="/dashboard", status_code=302)
+    return templates.TemplateResponse(request, "admin/symbols.html")
+
+
+# ======================================================================
+# GET /admin/timeframes
+# ======================================================================
+
+@web_router.get("/admin/timeframes", response_class=HTMLResponse, include_in_schema=False)
+def admin_timeframes_page(request: Request):
+    """Gestión de timeframes. Solo admin."""
+    identity = _get_identity_from_cookie(request)
+    if not identity:
+        return RedirectResponse(url="/login", status_code=302)
+    if int(identity.get("role_id", 0)) != int(settings.AUTH_ADMIN_ROLE_ID):
+        return RedirectResponse(url="/dashboard", status_code=302)
+    return templates.TemplateResponse(request, "admin/timeframes.html")
+
+
+# ======================================================================
+# GET /admin/candles/ingest
+# ======================================================================
+
+@web_router.get("/admin/candles/ingest", response_class=HTMLResponse, include_in_schema=False)
+def admin_candles_ingest_page(request: Request):
+    """Ingestión de velas. Solo admin."""
+    identity = _get_identity_from_cookie(request)
+    if not identity:
+        return RedirectResponse(url="/login", status_code=302)
+    if int(identity.get("role_id", 0)) != int(settings.AUTH_ADMIN_ROLE_ID):
+        return RedirectResponse(url="/dashboard", status_code=302)
+    return templates.TemplateResponse(request, "admin/candles_ingest.html")

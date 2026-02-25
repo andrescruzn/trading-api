@@ -61,6 +61,11 @@ function renderDashboard(user) {
     document.getElementById("info-last-login").textContent = "Primera sesión";
   }
 
+  // Panel admin: solo visible para administradores
+  if (isAdmin) {
+    document.getElementById("admin-panel").classList.remove("hidden");
+  }
+
   // Show content
   document.getElementById("dashboard-loading").classList.add("hidden");
   document.getElementById("dashboard-content").classList.remove("hidden");

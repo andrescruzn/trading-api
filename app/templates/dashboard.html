@@ -61,8 +61,40 @@
 
         <hr class="divider">
 
-        <!-- Acciones -->
-        <h2 class="mb-2">Acciones</h2>
+        <!-- Acciones de market data (para todos) -->
+        <h2 class="mb-2">Mercado</h2>
+        <div style="display:flex;flex-wrap:wrap;gap:0.75rem;margin-bottom:1.25rem;">
+          <a href="/market/symbols" class="btn btn--secondary" style="width:auto;padding:0.6rem 1.25rem;">
+            Símbolos
+          </a>
+          <a href="/market/candles" class="btn btn--secondary" style="width:auto;padding:0.6rem 1.25rem;">
+            Velas OHLCV
+          </a>
+        </div>
+
+        <!-- Panel admin (solo visible para administradores) -->
+        <div id="admin-panel" class="hidden">
+          <h2 class="mb-2">Administración</h2>
+          <div style="display:flex;flex-wrap:wrap;gap:0.75rem;margin-bottom:1.25rem;">
+            <a href="/admin/exchanges" class="btn btn--secondary" style="width:auto;padding:0.6rem 1.25rem;">
+              Exchanges
+            </a>
+            <a href="/admin/symbols" class="btn btn--secondary" style="width:auto;padding:0.6rem 1.25rem;">
+              Gestión símbolos
+            </a>
+            <a href="/admin/timeframes" class="btn btn--secondary" style="width:auto;padding:0.6rem 1.25rem;">
+              Timeframes
+            </a>
+            <a href="/admin/candles/ingest" class="btn btn--secondary" style="width:auto;padding:0.6rem 1.25rem;">
+              Ingestar velas
+            </a>
+          </div>
+        </div>
+
+        <hr class="divider">
+
+        <!-- Acciones de cuenta -->
+        <h2 class="mb-2">Cuenta</h2>
         <div style="display:flex;flex-wrap:wrap;gap:0.75rem;">
           <a href="/profile" class="btn btn--secondary" style="width:auto;padding:0.6rem 1.25rem;">
             Cambiar contraseña

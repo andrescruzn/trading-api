@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block title %}Velas OHLCV — Trading AI{% endblock %}
+
+{% block body %}
+<div class="page">
+
+  <nav class="nav">
+    <a href="/dashboard" class="nav__brand">Trading AI</a>
+    <div class="nav__actions">
+      <span id="nav-role-badge"></span>
+      <a href="/market/symbols" class="btn btn--secondary" style="width:auto;padding:0.45rem 1rem;">Símbolos</a>
+      <a href="/dashboard" class="btn btn--secondary" style="width:auto;padding:0.45rem 1rem;">Dashboard</a>
+    </div>
+  </nav>
+
+  <main class="page__body">
+    <div class="container container--wide">
+
+      <h1>Velas OHLCV</h1>
+      <p class="text-muted mt-1">Historial de precios por símbolo y timeframe</p>
+
+      <!-- Selector -->
+      <div style="display:flex;flex-wrap:wrap;gap:0.75rem;margin:1rem 0;">
+        <div class="form-group" style="margin:0;min-width:180px;">
+          <label for="sel-symbol">Símbolo</label>
+          <select id="sel-symbol" class="input-select">
+            <option value="">Selecciona...</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin:0;min-width:130px;">
+          <label for="sel-timeframe">Timeframe</label>
+          <select id="sel-timeframe" class="input-select">
+            <option value="">Selecciona...</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin:0;min-width:100px;">
+          <label for="sel-limit">Límite</label>
+          <select id="sel-limit" class="input-select">
+            <option value="50">50</option>
+            <option value="100" selected>100</option>
+            <option value="200">200</option>
+            <option value="500">500</option>
+          </select>
+        </div>
+        <div style="display:flex;align-items:flex-end;">
+          <button class="btn btn--primary" id="btn-load" type="button" style="width:auto;padding:0.55rem 1.25rem;">Ver velas</button>
+        </div>
+      </div>
+
+      <hr class="divider">
+
+      <div id="alert-msg" class="alert hidden"></div>
+
+      <div id="table-loading" class="hidden text-center mt-3">
+        <span class="spinner"></span>
+        <p class="text-muted mt-1">Cargando...</p>
+      </div>
+
+      <div id="table-wrapper" class="hidden">
+        <p class="text-muted mb-1" id="candles-summary"></p>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Timestamp (UTC)</th>
+              <th>Open</th>
+              <th>High</th>
+              <th>Low</th>
+              <th>Close</th>
+              <th>Volume</th>
+            </tr>
+          </thead>
+          <tbody id="candles-tbody"></tbody>
+        </table>
+      </div>
+
+    </div>
+  </main>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/market/candles.js"></script>
+{% endblock %}

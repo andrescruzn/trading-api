@@ -22,3 +22,11 @@
 # --------------------------------------------------------------
 from app.modules.users.infrastructure.user_model import UserModel  # noqa: F401
 from app.modules.users.infrastructure.role_model import RoleModel  # noqa: F401
+
+# --------------------------------------------------------------
+# Market module models
+# --------------------------------------------------------------
+from app.modules.market.infrastructure.exchange_model import ExchangeModel  # noqa: F401
+from app.modules.market.infrastructure.symbol_model import SymbolModel  # noqa: F401
+from app.modules.market.infrastructure.timeframe_model import TimeframeModel  # noqa: F401
+from app.modules.market.infrastructure.candle_model import CandleModel  # noqa: F401

@@ -23,6 +23,12 @@ from app.common.logging import configure_logging, LoggingMiddleware
 from app.common.security.security_headers import SecurityHeadersMiddleware
 from app.extensions.db.session import engine
 from app.modules.health import health_router
+from app.modules.market.rest import (
+    exchanges_router,
+    symbols_router,
+    timeframes_router,
+    candles_router,
+)
 from app.modules.users.rest import auth_router
 from app.modules.web import web_router
 
@@ -71,7 +77,14 @@ def create_app() -> FastAPI:
     # ------------------------------------------------------------------
     app.include_router(health_router)
     app.include_router(auth_router)
-    app.include_router(web_router)      # Páginas HTML
+
+    # Market Data
+    app.include_router(exchanges_router)
+    app.include_router(symbols_router)
+    app.include_router(timeframes_router)
+    app.include_router(candles_router)
+
+    app.include_router(web_router)      # Páginas HTML (siempre al final)
 
     # ------------------------------------------------------------------
     # Handlers globales (AuthException/JwtCodecError -> envelope)

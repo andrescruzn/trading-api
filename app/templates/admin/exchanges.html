@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block title %}Exchanges — Admin — Trading AI{% endblock %}
+
+{% block body %}
+<div class="page">
+
+  <!-- Nav -->
+  <nav class="nav">
+    <a href="/dashboard" class="nav__brand">Trading AI</a>
+    <div class="nav__actions">
+      <span id="nav-role-badge"></span>
+      <a href="/dashboard" class="btn btn--secondary" style="width:auto;padding:0.45rem 1rem;">Dashboard</a>
+    </div>
+  </nav>
+
+  <main class="page__body">
+    <div class="container container--wide">
+
+      <div class="page-header">
+        <div>
+          <h1>Exchanges</h1>
+          <p class="text-muted mt-1">Gestión de exchanges, brokers y data vendors</p>
+        </div>
+        <button class="btn btn--primary" id="btn-new-exchange" type="button" style="width:auto;padding:0.6rem 1.25rem;">
+          + Nuevo exchange
+        </button>
+      </div>
+
+      <hr class="divider">
+
+      <!-- Mensaje de alerta -->
+      <div id="alert-msg" class="alert hidden"></div>
+
+      <!-- Tabla -->
+      <div id="table-loading" class="text-center mt-3">
+        <span class="spinner"></span>
+        <p class="text-muted mt-1">Cargando...</p>
+      </div>
+
+      <div id="table-wrapper" class="hidden">
+        <table class="data-table" id="exchanges-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Nombre</th>
+              <th>Tipo</th>
+              <th>Estado</th>
+              <th>Creado</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="exchanges-tbody"></tbody>
+        </table>
+        <div id="pagination" class="pagination hidden">
+          <span id="pag-info" class="pagination__info"></span>
+          <div class="pagination__btns">
+            <button class="btn btn--secondary btn--sm" id="pag-prev" type="button">← Anterior</button>
+            <button class="btn btn--secondary btn--sm" id="pag-next" type="button">Siguiente →</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal nuevo/editar exchange -->
+      <div id="modal-exchange" class="modal hidden">
+        <div class="modal__backdrop"></div>
+        <div class="modal__box">
+          <h2 id="modal-title">Nuevo exchange</h2>
+          <div class="form-group mt-2">
+            <label for="inp-name">Nombre</label>
+            <input type="text" id="inp-name" maxlength="120" placeholder="Ej: Binance">
+          </div>
+          <div class="form-group">
+            <label for="inp-type">Tipo</label>
+            <select id="inp-type" class="input-select">
+              <option value="crypto_exchange">Crypto Exchange</option>
+              <option value="broker">Broker</option>
+              <option value="data_vendor">Data Vendor</option>
+            </select>
+          </div>
+          <div class="form-group" id="group-is-active" style="display:none;">
+            <label>
+              <input type="checkbox" id="inp-is-active"> Activo
+            </label>
+          </div>
+          <div id="modal-alert" class="alert hidden"></div>
+          <div style="display:flex;gap:0.75rem;margin-top:1rem;">
+            <button class="btn btn--primary" id="btn-save-exchange" type="button" style="width:auto;padding:0.55rem 1.25rem;">Guardar</button>
+            <button class="btn btn--secondary" id="btn-cancel-exchange" type="button" style="width:auto;padding:0.55rem 1.25rem;">Cancelar</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/admin/exchanges.js"></script>
+{% endblock %}

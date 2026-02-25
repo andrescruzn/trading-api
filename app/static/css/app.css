@@ -272,8 +272,10 @@ input.input--error:focus {
   letter-spacing: 0.05em;
 }
 
-.badge--admin { background: var(--black); color: var(--white); border-color: var(--black); }
-.badge--user  { background: var(--white); color: var(--black); border-color: var(--black); }
+.badge--admin   { background: var(--black); color: var(--white); border-color: var(--black); }
+.badge--user    { background: var(--white); color: var(--black); border-color: var(--black); }
+.badge--success { background: #f5fff5; color: var(--success); border-color: var(--success); }
+.badge--muted   { background: var(--gray-100); color: var(--gray-400); border-color: var(--gray-200); }
 
 /* === Divider === */
 .divider {
@@ -375,6 +377,116 @@ input.input--error:focus {
   padding: 1.5rem 1rem;
   background: var(--gray-50);
 }
+
+/* === Small button === */
+.btn--sm {
+  padding: 0.3rem 0.75rem;
+  font-size: 0.8125rem;
+  width: auto;
+}
+
+/* === Select input === */
+.input-select {
+  width: 100%;
+  padding: 0.65rem 0.85rem;
+  border: var(--border);
+  border-radius: var(--radius);
+  font-size: 1rem;
+  font-family: var(--font);
+  background: var(--white);
+  color: var(--black);
+  appearance: none;
+  cursor: pointer;
+}
+
+.input-select:focus {
+  outline: 2.5px solid var(--black);
+  outline-offset: 1px;
+}
+
+/* === Data table === */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  margin-top: 0.75rem;
+}
+
+.data-table th,
+.data-table td {
+  text-align: left;
+  padding: 0.65rem 0.85rem;
+  border-bottom: 1px solid var(--gray-200);
+}
+
+.data-table th {
+  font-weight: 700;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--gray-600);
+  background: var(--gray-50);
+}
+
+.data-table tr:hover td {
+  background: var(--gray-50);
+}
+
+/* === Modal === */
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.modal__box {
+  position: relative;
+  background: var(--white);
+  border: var(--border);
+  padding: 2rem 1.75rem;
+  width: 100%;
+  max-width: 480px;
+  max-height: 90vh;
+  overflow-y: auto;
+  z-index: 201;
+}
+
+/* === Page header (título + botón acción, sin overlap) === */
+.page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+/* === Pagination === */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--gray-200);
+  font-size: 0.875rem;
+}
+
+.pagination__info { color: var(--gray-600); }
+
+.pagination__btns { display: flex; gap: 0.5rem; }
 
 /* === Utilities === */
 .mt-1 { margin-top: 0.5rem; }

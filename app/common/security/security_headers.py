@@ -54,7 +54,11 @@ def _is_web_route(path: str) -> bool:
     Determina si la ruta sirve páginas HTML (usa CSP_WEB).
     Rutas /static/ y páginas web usan CSP más permisivo.
     """
-    web_prefixes = ("/login", "/dashboard", "/profile", "/static/")
+    web_prefixes = (
+        "/login", "/dashboard", "/profile",
+        "/static/",
+        "/market/", "/admin/",
+    )
     return any(path.startswith(p) for p in web_prefixes) or path == "/"
 
 

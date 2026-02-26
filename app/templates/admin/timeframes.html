@@ -1,104 +1,86 @@
-{% extends "base.html" %}
+{% extends "base_app.html" %}
 
 {% block title %}Timeframes — Admin — Trading AI{% endblock %}
+{% block nav_title %}Timeframes{% endblock %}
 
-{% block body %}
-<div class="page">
+{% block content %}
 
-  <nav class="nav">
-    <a href="/dashboard" class="nav__brand">
-      <i data-lucide="trending-up" style="width:14px;height:14px;vertical-align:middle;margin-right:0.35rem;"></i>Trading AI
-    </a>
-    <div class="nav__actions">
-      <span id="nav-role-badge"></span>
-      <a href="/dashboard" class="btn btn--secondary btn--sm">
-        <i data-lucide="layout-dashboard"></i>
-        Dashboard
-      </a>
+  <div class="page-header">
+    <div>
+      <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.2rem;">
+        <i data-lucide="clock" style="color:var(--gold);width:18px;height:18px;"></i>
+        <h1 style="font-size:1.25rem;">Timeframes</h1>
+      </div>
+      <p class="text-muted" style="font-size:0.8125rem;">Marcos temporales disponibles (1m, 5m, 1h, 1d...)</p>
     </div>
-  </nav>
+    <button class="btn btn--primary" id="btn-new-tf" type="button"
+            style="width:auto;padding:0.55rem 1.1rem;">
+      <i data-lucide="plus"></i>
+      Nuevo timeframe
+    </button>
+  </div>
 
-  <main class="page__body">
-    <div class="container container--wide">
+  <hr class="divider">
 
-      <div class="page-header">
-        <div>
-          <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.25rem;">
-            <i data-lucide="clock" style="color:var(--gold);width:20px;height:20px;"></i>
-            <h1>Timeframes</h1>
-          </div>
-          <p class="text-muted mt-1">Marcos temporales disponibles (1m, 5m, 1h, 1d...)</p>
-        </div>
-        <button class="btn btn--primary" id="btn-new-tf" type="button" style="width:auto;padding:0.55rem 1.1rem;">
-          <i data-lucide="plus"></i>
-          Nuevo timeframe
+  <div id="alert-msg" class="alert hidden"></div>
+
+  <div id="table-loading" class="text-center mt-3">
+    <span class="spinner"></span>
+    <p class="text-muted mt-1">Cargando...</p>
+  </div>
+
+  <div id="table-wrapper" class="hidden">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Código</th>
+          <th>Segundos</th>
+          <th>Equivale a</th>
+        </tr>
+      </thead>
+      <tbody id="tf-tbody"></tbody>
+    </table>
+    <div id="pagination" class="pagination hidden">
+      <span id="pag-info" class="pagination__info"></span>
+      <div class="pagination__btns">
+        <button class="btn btn--secondary btn--sm" id="pag-prev" type="button">
+          <i data-lucide="chevron-left"></i> Anterior
+        </button>
+        <button class="btn btn--secondary btn--sm" id="pag-next" type="button">
+          Siguiente <i data-lucide="chevron-right"></i>
         </button>
       </div>
-
-      <hr class="divider">
-
-      <div id="alert-msg" class="alert hidden"></div>
-
-      <div id="table-loading" class="text-center mt-3">
-        <span class="spinner"></span>
-        <p class="text-muted mt-1">Cargando...</p>
-      </div>
-
-      <div id="table-wrapper" class="hidden">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Código</th>
-              <th>Segundos</th>
-              <th>Equivale a</th>
-            </tr>
-          </thead>
-          <tbody id="tf-tbody"></tbody>
-        </table>
-        <div id="pagination" class="pagination hidden">
-          <span id="pag-info" class="pagination__info"></span>
-          <div class="pagination__btns">
-            <button class="btn btn--secondary btn--sm" id="pag-prev" type="button">
-              <i data-lucide="chevron-left"></i> Anterior
-            </button>
-            <button class="btn btn--secondary btn--sm" id="pag-next" type="button">
-              Siguiente <i data-lucide="chevron-right"></i>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Modal nuevo timeframe -->
-      <div id="modal-tf" class="modal hidden">
-        <div class="modal__backdrop"></div>
-        <div class="modal__box">
-          <h2>Nuevo timeframe</h2>
-          <div class="form-group mt-2">
-            <label for="inp-code">Código</label>
-            <input type="text" id="inp-code" maxlength="8" placeholder="Ej: 1h">
-          </div>
-          <div class="form-group">
-            <label for="inp-seconds">Segundos</label>
-            <input type="number" id="inp-seconds" min="1" placeholder="Ej: 3600">
-          </div>
-          <div id="modal-alert" class="alert hidden"></div>
-          <div style="display:flex;gap:0.75rem;margin-top:1rem;">
-            <button class="btn btn--primary" id="btn-save-tf" type="button" style="width:auto;padding:0.55rem 1.1rem;">
-              <i data-lucide="save"></i>
-              Guardar
-            </button>
-            <button class="btn btn--secondary" id="btn-cancel-tf" type="button" style="width:auto;padding:0.55rem 1.1rem;">Cancelar</button>
-          </div>
-        </div>
-      </div>
-
     </div>
-  </main>
+  </div>
 
-</div>
+  <!-- Modal -->
+  <div id="modal-tf" class="modal hidden">
+    <div class="modal__backdrop"></div>
+    <div class="modal__box">
+      <h2>Nuevo timeframe</h2>
+      <div class="form-group mt-2">
+        <label for="inp-code">Código</label>
+        <input type="text" id="inp-code" maxlength="8" placeholder="Ej: 1h">
+      </div>
+      <div class="form-group">
+        <label for="inp-seconds">Segundos</label>
+        <input type="number" id="inp-seconds" min="1" placeholder="Ej: 3600">
+      </div>
+      <div id="modal-alert" class="alert hidden"></div>
+      <div style="display:flex;gap:0.75rem;margin-top:1rem;">
+        <button class="btn btn--primary" id="btn-save-tf" type="button"
+                style="width:auto;padding:0.55rem 1.1rem;">
+          <i data-lucide="save"></i> Guardar
+        </button>
+        <button class="btn btn--secondary" id="btn-cancel-tf" type="button"
+                style="width:auto;padding:0.55rem 1.1rem;">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
 {% endblock %}
 
-{% block scripts %}
+{% block page_scripts %}
 <script src="/static/js/admin/timeframes.js"></script>
 {% endblock %}

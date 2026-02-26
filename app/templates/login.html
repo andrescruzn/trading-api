@@ -3,74 +3,97 @@
 {% block title %}Iniciar sesión — Trading AI{% endblock %}
 
 {% block body %}
-<div class="login-wrap">
-  <div class="container">
+<div class="login-split">
 
-    <!-- Brand -->
-    <div class="text-center mb-2">
-      <div style="display:inline-flex;align-items:center;gap:0.5rem;margin-bottom:0.5rem;">
-        <i data-lucide="trending-up" style="color:var(--gold);width:22px;height:22px;"></i>
+  <!-- ═══ Brand panel (izquierda) ════════════════════════════════════════ -->
+  <div class="login-split__brand">
+    <div class="login-split__brand-content">
+
+      <!-- Logo + nombre -->
+      <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:2rem;">
+        <i data-lucide="trending-up" style="color:var(--gold);width:26px;height:26px;flex-shrink:0;"></i>
         <span style="font-family:var(--font-mono);font-size:1.1rem;font-weight:700;color:var(--gold);letter-spacing:0.1em;text-transform:uppercase;">Trading AI</span>
       </div>
-      <p class="text-muted mt-1" style="font-size:0.8125rem;">Plataforma de trading algorítmico</p>
+
+      <!-- Tagline -->
+      <h1 style="font-size:1.875rem;line-height:1.25;margin-bottom:1rem;color:var(--text-primary);">
+        Opera con<br>
+        <span style="color:var(--gold);">inteligencia</span>
+      </h1>
+      <p style="color:var(--text-muted);font-size:0.875rem;line-height:1.75;max-width:280px;margin-bottom:2.5rem;">
+        Plataforma algorítmica de trading con análisis en tiempo real y gestión inteligente del riesgo.
+      </p>
+
+      <!-- Features -->
+      <div style="display:flex;flex-direction:column;gap:0.375rem;">
+        <div class="login-brand-feature">
+          <i data-lucide="bar-chart-2"></i>
+          Multi-exchange · Crypto · Forex · Metales
+        </div>
+        <div class="login-brand-feature">
+          <i data-lucide="cpu"></i>
+          Motor de señales con IA local (Ollama)
+        </div>
+        <div class="login-brand-feature">
+          <i data-lucide="shield-check"></i>
+          Gestión de riesgo · Regla del 1%
+        </div>
+        <div class="login-brand-feature">
+          <i data-lucide="zap"></i>
+          Bots automatizados · Paper & Live trading
+        </div>
+      </div>
+
     </div>
 
-    <div class="card mt-3">
+    <!-- Versión -->
+    <div class="login-split__brand-footer">
+      <span style="font-family:var(--font-mono);font-size:0.6875rem;color:var(--text-muted);letter-spacing:0.07em;">
+        v1.0 · SISTEMA PRIVADO
+      </span>
+    </div>
+  </div>
 
-      <!-- ============================================================
-           STEP 1: Login form (password o OTP)
-           ============================================================ -->
+  <!-- ═══ Form panel (derecha) ════════════════════════════════════════════ -->
+  <div class="login-split__form">
+    <div class="login-split__form-inner">
+
+      <div class="mb-3">
+        <h2 style="font-size:1.25rem;margin-bottom:0.25rem;">Bienvenido</h2>
+        <p class="text-muted" style="font-size:0.8125rem;">Inicia sesión para continuar</p>
+      </div>
+
+      <!-- ── STEP 1: Login ──────────────────────────────────────────── -->
       <div id="step-login">
 
-        <!-- Tabs -->
         <div class="tabs" role="tablist">
-          <button
-            class="tab active"
-            id="tab-password"
-            type="button"
-            role="tab"
-            aria-selected="true"
-            aria-controls="panel-password"
-          >Contraseña</button>
-          <button
-            class="tab"
-            id="tab-otp"
-            type="button"
-            role="tab"
-            aria-selected="false"
-            aria-controls="panel-otp-request"
-          >Código OTP</button>
+          <button class="tab active" id="tab-password" type="button"
+                  role="tab" aria-selected="true" aria-controls="panel-password">
+            Contraseña
+          </button>
+          <button class="tab" id="tab-otp" type="button"
+                  role="tab" aria-selected="false" aria-controls="panel-otp-request">
+            Código OTP
+          </button>
         </div>
 
-        <!-- Alert global -->
         <div id="login-alert" class="alert" role="alert"></div>
 
-        <!-- ---- Panel: Password ---- -->
+        <!-- Panel: Password -->
         <div id="panel-password" role="tabpanel" aria-labelledby="tab-password">
           <form id="form-password" novalidate>
             <div class="form-group">
               <label for="pw-email">Correo electrónico</label>
-              <input
-                type="email"
-                id="pw-email"
-                name="email"
-                placeholder="tu@correo.com"
-                autocomplete="email"
-                required
-              >
+              <input type="email" id="pw-email" name="email"
+                     placeholder="tu@correo.com" autocomplete="email" required>
             </div>
             <div class="form-group">
               <label for="pw-password">Contraseña</label>
               <div class="input-with-icon">
-                <input
-                  type="password"
-                  id="pw-password"
-                  name="password"
-                  placeholder="••••••••"
-                  autocomplete="current-password"
-                  required
-                >
-                <button type="button" class="toggle-password" data-target="pw-password" aria-label="Mostrar contraseña">Ver</button>
+                <input type="password" id="pw-password" name="password"
+                       placeholder="••••••••" autocomplete="current-password" required>
+                <button type="button" class="toggle-password"
+                        data-target="pw-password" aria-label="Mostrar contraseña">Ver</button>
               </div>
             </div>
             <button type="submit" class="btn btn--primary" id="btn-password-submit">
@@ -80,19 +103,13 @@
           </form>
         </div>
 
-        <!-- ---- Panel: OTP Request ---- -->
+        <!-- Panel: OTP Request -->
         <div id="panel-otp-request" role="tabpanel" aria-labelledby="tab-otp" class="hidden">
           <form id="form-otp-request" novalidate>
             <div class="form-group">
               <label for="otp-email">Correo electrónico</label>
-              <input
-                type="email"
-                id="otp-email"
-                name="email"
-                placeholder="tu@correo.com"
-                autocomplete="email"
-                required
-              >
+              <input type="email" id="otp-email" name="email"
+                     placeholder="tu@correo.com" autocomplete="email" required>
             </div>
             <p class="text-muted mb-2" style="font-size:0.8125rem;">
               Te enviaremos un código de 6 dígitos a tu correo.
@@ -106,15 +123,12 @@
 
       </div><!-- /step-login -->
 
-
-      <!-- ============================================================
-           STEP 2: OTP verification
-           ============================================================ -->
+      <!-- ── STEP 2: OTP Verify ─────────────────────────────────────── -->
       <div id="step-otp" class="hidden">
         <div class="text-center mb-2">
-          <h2>Verifica tu código</h2>
+          <h2 style="font-size:1.125rem;">Verifica tu código</h2>
           <p class="text-muted mt-1" style="font-size:0.875rem;">
-            Ingresa el código de 6 dígitos enviado a<br>
+            Código enviado a<br>
             <strong id="otp-sent-email" style="color:var(--text-primary);font-family:var(--font-mono);"></strong>
           </p>
         </div>
@@ -124,21 +138,11 @@
         <form id="form-otp-verify" novalidate>
           <div class="form-group">
             <label for="otp-code" class="text-center w-full">Código OTP</label>
-            <input
-              type="text"
-              id="otp-code"
-              name="otp_code"
-              class="otp-input"
-              placeholder="000000"
-              maxlength="6"
-              inputmode="numeric"
-              pattern="[0-9]{6}"
-              autocomplete="one-time-code"
-              required
-            >
+            <input type="text" id="otp-code" name="otp_code" class="otp-input"
+                   placeholder="000000" maxlength="6" inputmode="numeric"
+                   pattern="[0-9]{6}" autocomplete="one-time-code" required>
           </div>
 
-          <!-- Dev hint -->
           <div id="otp-dev-hint" class="alert alert--info" style="display:none; font-size:0.8rem;">
             <strong>DEV:</strong> Tu código OTP es: <strong id="otp-dev-code"></strong>
           </div>
@@ -149,7 +153,6 @@
               Verificar código
             </button>
           </div>
-
           <div class="text-center mt-2">
             <button type="button" class="btn btn--ghost" id="btn-back-to-login">
               ← Volver al inicio de sesión
@@ -158,9 +161,10 @@
         </form>
       </div><!-- /step-otp -->
 
-    </div><!-- /card -->
-  </div><!-- /container -->
-</div>
+    </div><!-- /form-inner -->
+  </div><!-- /form panel -->
+
+</div><!-- /login-split -->
 {% endblock %}
 
 {% block scripts %}

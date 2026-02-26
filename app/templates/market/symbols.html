@@ -1,105 +1,85 @@
-{% extends "base.html" %}
+{% extends "base_app.html" %}
 
 {% block title %}Símbolos de Mercado — Trading AI{% endblock %}
+{% block nav_title %}Símbolos{% endblock %}
 
-{% block body %}
-<div class="page">
+{% block content %}
 
-  <nav class="nav">
-    <a href="/dashboard" class="nav__brand">
-      <i data-lucide="trending-up" style="width:14px;height:14px;vertical-align:middle;margin-right:0.35rem;"></i>Trading AI
-    </a>
-    <div class="nav__actions">
-      <span id="nav-role-badge"></span>
-      <a href="/market/candles" class="btn btn--secondary btn--sm">
-        <i data-lucide="candlestick-chart"></i>
-        Ver velas
-      </a>
-      <a href="/dashboard" class="btn btn--secondary btn--sm">
-        <i data-lucide="layout-dashboard"></i>
-        Dashboard
-      </a>
+  <div class="page-header">
+    <div>
+      <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.2rem;">
+        <i data-lucide="list" style="color:var(--gold);width:18px;height:18px;"></i>
+        <h1 style="font-size:1.25rem;">Símbolos del Mercado</h1>
+      </div>
+      <p class="text-muted" style="font-size:0.8125rem;">Activos disponibles para operar</p>
     </div>
-  </nav>
+  </div>
 
-  <main class="page__body">
-    <div class="container container--wide">
-
-      <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.25rem;">
-        <i data-lucide="list" style="color:var(--gold);width:20px;height:20px;"></i>
-        <h1>Símbolos del Mercado</h1>
-      </div>
-      <p class="text-muted mt-1">Activos disponibles para operar</p>
-
-      <!-- Filtros -->
-      <div style="display:flex;flex-wrap:wrap;gap:0.75rem;margin:1rem 0;">
-        <div class="form-group" style="margin:0;min-width:160px;">
-          <label for="filter-exchange">Exchange</label>
-          <select id="filter-exchange" class="input-select">
-            <option value="">Todos</option>
-          </select>
-        </div>
-        <div class="form-group" style="margin:0;min-width:140px;">
-          <label for="filter-asset-class">Clase</label>
-          <select id="filter-asset-class" class="input-select">
-            <option value="">Todas</option>
-            <option value="crypto">Crypto</option>
-            <option value="metal">Metal</option>
-            <option value="etf">ETF</option>
-            <option value="stock">Stock</option>
-            <option value="forex">Forex</option>
-          </select>
-        </div>
-        <div style="display:flex;align-items:flex-end;">
-          <button class="btn btn--secondary btn--sm" id="btn-filter" type="button">
-            <i data-lucide="filter"></i>
-            Filtrar
-          </button>
-        </div>
-      </div>
-
-      <hr class="divider">
-
-      <div id="alert-msg" class="alert hidden"></div>
-
-      <div id="table-loading" class="text-center mt-3">
-        <span class="spinner"></span>
-        <p class="text-muted mt-1">Cargando...</p>
-      </div>
-
-      <div id="table-wrapper" class="hidden">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>Símbolo</th>
-              <th>Exchange</th>
-              <th>Base</th>
-              <th>Quote</th>
-              <th>Clase</th>
-              <th>Acción</th>
-            </tr>
-          </thead>
-          <tbody id="symbols-tbody"></tbody>
-        </table>
-        <div id="pagination" class="pagination hidden">
-          <span id="pag-info" class="pagination__info"></span>
-          <div class="pagination__btns">
-            <button class="btn btn--secondary btn--sm" id="pag-prev" type="button">
-              <i data-lucide="chevron-left"></i> Anterior
-            </button>
-            <button class="btn btn--secondary btn--sm" id="pag-next" type="button">
-              Siguiente <i data-lucide="chevron-right"></i>
-            </button>
-          </div>
-        </div>
-      </div>
-
+  <!-- Filtros -->
+  <div style="display:flex;flex-wrap:wrap;gap:0.75rem;margin-bottom:1rem;">
+    <div class="form-group" style="margin:0;min-width:160px;">
+      <label for="filter-exchange">Exchange</label>
+      <select id="filter-exchange" class="input-select">
+        <option value="">Todos</option>
+      </select>
     </div>
-  </main>
+    <div class="form-group" style="margin:0;min-width:140px;">
+      <label for="filter-asset-class">Clase</label>
+      <select id="filter-asset-class" class="input-select">
+        <option value="">Todas</option>
+        <option value="crypto">Crypto</option>
+        <option value="metal">Metal</option>
+        <option value="etf">ETF</option>
+        <option value="stock">Stock</option>
+        <option value="forex">Forex</option>
+      </select>
+    </div>
+    <div style="display:flex;align-items:flex-end;">
+      <button class="btn btn--secondary btn--sm" id="btn-filter" type="button">
+        <i data-lucide="filter"></i>
+        Filtrar
+      </button>
+    </div>
+  </div>
 
-</div>
+  <hr class="divider">
+
+  <div id="alert-msg" class="alert hidden"></div>
+
+  <div id="table-loading" class="text-center mt-3">
+    <span class="spinner"></span>
+    <p class="text-muted mt-1">Cargando...</p>
+  </div>
+
+  <div id="table-wrapper" class="hidden">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Símbolo</th>
+          <th>Exchange</th>
+          <th>Base</th>
+          <th>Quote</th>
+          <th>Clase</th>
+          <th>Acción</th>
+        </tr>
+      </thead>
+      <tbody id="symbols-tbody"></tbody>
+    </table>
+    <div id="pagination" class="pagination hidden">
+      <span id="pag-info" class="pagination__info"></span>
+      <div class="pagination__btns">
+        <button class="btn btn--secondary btn--sm" id="pag-prev" type="button">
+          <i data-lucide="chevron-left"></i> Anterior
+        </button>
+        <button class="btn btn--secondary btn--sm" id="pag-next" type="button">
+          Siguiente <i data-lucide="chevron-right"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
 {% endblock %}
 
-{% block scripts %}
+{% block page_scripts %}
 <script src="/static/js/market/symbols.js"></script>
 {% endblock %}

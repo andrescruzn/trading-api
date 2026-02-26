@@ -1,107 +1,71 @@
-{% extends "base.html" %}
+{% extends "base_app.html" %}
 
 {% block title %}Cambiar contraseña — Trading AI{% endblock %}
+{% block nav_title %}Contraseña{% endblock %}
 
-{% block body %}
-<div class="page">
+{% block content %}
 
-  <!-- Nav -->
-  <nav class="nav">
-    <a href="/dashboard" class="nav__brand">
-      <i data-lucide="trending-up" style="width:14px;height:14px;vertical-align:middle;margin-right:0.35rem;"></i>Trading AI
-    </a>
-    <div class="nav__actions">
-      <a href="/dashboard" class="btn btn--ghost" style="font-size:0.8125rem;">
-        <i data-lucide="arrow-left" style="width:14px;height:14px;"></i>
-        Dashboard
-      </a>
+  <div style="max-width:420px;">
+    <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.25rem;">
+      <i data-lucide="lock" style="color:var(--gold);width:18px;height:18px;"></i>
+      <h1 style="font-size:1.25rem;">Cambiar contraseña</h1>
     </div>
-  </nav>
+    <p class="text-muted mb-3" style="font-size:0.875rem;">
+      Al guardar, tu sesión actual se cerrará y deberás iniciar sesión de nuevo.
+    </p>
 
-  <!-- Body -->
-  <main class="page__body">
-    <div class="container">
+    <div class="card">
+      <div id="profile-alert" class="alert" role="alert"></div>
 
-      <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.25rem;">
-        <i data-lucide="lock" style="color:var(--gold);width:20px;height:20px;"></i>
-        <h1>Cambiar contraseña</h1>
-      </div>
-      <p class="text-muted mb-3" style="font-size:0.875rem;">
-        Al guardar, tu sesión actual se cerrará y deberás iniciar sesión de nuevo.
-      </p>
+      <form id="form-change-password" novalidate>
 
-      <div class="card">
-
-        <div id="profile-alert" class="alert" role="alert"></div>
-
-        <form id="form-change-password" novalidate>
-
-          <div class="form-group">
-            <label for="current-password">Contraseña actual</label>
-            <div class="input-with-icon">
-              <input
-                type="password"
-                id="current-password"
-                name="current_password"
-                placeholder="••••••••"
-                autocomplete="current-password"
-                required
-              >
-              <button type="button" class="toggle-password" data-target="current-password" aria-label="Mostrar contraseña">Ver</button>
-            </div>
+        <div class="form-group">
+          <label for="current-password">Contraseña actual</label>
+          <div class="input-with-icon">
+            <input type="password" id="current-password" name="current_password"
+                   placeholder="••••••••" autocomplete="current-password" required>
+            <button type="button" class="toggle-password"
+                    data-target="current-password" aria-label="Mostrar contraseña">Ver</button>
           </div>
+        </div>
 
-          <div class="form-group">
-            <label for="new-password">Nueva contraseña</label>
-            <div class="input-with-icon">
-              <input
-                type="password"
-                id="new-password"
-                name="new_password"
-                placeholder="••••••••"
-                autocomplete="new-password"
-                required
-              >
-              <button type="button" class="toggle-password" data-target="new-password" aria-label="Mostrar contraseña">Ver</button>
-            </div>
-            <small>Mínimo 8 caracteres, 1 mayúscula, 1 minúscula y 1 número.</small>
+        <div class="form-group">
+          <label for="new-password">Nueva contraseña</label>
+          <div class="input-with-icon">
+            <input type="password" id="new-password" name="new_password"
+                   placeholder="••••••••" autocomplete="new-password" required>
+            <button type="button" class="toggle-password"
+                    data-target="new-password" aria-label="Mostrar contraseña">Ver</button>
           </div>
+          <small>Mínimo 8 caracteres, 1 mayúscula, 1 minúscula y 1 número.</small>
+        </div>
 
-          <div class="form-group">
-            <label for="confirm-password">Confirmar nueva contraseña</label>
-            <div class="input-with-icon">
-              <input
-                type="password"
-                id="confirm-password"
-                name="confirm_password"
-                placeholder="••••••••"
-                autocomplete="new-password"
-                required
-              >
-              <button type="button" class="toggle-password" data-target="confirm-password" aria-label="Mostrar contraseña">Ver</button>
-            </div>
+        <div class="form-group">
+          <label for="confirm-password">Confirmar nueva contraseña</label>
+          <div class="input-with-icon">
+            <input type="password" id="confirm-password" name="confirm_password"
+                   placeholder="••••••••" autocomplete="new-password" required>
+            <button type="button" class="toggle-password"
+                    data-target="confirm-password" aria-label="Mostrar contraseña">Ver</button>
           </div>
+        </div>
 
-          <div class="mt-2">
-            <button type="submit" class="btn btn--primary" id="btn-change-submit">
-              <i data-lucide="save"></i>
-              Guardar contraseña
-            </button>
-          </div>
+        <div class="mt-2">
+          <button type="submit" class="btn btn--primary" id="btn-change-submit">
+            <i data-lucide="save"></i>
+            Guardar contraseña
+          </button>
+        </div>
+        <div class="text-center mt-2">
+          <a href="/dashboard" class="btn btn--ghost">Cancelar</a>
+        </div>
 
-          <div class="text-center mt-2">
-            <a href="/dashboard" class="btn btn--ghost">Cancelar</a>
-          </div>
-
-        </form>
-      </div>
-
+      </form>
     </div>
-  </main>
+  </div>
 
-</div>
 {% endblock %}
 
-{% block scripts %}
+{% block page_scripts %}
 <script src="/static/js/profile.js"></script>
 {% endblock %}

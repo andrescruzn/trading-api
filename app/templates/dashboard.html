@@ -1,144 +1,54 @@
-{% extends "base.html" %}
+{% extends "base_app.html" %}
 
-{% block title %}Dashboard — Trading AI{% endblock %}
+{% block title %}Inicio — Trading AI{% endblock %}
+{% block nav_title %}Inicio{% endblock %}
 
-{% block body %}
-<div class="page">
+{% block content %}
 
-  <!-- Nav -->
-  <nav class="nav">
-    <a href="/dashboard" class="nav__brand">
-      <i data-lucide="trending-up" style="width:14px;height:14px;vertical-align:middle;margin-right:0.35rem;"></i>Trading AI
-    </a>
-    <div class="nav__actions">
-      <span id="nav-role-badge"></span>
-      <button class="btn btn--secondary btn--sm" id="btn-logout-nav" type="button">
-        <i data-lucide="log-out"></i>
-        Salir
-      </button>
+  <!-- Loading state (dashboard.js lo oculta al cargar) -->
+  <div id="dashboard-loading" class="trading-home-empty">
+    <span class="spinner" style="width:24px;height:24px;border-width:3px;"></span>
+  </div>
+
+  <!-- Error state -->
+  <div id="dashboard-error" class="hidden">
+    <div class="alert alert--error show">
+      No se pudo cargar tu información. <a href="/login">Volver al inicio</a>
     </div>
-  </nav>
+  </div>
 
-  <!-- Body -->
-  <main class="page__body">
-    <div class="container container--wide">
+  <!-- Content (dashboard.js lo muestra al cargar) -->
+  <div id="dashboard-content" class="hidden">
 
-      <!-- Loading state -->
-      <div id="dashboard-loading" class="text-center mt-3">
-        <span class="spinner"></span>
-        <p class="text-muted mt-1">Cargando...</p>
-      </div>
-
-      <!-- Content -->
-      <div id="dashboard-content" class="hidden">
-
-        <!-- Header -->
-        <div class="flex items-center justify-between mb-2" style="flex-wrap:wrap;gap:0.5rem;">
-          <div>
-            <h1 id="dash-greeting">Bienvenido</h1>
-            <p id="dash-email" class="text-muted mt-1" style="font-family:var(--font-mono);font-size:0.875rem;"></p>
-          </div>
-        </div>
-
-        <hr class="divider">
-
-        <!-- Info cards -->
-        <div class="dashboard-grid">
-          <div class="info-card">
-            <div class="info-card__label">Correo</div>
-            <div class="info-card__value" id="info-email">—</div>
-          </div>
-          <div class="info-card">
-            <div class="info-card__label">Rol</div>
-            <div class="info-card__value" id="info-role">—</div>
-          </div>
-          <div class="info-card">
-            <div class="info-card__label">Estado</div>
-            <div class="info-card__value" id="info-status">—</div>
-          </div>
-          <div class="info-card">
-            <div class="info-card__label">Último acceso</div>
-            <div class="info-card__value" id="info-last-login">—</div>
-          </div>
-        </div>
-
-        <hr class="divider">
-
-        <!-- Mercado -->
-        <h2 class="mb-2" style="display:flex;align-items:center;gap:0.5rem;">
-          <i data-lucide="bar-chart-2" style="color:var(--gold);width:18px;height:18px;"></i>
-          Mercado
-        </h2>
-        <div style="display:flex;flex-wrap:wrap;gap:0.75rem;margin-bottom:1.25rem;">
-          <a href="/market/symbols" class="btn btn--secondary" style="width:auto;padding:0.5rem 1.1rem;">
-            <i data-lucide="list"></i>
-            Símbolos
-          </a>
-          <a href="/market/candles" class="btn btn--secondary" style="width:auto;padding:0.5rem 1.1rem;">
-            <i data-lucide="candlestick-chart"></i>
-            Velas OHLCV
-          </a>
-        </div>
-
-        <!-- Panel admin -->
-        <div id="admin-panel" class="hidden">
-          <h2 class="mb-2" style="display:flex;align-items:center;gap:0.5rem;">
-            <i data-lucide="shield" style="color:var(--gold);width:18px;height:18px;"></i>
-            Administración
-          </h2>
-          <div style="display:flex;flex-wrap:wrap;gap:0.75rem;margin-bottom:1.25rem;">
-            <a href="/admin/exchanges" class="btn btn--secondary" style="width:auto;padding:0.5rem 1.1rem;">
-              <i data-lucide="building-2"></i>
-              Exchanges
-            </a>
-            <a href="/admin/symbols" class="btn btn--secondary" style="width:auto;padding:0.5rem 1.1rem;">
-              <i data-lucide="layers"></i>
-              Gestión símbolos
-            </a>
-            <a href="/admin/timeframes" class="btn btn--secondary" style="width:auto;padding:0.5rem 1.1rem;">
-              <i data-lucide="clock"></i>
-              Timeframes
-            </a>
-            <a href="/admin/candles/ingest" class="btn btn--secondary" style="width:auto;padding:0.5rem 1.1rem;">
-              <i data-lucide="download-cloud"></i>
-              Ingestar velas
-            </a>
-          </div>
-        </div>
-
-        <hr class="divider">
-
-        <!-- Cuenta -->
-        <h2 class="mb-2" style="display:flex;align-items:center;gap:0.5rem;">
-          <i data-lucide="user" style="color:var(--gold);width:18px;height:18px;"></i>
-          Cuenta
-        </h2>
-        <div style="display:flex;flex-wrap:wrap;gap:0.75rem;">
-          <a href="/profile" class="btn btn--secondary" style="width:auto;padding:0.5rem 1.1rem;">
-            <i data-lucide="lock"></i>
-            Cambiar contraseña
-          </a>
-          <button class="btn btn--primary" id="btn-logout-main" type="button" style="width:auto;padding:0.5rem 1.1rem;">
-            <i data-lucide="log-out"></i>
-            Cerrar sesión
-          </button>
-        </div>
-
-      </div><!-- /dashboard-content -->
-
-      <!-- Error state -->
-      <div id="dashboard-error" class="hidden">
-        <div class="alert alert--error show">
-          No se pudo cargar tu información. <a href="/login">Volver al inicio</a>
-        </div>
-      </div>
-
+    <!-- Saludo del usuario -->
+    <div style="margin-bottom:1.5rem;">
+      <h1 id="dash-greeting" style="font-size:1.375rem;margin-bottom:0.2rem;">Bienvenido</h1>
+      <p id="dash-email" class="text-muted" style="font-family:var(--font-mono);font-size:0.8125rem;"></p>
     </div>
-  </main>
 
-</div>
+    <!-- Trading home — placeholder vacío (futuras gráficas aquí) -->
+    <div style="border:1px solid var(--border-color);border-radius:var(--radius-lg);
+                min-height:420px;display:flex;flex-direction:column;align-items:center;
+                justify-content:center;gap:1rem;background:var(--bg-card);opacity:0.5;">
+      <i data-lucide="candlestick-chart" style="color:var(--text-muted);width:48px;height:48px;"></i>
+      <p style="color:var(--text-muted);font-size:0.875rem;text-align:center;max-width:280px;">
+        Panel de trading<br>
+        <span style="font-size:0.8rem;opacity:0.7;">Las gráficas y estadísticas aparecerán aquí próximamente</span>
+      </p>
+    </div>
+
+    <!-- Elementos ocultos requeridos por dashboard.js -->
+    <div style="display:none;" aria-hidden="true">
+      <span id="info-email"></span>
+      <span id="info-role"></span>
+      <span id="info-status"></span>
+      <span id="info-last-login"></span>
+    </div>
+
+  </div><!-- /dashboard-content -->
+
 {% endblock %}
 
-{% block scripts %}
+{% block page_scripts %}
 <script src="/static/js/dashboard.js"></script>
 {% endblock %}

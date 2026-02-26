@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block body %}
+<div class="app-shell">
+
+  <!-- ═══ Topbar ════════════════════════════════════════════════════════ -->
+  <header class="topbar">
+    <div class="topbar__left">
+      <a href="/dashboard" class="topbar__brand">
+        <i data-lucide="trending-up"></i>
+        Trading AI
+      </a>
+      <span class="topbar__sep">/</span>
+      <span class="topbar__page-title">{% block nav_title %}{% endblock %}</span>
+    </div>
+    <div class="topbar__right">
+      <span id="topbar-user" class="topbar__user"></span>
+      <span id="nav-role-badge" class="badge" style="font-size:0.65rem;"></span>
+    </div>
+  </header>
+
+  <div class="app-body">
+
+    <!-- ═══ Sidebar ═══════════════════════════════════════════════════════ -->
+    <aside class="sidebar">
+      <nav class="sidebar__nav">
+
+        <!-- Inicio -->
+        <div class="sidebar__section">
+          <a href="/dashboard" class="sidebar__link" data-path="/dashboard">
+            <i data-lucide="home"></i>
+            Inicio
+          </a>
+        </div>
+
+        <!-- Mercado -->
+        <div class="sidebar__section">
+          <div class="sidebar__section-title">Mercado</div>
+          <a href="/market/symbols" class="sidebar__link" data-path="/market/symbols">
+            <i data-lucide="list"></i>
+            Símbolos
+          </a>
+          <a href="/market/candles" class="sidebar__link" data-path="/market/candles">
+            <i data-lucide="candlestick-chart"></i>
+            Velas OHLCV
+          </a>
+        </div>
+
+        <!-- Administración (oculto hasta que sidebar.js confirme rol admin) -->
+        <div class="sidebar__section hidden" id="admin-panel">
+          <div class="sidebar__section-title">Administración</div>
+          <a href="/admin/exchanges" class="sidebar__link" data-path="/admin/exchanges">
+            <i data-lucide="building-2"></i>
+            Exchanges
+          </a>
+          <a href="/admin/symbols" class="sidebar__link" data-path="/admin/symbols">
+            <i data-lucide="layers"></i>
+            Símbolos
+          </a>
+          <a href="/admin/timeframes" class="sidebar__link" data-path="/admin/timeframes">
+            <i data-lucide="clock"></i>
+            Timeframes
+          </a>
+          <a href="/admin/candles/ingest" class="sidebar__link" data-path="/admin/candles/ingest">
+            <i data-lucide="download-cloud"></i>
+            Ingestar velas
+          </a>
+        </div>
+
+        <!-- Cuenta -->
+        <div class="sidebar__section">
+          <div class="sidebar__section-title">Cuenta</div>
+          <a href="/profile" class="sidebar__link" data-path="/profile">
+            <i data-lucide="lock"></i>
+            Contraseña
+          </a>
+        </div>
+
+      </nav>
+
+      <!-- Sidebar footer: usuario + logout -->
+      <div class="sidebar__footer">
+        <div id="sidebar-user-email" class="sidebar__user-email">—</div>
+        <div id="sidebar-user-role" class="sidebar__user-role"></div>
+        <button id="btn-logout-main" class="btn btn--ghost" type="button"
+                style="font-size:0.8rem;padding:0.3rem 0;gap:0.35rem;">
+          <i data-lucide="log-out" style="width:13px;height:13px;"></i>
+          Cerrar sesión
+        </button>
+      </div>
+    </aside>
+
+    <!-- ═══ Main Content ══════════════════════════════════════════════════ -->
+    <main class="main-content">
+      {% block content %}{% endblock %}
+    </main>
+
+  </div><!-- /app-body -->
+</div><!-- /app-shell -->
+
+<!-- Elemento oculto requerido por dashboard.js (enlaza evento click logout) -->
+<button id="btn-logout-nav" style="display:none;" type="button" aria-hidden="true"></button>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/sidebar.js"></script>
+{% block page_scripts %}{% endblock %}
+{% endblock %}

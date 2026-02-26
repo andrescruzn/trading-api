@@ -29,13 +29,13 @@ from app.common.config import settings
 # CSP por tipo de ruta
 # ======================================================================
 
-# Para páginas web (Jinja2): permite cargar recursos desde 'self'
+# Para páginas web (Jinja2): permite cargar recursos desde 'self' y CDNs usados
 _CSP_WEB = (
     "default-src 'self'; "
-    "script-src 'self'; "
-    "style-src 'self'; "
+    "script-src 'self' 'unsafe-inline' https://unpkg.com; "
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+    "font-src 'self' https://fonts.gstatic.com; "
     "img-src 'self' data:; "
-    "font-src 'self'; "
     "connect-src 'self'; "
     "frame-ancestors 'none'; "
     "base-uri 'self'; "

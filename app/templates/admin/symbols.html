@@ -1,173 +1,150 @@
-{% extends "base.html" %}
+{% extends "base_app.html" %}
 
 {% block title %}Símbolos — Admin — Trading AI{% endblock %}
+{% block nav_title %}Símbolos (Admin){% endblock %}
 
-{% block body %}
-<div class="page">
+{% block content %}
 
-  <nav class="nav">
-    <a href="/dashboard" class="nav__brand">
-      <i data-lucide="trending-up" style="width:14px;height:14px;vertical-align:middle;margin-right:0.35rem;"></i>Trading AI
-    </a>
-    <div class="nav__actions">
-      <span id="nav-role-badge"></span>
-      <a href="/admin/exchanges" class="btn btn--secondary btn--sm">
-        <i data-lucide="building-2"></i>
-        Exchanges
-      </a>
-      <a href="/dashboard" class="btn btn--secondary btn--sm">
-        <i data-lucide="layout-dashboard"></i>
-        Dashboard
-      </a>
+  <div class="page-header">
+    <div>
+      <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.2rem;">
+        <i data-lucide="layers" style="color:var(--gold);width:18px;height:18px;"></i>
+        <h1 style="font-size:1.25rem;">Símbolos</h1>
+      </div>
+      <p class="text-muted" style="font-size:0.8125rem;">Gestión de pares y activos por exchange</p>
     </div>
-  </nav>
+    <button class="btn btn--primary" id="btn-new-symbol" type="button"
+            style="width:auto;padding:0.55rem 1.1rem;">
+      <i data-lucide="plus"></i>
+      Nuevo símbolo
+    </button>
+  </div>
 
-  <main class="page__body">
-    <div class="container container--wide">
+  <!-- Filtros -->
+  <div style="display:flex;flex-wrap:wrap;gap:0.75rem;margin-bottom:1rem;">
+    <div class="form-group" style="margin:0;min-width:160px;">
+      <label for="filter-exchange">Exchange</label>
+      <select id="filter-exchange" class="input-select">
+        <option value="">Todos</option>
+      </select>
+    </div>
+    <div class="form-group" style="margin:0;min-width:140px;">
+      <label for="filter-asset-class">Clase</label>
+      <select id="filter-asset-class" class="input-select">
+        <option value="">Todas</option>
+        <option value="crypto">Crypto</option>
+        <option value="metal">Metal</option>
+        <option value="etf">ETF</option>
+        <option value="stock">Stock</option>
+        <option value="forex">Forex</option>
+      </select>
+    </div>
+    <div class="form-group" style="margin:0;min-width:120px;">
+      <label for="filter-active">Estado</label>
+      <select id="filter-active" class="input-select">
+        <option value="">Todos</option>
+        <option value="true">Activos</option>
+        <option value="false">Inactivos</option>
+      </select>
+    </div>
+    <div style="display:flex;align-items:flex-end;">
+      <button class="btn btn--secondary btn--sm" id="btn-filter" type="button">
+        <i data-lucide="filter"></i>
+        Filtrar
+      </button>
+    </div>
+  </div>
 
-      <div class="page-header">
-        <div>
-          <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.25rem;">
-            <i data-lucide="layers" style="color:var(--gold);width:20px;height:20px;"></i>
-            <h1>Símbolos</h1>
-          </div>
-          <p class="text-muted mt-1">Gestión de pares y activos por exchange</p>
-        </div>
-        <button class="btn btn--primary" id="btn-new-symbol" type="button" style="width:auto;padding:0.55rem 1.1rem;">
-          <i data-lucide="plus"></i>
-          Nuevo símbolo
+  <hr class="divider">
+
+  <div id="alert-msg" class="alert hidden"></div>
+
+  <div id="table-loading" class="text-center mt-3">
+    <span class="spinner"></span>
+    <p class="text-muted mt-1">Cargando...</p>
+  </div>
+
+  <div id="table-wrapper" class="hidden">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Exchange</th>
+          <th>Símbolo</th>
+          <th>Base</th>
+          <th>Quote</th>
+          <th>Clase</th>
+          <th>Estado</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody id="symbols-tbody"></tbody>
+    </table>
+    <div id="pagination" class="pagination hidden">
+      <span id="pag-info" class="pagination__info"></span>
+      <div class="pagination__btns">
+        <button class="btn btn--secondary btn--sm" id="pag-prev" type="button">
+          <i data-lucide="chevron-left"></i> Anterior
+        </button>
+        <button class="btn btn--secondary btn--sm" id="pag-next" type="button">
+          Siguiente <i data-lucide="chevron-right"></i>
         </button>
       </div>
-
-      <!-- Filtros -->
-      <div style="display:flex;flex-wrap:wrap;gap:0.75rem;margin-bottom:1rem;">
-        <div class="form-group" style="margin:0;min-width:160px;">
-          <label for="filter-exchange">Exchange</label>
-          <select id="filter-exchange" class="input-select">
-            <option value="">Todos</option>
-          </select>
-        </div>
-        <div class="form-group" style="margin:0;min-width:140px;">
-          <label for="filter-asset-class">Clase</label>
-          <select id="filter-asset-class" class="input-select">
-            <option value="">Todas</option>
-            <option value="crypto">Crypto</option>
-            <option value="metal">Metal</option>
-            <option value="etf">ETF</option>
-            <option value="stock">Stock</option>
-            <option value="forex">Forex</option>
-          </select>
-        </div>
-        <div class="form-group" style="margin:0;min-width:120px;">
-          <label for="filter-active">Estado</label>
-          <select id="filter-active" class="input-select">
-            <option value="">Todos</option>
-            <option value="true">Activos</option>
-            <option value="false">Inactivos</option>
-          </select>
-        </div>
-        <div style="display:flex;align-items:flex-end;">
-          <button class="btn btn--secondary btn--sm" id="btn-filter" type="button">
-            <i data-lucide="filter"></i>
-            Filtrar
-          </button>
-        </div>
-      </div>
-
-      <hr class="divider">
-
-      <div id="alert-msg" class="alert hidden"></div>
-
-      <div id="table-loading" class="text-center mt-3">
-        <span class="spinner"></span>
-        <p class="text-muted mt-1">Cargando...</p>
-      </div>
-
-      <div id="table-wrapper" class="hidden">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Exchange</th>
-              <th>Símbolo</th>
-              <th>Base</th>
-              <th>Quote</th>
-              <th>Clase</th>
-              <th>Estado</th>
-              <th>Acciones</th>
-            </tr>
-          </thead>
-          <tbody id="symbols-tbody"></tbody>
-        </table>
-        <div id="pagination" class="pagination hidden">
-          <span id="pag-info" class="pagination__info"></span>
-          <div class="pagination__btns">
-            <button class="btn btn--secondary btn--sm" id="pag-prev" type="button">
-              <i data-lucide="chevron-left"></i> Anterior
-            </button>
-            <button class="btn btn--secondary btn--sm" id="pag-next" type="button">
-              Siguiente <i data-lucide="chevron-right"></i>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Modal nuevo/editar símbolo -->
-      <div id="modal-symbol" class="modal hidden">
-        <div class="modal__backdrop"></div>
-        <div class="modal__box">
-          <h2 id="modal-title">Nuevo símbolo</h2>
-
-          <div id="group-exchange" class="form-group mt-2">
-            <label for="inp-exchange">Exchange</label>
-            <select id="inp-exchange" class="input-select"></select>
-          </div>
-          <div class="form-group">
-            <label for="inp-symbol">Símbolo</label>
-            <input type="text" id="inp-symbol" maxlength="64" placeholder="Ej: BTC/USDT">
-          </div>
-          <div class="form-group">
-            <label for="inp-asset-class">Clase de activo</label>
-            <select id="inp-asset-class" class="input-select">
-              <option value="crypto">Crypto</option>
-              <option value="metal">Metal</option>
-              <option value="etf">ETF</option>
-              <option value="stock">Stock</option>
-              <option value="forex">Forex</option>
-            </select>
-          </div>
-          <div style="display:flex;gap:0.75rem;">
-            <div class="form-group" style="flex:1">
-              <label for="inp-base">Base asset</label>
-              <input type="text" id="inp-base" maxlength="32" placeholder="Ej: BTC">
-            </div>
-            <div class="form-group" style="flex:1">
-              <label for="inp-quote">Quote asset</label>
-              <input type="text" id="inp-quote" maxlength="32" placeholder="Ej: USDT">
-            </div>
-          </div>
-          <div class="form-group" id="group-is-active" style="display:none;">
-            <label>
-              <input type="checkbox" id="inp-is-active"> Activo
-            </label>
-          </div>
-          <div id="modal-alert" class="alert hidden"></div>
-          <div style="display:flex;gap:0.75rem;margin-top:1rem;">
-            <button class="btn btn--primary" id="btn-save-symbol" type="button" style="width:auto;padding:0.55rem 1.1rem;">
-              <i data-lucide="save"></i>
-              Guardar
-            </button>
-            <button class="btn btn--secondary" id="btn-cancel-symbol" type="button" style="width:auto;padding:0.55rem 1.1rem;">Cancelar</button>
-          </div>
-        </div>
-      </div>
-
     </div>
-  </main>
+  </div>
 
-</div>
+  <!-- Modal -->
+  <div id="modal-symbol" class="modal hidden">
+    <div class="modal__backdrop"></div>
+    <div class="modal__box">
+      <h2 id="modal-title">Nuevo símbolo</h2>
+      <div id="group-exchange" class="form-group mt-2">
+        <label for="inp-exchange">Exchange</label>
+        <select id="inp-exchange" class="input-select"></select>
+      </div>
+      <div class="form-group">
+        <label for="inp-symbol">Símbolo</label>
+        <input type="text" id="inp-symbol" maxlength="64" placeholder="Ej: BTC/USDT">
+      </div>
+      <div class="form-group">
+        <label for="inp-asset-class">Clase de activo</label>
+        <select id="inp-asset-class" class="input-select">
+          <option value="crypto">Crypto</option>
+          <option value="metal">Metal</option>
+          <option value="etf">ETF</option>
+          <option value="stock">Stock</option>
+          <option value="forex">Forex</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:0.75rem;">
+        <div class="form-group" style="flex:1">
+          <label for="inp-base">Base asset</label>
+          <input type="text" id="inp-base" maxlength="32" placeholder="Ej: BTC">
+        </div>
+        <div class="form-group" style="flex:1">
+          <label for="inp-quote">Quote asset</label>
+          <input type="text" id="inp-quote" maxlength="32" placeholder="Ej: USDT">
+        </div>
+      </div>
+      <div class="form-group" id="group-is-active" style="display:none;">
+        <label>
+          <input type="checkbox" id="inp-is-active"> Activo
+        </label>
+      </div>
+      <div id="modal-alert" class="alert hidden"></div>
+      <div style="display:flex;gap:0.75rem;margin-top:1rem;">
+        <button class="btn btn--primary" id="btn-save-symbol" type="button"
+                style="width:auto;padding:0.55rem 1.1rem;">
+          <i data-lucide="save"></i> Guardar
+        </button>
+        <button class="btn btn--secondary" id="btn-cancel-symbol" type="button"
+                style="width:auto;padding:0.55rem 1.1rem;">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
 {% endblock %}
 
-{% block scripts %}
+{% block page_scripts %}
 <script src="/static/js/admin/symbols.js"></script>
 {% endblock %}

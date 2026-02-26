@@ -1,99 +1,76 @@
-{% extends "base.html" %}
+{% extends "base_app.html" %}
 
 {% block title %}Velas OHLCV — Trading AI{% endblock %}
+{% block nav_title %}Velas OHLCV{% endblock %}
 
-{% block body %}
-<div class="page">
+{% block content %}
 
-  <nav class="nav">
-    <a href="/dashboard" class="nav__brand">
-      <i data-lucide="trending-up" style="width:14px;height:14px;vertical-align:middle;margin-right:0.35rem;"></i>Trading AI
-    </a>
-    <div class="nav__actions">
-      <span id="nav-role-badge"></span>
-      <a href="/market/symbols" class="btn btn--secondary btn--sm">
-        <i data-lucide="list"></i>
-        Símbolos
-      </a>
-      <a href="/dashboard" class="btn btn--secondary btn--sm">
-        <i data-lucide="layout-dashboard"></i>
-        Dashboard
-      </a>
+  <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.2rem;">
+    <i data-lucide="candlestick-chart" style="color:var(--gold);width:18px;height:18px;"></i>
+    <h1 style="font-size:1.25rem;">Velas OHLCV</h1>
+  </div>
+  <p class="text-muted mt-1 mb-3" style="font-size:0.8125rem;">Historial de precios por símbolo y timeframe</p>
+
+  <!-- Selector -->
+  <div style="display:flex;flex-wrap:wrap;gap:0.75rem;margin-bottom:1rem;">
+    <div class="form-group" style="margin:0;min-width:180px;">
+      <label for="sel-symbol">Símbolo</label>
+      <select id="sel-symbol" class="input-select">
+        <option value="">Selecciona...</option>
+      </select>
     </div>
-  </nav>
-
-  <main class="page__body">
-    <div class="container container--wide">
-
-      <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.25rem;">
-        <i data-lucide="candlestick-chart" style="color:var(--gold);width:20px;height:20px;"></i>
-        <h1>Velas OHLCV</h1>
-      </div>
-      <p class="text-muted mt-1">Historial de precios por símbolo y timeframe</p>
-
-      <!-- Selector -->
-      <div style="display:flex;flex-wrap:wrap;gap:0.75rem;margin:1rem 0;">
-        <div class="form-group" style="margin:0;min-width:180px;">
-          <label for="sel-symbol">Símbolo</label>
-          <select id="sel-symbol" class="input-select">
-            <option value="">Selecciona...</option>
-          </select>
-        </div>
-        <div class="form-group" style="margin:0;min-width:130px;">
-          <label for="sel-timeframe">Timeframe</label>
-          <select id="sel-timeframe" class="input-select">
-            <option value="">Selecciona...</option>
-          </select>
-        </div>
-        <div class="form-group" style="margin:0;min-width:100px;">
-          <label for="sel-limit">Límite</label>
-          <select id="sel-limit" class="input-select">
-            <option value="50">50</option>
-            <option value="100" selected>100</option>
-            <option value="200">200</option>
-            <option value="500">500</option>
-          </select>
-        </div>
-        <div style="display:flex;align-items:flex-end;">
-          <button class="btn btn--primary btn--sm" id="btn-load" type="button" style="padding:0.55rem 1.1rem;">
-            <i data-lucide="search"></i>
-            Ver velas
-          </button>
-        </div>
-      </div>
-
-      <hr class="divider">
-
-      <div id="alert-msg" class="alert hidden"></div>
-
-      <div id="table-loading" class="hidden text-center mt-3">
-        <span class="spinner"></span>
-        <p class="text-muted mt-1">Cargando...</p>
-      </div>
-
-      <div id="table-wrapper" class="hidden">
-        <p class="text-muted mb-1" id="candles-summary" style="font-family:var(--font-mono);font-size:0.8125rem;"></p>
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>Timestamp (UTC)</th>
-              <th>Open</th>
-              <th>High</th>
-              <th>Low</th>
-              <th>Close</th>
-              <th>Volume</th>
-            </tr>
-          </thead>
-          <tbody id="candles-tbody"></tbody>
-        </table>
-      </div>
-
+    <div class="form-group" style="margin:0;min-width:130px;">
+      <label for="sel-timeframe">Timeframe</label>
+      <select id="sel-timeframe" class="input-select">
+        <option value="">Selecciona...</option>
+      </select>
     </div>
-  </main>
+    <div class="form-group" style="margin:0;min-width:100px;">
+      <label for="sel-limit">Límite</label>
+      <select id="sel-limit" class="input-select">
+        <option value="50">50</option>
+        <option value="100" selected>100</option>
+        <option value="200">200</option>
+        <option value="500">500</option>
+      </select>
+    </div>
+    <div style="display:flex;align-items:flex-end;">
+      <button class="btn btn--primary btn--sm" id="btn-load" type="button" style="padding:0.55rem 1.1rem;">
+        <i data-lucide="search"></i>
+        Ver velas
+      </button>
+    </div>
+  </div>
 
-</div>
+  <hr class="divider">
+
+  <div id="alert-msg" class="alert hidden"></div>
+
+  <div id="table-loading" class="hidden text-center mt-3">
+    <span class="spinner"></span>
+    <p class="text-muted mt-1">Cargando...</p>
+  </div>
+
+  <div id="table-wrapper" class="hidden">
+    <p id="candles-summary" class="text-muted mb-1"
+       style="font-family:var(--font-mono);font-size:0.8125rem;"></p>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Timestamp (UTC)</th>
+          <th>Open</th>
+          <th>High</th>
+          <th>Low</th>
+          <th>Close</th>
+          <th>Volume</th>
+        </tr>
+      </thead>
+      <tbody id="candles-tbody"></tbody>
+    </table>
+  </div>
+
 {% endblock %}
 
-{% block scripts %}
+{% block page_scripts %}
 <script src="/static/js/market/candles.js"></script>
 {% endblock %}

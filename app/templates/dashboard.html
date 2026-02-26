@@ -7,11 +7,14 @@
 
   <!-- Nav -->
   <nav class="nav">
-    <a href="/dashboard" class="nav__brand">Trading AI</a>
+    <a href="/dashboard" class="nav__brand">
+      <i data-lucide="trending-up" style="width:14px;height:14px;vertical-align:middle;margin-right:0.35rem;"></i>Trading AI
+    </a>
     <div class="nav__actions">
       <span id="nav-role-badge"></span>
-      <button class="btn btn--secondary" id="btn-logout-nav" type="button" style="width:auto;padding:0.45rem 1rem;">
-        Cerrar sesión
+      <button class="btn btn--secondary btn--sm" id="btn-logout-nav" type="button">
+        <i data-lucide="log-out"></i>
+        Salir
       </button>
     </div>
   </nav>
@@ -26,14 +29,14 @@
         <p class="text-muted mt-1">Cargando...</p>
       </div>
 
-      <!-- Content (hidden until data loads) -->
+      <!-- Content -->
       <div id="dashboard-content" class="hidden">
 
         <!-- Header -->
         <div class="flex items-center justify-between mb-2" style="flex-wrap:wrap;gap:0.5rem;">
           <div>
             <h1 id="dash-greeting">Bienvenido</h1>
-            <p id="dash-email" class="text-muted mt-1"></p>
+            <p id="dash-email" class="text-muted mt-1" style="font-family:var(--font-mono);font-size:0.875rem;"></p>
           </div>
         </div>
 
@@ -61,31 +64,43 @@
 
         <hr class="divider">
 
-        <!-- Acciones de market data (para todos) -->
-        <h2 class="mb-2">Mercado</h2>
+        <!-- Mercado -->
+        <h2 class="mb-2" style="display:flex;align-items:center;gap:0.5rem;">
+          <i data-lucide="bar-chart-2" style="color:var(--gold);width:18px;height:18px;"></i>
+          Mercado
+        </h2>
         <div style="display:flex;flex-wrap:wrap;gap:0.75rem;margin-bottom:1.25rem;">
-          <a href="/market/symbols" class="btn btn--secondary" style="width:auto;padding:0.6rem 1.25rem;">
+          <a href="/market/symbols" class="btn btn--secondary" style="width:auto;padding:0.5rem 1.1rem;">
+            <i data-lucide="list"></i>
             Símbolos
           </a>
-          <a href="/market/candles" class="btn btn--secondary" style="width:auto;padding:0.6rem 1.25rem;">
+          <a href="/market/candles" class="btn btn--secondary" style="width:auto;padding:0.5rem 1.1rem;">
+            <i data-lucide="candlestick-chart"></i>
             Velas OHLCV
           </a>
         </div>
 
-        <!-- Panel admin (solo visible para administradores) -->
+        <!-- Panel admin -->
         <div id="admin-panel" class="hidden">
-          <h2 class="mb-2">Administración</h2>
+          <h2 class="mb-2" style="display:flex;align-items:center;gap:0.5rem;">
+            <i data-lucide="shield" style="color:var(--gold);width:18px;height:18px;"></i>
+            Administración
+          </h2>
           <div style="display:flex;flex-wrap:wrap;gap:0.75rem;margin-bottom:1.25rem;">
-            <a href="/admin/exchanges" class="btn btn--secondary" style="width:auto;padding:0.6rem 1.25rem;">
+            <a href="/admin/exchanges" class="btn btn--secondary" style="width:auto;padding:0.5rem 1.1rem;">
+              <i data-lucide="building-2"></i>
               Exchanges
             </a>
-            <a href="/admin/symbols" class="btn btn--secondary" style="width:auto;padding:0.6rem 1.25rem;">
+            <a href="/admin/symbols" class="btn btn--secondary" style="width:auto;padding:0.5rem 1.1rem;">
+              <i data-lucide="layers"></i>
               Gestión símbolos
             </a>
-            <a href="/admin/timeframes" class="btn btn--secondary" style="width:auto;padding:0.6rem 1.25rem;">
+            <a href="/admin/timeframes" class="btn btn--secondary" style="width:auto;padding:0.5rem 1.1rem;">
+              <i data-lucide="clock"></i>
               Timeframes
             </a>
-            <a href="/admin/candles/ingest" class="btn btn--secondary" style="width:auto;padding:0.6rem 1.25rem;">
+            <a href="/admin/candles/ingest" class="btn btn--secondary" style="width:auto;padding:0.5rem 1.1rem;">
+              <i data-lucide="download-cloud"></i>
               Ingestar velas
             </a>
           </div>
@@ -93,13 +108,18 @@
 
         <hr class="divider">
 
-        <!-- Acciones de cuenta -->
-        <h2 class="mb-2">Cuenta</h2>
+        <!-- Cuenta -->
+        <h2 class="mb-2" style="display:flex;align-items:center;gap:0.5rem;">
+          <i data-lucide="user" style="color:var(--gold);width:18px;height:18px;"></i>
+          Cuenta
+        </h2>
         <div style="display:flex;flex-wrap:wrap;gap:0.75rem;">
-          <a href="/profile" class="btn btn--secondary" style="width:auto;padding:0.6rem 1.25rem;">
+          <a href="/profile" class="btn btn--secondary" style="width:auto;padding:0.5rem 1.1rem;">
+            <i data-lucide="lock"></i>
             Cambiar contraseña
           </a>
-          <button class="btn btn--primary" id="btn-logout-main" type="button" style="width:auto;padding:0.6rem 1.25rem;">
+          <button class="btn btn--primary" id="btn-logout-main" type="button" style="width:auto;padding:0.5rem 1.1rem;">
+            <i data-lucide="log-out"></i>
             Cerrar sesión
           </button>
         </div>

@@ -6,18 +6,29 @@
 <div class="page">
 
   <nav class="nav">
-    <a href="/dashboard" class="nav__brand">Trading AI</a>
+    <a href="/dashboard" class="nav__brand">
+      <i data-lucide="trending-up" style="width:14px;height:14px;vertical-align:middle;margin-right:0.35rem;"></i>Trading AI
+    </a>
     <div class="nav__actions">
       <span id="nav-role-badge"></span>
-      <a href="/market/candles" class="btn btn--secondary" style="width:auto;padding:0.45rem 1rem;">Ver velas</a>
-      <a href="/dashboard" class="btn btn--secondary" style="width:auto;padding:0.45rem 1rem;">Dashboard</a>
+      <a href="/market/candles" class="btn btn--secondary btn--sm">
+        <i data-lucide="candlestick-chart"></i>
+        Ver velas
+      </a>
+      <a href="/dashboard" class="btn btn--secondary btn--sm">
+        <i data-lucide="layout-dashboard"></i>
+        Dashboard
+      </a>
     </div>
   </nav>
 
   <main class="page__body">
     <div class="container container--wide">
 
-      <h1>Símbolos del Mercado</h1>
+      <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.25rem;">
+        <i data-lucide="list" style="color:var(--gold);width:20px;height:20px;"></i>
+        <h1>Símbolos del Mercado</h1>
+      </div>
       <p class="text-muted mt-1">Activos disponibles para operar</p>
 
       <!-- Filtros -->
@@ -40,7 +51,10 @@
           </select>
         </div>
         <div style="display:flex;align-items:flex-end;">
-          <button class="btn btn--secondary" id="btn-filter" type="button" style="width:auto;padding:0.55rem 1rem;">Filtrar</button>
+          <button class="btn btn--secondary btn--sm" id="btn-filter" type="button">
+            <i data-lucide="filter"></i>
+            Filtrar
+          </button>
         </div>
       </div>
 
@@ -70,8 +84,12 @@
         <div id="pagination" class="pagination hidden">
           <span id="pag-info" class="pagination__info"></span>
           <div class="pagination__btns">
-            <button class="btn btn--secondary btn--sm" id="pag-prev" type="button">← Anterior</button>
-            <button class="btn btn--secondary btn--sm" id="pag-next" type="button">Siguiente →</button>
+            <button class="btn btn--secondary btn--sm" id="pag-prev" type="button">
+              <i data-lucide="chevron-left"></i> Anterior
+            </button>
+            <button class="btn btn--secondary btn--sm" id="pag-next" type="button">
+              Siguiente <i data-lucide="chevron-right"></i>
+            </button>
           </div>
         </div>
       </div>

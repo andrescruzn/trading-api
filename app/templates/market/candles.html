@@ -6,18 +6,29 @@
 <div class="page">
 
   <nav class="nav">
-    <a href="/dashboard" class="nav__brand">Trading AI</a>
+    <a href="/dashboard" class="nav__brand">
+      <i data-lucide="trending-up" style="width:14px;height:14px;vertical-align:middle;margin-right:0.35rem;"></i>Trading AI
+    </a>
     <div class="nav__actions">
       <span id="nav-role-badge"></span>
-      <a href="/market/symbols" class="btn btn--secondary" style="width:auto;padding:0.45rem 1rem;">Símbolos</a>
-      <a href="/dashboard" class="btn btn--secondary" style="width:auto;padding:0.45rem 1rem;">Dashboard</a>
+      <a href="/market/symbols" class="btn btn--secondary btn--sm">
+        <i data-lucide="list"></i>
+        Símbolos
+      </a>
+      <a href="/dashboard" class="btn btn--secondary btn--sm">
+        <i data-lucide="layout-dashboard"></i>
+        Dashboard
+      </a>
     </div>
   </nav>
 
   <main class="page__body">
     <div class="container container--wide">
 
-      <h1>Velas OHLCV</h1>
+      <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.25rem;">
+        <i data-lucide="candlestick-chart" style="color:var(--gold);width:20px;height:20px;"></i>
+        <h1>Velas OHLCV</h1>
+      </div>
       <p class="text-muted mt-1">Historial de precios por símbolo y timeframe</p>
 
       <!-- Selector -->
@@ -44,7 +55,10 @@
           </select>
         </div>
         <div style="display:flex;align-items:flex-end;">
-          <button class="btn btn--primary" id="btn-load" type="button" style="width:auto;padding:0.55rem 1.25rem;">Ver velas</button>
+          <button class="btn btn--primary btn--sm" id="btn-load" type="button" style="padding:0.55rem 1.1rem;">
+            <i data-lucide="search"></i>
+            Ver velas
+          </button>
         </div>
       </div>
 
@@ -58,7 +72,7 @@
       </div>
 
       <div id="table-wrapper" class="hidden">
-        <p class="text-muted mb-1" id="candles-summary"></p>
+        <p class="text-muted mb-1" id="candles-summary" style="font-family:var(--font-mono);font-size:0.8125rem;"></p>
         <table class="data-table">
           <thead>
             <tr>

@@ -6,11 +6,19 @@
 <div class="page">
 
   <nav class="nav">
-    <a href="/dashboard" class="nav__brand">Trading AI</a>
+    <a href="/dashboard" class="nav__brand">
+      <i data-lucide="trending-up" style="width:14px;height:14px;vertical-align:middle;margin-right:0.35rem;"></i>Trading AI
+    </a>
     <div class="nav__actions">
       <span id="nav-role-badge"></span>
-      <a href="/admin/exchanges" class="btn btn--secondary" style="width:auto;padding:0.45rem 1rem;">Exchanges</a>
-      <a href="/dashboard" class="btn btn--secondary" style="width:auto;padding:0.45rem 1rem;">Dashboard</a>
+      <a href="/admin/exchanges" class="btn btn--secondary btn--sm">
+        <i data-lucide="building-2"></i>
+        Exchanges
+      </a>
+      <a href="/dashboard" class="btn btn--secondary btn--sm">
+        <i data-lucide="layout-dashboard"></i>
+        Dashboard
+      </a>
     </div>
   </nav>
 
@@ -19,11 +27,15 @@
 
       <div class="page-header">
         <div>
-          <h1>Símbolos</h1>
+          <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.25rem;">
+            <i data-lucide="layers" style="color:var(--gold);width:20px;height:20px;"></i>
+            <h1>Símbolos</h1>
+          </div>
           <p class="text-muted mt-1">Gestión de pares y activos por exchange</p>
         </div>
-        <button class="btn btn--primary" id="btn-new-symbol" type="button" style="width:auto;padding:0.6rem 1.25rem;">
-          + Nuevo símbolo
+        <button class="btn btn--primary" id="btn-new-symbol" type="button" style="width:auto;padding:0.55rem 1.1rem;">
+          <i data-lucide="plus"></i>
+          Nuevo símbolo
         </button>
       </div>
 
@@ -55,7 +67,10 @@
           </select>
         </div>
         <div style="display:flex;align-items:flex-end;">
-          <button class="btn btn--secondary" id="btn-filter" type="button" style="width:auto;padding:0.55rem 1rem;">Filtrar</button>
+          <button class="btn btn--secondary btn--sm" id="btn-filter" type="button">
+            <i data-lucide="filter"></i>
+            Filtrar
+          </button>
         </div>
       </div>
 
@@ -87,8 +102,12 @@
         <div id="pagination" class="pagination hidden">
           <span id="pag-info" class="pagination__info"></span>
           <div class="pagination__btns">
-            <button class="btn btn--secondary btn--sm" id="pag-prev" type="button">← Anterior</button>
-            <button class="btn btn--secondary btn--sm" id="pag-next" type="button">Siguiente →</button>
+            <button class="btn btn--secondary btn--sm" id="pag-prev" type="button">
+              <i data-lucide="chevron-left"></i> Anterior
+            </button>
+            <button class="btn btn--secondary btn--sm" id="pag-next" type="button">
+              Siguiente <i data-lucide="chevron-right"></i>
+            </button>
           </div>
         </div>
       </div>
@@ -134,8 +153,11 @@
           </div>
           <div id="modal-alert" class="alert hidden"></div>
           <div style="display:flex;gap:0.75rem;margin-top:1rem;">
-            <button class="btn btn--primary" id="btn-save-symbol" type="button" style="width:auto;padding:0.55rem 1.25rem;">Guardar</button>
-            <button class="btn btn--secondary" id="btn-cancel-symbol" type="button" style="width:auto;padding:0.55rem 1.25rem;">Cancelar</button>
+            <button class="btn btn--primary" id="btn-save-symbol" type="button" style="width:auto;padding:0.55rem 1.1rem;">
+              <i data-lucide="save"></i>
+              Guardar
+            </button>
+            <button class="btn btn--secondary" id="btn-cancel-symbol" type="button" style="width:auto;padding:0.55rem 1.1rem;">Cancelar</button>
           </div>
         </div>
       </div>

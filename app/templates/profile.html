@@ -7,9 +7,14 @@
 
   <!-- Nav -->
   <nav class="nav">
-    <a href="/dashboard" class="nav__brand">Trading AI</a>
+    <a href="/dashboard" class="nav__brand">
+      <i data-lucide="trending-up" style="width:14px;height:14px;vertical-align:middle;margin-right:0.35rem;"></i>Trading AI
+    </a>
     <div class="nav__actions">
-      <a href="/dashboard" class="btn btn--ghost" style="color:#555;">← Dashboard</a>
+      <a href="/dashboard" class="btn btn--ghost" style="font-size:0.8125rem;">
+        <i data-lucide="arrow-left" style="width:14px;height:14px;"></i>
+        Dashboard
+      </a>
     </div>
   </nav>
 
@@ -17,8 +22,11 @@
   <main class="page__body">
     <div class="container">
 
-      <h1 class="mb-1">Cambiar contraseña</h1>
-      <p class="text-muted mb-3">
+      <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.25rem;">
+        <i data-lucide="lock" style="color:var(--gold);width:20px;height:20px;"></i>
+        <h1>Cambiar contraseña</h1>
+      </div>
+      <p class="text-muted mb-3" style="font-size:0.875rem;">
         Al guardar, tu sesión actual se cerrará y deberás iniciar sesión de nuevo.
       </p>
 
@@ -76,6 +84,7 @@
 
           <div class="mt-2">
             <button type="submit" class="btn btn--primary" id="btn-change-submit">
+              <i data-lucide="save"></i>
               Guardar contraseña
             </button>
           </div>

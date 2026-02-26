@@ -6,10 +6,13 @@
 <div class="login-wrap">
   <div class="container">
 
-    <!-- Logo / Brand -->
+    <!-- Brand -->
     <div class="text-center mb-2">
-      <h1>Trading AI</h1>
-      <p class="text-muted mt-1">Plataforma de trading algorítmico</p>
+      <div style="display:inline-flex;align-items:center;gap:0.5rem;margin-bottom:0.5rem;">
+        <i data-lucide="trending-up" style="color:var(--gold);width:22px;height:22px;"></i>
+        <span style="font-family:var(--font-mono);font-size:1.1rem;font-weight:700;color:var(--gold);letter-spacing:0.1em;text-transform:uppercase;">Trading AI</span>
+      </div>
+      <p class="text-muted mt-1" style="font-size:0.8125rem;">Plataforma de trading algorítmico</p>
     </div>
 
     <div class="card mt-3">
@@ -71,6 +74,7 @@
               </div>
             </div>
             <button type="submit" class="btn btn--primary" id="btn-password-submit">
+              <i data-lucide="log-in"></i>
               Iniciar sesión
             </button>
           </form>
@@ -90,10 +94,11 @@
                 required
               >
             </div>
-            <p class="text-muted mb-2" style="font-size:0.85rem;">
+            <p class="text-muted mb-2" style="font-size:0.8125rem;">
               Te enviaremos un código de 6 dígitos a tu correo.
             </p>
             <button type="submit" class="btn btn--primary" id="btn-otp-request-submit">
+              <i data-lucide="mail"></i>
               Enviar código
             </button>
           </form>
@@ -108,9 +113,9 @@
       <div id="step-otp" class="hidden">
         <div class="text-center mb-2">
           <h2>Verifica tu código</h2>
-          <p class="text-muted mt-1">
+          <p class="text-muted mt-1" style="font-size:0.875rem;">
             Ingresa el código de 6 dígitos enviado a<br>
-            <strong id="otp-sent-email"></strong>
+            <strong id="otp-sent-email" style="color:var(--text-primary);font-family:var(--font-mono);"></strong>
           </p>
         </div>
 
@@ -133,13 +138,14 @@
             >
           </div>
 
-          <!-- Dev hint: muestra el OTP en development -->
+          <!-- Dev hint -->
           <div id="otp-dev-hint" class="alert alert--info" style="display:none; font-size:0.8rem;">
             <strong>DEV:</strong> Tu código OTP es: <strong id="otp-dev-code"></strong>
           </div>
 
           <div class="mt-2">
             <button type="submit" class="btn btn--primary" id="btn-otp-verify-submit">
+              <i data-lucide="shield-check"></i>
               Verificar código
             </button>
           </div>

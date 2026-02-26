@@ -702,7 +702,7 @@ input.input--error:focus { box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15); }
 }
 
 .sidebar__nav {
-  flex: 1;
+  /* flex: 1; */
   padding: 0.625rem 0;
 }
 

@@ -240,6 +240,7 @@ Los skills viven en `.claude/skills/`. Claude debe leerlos con la herramienta Re
 | API Standards | `.claude/skills/api-standards.md` | Antes de crear endpoints, responses, error codes |
 | Code Style | `.claude/skills/code-style.md` | Antes de escribir código Python (PEP8, type hints) |
 | Testing | `.claude/skills/testing.md` | Antes de escribir tests (pytest, mocking, coverage) |
+| Maquetación, frontend, diseño, CSS | `.claude/skills/frontend-design/SKILL.md` | Antes de maquetar algo nuevo, mejorar maquetación, cambiar CSS y/o añadir CSS |
 
 ---
 

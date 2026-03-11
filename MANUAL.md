@@ -73,6 +73,69 @@ Son cálculos matemáticos sobre las velas que ayudan a predecir hacia dónde va
 └──────────────────┴─────────────────────────────────────────────────────────┴─────────────────────────────────────────────┘
 
 ---
+1.5.1 ¿Qué es un Feature Set?
+
+Un Feature Set es una etiqueta que agrupa y versiona un conjunto de indicadores. No es una estrategia — es simplemente un nombre para identificar qué indicadores se calcularon y con qué configuración.
+
+Ejemplo del Feature Set que se crea en el sistema:
+
+  Nombre:  default
+  Versión: 1.0.0
+  Spec:    {"rsi": true, "ema": [20, 50, 200], "macd": true, "atr": true, "bbands": true}
+
+¿Qué significa el Spec (JSON)?
+
+  "rsi": true
+    → RSI (Relative Strength Index): mide si un activo está sobrecomprado o sobrevendido. Va de 0 a 100.
+      Por encima de 70 = sobrecomprado (puede bajar pronto).
+      Por debajo de 30 = sobrevendido (puede subir pronto).
+
+  "ema": [20, 50, 200]
+    → EMA (Exponential Moving Average): es el precio promedio de las últimas X velas. Muestra la tendencia.
+      EMA 20  = promedio de las últimas 20 velas  → tendencia de corto plazo
+      EMA 50  = promedio de las últimas 50 velas  → tendencia de mediano plazo
+      EMA 200 = promedio de las últimas 200 velas → tendencia de largo plazo
+      Cuando el precio está por encima de la EMA 200 → mercado alcista. Por debajo → bajista.
+
+  "macd": true
+    → MACD (Moving Average Convergence Divergence): mide la fuerza y dirección del movimiento.
+      Cuando la línea MACD cruza hacia arriba → señal de compra.
+      Cuando cruza hacia abajo → señal de venta.
+
+  "atr": true
+    → ATR (Average True Range): mide cuánto se mueve el precio en promedio por vela. Es la volatilidad.
+      Si BTC tiene ATR de 500, significa que en promedio se mueve $500 por vela.
+      Se usa principalmente para calcular el Stop Loss.
+
+  "bbands": true
+    → Bollinger Bands: tres líneas alrededor del precio (banda superior, media e inferior).
+      Cuando el precio toca la banda superior → está caro, posible caída.
+      Cuando toca la banda inferior → está barato, posible rebote.
+      Bandas angostas = mercado tranquilo. Bandas anchas = mercado volátil.
+
+En conjunto estos 5 indicadores le dan al agente de IA todo lo que necesita:
+  ¿El mercado sube o baja?          → EMA
+  ¿Está agotado el movimiento?      → RSI
+  ¿Hay momentum?                    → MACD
+  ¿Cuánto poner de Stop Loss?       → ATR
+  ¿El precio está en extremos?      → Bollinger Bands
+
+El Spec es solo documentación — es como una receta escrita que describe los ingredientes. El sistema
+siempre calcula todos los indicadores disponibles independientemente de lo que diga el Spec.
+
+¿Para qué sirve el Feature Set en la práctica?
+
+  1. Calculas los indicadores de BTC/USDT 1h y los guardas bajo el nombre "default v1.0.0"
+  2. En el futuro, el bot dice: "dame los indicadores de BTC/USDT 1h del feature set default"
+  3. El agente de IA recibe esos datos ya calculados y toma su decisión
+
+¿Necesitas crear varios Feature Sets?
+
+No necesariamente. Con "default v1.0.0" puedes operar todos los símbolos y timeframes.
+Solo crearías uno nuevo si en el futuro quisieras usar parámetros diferentes (ej: EMA de 10/30/100
+en vez de 20/50/200) sin borrar los datos del feature set original.
+
+---
 1.6 ¿Qué es el Régimen de Mercado?
 
 El mercado tiene dos estados fundamentales:

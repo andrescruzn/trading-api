@@ -30,3 +30,9 @@ from app.modules.market.infrastructure.exchange_model import ExchangeModel  # no
 from app.modules.market.infrastructure.symbol_model import SymbolModel  # noqa: F401
 from app.modules.market.infrastructure.timeframe_model import TimeframeModel  # noqa: F401
 from app.modules.market.infrastructure.candle_model import CandleModel  # noqa: F401
+
+# --------------------------------------------------------------
+# Features module models
+# --------------------------------------------------------------
+from app.modules.features.infrastructure.feature_set_model import FeatureSetModel  # noqa: F401
+from app.modules.features.infrastructure.candle_feature_model import CandleFeatureModel  # noqa: F401

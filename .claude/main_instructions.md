@@ -235,11 +235,13 @@ Los skills viven en `.claude/skills/`. Claude debe leerlos con la herramienta Re
 
 | Skill | Ruta | Cuándo leerlo |
 |---|---|---|
-| Backend Core | `.claude/skills/backend-core.md` | Antes de crear cualquier módulo o estructura |
-| Architecture | `.claude/skills/architecture.md` | Antes de decidir patrones, SOLID, sub-modularización |
-| API Standards | `.claude/skills/api-standards.md` | Antes de crear endpoints, responses, error codes |
-| Code Style | `.claude/skills/code-style.md` | Antes de escribir código Python (PEP8, type hints) |
-| Testing | `.claude/skills/testing.md` | Antes de escribir tests (pytest, mocking, coverage) |
+| Backend Core | `.claude/skills/backend-core/SKILL.md` | Antes de crear cualquier módulo o estructura |
+| Architecture | `.claude/skills/architecture/SKILL.md` | Antes de decidir patrones, SOLID, sub-modularización |
+| API Standards | `.claude/skills/api-standards/SKILL.md` | Antes de crear endpoints, responses, error codes |
+| Code Style | `.claude/skills/code-style/SKILL.md` | Antes de escribir código Python (PEP8, type hints) |
+| Testing | `.claude/skills/testing/SKILL.md` | Antes de escribir tests (pytest, mocking, coverage) |
+| Security | `.claude/skills/security/SKILL.md` | Antes de implementar auth, input handling, o código sensible |
+| Database | `.claude/skills/database/SKILL.md` | Antes de escribir SQL, seeds o migraciones |
 | Maquetación, frontend, diseño, CSS | `.claude/skills/frontend-design/SKILL.md` | Antes de maquetar algo nuevo, mejorar maquetación, cambiar CSS y/o añadir CSS |
 
 ---

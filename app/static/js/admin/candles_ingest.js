@@ -17,7 +17,7 @@ async function loadSymbols() {
     (json.data || []).forEach(function (s) {
       const opt = document.createElement('option');
       opt.value = s.id;
-      opt.textContent = s.symbol + ' (' + (s.asset_class || '') + ')';
+      opt.textContent = s.symbol + (s.exchange_name ? ' (' + s.exchange_name + ')' : '');
       sel.appendChild(opt);
     });
   } catch {}

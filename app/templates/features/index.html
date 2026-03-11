@@ -1,0 +1,89 @@
+{% extends "base_app.html" %}
+
+{% block title %}Indicadores Técnicos — Trading AI{% endblock %}
+{% block nav_title %}Indicadores{% endblock %}
+
+{% block content %}
+
+  <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.2rem;">
+    <i data-lucide="trending-up" style="color:var(--gold);width:18px;height:18px;"></i>
+    <h1 style="font-size:1.25rem;">Indicadores Técnicos</h1>
+  </div>
+  <p class="text-muted mt-1 mb-3" style="font-size:0.8125rem;">RSI · EMA · MACD · ATR · Bollinger Bands · Régimen de mercado</p>
+
+  <!-- Filtros -->
+  <div style="display:flex;flex-wrap:wrap;gap:0.75rem;margin-bottom:1rem;">
+    <div class="form-group" style="margin:0;min-width:180px;">
+      <label for="sel-symbol">Símbolo</label>
+      <select id="sel-symbol" class="input-select">
+        <option value="">Selecciona...</option>
+      </select>
+    </div>
+    <div class="form-group" style="margin:0;min-width:130px;">
+      <label for="sel-timeframe">Timeframe</label>
+      <select id="sel-timeframe" class="input-select">
+        <option value="">Selecciona...</option>
+      </select>
+    </div>
+    <div class="form-group" style="margin:0;min-width:180px;">
+      <label for="sel-feature-set">Feature Set</label>
+      <select id="sel-feature-set" class="input-select">
+        <option value="">Selecciona...</option>
+      </select>
+    </div>
+    <div class="form-group" style="margin:0;min-width:100px;">
+      <label for="sel-limit">Límite</label>
+      <select id="sel-limit" class="input-select">
+        <option value="50">50</option>
+        <option value="100" selected>100</option>
+        <option value="200">200</option>
+        <option value="500">500</option>
+      </select>
+    </div>
+    <div style="display:flex;align-items:flex-end;">
+      <button class="btn btn--primary btn--sm" id="btn-load" type="button" style="padding:0.55rem 1.1rem;">
+        <i data-lucide="search"></i>
+        Ver indicadores
+      </button>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <div id="alert-msg" class="alert hidden"></div>
+
+  <div id="table-loading" class="hidden text-center mt-3">
+    <span class="spinner"></span>
+    <p class="text-muted mt-1">Cargando...</p>
+  </div>
+
+  <div id="table-wrapper" class="hidden">
+    <p id="features-summary" class="text-muted mb-1" style="font-family:var(--font-mono);font-size:0.8125rem;"></p>
+    <div style="overflow-x:auto;">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Timestamp (UTC)</th>
+            <th>Régimen</th>
+            <th>RSI 14</th>
+            <th>EMA 20</th>
+            <th>EMA 50</th>
+            <th>EMA 200</th>
+            <th>MACD</th>
+            <th>MACD Señal</th>
+            <th>ATR 14</th>
+            <th>BB Upper</th>
+            <th>BB Lower</th>
+            <th>Vol Rel</th>
+          </tr>
+        </thead>
+        <tbody id="features-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+{% endblock %}
+
+{% block page_scripts %}
+<script src="/static/js/features/index.js"></script>
+{% endblock %}

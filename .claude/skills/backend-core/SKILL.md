@@ -1,3 +1,8 @@
+---
+name: backend-core
+description: Python/FastAPI backend standards for this project. Use before creating any module, service, repository, or REST endpoint. Covers project structure (Screaming Architecture), layer rules (domain→infra→service→rest), dependency direction, and prohibitions.
+---
+
 # Backend Core Standards (Python/FastAPI)
 
 ## 🎯 Role & Behavior
@@ -175,19 +180,6 @@ Antes de crear código reutilizable, Claude debe:
 
 ---
 
-## 📚 Active Skills
-
-Consultar skills específicos según tarea:
-
-- **`architecture.md`** - SOLID, DRY, Patterns, Sub-modularización
-- **`api-standards.md`** - REST conventions, ApiResponse, ErrorCodes
-- **`code-style.md`** - PEP8, Type Hints, Documentación
-- **`testing.md`** - Pytest, Coverage, Mocking
-
-Claude debe **leer el skill apropiado ANTES de generar código**.
-
----
-
 ## 🗂️ Carpetas a Ignorar
 
 Claude debe ignorar completamente (salvo indicación explícita):
@@ -202,5 +194,5 @@ logs/, *.log, .env, .coverage, .pytest_cache/, .mypy_cache/
 
 ---
 
-**Última actualización:** Febrero 2026  
+**Última actualización:** Febrero 2026
 **Tokens aproximados:** ~1,500

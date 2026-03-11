@@ -41,6 +41,7 @@ def _symbol_to_dict(s: Any) -> dict:
     return {
         "id": s.id,
         "exchange_id": s.exchange_id,
+        "exchange_name": getattr(s, "exchange_name", None),
         "symbol": s.symbol,
         "asset_class": s.asset_class,
         "base_asset": s.base_asset,

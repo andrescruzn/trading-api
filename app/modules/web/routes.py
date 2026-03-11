@@ -207,3 +207,31 @@ def admin_candles_ingest_page(request: Request):
     if int(identity.get("role_id", 0)) != int(settings.AUTH_ADMIN_ROLE_ID):
         return RedirectResponse(url="/dashboard", status_code=302)
     return templates.TemplateResponse(request, "admin/candles_ingest.html")
+
+
+# ======================================================================
+# GET /features  (M3 — Feature Engineering)
+# ======================================================================
+
+@web_router.get("/features", response_class=HTMLResponse, include_in_schema=False)
+def features_page(request: Request):
+    """Consulta de indicadores técnicos calculados. Cualquier usuario autenticado."""
+    identity = _get_identity_from_cookie(request)
+    if not identity:
+        return RedirectResponse(url="/login", status_code=302)
+    return templates.TemplateResponse(request, "features/index.html")
+
+
+# ======================================================================
+# GET /admin/feature-sets
+# ======================================================================
+
+@web_router.get("/admin/feature-sets", response_class=HTMLResponse, include_in_schema=False)
+def admin_feature_sets_page(request: Request):
+    """Gestión de feature sets y cálculo de indicadores. Solo admin."""
+    identity = _get_identity_from_cookie(request)
+    if not identity:
+        return RedirectResponse(url="/login", status_code=302)
+    if int(identity.get("role_id", 0)) != int(settings.AUTH_ADMIN_ROLE_ID):
+        return RedirectResponse(url="/dashboard", status_code=302)
+    return templates.TemplateResponse(request, "admin/feature_sets.html")

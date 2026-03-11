@@ -1,6 +1,12 @@
+---
+name: database
+description: Database conventions for this project (MySQL 8 via MAMP). Use before writing migrations, seeds, or raw SQL queries. Covers MySQL CLI commands, connection credentials, seed conventions, table naming rules, and SQLAlchemy-specific gotchas.
+---
+
 # Skill: Database — MySQL con MAMP
 
 ## Motor MySQL en este proyecto
+
 El proyecto usa **MAMP** como servidor MySQL local.
 El binario `mysql` NO está en el PATH del sistema — hay que usar la ruta completa.
 
@@ -9,16 +15,19 @@ El binario `mysql` NO está en el PATH del sistema — hay que usar la ruta comp
 ## Comandos MySQL
 
 ### Ejecutar un archivo SQL (seed, migración, etc.)
+
 ```bash
 /Applications/MAMP/Library/bin/mysql80/bin/mysql -u root -proot trading_ai < ruta/al/archivo.sql
 ```
 
 ### Conectarse al shell interactivo
+
 ```bash
 /Applications/MAMP/Library/bin/mysql80/bin/mysql -u root -proot trading_ai
 ```
 
 ### Ejecutar una query directa
+
 ```bash
 /Applications/MAMP/Library/bin/mysql80/bin/mysql -u root -proot trading_ai -e "SELECT COUNT(*) FROM candles;"
 ```
@@ -26,6 +35,7 @@ El binario `mysql` NO está en el PATH del sistema — hay que usar la ruta comp
 ---
 
 ## Credenciales locales
+
 | Campo    | Valor       |
 |----------|-------------|
 | Usuario  | `root`      |
@@ -39,13 +49,15 @@ El binario `mysql` NO está en el PATH del sistema — hay que usar la ruta comp
 ---
 
 ## Seeds disponibles
+
 | Archivo | Qué inserta |
 |---------|------------|
 | `seeds/seed_market_data.sql` | exchanges, timeframes, symbols (M2) |
 
 ### Crear un nuevo seed
+
 - Poner el archivo en `seeds/seed_<modulo>.sql`
-- Siempre usar `INSERT IGNORE` o `INSERT ... ON DUPLICATE KEY UPDATE` para que sea **idempotente** (se puede correr múltiples veces sin duplicar)
+- Siempre usar `INSERT IGNORE` o `INSERT ... ON DUPLICATE KEY UPDATE` para que sea **idempotente**
 - Usar subqueries para referencias por nombre en vez de hardcodear IDs:
   ```sql
   SELECT id FROM exchanges WHERE name = 'Binance'
@@ -55,6 +67,7 @@ El binario `mysql` NO está en el PATH del sistema — hay que usar la ruta comp
 ---
 
 ## Convenciones de tablas (resumen)
+
 - IDs: `BIGINT AUTO_INCREMENT` (excepto `timeframes.id` que es `SMALLINT`)
 - Timestamps: `TIMESTAMP(6)` siempre
 - Precios/cantidades financieras: `DECIMAL(30,12)`

@@ -26,7 +26,7 @@ async function loadSymbols() {
     (json.data || []).forEach(function (s) {
       const opt = document.createElement('option');
       opt.value = s.id;
-      opt.textContent = s.symbol;
+      opt.textContent = s.exchange_name ? s.symbol + ' (' + s.exchange_name + ')' : s.symbol;
       sel.appendChild(opt);
     });
   } catch {}

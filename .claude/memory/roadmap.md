@@ -40,17 +40,19 @@ Entregables:
 
 ---
 
-## 📌 Módulo 3 — Feature Engineering (SIGUIENTE)
+## ✅ Módulo 3 — Feature Engineering (COMPLETO)
 **Qué hace:** Calcular indicadores técnicos sobre las velas para alimentar el agente.
 
 Tablas: `candle_features`, `feature_sets`
 
 Entregables:
-- Cálculo de: RSI, ATR, EMA(20/50/200), MACD, Bollinger Bands, volumen relativo
-- Detección de régimen de mercado: tendencia (HH/HL) vs lateral (rango)
-- Feature sets: conjuntos de indicadores que usa cada estrategia
-- Endpoint: GET /features?symbol=BTC/USDT&timeframe=1h
-- Tests de cada calculador de indicador
+- ✅ CRUD feature sets (nombre, versión, spec JSON)
+- ✅ Cálculo de: RSI(14), ATR(14), EMA(20/50/200), MACD(12,26,9), Bollinger Bands(20,2), volumen relativo
+- ✅ Detección de régimen de mercado: trend_up / trend_down / sideways (HH/HL swing analysis)
+- ✅ POST /candle-features/calculate (admin) — bulk upsert
+- ✅ GET /candle-features — consulta con filtros
+- ✅ Web UI: /features (viewer) + /admin/feature-sets (gestión + calcular)
+- ✅ TA library: pandas-ta 0.4.71b0
 
 ---
 

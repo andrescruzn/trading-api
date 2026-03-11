@@ -35,6 +35,7 @@ class Symbol:
         lot_size: Optional[Decimal] = None,
         is_active: bool = True,
         created_at: Optional[datetime] = None,
+        exchange_name: Optional[str] = None,
     ):
         self.id = id
         self.exchange_id = exchange_id
@@ -46,6 +47,7 @@ class Symbol:
         self.lot_size = lot_size
         self.is_active = is_active
         self.created_at = created_at
+        self.exchange_name = exchange_name
 
     def activate(self) -> None:
         """Activa el símbolo para operar."""

@@ -161,9 +161,9 @@ Sin `role_id` en el JWT, `_get_identity_from_cookie()` retorna `role_id=0` y tod
 
 ---
 
-## 📌 Módulo 3 — Feature Engineering (SIGUIENTE)
+## ✅ Módulo 3 — Feature Engineering (COMPLETO)
 
-### Tablas que usará
+### Tablas en BD
 | Tabla | Acción | Nota |
 |-------|--------|------|
 | `candle_features` | WRITE | Features calculadas por vela + feature_set |
@@ -174,6 +174,70 @@ Sin `role_id` en el JWT, `_get_identity_from_cookie()` retorna `role_id=0` y tod
 
 ### Tablas que NO debe tocar
 - `exchanges`, `users`, `roles`, `http_audit_*`
+
+### Modelos ORM (`app/modules/features/infrastructure/`)
+| Archivo | Clase | Tabla |
+|---------|-------|-------|
+| `feature_set_model.py` | `FeatureSetModel` | `feature_sets` |
+| `candle_feature_model.py` | `CandleFeatureModel` | `candle_features` |
+
+Registrados en: `app/extensions/db/models_registry.py`
+
+### Repositorios (`app/modules/features/`)
+| Domain (interfaz) | Infrastructure (impl) |
+|-------------------|-----------------------|
+| `domain/feature_set_repository.py` | `infrastructure/feature_set_repository_impl.py` |
+| `domain/candle_feature_repository.py` | `infrastructure/candle_feature_repository_impl.py` |
+
+### Servicios (`app/modules/features/services/`)
+| Subdir | Servicios |
+|--------|-----------|
+| `feature_sets/` | `list_feature_sets_service.py`, `create_feature_set_service.py` |
+| `calculations/` | `calculate_features_service.py` — RSI/EMA/MACD/ATR/BB/vol_rel + régimen |
+| `candle_features/` | `list_candle_features_service.py` |
+
+Provider: `app/modules/features/providers/feature_provider.py` → `FeatureServiceFactory`
+- Borrow repos de market: `SqlAlchemyCandleRepository`, `SqlAlchemySymbolRepository`, `SqlAlchemyTimeframeRepository`
+- TA library: `pandas-ta 0.4.71b0` + `pandas 3.0.1`
+- `_MIN_CANDLES = 220` (para EMA200 confiable)
+
+### Endpoints REST
+| Método | Ruta | Auth | Nota |
+|--------|------|------|------|
+| GET | `/feature-sets` | token | Lista todos los feature sets |
+| POST | `/feature-sets` | admin | Crea feature set (spec JSON) |
+| GET | `/candle-features` | token | Params: symbol_id, timeframe_id, feature_set_id, from_ts, to_ts, limit |
+| POST | `/candle-features/calculate` | admin | Calcula indicadores bulk (RSI/EMA/MACD/ATR/BB/vol_rel/regime) |
+
+Routers registrados en `app/app_factory.py`:
+```python
+from app.modules.features.rest import feature_sets_router, candle_features_router
+```
+
+### Páginas web
+| URL | Template | JS |
+|-----|----------|----|
+| `/features` | `templates/features/index.html` | `static/js/features/index.js` |
+| `/admin/feature-sets` | `templates/admin/feature_sets.html` | `static/js/admin/feature_sets.js` |
+
+### Campos del JSON features (candle_features.features)
+```json
+{
+  "regime": "trend_up|trend_down|sideways",
+  "rsi_14": float,
+  "ema_20": float, "ema_50": float, "ema_200": float,
+  "macd": float, "macd_signal": float, "macd_hist": float,
+  "atr_14": float,
+  "bb_upper": float, "bb_mid": float, "bb_lower": float,
+  "vol_rel": float
+}
+```
+
+### Detección de régimen
+- `trend_up`: último swing tiene HH y HL (Higher High + Higher Low)
+- `trend_down`: último swing tiene LH y LL (Lower High + Lower Low)
+- `sideways`: cualquier otro patrón
+- Mínimo 10 velas para detectar swings
 
 ---
 

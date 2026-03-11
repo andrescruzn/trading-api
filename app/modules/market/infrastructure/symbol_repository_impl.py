@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 
 from app.modules.market.domain.symbol_entity import Symbol
 from app.modules.market.domain.symbol_repository import SymbolRepository
+from app.modules.market.infrastructure.exchange_model import ExchangeModel
 from app.modules.market.infrastructure.symbol_model import SymbolModel
 
 
@@ -29,7 +30,7 @@ class SqlAlchemySymbolRepository(SymbolRepository):
     # ==================================================================
 
     @staticmethod
-    def _to_domain(model: SymbolModel) -> Symbol:
+    def _to_domain(model: SymbolModel, exchange_name: str | None = None) -> Symbol:
         return Symbol(
             id=model.id,
             exchange_id=model.exchange_id,
@@ -41,6 +42,7 @@ class SqlAlchemySymbolRepository(SymbolRepository):
             lot_size=Decimal(str(model.lot_size)) if model.lot_size is not None else None,
             is_active=bool(model.is_active),
             created_at=model.created_at,
+            exchange_name=exchange_name,
         )
 
     @staticmethod
@@ -82,7 +84,10 @@ class SqlAlchemySymbolRepository(SymbolRepository):
         asset_class: Optional[str] = None,
         is_active: Optional[bool] = None,
     ) -> list[Symbol]:
-        query = self._session.query(SymbolModel)
+        query = (
+            self._session.query(SymbolModel, ExchangeModel.name)
+            .join(ExchangeModel, SymbolModel.exchange_id == ExchangeModel.id)
+        )
         if exchange_id is not None:
             query = query.filter(SymbolModel.exchange_id == exchange_id)
         if asset_class is not None:
@@ -90,7 +95,7 @@ class SqlAlchemySymbolRepository(SymbolRepository):
         if is_active is not None:
             query = query.filter(SymbolModel.is_active == is_active)
         query = query.order_by(SymbolModel.symbol)
-        return [self._to_domain(m) for m in query.all()]
+        return [self._to_domain(m, ex_name) for m, ex_name in query.all()]
 
     def create(self, symbol: Symbol) -> Symbol:
         model = SymbolModel()

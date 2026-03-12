@@ -30,6 +30,7 @@ from app.modules.market.rest import (
     candles_router,
 )
 from app.modules.features.rest import feature_sets_router, candle_features_router
+from app.modules.accounts.rest import accounts_router, balances_router
 from app.modules.users.rest import auth_router
 from app.modules.web import web_router
 
@@ -88,6 +89,10 @@ def create_app() -> FastAPI:
     # Feature Engineering
     app.include_router(feature_sets_router)
     app.include_router(candle_features_router)
+
+    # Accounts & Portfolio
+    app.include_router(accounts_router)
+    app.include_router(balances_router)
 
     app.include_router(web_router)      # Páginas HTML (siempre al final)
 

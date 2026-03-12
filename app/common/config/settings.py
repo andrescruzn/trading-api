@@ -195,3 +195,21 @@ class Settings:
         # En producción puede ser ".tudominio.com" para subdominios
         cookie_domain_raw = os.getenv("AUTH_COOKIE_DOMAIN", "").strip()
         self.AUTH_COOKIE_DOMAIN: str | None = cookie_domain_raw if cookie_domain_raw else None
+
+        # --------------------------------------------------------------
+        # Credentials Cipher
+        # --------------------------------------------------------------
+        # PROPÓSITO:
+        # - Clave Fernet (base64 de 32 bytes) para cifrar credenciales
+        #   de API (api_key + api_secret) de cuentas de exchange.
+        #
+        # GENERAR UNA CLAVE:
+        #   python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+        #
+        # SEGURIDAD:
+        # - En producción DEBE estar configurada en el .env.
+        # - En desarrollo se usa una clave fija de fallback (insegura).
+        # --------------------------------------------------------------
+        self.CREDENTIALS_SECRET_KEY: str | None = (
+            os.getenv("CREDENTIALS_SECRET_KEY", "").strip() or None
+        )

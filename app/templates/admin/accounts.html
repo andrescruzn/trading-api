@@ -1,0 +1,55 @@
+{% extends "base_app.html" %}
+
+{% block title %}Cuentas — Admin — Trading AI{% endblock %}
+{% block nav_title %}Cuentas (Admin){% endblock %}
+
+{% block content %}
+
+  <div class="page-header">
+    <div>
+      <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.2rem;">
+        <i data-lucide="shield" style="color:var(--gold);width:18px;height:18px;"></i>
+        <h1 style="font-size:1.25rem;">Todas las Cuentas</h1>
+      </div>
+      <p class="text-muted" style="font-size:0.8125rem;">Vista administrador — todas las cuentas del sistema</p>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <div id="alert-msg" class="alert hidden"></div>
+
+  <div id="table-loading" class="text-center mt-3">
+    <span class="spinner"></span>
+    <p class="text-muted mt-1">Cargando...</p>
+  </div>
+
+  <div id="table-wrapper" class="hidden">
+    <table class="data-table" id="accounts-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Usuario ID</th>
+          <th>Nombre</th>
+          <th>Exchange</th>
+          <th>Modo</th>
+          <th>Moneda</th>
+          <th>Estado</th>
+          <th>Credenciales</th>
+          <th>Creada</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody id="accounts-tbody"></tbody>
+    </table>
+  </div>
+
+  <div id="empty-state" class="text-center mt-4 hidden">
+    <p class="text-muted">No hay cuentas registradas en el sistema.</p>
+  </div>
+
+{% endblock %}
+
+{% block scripts %}
+  <script src="/static/js/admin/accounts.js"></script>
+{% endblock %}

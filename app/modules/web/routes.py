@@ -235,3 +235,27 @@ def admin_feature_sets_page(request: Request):
     if int(identity.get("role_id", 0)) != int(settings.AUTH_ADMIN_ROLE_ID):
         return RedirectResponse(url="/dashboard", status_code=302)
     return templates.TemplateResponse(request, "admin/feature_sets.html")
+
+
+# ======================================================================
+# Módulo 4 — Accounts & Portfolio
+# ======================================================================
+
+@web_router.get("/accounts", response_class=HTMLResponse, include_in_schema=False)
+def accounts_page(request: Request):
+    """Panel de cuentas de trading del usuario."""
+    identity = _get_identity_from_cookie(request)
+    if not identity:
+        return RedirectResponse(url="/login", status_code=302)
+    return templates.TemplateResponse(request, "accounts/index.html")
+
+
+@web_router.get("/admin/accounts", response_class=HTMLResponse, include_in_schema=False)
+def admin_accounts_page(request: Request):
+    """Vista admin de todas las cuentas del sistema."""
+    identity = _get_identity_from_cookie(request)
+    if not identity:
+        return RedirectResponse(url="/login", status_code=302)
+    if int(identity.get("role_id", 0)) != int(settings.AUTH_ADMIN_ROLE_ID):
+        return RedirectResponse(url="/dashboard", status_code=302)
+    return templates.TemplateResponse(request, "admin/accounts.html")

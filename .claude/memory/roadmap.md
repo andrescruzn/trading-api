@@ -53,6 +53,7 @@ Entregables:
 - ✅ GET /candle-features — consulta con filtros
 - ✅ Web UI: /features (viewer) + /admin/feature-sets (gestión + calcular)
 - ✅ TA library: pandas-ta 0.4.71b0
+- Test unitarios
 
 ---
 
@@ -67,6 +68,7 @@ Entregables:
 - Snapshot periódico del portafolio total (equity curve)
 - Endpoint: GET /accounts/:id/balance
 - Web UI: panel de cuentas y capital
+- Test unitarios
 
 ---
 
@@ -81,6 +83,7 @@ Entregables:
 - Datasets de backtesting (historial de velas + features etiquetados)
 - Validación: una estrategia de tendencia no aplica en régimen lateral (y viceversa)
 - Web UI: editor de estrategias
+- Test unitarios
 
 ---
 
@@ -160,6 +163,7 @@ Entregables:
 - Canales: email (SMTP ya configurado), webhook (URL externa)
 - Historial de alertas disparadas
 - Web UI: gestión de alertas
+- Test unitarios
 
 ---
 

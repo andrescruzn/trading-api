@@ -57,7 +57,7 @@ def _is_web_route(path: str) -> bool:
     web_prefixes = (
         "/login", "/dashboard", "/profile",
         "/static/",
-        "/market/", "/admin/", "/features", "/accounts",
+        "/market/", "/admin/", "/features", "/portfolio",
     )
     return any(path.startswith(p) for p in web_prefixes) or path == "/"
 

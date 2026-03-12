@@ -197,7 +197,9 @@ function openBalancesModal(accountId, accountName) {
   document.getElementById('balances-account-name').textContent = accountName;
   document.getElementById('inp-filter-asset').value = '';
   document.getElementById('balances-tbody').innerHTML = '';
-  document.getElementById('balances-empty').classList.add('hidden');
+  const emptyEl = document.getElementById('balances-empty');
+  emptyEl.textContent = 'Sin registros de balance para esta cuenta.';
+  emptyEl.classList.add('hidden');
   document.getElementById('balances-table-wrapper').classList.add('hidden');
   document.getElementById('modal-balances').classList.remove('hidden');
   loadBalances();
@@ -213,25 +215,37 @@ async function loadBalances() {
   wrapper.classList.add('hidden');
   empty.classList.add('hidden');
 
-  const data = await fetchBalances(currentAccountId, asset);
-  loading.classList.add('hidden');
+  try {
+    const data = await fetchBalances(currentAccountId, asset);
+    loading.classList.add('hidden');
 
-  const items = data.data?.items || [];
-  if (!items.length) {
+    if (data.errorCode >= 400) {
+      empty.textContent = data.msg || 'Error al cargar balances.';
+      empty.classList.remove('hidden');
+      return;
+    }
+
+    const items = data.data || [];
+    if (!items.length) {
+      empty.classList.remove('hidden');
+      return;
+    }
+
+    wrapper.classList.remove('hidden');
+    document.getElementById('balances-tbody').innerHTML = items.map(b => `
+      <tr>
+        <td><strong>${b.asset}</strong></td>
+        <td>${parseFloat(b.free).toFixed(8)}</td>
+        <td>${parseFloat(b.locked).toFixed(8)}</td>
+        <td>${parseFloat(b.total).toFixed(8)}</td>
+        <td style="font-size:0.75rem;color:var(--text-muted);">${b.ts ? new Date(b.ts).toLocaleString('es-ES') : '—'}</td>
+      </tr>
+    `).join('');
+  } catch {
+    loading.classList.add('hidden');
+    empty.textContent = 'Error de conexión al cargar balances.';
     empty.classList.remove('hidden');
-    return;
   }
-
-  wrapper.classList.remove('hidden');
-  document.getElementById('balances-tbody').innerHTML = items.map(b => `
-    <tr>
-      <td><strong>${b.asset}</strong></td>
-      <td>${parseFloat(b.free).toFixed(8)}</td>
-      <td>${parseFloat(b.locked).toFixed(8)}</td>
-      <td>${parseFloat(b.total).toFixed(8)}</td>
-      <td style="font-size:0.75rem;color:var(--text-muted);">${b.ts ? new Date(b.ts).toLocaleString('es-ES') : '—'}</td>
-    </tr>
-  `).join('');
 }
 
 // ======================================================================
@@ -239,6 +253,10 @@ async function loadBalances() {
 // ======================================================================
 
 function openRecordBalanceModal() {
+  if (!currentAccountId) {
+    showAlert('Error: cuenta no seleccionada.', 'error');
+    return;
+  }
   document.getElementById('rb-account-id').value = currentAccountId;
   document.getElementById('rb-asset').value = document.getElementById('inp-filter-asset').value.trim();
   document.getElementById('rb-free').value = '0';
@@ -280,7 +298,7 @@ async function handleAccountSubmit(e) {
   spinner.classList.add('hidden');
   btnText.style.opacity = '1';
 
-  if (data.errorCode !== 0) {
+  if (data.errorCode >= 400) {
     const errEl = document.getElementById('form-error');
     errEl.textContent = data.msg || 'Error inesperado.';
     errEl.classList.remove('hidden');
@@ -295,6 +313,12 @@ async function handleAccountSubmit(e) {
 async function handleRecordBalanceSubmit(e) {
   e.preventDefault();
   const accountId = parseInt(document.getElementById('rb-account-id').value);
+  if (isNaN(accountId) || accountId <= 0) {
+    const errEl = document.getElementById('rb-error');
+    errEl.textContent = 'Error: cuenta inválida. Intenta recargar.';
+    errEl.classList.remove('hidden');
+    return;
+  }
   const body = {
     asset:  document.getElementById('rb-asset').value.trim(),
     free:   parseFloat(document.getElementById('rb-free').value) || 0,
@@ -302,7 +326,7 @@ async function handleRecordBalanceSubmit(e) {
   };
 
   const data = await recordBalance(accountId, body);
-  if (data.errorCode !== 0) {
+  if (data.errorCode >= 400) {
     const errEl = document.getElementById('rb-error');
     errEl.textContent = data.msg || 'Error al registrar.';
     errEl.classList.remove('hidden');
@@ -324,10 +348,10 @@ async function loadPage() {
   document.getElementById('empty-state').classList.add('hidden');
 
   const [accountsData, exchangesData] = await Promise.all([fetchAccounts(), fetchExchanges()]);
-  exchanges = exchangesData.data?.items || [];
+  exchanges = exchangesData.data || [];
   populateExchangeSelect();
 
-  const accounts = accountsData.data?.items || [];
+  const accounts = accountsData.data || [];
   renderAccounts(accounts);
 }
 
@@ -336,7 +360,12 @@ async function loadPage() {
 // ======================================================================
 
 document.addEventListener('DOMContentLoaded', async () => {
-  await loadPage();
+  try {
+    await loadPage();
+  } catch {
+    showAlert('Error al cargar las cuentas. Intente recargar la página.', 'error');
+    return;
+  }
 
   // Abrir modal nueva cuenta
   document.getElementById('btn-new-account').addEventListener('click', openCreateModal);
@@ -346,6 +375,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('btn-modal-close').addEventListener('click', closeAccountModal);
   document.getElementById('btn-cancel').addEventListener('click', closeAccountModal);
   document.getElementById('btn-balances-close').addEventListener('click', () => {
+    document.getElementById('modal-balances').classList.add('hidden');
+  });
+  document.getElementById('btn-balances-cancel').addEventListener('click', () => {
     document.getElementById('modal-balances').classList.add('hidden');
   });
   document.getElementById('btn-rb-close').addEventListener('click', () => {
@@ -370,9 +402,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (btnEdit) {
       const id = parseInt(btnEdit.dataset.id);
-      const res = await fetch(`/accounts/${id}`);
-      const data = await res.json();
-      if (data.errorCode === 0) openEditModal(data.data);
+      try {
+        const res = await fetch(`/accounts/${id}`);
+        const data = await res.json();
+        if (data.errorCode < 400) {
+          openEditModal(data.data);
+        } else {
+          showAlert(data.msg || 'Error al cargar la cuenta.', 'error');
+        }
+      } catch {
+        showAlert('Error de conexión al cargar la cuenta.', 'error');
+      }
     }
 
     if (btnBalances) {

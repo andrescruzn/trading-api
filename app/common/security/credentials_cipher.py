@@ -28,7 +28,7 @@ from cryptography.fernet import Fernet
 
 
 # Clave de desarrollo (solo para entornos locales sin .env configurado)
-_DEV_KEY = b"ZmRldmtleS1mb3ItZGV2LW9ubHktMzItY2hhcnM="
+_DEV_KEY = b"QwM6cMsRGoJCjmK2nlqZuH3Or-ftjSx4jIfi-jdHahM="
 
 
 class CredentialsCipher:

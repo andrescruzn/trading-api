@@ -33,14 +33,14 @@ async function loadAccounts() {
 
     loading.classList.add('hidden');
 
-    if (data.errorCode !== 0) {
+    if (data.errorCode >= 400) {
       alertEl.textContent = data.msg || 'Error al cargar cuentas.';
       alertEl.className = 'alert alert--error';
       alertEl.classList.remove('hidden');
       return;
     }
 
-    const accounts = data.data?.items || [];
+    const accounts = data.data || [];
     if (!accounts.length) {
       empty.classList.remove('hidden');
       return;
@@ -62,7 +62,7 @@ async function loadAccounts() {
         <td style="text-align:center;">${credIcon}</td>
         <td>${fmtDate(a.created_at)}</td>
         <td>
-          <a href="/accounts" style="font-size:0.75rem;color:var(--gold);">Ver detalle</a>
+          <a href="/portfolio" style="font-size:0.75rem;color:var(--gold);">Ver detalle</a>
         </td>
       </tr>`;
     }).join('');

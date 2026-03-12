@@ -53,21 +53,23 @@ Entregables:
 - ✅ GET /candle-features — consulta con filtros
 - ✅ Web UI: /features (viewer) + /admin/feature-sets (gestión + calcular)
 - ✅ TA library: pandas-ta 0.4.71b0
-- Test unitarios
+- ✅ Test unitarios (18 tests)
 
 ---
 
-## 📌 Módulo 4 — Accounts & Portfolio
+## ✅ Módulo 4 — Accounts & Portfolio (COMPLETO)
 **Qué hace:** Gestionar cuentas de exchange y capital disponible del trader.
 
-Tablas: `accounts`, `account_balances`, `portfolio_snapshots`
+Tablas: `accounts`, `account_balances` (`portfolio_snapshots` → Módulo 7, requiere bot_id)
 
 Entregables:
-- CRUD cuentas (exchange + API key cifrada + API secret cifrado)
-- Registro de balances por moneda (USDT, BTC, etc.)
-- Snapshot periódico del portafolio total (equity curve)
-- Endpoint: GET /accounts/:id/balance
-- Web UI: panel de cuentas y capital
+- ✅ CRUD cuentas (exchange + API key/secret cifrada con Fernet → `meta['enc_creds']`)
+- ✅ Registro de balances por moneda (USDT, BTC, etc.) — snapshots inmutables
+- ✅ Equity curve vía time series de `account_balances`
+- ✅ Endpoints: GET/POST `/accounts`, GET/PUT `/accounts/{id}`, GET/POST `/accounts/{id}/balances`
+- ✅ Cifrado simétrico: `CredentialsCipher` (Fernet, `CREDENTIALS_SECRET_KEY`)
+- ✅ Web UI: `/accounts` (panel usuario) + `/admin/accounts` (vista admin)
+- ✅ 36 tests unitarios pasando (list/get/create/update accounts + list/record balances)
 - Test unitarios
 
 ---

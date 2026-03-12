@@ -241,7 +241,7 @@ def admin_feature_sets_page(request: Request):
 # Módulo 4 — Accounts & Portfolio
 # ======================================================================
 
-@web_router.get("/accounts", response_class=HTMLResponse, include_in_schema=False)
+@web_router.get("/portfolio", response_class=HTMLResponse, include_in_schema=False)
 def accounts_page(request: Request):
     """Panel de cuentas de trading del usuario."""
     identity = _get_identity_from_cookie(request)

@@ -74,18 +74,19 @@ Entregables:
 
 ---
 
-## 📌 Módulo 5 — Strategies
+## ✅ Módulo 5 — Strategies (COMPLETO)
 **Qué hace:** Definir las reglas de entrada/salida del agente.
 
 Tablas: `strategies`, `datasets`
 
 Entregables:
-- CRUD estrategias con config JSON (reglas, régimen requerido, timeframe, etc.)
-- Tipos soportados: trend-following, mean-reversion
-- Datasets de backtesting (historial de velas + features etiquetados)
-- Validación: una estrategia de tendencia no aplica en régimen lateral (y viceversa)
-- Web UI: editor de estrategias
-- Test unitarios
+- ✅ CRUD estrategias con config JSON (reglas, régimen requerido, timeframe, risk_pct)
+- ✅ Tipos soportados: trend_following, mean_reversion
+- ✅ Validación coherencia tipo/régimen (hint en vivo en UI + validación backend)
+- ✅ Web UI: /strategies (viewer) + /admin/strategies (CRUD admin)
+- ✅ API: GET/POST `/api/strategies`, GET/PUT `/api/strategies/{id}`
+- ✅ Seed: 6 estrategias de ejemplo (`seeds/seed_strategies.sql`)
+- Tests unitarios: pendientes (no solicitados)
 
 ---
 

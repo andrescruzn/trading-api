@@ -241,6 +241,83 @@ from app.modules.features.rest import feature_sets_router, candle_features_route
 
 ---
 
+## ✅ Módulo 5 — Strategies (COMPLETO)
+
+### Tablas en BD
+| Tabla | Acción | Nota |
+|-------|--------|------|
+| `strategies` | WRITE | CRUD completo, parameters JSON |
+| `datasets` | WRITE | CRUD básico (sin UI aún) |
+
+### Modelos ORM (`app/modules/strategies/infrastructure/`)
+| Archivo | Clase | Tabla |
+|---------|-------|-------|
+| `strategy_model.py` | `StrategyModel` | `strategies` |
+| `dataset_model.py` | `DatasetModel` | `datasets` |
+
+### Repositorios
+| Domain | Infrastructure |
+|--------|----------------|
+| `domain/strategy_repository.py` | `infrastructure/strategy_repository_impl.py` |
+| `domain/dataset_repository.py` | `infrastructure/dataset_repository_impl.py` |
+
+### Servicios (`app/modules/strategies/services/`)
+| Subdir | Servicios |
+|--------|-----------|
+| `strategies/` | `list_strategies_service.py`, `create_strategy_service.py`, `update_strategy_service.py` |
+| `datasets/` | `list_datasets_service.py`, `create_dataset_service.py` |
+
+Provider: `app/modules/strategies/providers/strategy_provider.py` → `StrategyServiceFactory`
+
+### Endpoints REST
+| Método | Ruta | Auth | Nota |
+|--------|------|------|------|
+| GET | `/api/strategies` | token | Lista todas las estrategias |
+| POST | `/api/strategies` | admin | Crea estrategia |
+| GET | `/api/strategies/{id}` | token | Detalle estrategia |
+| PUT | `/api/strategies/{id}` | admin | Actualiza estrategia |
+| GET | `/api/datasets` | token | Lista datasets |
+| POST | `/api/datasets` | admin | Crea dataset |
+
+**⚠️ IMPORTANTE:** El prefijo API es `/api/strategies` (NO `/strategies`) para evitar conflicto con la página web `/strategies`.
+
+Routers registrados en `app/app_factory.py`:
+```python
+from app.modules.strategies.rest import strategies_router, datasets_router
+```
+
+### Páginas web
+| URL | Template | JS |
+|-----|----------|----|
+| `/strategies` | `templates/strategies/index.html` | `static/js/strategies/index.js` |
+| `/admin/strategies` | `templates/admin/strategies.html` | `static/js/admin/strategies.js` |
+
+### Estructura del JSON parameters (strategies.parameters)
+```json
+{
+  "strategy_type": "trend_following | mean_reversion",
+  "regime_required": "trend_up | trend_down | sideways | null",
+  "timeframe_code": "1h | 4h | ...",
+  "rules": [{"indicator": "rsi_14", "operator": "lt", "value": 30}],
+  "risk_pct": 0.01
+}
+```
+
+### Validación coherencia tipo↔régimen
+- `trend_following` solo es válido con `trend_up` o `trend_down`
+- `mean_reversion` solo es válido con `sideways`
+- Hint en vivo en UI + validación en backend (service devuelve warning)
+
+### Seed
+- `seeds/seed_strategies.sql` — 6 estrategias de ejemplo con `INSERT IGNORE`
+
+### Cache-busting JS (global, aplica a todos los módulos)
+- `templates.env.globals["sv"] = str(int(time.time()))` en `app/modules/web/routes.py`
+- Todos los `<script src="...">` usan `?v={{ sv }}` — fuerza recarga tras reinicio del servidor
+- Aplica a TODOS los templates (base_app.html incluido)
+
+---
+
 ## Archivos de infraestructura críticos (nunca romper)
 
 | Archivo | Qué hace |

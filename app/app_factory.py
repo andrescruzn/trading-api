@@ -31,6 +31,7 @@ from app.modules.market.rest import (
 )
 from app.modules.features.rest import feature_sets_router, candle_features_router
 from app.modules.accounts.rest import accounts_router, balances_router
+from app.modules.strategies.rest import strategies_router, datasets_router
 from app.modules.users.rest import auth_router
 from app.modules.web import web_router
 
@@ -93,6 +94,10 @@ def create_app() -> FastAPI:
     # Accounts & Portfolio
     app.include_router(accounts_router)
     app.include_router(balances_router)
+
+    # Strategies
+    app.include_router(strategies_router)
+    app.include_router(datasets_router)
 
     app.include_router(web_router)      # Páginas HTML (siempre al final)
 

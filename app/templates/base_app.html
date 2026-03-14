@@ -59,6 +59,15 @@
           </a>
         </div>
 
+        <!-- Estrategias -->
+        <div class="sidebar__section">
+          <div class="sidebar__section-title">Estrategias</div>
+          <a href="/strategies" class="sidebar__link" data-path="/strategies">
+            <i data-lucide="book-open"></i>
+            Ver Estrategias
+          </a>
+        </div>
+
         <!-- Administración (oculto hasta que sidebar.js confirme rol admin) -->
         <div class="sidebar__section hidden" id="admin-panel">
           <div class="sidebar__section-title">Administración</div>
@@ -85,6 +94,10 @@
           <a href="/admin/accounts" class="sidebar__link" data-path="/admin/accounts">
             <i data-lucide="wallet"></i>
             Cuentas
+          </a>
+          <a href="/admin/strategies" class="sidebar__link" data-path="/admin/strategies">
+            <i data-lucide="book-open"></i>
+            Estrategias
           </a>
         </div>
 
@@ -124,6 +137,6 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="/static/js/sidebar.js"></script>
+<script src="/static/js/sidebar.js?v={{ sv }}"></script>
 {% block page_scripts %}{% endblock %}
 {% endblock %}

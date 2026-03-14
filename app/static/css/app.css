@@ -893,3 +893,87 @@ input.input--error:focus { box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15); }
   .main-content { padding: 1.25rem 1rem; }
   .topbar__user { display: none; }
 }
+
+/* ======================================================================
+   Dashboard — Stat cards + Price chart
+   ====================================================================== */
+
+/* Stats grid — 4 columnas en desktop, 2 en tablet, 1 en móvil */
+.dash-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.875rem;
+  margin-bottom: 1.25rem;
+}
+
+@media (max-width: 900px) {
+  .dash-stats { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 480px) {
+  .dash-stats { grid-template-columns: 1fr; }
+}
+
+/* Stat card */
+.dash-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 1rem 1.1rem 0.9rem;
+  transition: border-color 0.15s ease;
+}
+
+.dash-card:hover {
+  border-color: rgba(240, 180, 41, 0.25);
+}
+
+.dash-card__icon {
+  color: var(--gold);
+  margin-bottom: 0.5rem;
+}
+
+.dash-card__label {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 0.35rem;
+}
+
+.dash-card__value {
+  font-family: var(--font-mono);
+  font-size: 1.375rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+  margin-bottom: 0.3rem;
+  min-height: 1.8rem;
+  display: flex;
+  align-items: center;
+}
+
+.dash-card__meta {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  min-height: 1.2rem;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+/* Chart wrapper */
+.dash-chart-wrap {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 1rem 1.1rem 0.75rem;
+}
+
+.dash-chart-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.875rem;
+}

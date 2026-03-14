@@ -297,3 +297,40 @@ Ahora conectemos todo en una secuencia lógica:
 │     Email a Andrés: "Take Profit alcanzado en BTC/USDT"        │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
+
+---
+PARTE 3 — Módulos implementados y cómo usarlos
+
+3.1 Módulo 5 — Strategies (Estrategias)
+
+Una estrategia es el conjunto de reglas que define cuándo el sistema debe considerar una operación.
+Cada estrategia tiene:
+
+- strategy_type: el "estilo" de trading
+  · trend_following  → sigue la tendencia. Solo opera si el mercado hace máximos más altos (HH/HL).
+  · mean_reversion   → apuesta a que el precio volverá a su promedio. Solo opera en mercado lateral.
+
+- regime_required: el régimen de mercado que debe existir para activarse
+  · trend_up    → el mercado sube (trend_following)
+  · trend_down  → el mercado baja (trend_following)
+  · sideways    → mercado lateral (mean_reversion)
+  · null/vacío  → sin restricción de régimen
+
+- timeframe_code: en qué marco temporal opera (ej: "1h", "4h", "1d")
+
+- rules: lista de condiciones que deben cumplirse para generar una señal
+  Ejemplo: [{"indicator": "rsi_14", "operator": "lt", "value": 30}]
+  Significa: "el RSI de 14 períodos debe ser menor que 30"
+
+- risk_pct: porcentaje del capital a arriesgar por operación (default: 0.01 = 1%)
+
+Regla de coherencia (se valida automáticamente):
+  trend_following + sideways → RECHAZADO (una estrategia de tendencia no opera en lateral)
+  mean_reversion + trend_up  → RECHAZADO (una estrategia de reversión no opera en tendencia)
+
+3.2 Módulo 5 — Datasets
+
+Un dataset es un recorte de datos históricos (velas + features) para backtesting o entrenamiento:
+- Referencia un símbolo, timeframe y rango de fechas
+- Tiene un query_spec JSON que define cómo se construyó
+- Se usará en Módulo 6 (AI Agent) para entrenar y evaluar modelos

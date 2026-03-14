@@ -67,19 +67,26 @@ Una explicación simple de los 9 módulos del sistema, sin tecnicismos.
 
 ---
 
-## Módulo 4 — Accounts & Portfolio (Cuentas y Portafolio) 📌 PENDIENTE
+## Módulo 4 — Accounts & Portfolio (Cuentas y Portafolio) ✅ COMPLETO
 
 **En palabras simples:** Es la billetera. Guarda información sobre tu dinero: cuánto tienes, en qué exchanges, y cómo ha evolucionado tu capital en el tiempo.
 
 **Qué hace:**
 - Registra tus **cuentas de trading** (puedes tener varias, en distintos exchanges)
 - Cada cuenta puede ser **paper** (simulada, sin dinero real) o **live** (dinero real)
-- Guarda los **balances**: cuánto tienes de cada moneda (USDT, BTC, ETH, etc.)
-- Hace **snapshots** periódicos de tu portafolio para que puedas ver cómo crece (o decrece) tu capital
+- Guarda los **balances**: cuánto tienes de cada moneda (USDT, BTC, ETH, etc.) — snapshots inmutables
+- Las credenciales de API (api_key/api_secret) se cifran con Fernet antes de guardarlas en la BD
+- Equity curve vía time series de `account_balances`
+
+**Páginas — Usuario (cualquier usuario autenticado):**
+- `/portfolio` — Panel de cuentas: lista tus cuentas, crea nuevas, consulta balances y equity curve
+
+**Páginas — Administrador (solo admin):**
+- `/admin/accounts` — Vista global de todas las cuentas del sistema
 
 ---
 
-## Módulo 5 — Strategies (Estrategias) 📌 PENDIENTE
+## Módulo 5 — Strategies (Estrategias) ✅ COMPLETO
 
 **En palabras simples:** Es el libro de reglas. Define exactamente cuándo el sistema debe considerar entrar o salir de una operación.
 
@@ -88,7 +95,14 @@ Una explicación simple de los 9 módulos del sistema, sin tecnicismos.
 - Dos tipos principales:
   - **Trend-following** (seguir tendencia): opera cuando el precio está haciendo máximos más altos
   - **Mean-reversion** (reversión a la media): opera cuando el precio se aleja mucho de su promedio y se espera que regrese
-- Valida que la estrategia sea coherente con el mercado actual (ej: una estrategia de tendencia no se activa en mercado lateral)
+- Valida coherencia tipo ↔ régimen: trend_following acepta trend_up/trend_down; mean_reversion acepta sideways
+- Gestiona **datasets** de backtesting (rango de velas + features para un símbolo y timeframe)
+
+**Páginas — Usuario (cualquier usuario autenticado):**
+- `/strategies` — Lista de estrategias con tipo, régimen, timeframe y cantidad de reglas. Click para ver detalles completos.
+
+**Páginas — Administrador (solo admin):**
+- `/admin/strategies` — Crear y editar estrategias con editor de reglas JSON y validación de coherencia en vivo
 
 ---
 
@@ -157,7 +171,7 @@ Una explicación simple de los 9 módulos del sistema, sin tecnicismos.
 [Módulo 3: Feature Engineering]
    Indicadores técnicos + Régimen de mercado
          ↓
-[Módulo 4: Accounts]     [Módulo 5: Strategies]
+[Módulo 4: Accounts ✅]  [Módulo 5: Strategies ✅]
    Capital disponible  +  Reglas de entrada/salida
          ↓                        ↓
          └──────────┬─────────────┘

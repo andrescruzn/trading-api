@@ -1,0 +1,123 @@
+{% extends "base_app.html" %}
+
+{% block title %}Estrategias — Trading AI{% endblock %}
+{% block nav_title %}Estrategias{% endblock %}
+
+{% block content %}
+
+  <div class="page-header">
+    <div>
+      <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.2rem;">
+        <i data-lucide="book-open" style="color:var(--gold);width:18px;height:18px;"></i>
+        <h1 style="font-size:1.25rem;">Estrategias de Trading</h1>
+      </div>
+      <p class="text-muted" style="font-size:0.8125rem;">
+        Libro de reglas del sistema — define cuándo entrar y salir de una operación
+      </p>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <div id="alert-msg" class="alert hidden"></div>
+
+  <!-- Estado de carga -->
+  <div id="table-loading" class="text-center mt-3">
+    <span class="spinner"></span>
+    <p class="text-muted mt-1">Cargando estrategias...</p>
+  </div>
+
+  <!-- Tabla -->
+  <div id="table-wrapper" class="hidden">
+    <table class="data-table" id="strategies-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Nombre</th>
+          <th>Versión</th>
+          <th>Tipo</th>
+          <th>Régimen</th>
+          <th>Timeframe</th>
+          <th>Reglas</th>
+          <th>Creada</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody id="strategies-tbody"></tbody>
+    </table>
+  </div>
+
+  <!-- Vacío -->
+  <div id="empty-state" class="text-center mt-4 hidden">
+    <i data-lucide="book-open" style="width:40px;height:40px;color:var(--text-muted);margin-bottom:0.5rem;"></i>
+    <p class="text-muted">No hay estrategias disponibles todavía.</p>
+  </div>
+
+  <!-- ================================================================
+       Modal: ver detalles de estrategia
+       ================================================================ -->
+  <div id="modal-detail" class="modal hidden">
+    <div class="modal__backdrop"></div>
+    <div class="modal__box" style="max-width:640px;">
+      <h2 id="detail-title">Estrategia</h2>
+      <button id="btn-detail-close" style="display:none;" type="button"></button>
+
+      <div style="margin-top:1rem;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:1rem;">
+          <div>
+            <p class="text-muted" style="font-size:0.75rem;margin-bottom:0.2rem;">Tipo</p>
+            <p id="detail-type" style="font-weight:600;"></p>
+          </div>
+          <div>
+            <p class="text-muted" style="font-size:0.75rem;margin-bottom:0.2rem;">Régimen requerido</p>
+            <p id="detail-regime" style="font-weight:600;"></p>
+          </div>
+          <div>
+            <p class="text-muted" style="font-size:0.75rem;margin-bottom:0.2rem;">Timeframe</p>
+            <p id="detail-tf" style="font-weight:600;"></p>
+          </div>
+          <div>
+            <p class="text-muted" style="font-size:0.75rem;margin-bottom:0.2rem;">Versión</p>
+            <p id="detail-version" style="font-weight:600;"></p>
+          </div>
+        </div>
+
+        <div style="margin-bottom:1rem;">
+          <p class="text-muted" style="font-size:0.75rem;margin-bottom:0.4rem;">Descripción</p>
+          <p id="detail-desc" style="font-size:0.875rem;"></p>
+        </div>
+
+        <div>
+          <p class="text-muted" style="font-size:0.75rem;margin-bottom:0.4rem;">Reglas (rules)</p>
+          <div id="detail-rules" style="font-size:0.8125rem;"></div>
+        </div>
+
+        <div style="margin-top:1rem;">
+          <p class="text-muted" style="font-size:0.75rem;margin-bottom:0.4rem;">Parameters (JSON completo)</p>
+          <pre id="detail-params" style="
+            background:var(--surface-2,#1a1a2e);
+            border-radius:6px;
+            padding:0.75rem;
+            font-size:0.75rem;
+            overflow:auto;
+            max-height:200px;
+            color:var(--text-secondary,#b0b0c0);
+            white-space:pre-wrap;
+            word-break:break-all;
+          "></pre>
+        </div>
+      </div>
+
+      <div style="margin-top:1.25rem;">
+        <button class="btn btn--secondary" id="btn-detail-cancel" style="width:auto;padding:0.55rem 1.1rem;">
+          Cerrar
+        </button>
+      </div>
+    </div>
+  </div>
+
+{% endblock %}
+
+{% block page_scripts %}
+  <script src="/static/js/strategies/index.js?v={{ sv }}"></script>
+{% endblock %}

@@ -20,6 +20,8 @@
 
 from __future__ import annotations
 
+import time
+
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -30,6 +32,10 @@ from app.common.security.jwt.jwt_utils import decode_access_token, JwtCodecError
 templates = Jinja2Templates(directory="app/templates")
 
 web_router = APIRouter(tags=["Web"])
+
+# Versión de assets estáticos — cambia en cada reinicio del servidor.
+# Fuerza al navegador a descargar JS/CSS frescos tras cada deploy.
+templates.env.globals["sv"] = str(int(time.time()))
 
 
 # ======================================================================
@@ -259,3 +265,27 @@ def admin_accounts_page(request: Request):
     if int(identity.get("role_id", 0)) != int(settings.AUTH_ADMIN_ROLE_ID):
         return RedirectResponse(url="/dashboard", status_code=302)
     return templates.TemplateResponse(request, "admin/accounts.html")
+
+
+# ======================================================================
+# Módulo 5 — Strategies
+# ======================================================================
+
+@web_router.get("/strategies", response_class=HTMLResponse, include_in_schema=False)
+def strategies_page(request: Request):
+    """Lista de estrategias de trading (todos los usuarios autenticados)."""
+    identity = _get_identity_from_cookie(request)
+    if not identity:
+        return RedirectResponse(url="/login", status_code=302)
+    return templates.TemplateResponse(request, "strategies/index.html")
+
+
+@web_router.get("/admin/strategies", response_class=HTMLResponse, include_in_schema=False)
+def admin_strategies_page(request: Request):
+    """Editor de estrategias (solo administradores)."""
+    identity = _get_identity_from_cookie(request)
+    if not identity:
+        return RedirectResponse(url="/login", status_code=302)
+    if int(identity.get("role_id", 0)) != int(settings.AUTH_ADMIN_ROLE_ID):
+        return RedirectResponse(url="/dashboard", status_code=302)
+    return templates.TemplateResponse(request, "admin/strategies.html")

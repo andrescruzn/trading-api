@@ -1,0 +1,161 @@
+{% extends "base_app.html" %}
+
+{% block title %}Admin — Estrategias — Trading AI{% endblock %}
+{% block nav_title %}Admin: Estrategias{% endblock %}
+
+{% block content %}
+
+  <div class="page-header">
+    <div>
+      <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.2rem;">
+        <i data-lucide="book-open" style="color:var(--gold);width:18px;height:18px;"></i>
+        <h1 style="font-size:1.25rem;">Gestión de Estrategias</h1>
+      </div>
+      <p class="text-muted" style="font-size:0.8125rem;">
+        Crear y editar estrategias de trading del sistema
+      </p>
+    </div>
+    <button class="btn btn--primary" id="btn-new-strategy" type="button"
+            style="width:auto;padding:0.55rem 1.1rem;">
+      <i data-lucide="plus"></i>
+      Nueva estrategia
+    </button>
+  </div>
+
+  <hr class="divider">
+
+  <div id="alert-msg" class="alert hidden"></div>
+
+  <!-- Estado de carga -->
+  <div id="table-loading" class="text-center mt-3">
+    <span class="spinner"></span>
+    <p class="text-muted mt-1">Cargando estrategias...</p>
+  </div>
+
+  <!-- Tabla -->
+  <div id="table-wrapper" class="hidden">
+    <table class="data-table" id="strategies-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Nombre</th>
+          <th>Versión</th>
+          <th>Tipo</th>
+          <th>Régimen</th>
+          <th>Timeframe</th>
+          <th>Reglas</th>
+          <th>Creada</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody id="strategies-tbody"></tbody>
+    </table>
+  </div>
+
+  <!-- Vacío -->
+  <div id="empty-state" class="text-center mt-4 hidden">
+    <i data-lucide="book-open" style="width:40px;height:40px;color:var(--text-muted);margin-bottom:0.5rem;"></i>
+    <p class="text-muted">No hay estrategias creadas todavía.</p>
+    <button class="btn btn--primary mt-2" id="btn-new-strategy-empty" style="width:auto;padding:0.5rem 1.25rem;">
+      Crear primera estrategia
+    </button>
+  </div>
+
+  <!-- ================================================================
+       Modal: crear / editar estrategia
+       ================================================================ -->
+  <div id="modal-strategy" class="modal hidden">
+    <div class="modal__backdrop"></div>
+    <div class="modal__box" style="max-width:660px;">
+      <h2 id="modal-title">Nueva estrategia</h2>
+      <button id="btn-modal-close" style="display:none;" type="button"></button>
+
+      <form id="form-strategy" autocomplete="off">
+        <input type="hidden" id="strategy-id" value="">
+
+        <div style="display:grid;grid-template-columns:1fr 140px;gap:0.75rem;">
+          <div class="form-group mt-2">
+            <label for="inp-name">Nombre</label>
+            <input type="text" id="inp-name" placeholder="EMA Trend Follower" maxlength="120" required>
+          </div>
+          <div class="form-group mt-2">
+            <label for="inp-version">Versión</label>
+            <input type="text" id="inp-version" value="1.0.0" maxlength="32" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="inp-description">Descripción (opcional)</label>
+          <input type="text" id="inp-description" placeholder="Sigue la tendencia usando EMAs" maxlength="255">
+        </div>
+
+        <hr class="divider" style="margin:0.75rem 0;">
+        <p style="font-size:0.8rem;font-weight:600;margin-bottom:0.75rem;color:var(--text-secondary);">
+          Configuración de la estrategia
+        </p>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.75rem;">
+          <div class="form-group">
+            <label for="sel-type">Tipo</label>
+            <select id="sel-type" class="input-select" required>
+              <option value="trend_following">Trend Following</option>
+              <option value="mean_reversion">Mean Reversion</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="sel-regime">Régimen requerido</label>
+            <select id="sel-regime" class="input-select">
+              <option value="">Sin restricción</option>
+              <option value="trend_up">Tendencia alcista</option>
+              <option value="trend_down">Tendencia bajista</option>
+              <option value="sideways">Lateral (sideways)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="inp-tf">Timeframe</label>
+            <input type="text" id="inp-tf" placeholder="1h" maxlength="8">
+          </div>
+        </div>
+
+        <!-- Ayuda de coherencia -->
+        <div id="coherence-hint" class="alert hidden" style="font-size:0.8rem;padding:0.5rem 0.75rem;margin-bottom:0.5rem;"></div>
+
+        <div class="form-group">
+          <label for="inp-rules">
+            Reglas (JSON array)
+            <span class="text-muted" style="font-size:0.75rem;font-weight:400;">
+              — ej: [{"indicator":"rsi_14","operator":"lt","value":30}]
+            </span>
+          </label>
+          <textarea id="inp-rules" rows="4" placeholder='[{"indicator":"rsi_14","operator":"lt","value":30}]'
+            style="font-family:monospace;font-size:0.8rem;resize:vertical;"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="inp-risk-pct">
+            % Riesgo por operación
+            <span class="text-muted" style="font-size:0.75rem;font-weight:400;">— ej: 0.01 = 1%</span>
+          </label>
+          <input type="number" id="inp-risk-pct" min="0.001" max="0.1" step="0.001" value="0.01">
+        </div>
+
+        <div id="form-error" class="alert alert--error hidden"></div>
+
+        <div style="display:flex;gap:0.75rem;margin-top:1rem;">
+          <button type="submit" class="btn btn--primary" id="btn-submit" style="width:auto;padding:0.55rem 1.1rem;">
+            <span id="btn-submit-text">Crear estrategia</span>
+            <span id="btn-submit-spinner" class="spinner hidden" style="width:14px;height:14px;"></span>
+          </button>
+          <button type="button" class="btn btn--secondary" id="btn-cancel" style="width:auto;padding:0.55rem 1.1rem;">
+            Cancelar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+{% endblock %}
+
+{% block page_scripts %}
+  <script src="/static/js/admin/strategies.js?v={{ sv }}"></script>
+{% endblock %}

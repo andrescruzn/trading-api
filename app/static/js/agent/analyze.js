@@ -47,33 +47,54 @@ function populateSelect(id, items, valueFn, labelFn, placeholder) {
 // Cargar datos iniciales
 // ======================================================================
 
+function setSelectError(id, label) {
+  const sel = document.getElementById(id);
+  sel.innerHTML = `<option value="">Error al cargar ${label}</option>`;
+}
+
 async function loadSelectors() {
-  try {
-    const [symbols, timeframes, strategies, accounts, featureSets] = await Promise.all([
-      apiFetch("/symbols?is_active=true"),
-      apiFetch("/timeframes"),
-      apiFetch("/api/strategies"),
-      apiFetch("/accounts"),
-      apiFetch("/feature-sets"),
-    ]);
+  const [symbols, timeframes, strategies, accounts, featureSets] = await Promise.allSettled([
+    apiFetch("/symbols?is_active=true"),
+    apiFetch("/timeframes"),
+    apiFetch("/api/strategies"),
+    apiFetch("/accounts"),
+    apiFetch("/feature-sets"),
+  ]);
 
-    populateSelect("symbol-select", symbols,
+  if (symbols.status === "fulfilled") {
+    populateSelect("symbol-select", symbols.value,
       s => s.id, s => `${s.symbol} (${s.asset_class})`, "Seleccionar símbolo");
+  } else {
+    setSelectError("symbol-select", "símbolos");
+    showAlert("Error cargando símbolos: " + symbols.reason?.message);
+  }
 
-    populateSelect("timeframe-select", timeframes,
+  if (timeframes.status === "fulfilled") {
+    populateSelect("timeframe-select", timeframes.value,
       t => t.id, t => t.code, "Seleccionar timeframe");
+  } else {
+    setSelectError("timeframe-select", "timeframes");
+  }
 
-    populateSelect("strategy-select", strategies,
+  if (strategies.status === "fulfilled") {
+    populateSelect("strategy-select", strategies.value,
       s => s.id, s => `${s.name} v${s.version}`, "Seleccionar estrategia");
+  } else {
+    setSelectError("strategy-select", "estrategias");
+  }
 
-    populateSelect("account-select", accounts,
+  if (accounts.status === "fulfilled") {
+    populateSelect("account-select", accounts.value,
       a => a.id, a => `${a.name} (${a.mode})`, "Seleccionar cuenta");
+  } else {
+    setSelectError("account-select", "cuentas");
+  }
 
-    populateSelect("feature-set-select", featureSets,
+  if (featureSets.status === "fulfilled") {
+    populateSelect("feature-set-select", featureSets.value,
       f => f.id, f => `${f.name} v${f.version}`, "Seleccionar feature set");
-
-  } catch (err) {
-    showAlert("Error al cargar los selectores: " + err.message);
+  } else {
+    setSelectError("feature-set-select", "feature sets");
   }
 }
 
@@ -121,7 +142,7 @@ async function runAnalysis() {
       return;
     }
 
-    renderResult(json.data, json.msg);
+    renderResult(json.data);
 
   } catch (err) {
     showAlert("Error de red: " + err.message);
@@ -135,33 +156,37 @@ async function runAnalysis() {
 // Renderizar resultado
 // ======================================================================
 
-function renderResult(data, msg) {
+function renderResult(data) {
   const approved = data.decision === "APPROVED";
 
-  // Badge de decisión
-  const badge = document.getElementById("decision-badge");
-  badge.textContent = approved ? "✓ APROBADA" : "✗ RECHAZADA";
-  badge.className = `badge ${approved ? "badge-success" : "badge-danger"}`;
+  // Decisión banner
+  const banner = document.getElementById("decision-banner");
+  banner.className = `decision-banner ${approved ? "decision-banner--approved" : "decision-banner--rejected"}`;
+  document.getElementById("decision-text").textContent = approved ? "✓ APROBADA" : "✗ RECHAZADA";
 
   // Precios
-  const fmt = (v, d = 4) => v != null ? Number(v).toLocaleString("es-CO", { minimumFractionDigits: 2, maximumFractionDigits: d }) : "—";
+  const fmt = (v, d = 4) => v != null
+    ? Number(v).toLocaleString("es-CO", { minimumFractionDigits: 2, maximumFractionDigits: d })
+    : "—";
   document.getElementById("res-entry").textContent = fmt(data.entry);
   document.getElementById("res-sl").textContent    = fmt(data.stop_loss);
   document.getElementById("res-tp").textContent    = fmt(data.take_profit);
-  document.getElementById("res-size").textContent  = data.position_size != null ? `${fmt(data.position_size, 6)} uds` : "—";
-  document.getElementById("res-rr").textContent    = data.rr_ratio != null ? `${Number(data.rr_ratio).toFixed(2)}x` : "—";
+  document.getElementById("res-size").textContent  = data.position_size != null
+    ? `${fmt(data.position_size, 6)} uds` : "—";
+  document.getElementById("res-rr").textContent    = data.rr_ratio != null
+    ? `${Number(data.rr_ratio).toFixed(2)}×` : "—";
 
   // Razonamiento
   document.getElementById("res-reasoning").textContent = data.reasoning || "(sin razonamiento)";
 
-  // Fases del análisis
-  function phaseBadge(id, passed) {
+  // Fases
+  function setPhase(id, passed) {
     const el = document.getElementById(id);
-    el.className = `badge ${passed ? "badge-success" : "badge-danger"}`;
+    el.className = `phase-chip ${passed ? "phase-chip--pass" : "phase-chip--fail"}`;
   }
-  phaseBadge("phase-regime", data.regime_check_passed);
-  phaseBadge("phase-rules",  data.rules_check_passed);
-  phaseBadge("phase-rr",     data.rr_check_passed);
+  setPhase("phase-regime", data.regime_check_passed);
+  setPhase("phase-rules",  data.rules_check_passed);
+  setPhase("phase-rr",     data.rr_check_passed);
 
   // Detalle de reglas
   const rulesSection = document.getElementById("rules-detail-section");
@@ -170,15 +195,22 @@ function renderResult(data, msg) {
   if (data.rules_detail && data.rules_detail.length > 0) {
     rulesList.innerHTML = "";
     data.rules_detail.forEach(r => {
-      const row = document.createElement("div");
-      row.style.cssText = "display:flex;justify-content:space-between;align-items:center;font-size:0.8rem;padding:0.25rem 0;border-bottom:1px solid var(--border);";
-      row.innerHTML = `
-        <span style="color:var(--text-secondary);">${r.indicator} ${r.operator} ${r.threshold}</span>
-        <span style="color:var(--text-muted);">${r.actual_value != null ? Number(r.actual_value).toFixed(4) : "N/A"}</span>
-        <span class="badge ${r.passed ? 'badge-success' : 'badge-danger'}" style="font-size:0.7rem;">
-          ${r.passed ? "✓ PASS" : "✗ FAIL"}
-        </span>`;
-      rulesList.appendChild(row);
+      const pass = r.passed;
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td style="color:var(--text-secondary);font-family:var(--font-mono);font-size:0.78rem;">
+          ${r.indicator} <span style="color:var(--text-muted);">${r.operator}</span> ${r.threshold}
+        </td>
+        <td style="color:var(--text-muted);font-family:var(--font-mono);font-size:0.78rem;">
+          ${r.actual_value != null ? Number(r.actual_value).toFixed(4) : "N/A"}
+        </td>
+        <td>
+          <span style="
+            font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;
+            color:${pass ? "var(--success)" : "var(--error)"};
+          ">${pass ? "✓ PASS" : "✗ FAIL"}</span>
+        </td>`;
+      rulesList.appendChild(tr);
     });
     rulesSection.style.display = "block";
   } else {

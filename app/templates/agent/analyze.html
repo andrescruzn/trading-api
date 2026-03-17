@@ -5,156 +5,333 @@
 
 {% block content %}
 
-  <div class="page-header">
-    <div>
-      <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.2rem;">
-        <i data-lucide="brain-circuit" style="color:var(--gold);width:18px;height:18px;"></i>
-        <h1 style="font-size:1.25rem;">Agente de Trading AI</h1>
+<style>
+  /* ── Página Agente AI ─────────────────────────────── */
+  .agent-grid {
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    gap: 1.25rem;
+    align-items: start;
+  }
+
+  /* Selector field */
+  .field { display: flex; flex-direction: column; gap: 0.35rem; }
+  .field label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+  }
+
+  /* Stat grid inside result card */
+  .result-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 0.625rem;
+    margin-bottom: 1rem;
+  }
+  .result-stats--2 { grid-template-columns: 1fr 1fr; }
+
+  .stat-box {
+    background: var(--bg-base);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    padding: 0.625rem 0.875rem;
+  }
+  .stat-box__label {
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.09em;
+    color: var(--text-muted);
+    margin-bottom: 0.25rem;
+  }
+  .stat-box__value {
+    font-family: var(--font-mono);
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+  .stat-box__value--danger { color: var(--error); }
+  .stat-box__value--success { color: var(--success); }
+  .stat-box__value--gold { color: var(--gold); }
+
+  /* Decision banner */
+  .decision-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius);
+    margin-bottom: 1rem;
+    border: 1px solid transparent;
+  }
+  .decision-banner--approved {
+    background: var(--success-dim);
+    border-color: rgba(34, 197, 94, 0.3);
+  }
+  .decision-banner--rejected {
+    background: var(--error-dim);
+    border-color: rgba(239, 68, 68, 0.3);
+  }
+  .decision-banner__label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--text-muted);
+  }
+  .decision-banner__value {
+    font-size: 0.9375rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+  }
+  .decision-banner--approved .decision-banner__value { color: #86efac; }
+  .decision-banner--rejected .decision-banner__value { color: #fca5a5; }
+
+  /* Phase row */
+  .phases-row {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+  }
+  .phase-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.3rem 0.65rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    border: 1px solid transparent;
+  }
+  .phase-chip--pass {
+    background: var(--success-dim);
+    color: #86efac;
+    border-color: rgba(34, 197, 94, 0.3);
+  }
+  .phase-chip--fail {
+    background: var(--error-dim);
+    color: #fca5a5;
+    border-color: rgba(239, 68, 68, 0.3);
+  }
+  .phase-chip--pending {
+    background: rgba(100,116,139,0.1);
+    color: var(--text-muted);
+    border-color: var(--border-color);
+  }
+
+  /* Reasoning block */
+  .reasoning-block {
+    background: var(--bg-base);
+    border: 1px solid var(--border-color);
+    border-left: 3px solid var(--gold);
+    border-radius: var(--radius);
+    padding: 0.875rem 1rem;
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    white-space: pre-wrap;
+    margin-bottom: 1rem;
+  }
+
+  /* Rules detail table */
+  .rules-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+  .rules-table td { padding: 0.35rem 0.5rem; border-bottom: 1px solid var(--border-color); }
+  .rules-table td:last-child { text-align: right; }
+  .rules-table tr:last-child td { border-bottom: none; }
+
+  /* Placeholder */
+  .result-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    padding: 3.5rem 1rem;
+    color: var(--text-muted);
+    opacity: 0.5;
+  }
+
+  /* Section title inside card */
+  .section-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    margin-bottom: 0.5rem;
+  }
+
+  @media (max-width: 900px) {
+    .agent-grid { grid-template-columns: 1fr; }
+  }
+</style>
+
+<div class="page-header">
+  <div>
+    <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.25rem;">
+      <i data-lucide="bot" style="color:var(--gold);width:18px;height:18px;"></i>
+      <h1 style="font-size:1.2rem;">Agente de Trading AI</h1>
+    </div>
+    <p class="text-muted" style="font-size:0.8125rem;">
+      Prompt Maestro — régimen · reglas · LLM · R/R
+    </p>
+  </div>
+</div>
+
+<hr class="divider">
+
+<div id="alert-msg" class="alert hidden"></div>
+
+<div class="agent-grid">
+
+  <!-- ══════════════════════════════════════════ PANEL IZQUIERDO ══ -->
+  <div class="card" style="padding:1.25rem;">
+
+    <p style="font-size:0.8rem;font-weight:600;color:var(--text-primary);margin-bottom:1rem;
+              display:flex;align-items:center;gap:0.4rem;">
+      <i data-lucide="sliders-horizontal" style="width:14px;height:14px;color:var(--gold);"></i>
+      Parámetros
+    </p>
+
+    <div style="display:flex;flex-direction:column;gap:0.875rem;">
+
+      <div class="field">
+        <label for="symbol-select">Símbolo</label>
+        <select id="symbol-select" class="input-select">
+          <option value="">Cargando símbolos...</option>
+        </select>
       </div>
-      <p class="text-muted" style="font-size:0.8125rem;">
-        Prompt Maestro — Analiza el mercado con IA y decide si la operación es viable
+
+      <div class="field">
+        <label for="timeframe-select">Timeframe</label>
+        <select id="timeframe-select" class="input-select">
+          <option value="">Cargando timeframes...</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="strategy-select">Estrategia</label>
+        <select id="strategy-select" class="input-select">
+          <option value="">Cargando estrategias...</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="account-select">Cuenta</label>
+        <select id="account-select" class="input-select">
+          <option value="">Cargando cuentas...</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="feature-set-select">Feature Set</label>
+        <select id="feature-set-select" class="input-select">
+          <option value="">Cargando feature sets...</option>
+        </select>
+      </div>
+
+      <button id="btn-analyze" class="btn btn--primary" style="margin-top:0.25rem;gap:0.5rem;">
+        <i data-lucide="zap" style="width:14px;height:14px;"></i>
+        Ejecutar Análisis
+      </button>
+
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════ PANEL DERECHO ══ -->
+
+  <!-- Spinner -->
+  <div id="analyzing-overlay" style="display:none;" class="card"
+       style="padding:3rem;text-align:center;">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:0.875rem;padding:3rem 1rem;">
+      <span class="spinner" style="width:28px;height:28px;border-width:3px;"></span>
+      <p style="font-size:0.875rem;color:var(--text-secondary);">Consultando al agente AI...</p>
+    </div>
+  </div>
+
+  <!-- Resultado -->
+  <div id="result-panel" class="card" style="display:none;padding:1.25rem;">
+
+    <!-- Decisión -->
+    <div id="decision-banner" class="decision-banner">
+      <span class="decision-banner__label">Decisión</span>
+      <span id="decision-text" class="decision-banner__value">—</span>
+    </div>
+
+    <!-- Fases -->
+    <div class="section-label">Fases del análisis</div>
+    <div class="phases-row" style="margin-bottom:1rem;">
+      <span id="phase-regime" class="phase-chip phase-chip--pending">
+        <i data-lucide="compass" style="width:11px;height:11px;"></i>Régimen
+      </span>
+      <span id="phase-rules" class="phase-chip phase-chip--pending">
+        <i data-lucide="check-square" style="width:11px;height:11px;"></i>Reglas
+      </span>
+      <span id="phase-rr" class="phase-chip phase-chip--pending">
+        <i data-lucide="trending-up" style="width:11px;height:11px;"></i>R/R ≥ 2×
+      </span>
+    </div>
+
+    <!-- Precios -->
+    <div class="section-label">Niveles</div>
+    <div class="result-stats" style="margin-bottom:1rem;">
+      <div class="stat-box">
+        <div class="stat-box__label">Entrada</div>
+        <div id="res-entry" class="stat-box__value stat-box__value--gold">—</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-box__label">Stop Loss</div>
+        <div id="res-sl" class="stat-box__value stat-box__value--danger">—</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-box__label">Take Profit</div>
+        <div id="res-tp" class="stat-box__value stat-box__value--success">—</div>
+      </div>
+    </div>
+    <div class="result-stats result-stats--2" style="margin-bottom:1rem;">
+      <div class="stat-box">
+        <div class="stat-box__label">Tamaño posición</div>
+        <div id="res-size" class="stat-box__value">—</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-box__label">Ratio R/R</div>
+        <div id="res-rr" class="stat-box__value stat-box__value--gold">—</div>
+      </div>
+    </div>
+
+    <!-- Razonamiento -->
+    <div class="section-label">Razonamiento del AI</div>
+    <div id="res-reasoning" class="reasoning-block">—</div>
+
+    <!-- Detalle de reglas -->
+    <div id="rules-detail-section" style="display:none;">
+      <div class="section-label">Detalle de reglas</div>
+      <table class="rules-table">
+        <tbody id="rules-detail-list"></tbody>
+      </table>
+    </div>
+
+  </div>
+
+  <!-- Placeholder inicial -->
+  <div id="result-placeholder" class="card">
+    <div class="result-placeholder">
+      <i data-lucide="bot" style="width:36px;height:36px;"></i>
+      <p style="font-size:0.8125rem;text-align:center;">
+        Selecciona los parámetros y ejecuta el análisis
       </p>
     </div>
   </div>
 
-  <hr class="divider">
-
-  <div id="alert-msg" class="alert hidden"></div>
-
-  <!-- Formulario de análisis -->
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:1.5rem;">
-
-    <div class="card" style="padding:1.25rem;">
-      <h2 style="font-size:0.95rem;font-weight:600;margin-bottom:1rem;color:var(--text-primary);">
-        Parámetros del Análisis
-      </h2>
-
-      <div style="display:flex;flex-direction:column;gap:0.875rem;">
-
-        <div>
-          <label class="form-label">Símbolo</label>
-          <select id="symbol-select" class="form-select">
-            <option value="">Cargando símbolos...</option>
-          </select>
-        </div>
-
-        <div>
-          <label class="form-label">Timeframe</label>
-          <select id="timeframe-select" class="form-select">
-            <option value="">Cargando timeframes...</option>
-          </select>
-        </div>
-
-        <div>
-          <label class="form-label">Estrategia</label>
-          <select id="strategy-select" class="form-select">
-            <option value="">Cargando estrategias...</option>
-          </select>
-        </div>
-
-        <div>
-          <label class="form-label">Cuenta</label>
-          <select id="account-select" class="form-select">
-            <option value="">Cargando cuentas...</option>
-          </select>
-        </div>
-
-        <div>
-          <label class="form-label">Feature Set</label>
-          <select id="feature-set-select" class="form-select">
-            <option value="">Cargando feature sets...</option>
-          </select>
-        </div>
-
-        <button id="btn-analyze" class="btn btn-primary" style="margin-top:0.25rem;">
-          <i data-lucide="zap" style="width:14px;height:14px;"></i>
-          Ejecutar Análisis
-        </button>
-
-      </div>
-    </div>
-
-    <!-- Panel de resultado -->
-    <div id="result-panel" class="card" style="padding:1.25rem;display:none;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
-        <h2 style="font-size:0.95rem;font-weight:600;color:var(--text-primary);">Resultado</h2>
-        <span id="decision-badge" class="badge"></span>
-      </div>
-
-      <!-- Precios -->
-      <div id="prices-grid" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.75rem;margin-bottom:1rem;">
-        <div class="stat-card">
-          <div class="stat-label">Entrada</div>
-          <div id="res-entry" class="stat-value">—</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Stop Loss</div>
-          <div id="res-sl" class="stat-value" style="color:var(--danger);">—</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Take Profit</div>
-          <div id="res-tp" class="stat-value" style="color:var(--success);">—</div>
-        </div>
-      </div>
-
-      <!-- Métricas -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:1rem;">
-        <div class="stat-card">
-          <div class="stat-label">Tamaño Posición</div>
-          <div id="res-size" class="stat-value">—</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Ratio R/R</div>
-          <div id="res-rr" class="stat-value">—</div>
-        </div>
-      </div>
-
-      <!-- Razonamiento -->
-      <div style="margin-bottom:0.75rem;">
-        <div class="stat-label" style="margin-bottom:0.25rem;">Razonamiento del AI</div>
-        <div id="res-reasoning" style="font-size:0.8125rem;color:var(--text-secondary);
-             background:var(--bg-primary);border-radius:6px;padding:0.625rem;
-             border:1px solid var(--border);line-height:1.5;">—</div>
-      </div>
-
-      <!-- Fases del análisis -->
-      <div>
-        <div class="stat-label" style="margin-bottom:0.5rem;">Fases del Análisis</div>
-        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
-          <span id="phase-regime" class="badge">Régimen</span>
-          <span id="phase-rules" class="badge">Reglas</span>
-          <span id="phase-rr" class="badge">R/R ≥ 2x</span>
-        </div>
-      </div>
-
-      <!-- Reglas detalladas -->
-      <div id="rules-detail-section" style="margin-top:0.875rem;display:none;">
-        <div class="stat-label" style="margin-bottom:0.5rem;">Detalle de Reglas</div>
-        <div id="rules-detail-list" style="display:flex;flex-direction:column;gap:0.25rem;"></div>
-      </div>
-
-    </div>
-
-    <!-- Placeholder cuando no hay resultado -->
-    <div id="result-placeholder" class="card"
-         style="padding:1.25rem;display:flex;align-items:center;justify-content:center;
-                flex-direction:column;gap:0.5rem;color:var(--text-muted);">
-      <i data-lucide="sparkles" style="width:32px;height:32px;opacity:0.4;"></i>
-      <p style="font-size:0.8125rem;">El resultado aparecerá aquí</p>
-    </div>
-
-  </div>
-
-  <!-- Spinner de análisis -->
-  <div id="analyzing-overlay" style="display:none;text-align:center;padding:2rem;">
-    <span class="spinner" style="width:32px;height:32px;border-width:3px;"></span>
-    <p style="margin-top:0.75rem;color:var(--text-secondary);font-size:0.875rem;">
-      Consultando al agente AI...
-    </p>
-  </div>
+</div>
 
 {% endblock %}
 
-{% block extra_scripts %}
+{% block page_scripts %}
 <script src="/static/js/agent/analyze.js?v={{ sv }}"></script>
 {% endblock %}

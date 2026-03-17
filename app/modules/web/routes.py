@@ -289,3 +289,16 @@ def admin_strategies_page(request: Request):
     if int(identity.get("role_id", 0)) != int(settings.AUTH_ADMIN_ROLE_ID):
         return RedirectResponse(url="/dashboard", status_code=302)
     return templates.TemplateResponse(request, "admin/strategies.html")
+
+
+# ======================================================================
+# Módulo 6 — Agent AI
+# ======================================================================
+
+@web_router.get("/agent", response_class=HTMLResponse, include_in_schema=False)
+def agent_analyze_page(request: Request):
+    """Página del Agente AI — Prompt Maestro (todos los usuarios autenticados)."""
+    identity = _get_identity_from_cookie(request)
+    if not identity:
+        return RedirectResponse(url="/login", status_code=302)
+    return templates.TemplateResponse(request, "agent/analyze.html")

@@ -90,30 +90,25 @@ Entregables:
 
 ---
 
-## 📌 Módulo 6 — AI Agent / Models
-**Qué hace:** El cerebro del sistema. Analiza datos y decide si una operación es válida.
+## ✅ Módulo 6 — AI Agent / Models (COMPLETO)
+**Qué hace:** El cerebro del sistema. Analiza datos con IA y decide si una operación es válida.
 
-Tablas: `models`, `model_runs`, `predictions`
-
-**LLM: Ollama (local, en PC)**
-- Ollama corre en localhost. No se usa API externa (ni Gemini ni GPT) por ahora.
-- Modelos candidatos: `llama3`, `mistral`, `phi3` (configurar cuál usar en settings)
-- Integración vía HTTP a `http://localhost:11434` (API REST de Ollama)
-- Producción/nube: se añadirá en el futuro — por ahora solo entorno local
-
-Prompt Maestro aplicado:
-1. Filtro de Régimen → cancela si régimen no coincide con estrategia
-2. Validación de reglas → cancela si falta UNA regla
-3. Cálculo de posición → el LLM genera Python: Capital × %Riesgo / (Entrada − SL)
-4. Ratio R/R → solo procede si ganancia proyectada >= 2× el riesgo
-Salida: APROBADA / RECHAZADA + Entrada / SL / TP / Tamaño de posición
+Tablas: `models`, `model_runs` (predictions → Module 7, requiere bot_id)
 
 Entregables:
-- Integración con Ollama (HTTP client → localhost:11434)
-- El LLM genera código Python para matemática de posición (evitar alucinaciones)
-- Registro de cada predicción con datos de entrada, salida y razón
-- Endpoint: POST /agent/analyze { symbol, timeframe, strategy_id, account_id }
-- Tests con respuestas mockeadas del LLM (sin levantar Ollama en CI)
+- ✅ Multi-provider LLM: openai, anthropic, gemini, xai (Grok), deepseek, ollama
+- ✅ LLMClientFactory: crea el cliente correcto según LLM_PROVIDER en settings
+- ✅ OpenAICompatibleClient: cubre openai, xai, deepseek, gemini, ollama (un solo cliente)
+- ✅ AnthropicLLMClient: cliente dedicado para Claude
+- ✅ Prompt Maestro con 4 fases determinísticas + LLM para entry/SL/TP
+- ✅ Fórmula de posición en Python: Capital × risk_pct / |entry − SL|
+- ✅ Filtro R/R configurable (AGENT_MIN_RR_RATIO, default 2.0)
+- ✅ AGENT_MASTER_PROMPT configurable en settings (con default robusto)
+- ✅ CRUD modelos ML (tabla `models`): list, get, create, update
+- ✅ CRUD model_runs (tabla `model_runs`): list, create, finish
+- ✅ POST /agent/analyze — Prompt Maestro completo
+- ✅ Web UI: /agent — Página de análisis con formulario y resultado visual
+- ✅ 20 tests unitarios pasando (LLM 100% mockeado, sin llamadas reales)
 
 ---
 

@@ -48,3 +48,9 @@ from app.modules.accounts.infrastructure.account_balance_model import AccountBal
 # --------------------------------------------------------------
 from app.modules.strategies.infrastructure.strategy_model import StrategyModel  # noqa: F401
 from app.modules.strategies.infrastructure.dataset_model import DatasetModel  # noqa: F401
+
+# --------------------------------------------------------------
+# Agent module models
+# --------------------------------------------------------------
+from app.modules.agent.infrastructure.ml_model_model import MLModelORM  # noqa: F401
+from app.modules.agent.infrastructure.model_run_model import ModelRunORM  # noqa: F401

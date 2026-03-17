@@ -213,3 +213,54 @@ class Settings:
         self.CREDENTIALS_SECRET_KEY: str | None = (
             os.getenv("CREDENTIALS_SECRET_KEY", "").strip() or None
         )
+
+        # --------------------------------------------------------------
+        # LLM — Proveedor de Inteligencia Artificial
+        # --------------------------------------------------------------
+        # Providers soportados:
+        #   openai    → api.openai.com (GPT-4o, GPT-5, etc.)
+        #   anthropic → api.anthropic.com (Claude Opus, Sonnet, etc.)
+        #   gemini    → generativelanguage.googleapis.com (Gemini 2.5 Pro, etc.)
+        #   xai       → api.x.ai (Grok 4, etc.)
+        #   deepseek  → api.deepseek.com (DeepSeek R1, etc.)
+        #   ollama    → localhost:11434 (modelos locales)
+        #
+        # NOTA: gemini, xai, deepseek y ollama usan la librería openai
+        #       con una base_url distinta (API compatible OpenAI).
+        # --------------------------------------------------------------
+        self.LLM_PROVIDER: str = os.getenv("LLM_PROVIDER", "openai").strip().lower()
+        self.LLM_MODEL: str = os.getenv("LLM_MODEL", "gpt-4o").strip()
+        self.LLM_API_KEY: str = os.getenv("LLM_API_KEY", "").strip()
+
+        # Base URL personalizada (None = usa la URL por defecto del provider)
+        llm_base_url_raw = os.getenv("LLM_BASE_URL", "").strip()
+        self.LLM_BASE_URL: str | None = llm_base_url_raw or None
+
+        # Temperatura: 0.0 (más determinístico) — 1.0 (más creativo)
+        # 0.1 es el valor recomendado para análisis financiero reproducible.
+        try:
+            self.LLM_TEMPERATURE: float = float(os.getenv("LLM_TEMPERATURE", "0.1"))
+        except ValueError:
+            self.LLM_TEMPERATURE = 0.1
+
+        # Máximo de tokens en la respuesta del LLM
+        try:
+            self.LLM_MAX_TOKENS: int = int(os.getenv("LLM_MAX_TOKENS", "1024"))
+        except ValueError:
+            self.LLM_MAX_TOKENS = 1024
+
+        # --------------------------------------------------------------
+        # Agent — Configuración del Agente de Trading
+        # --------------------------------------------------------------
+        # AGENT_MIN_RR_RATIO: mínimo ratio Recompensa/Riesgo para aprobar.
+        #   Valor 2.0 = ganancia proyectada >= 2× el riesgo asumido.
+        # AGENT_MASTER_PROMPT: prompt del sistema que instruye al LLM.
+        #   Si está vacío, se usa el prompt maestro por defecto.
+        # --------------------------------------------------------------
+        try:
+            self.AGENT_MIN_RR_RATIO: float = float(os.getenv("AGENT_MIN_RR_RATIO", "2.0"))
+        except ValueError:
+            self.AGENT_MIN_RR_RATIO = 2.0
+
+        agent_prompt_raw = os.getenv("AGENT_MASTER_PROMPT", "").strip()
+        self.AGENT_MASTER_PROMPT: str = agent_prompt_raw or ""

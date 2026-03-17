@@ -318,6 +318,123 @@ from app.modules.strategies.rest import strategies_router, datasets_router
 
 ---
 
+---
+
+## ✅ Módulo 6 — AI Agent / Models (COMPLETO)
+
+### Tablas en BD
+| Tabla | Acción | Nota |
+|-------|--------|------|
+| `models` | WRITE | Modelos ML registrados (xgboost/lightgbm/sklearn/nn) |
+| `model_runs` | WRITE | Ejecuciones de entrenamiento con métricas y params |
+| `strategies` | READ | Para resolver estrategia en Prompt Maestro |
+| `accounts` | READ | Para obtener capital disponible |
+| `account_balances` | READ | Balance más reciente (base_currency) |
+| `candles` | READ | Última vela del símbolo/timeframe |
+| `candle_features` | READ | Últimas features calculadas del feature_set |
+| `symbols` | READ | Para validar symbol_id |
+| `timeframes` | READ | Para validar timeframe_id |
+
+### Tablas que NO toca
+- `predictions` (requiere bot_id de Módulo 7, diferida a ese módulo)
+- `bots`, `signals`, `orders`, `users`, `roles`
+
+### Modelos ORM (`app/modules/agent/infrastructure/`)
+| Archivo | Clase ORM | Tabla |
+|---------|-----------|-------|
+| `ml_model_model.py` | `MLModelORM` | `models` |
+| `model_run_model.py` | `ModelRunORM` | `model_runs` |
+
+Registrados en: `app/extensions/db/models_registry.py`
+
+### Dominio (`app/modules/agent/domain/`)
+| Archivo | Contenido |
+|---------|-----------|
+| `analysis_result.py` | `AnalysisResult` + `RuleCheckDetail` — valor de retorno del Prompt Maestro |
+| `ml_model_entity.py` | `MLModel` entity (types: xgboost/lightgbm/sklearn/nn) |
+| `model_run_entity.py` | `ModelRun` entity (statuses: running/success/failed) |
+| `ml_model_repository.py` | ABC interface `MLModelRepository` |
+| `model_run_repository.py` | ABC interface `ModelRunRepository` |
+
+### Repositorios
+| Domain (interfaz) | Infrastructure (impl) |
+|-------------------|-----------------------|
+| `domain/ml_model_repository.py` | `infrastructure/ml_model_repository_impl.py` |
+| `domain/model_run_repository.py` | `infrastructure/model_run_repository_impl.py` |
+
+### LLM Clients (`app/modules/agent/llm/`)
+| Archivo | Clase | Cubre |
+|---------|-------|-------|
+| `llm_client.py` | `LLMClient` (ABC) | Interfaz: `complete(system, user) -> str` |
+| `openai_compatible_client.py` | `OpenAICompatibleClient` | openai, xai (Grok), deepseek, gemini, ollama |
+| `anthropic_client.py` | `AnthropicLLMClient` | anthropic (Claude) |
+| `llm_factory.py` | `LLMClientFactory` | Crea el cliente según `LLM_PROVIDER` en settings |
+
+**Tabla de base_url por provider:**
+- openai → `None` (usa default de la librería)
+- xai → `https://api.x.ai/v1`
+- deepseek → `https://api.deepseek.com`
+- gemini → `https://generativelanguage.googleapis.com/v1beta/openai/`
+- ollama → `http://localhost:11434/v1` (api_key="ollama")
+
+### Servicios (`app/modules/agent/services/`)
+| Subdir | Servicios |
+|--------|-----------|
+| `agent/` | `analyze_service.py` — Prompt Maestro (4 fases) |
+| `models/` | `list_models_service.py`, `get_model_service.py`, `create_model_service.py`, `update_model_service.py` |
+| `model_runs/` | `list_model_runs_service.py`, `create_model_run_service.py`, `finish_model_run_service.py` |
+
+### Prompt Maestro — 4 fases (`AnalyzeService.analyze`)
+1. **Fase 1 — Régimen:** `strategy.parameters.regime_required` vs `features.regime`. Si no coincide → RECHAZADA. `None` = acepta cualquier régimen.
+2. **Fase 2 — Reglas:** evalúa cada `{indicator, operator, value}` contra features. Si ALGUNA falla → RECHAZADA.
+3. **Fase 3 — LLM:** genera entry/SL/TP. Python calcula `position_size = (capital × risk_pct) / |entry − SL|`.
+4. **Fase 4 — R/R:** `(TP − entry) / (entry − SL) >= AGENT_MIN_RR_RATIO` (default 2.0). Si no → RECHAZADA.
+
+### Provider (`app/modules/agent/providers/agent_provider.py`)
+- `AgentServiceFactory` — instancia repos propios + borrowed de strategies, accounts, features, market
+- `LLMClientFactory.create(settings)` se llama por request (respeta cambios de config en runtime)
+
+### Endpoints REST
+| Método | Ruta | Auth | Nota |
+|--------|------|------|------|
+| POST | `/agent/analyze` | token | Prompt Maestro — retorna 200 siempre (APPROVED o REJECTED) |
+| GET | `/api/models` | token | Lista modelos ML; filtro: `?status=active` |
+| POST | `/api/models` | admin | Crea modelo ML |
+| GET | `/api/models/{id}` | token | Detalle de modelo |
+| PUT | `/api/models/{id}` | admin | Actualiza modelo (status/artifact_uri/meta) |
+| GET | `/api/model-runs` | token | Lista runs; requiere `?model_id=X` |
+| POST | `/api/model-runs` | admin | Crea run (status=running) |
+| POST | `/api/model-runs/{id}/finish` | admin | Finaliza run (success/failed + metrics) |
+
+Routers registrados en `app/app_factory.py`:
+```python
+from app.modules.agent.rest import agent_router, models_router, model_runs_router
+```
+
+### Páginas web
+| URL | Template | JS |
+|-----|----------|----|
+| `/agent` | `templates/agent/analyze.html` | `static/js/agent/analyze.js` |
+
+### Settings LLM/Agent (en `app/common/config/settings.py`)
+```python
+LLM_PROVIDER      # openai | anthropic | xai | deepseek | gemini | ollama (default: openai)
+LLM_MODEL         # nombre del modelo (default: gpt-4o)
+LLM_API_KEY       # clave del provider
+LLM_BASE_URL      # override base_url (opcional)
+LLM_TEMPERATURE   # (default: 0.1)
+LLM_MAX_TOKENS    # (default: 1024)
+AGENT_MIN_RR_RATIO  # ratio R/R mínimo (default: 2.0)
+AGENT_MASTER_PROMPT # prompt del sistema configurable (env var)
+```
+
+### Tests
+- `tests/agent/test_analyze_service.py` — 20 tests unitarios, LLM 100% mockeado
+  - `TestAnalyzeDataLoading` (6), `TestRegimeFilter` (3), `TestRulesValidation` (3)
+  - `TestLLMIntegration` (4), `TestRRFilter` (2), `TestPositionSizing` (1), `TestFullApprovedPath` (1)
+
+---
+
 ## Archivos de infraestructura críticos (nunca romper)
 
 | Archivo | Qué hace |

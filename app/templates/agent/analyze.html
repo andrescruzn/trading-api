@@ -1,0 +1,160 @@
+{% extends "base_app.html" %}
+
+{% block title %}Agente AI — Trading AI{% endblock %}
+{% block nav_title %}Agente AI{% endblock %}
+
+{% block content %}
+
+  <div class="page-header">
+    <div>
+      <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.2rem;">
+        <i data-lucide="brain-circuit" style="color:var(--gold);width:18px;height:18px;"></i>
+        <h1 style="font-size:1.25rem;">Agente de Trading AI</h1>
+      </div>
+      <p class="text-muted" style="font-size:0.8125rem;">
+        Prompt Maestro — Analiza el mercado con IA y decide si la operación es viable
+      </p>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <div id="alert-msg" class="alert hidden"></div>
+
+  <!-- Formulario de análisis -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:1.5rem;">
+
+    <div class="card" style="padding:1.25rem;">
+      <h2 style="font-size:0.95rem;font-weight:600;margin-bottom:1rem;color:var(--text-primary);">
+        Parámetros del Análisis
+      </h2>
+
+      <div style="display:flex;flex-direction:column;gap:0.875rem;">
+
+        <div>
+          <label class="form-label">Símbolo</label>
+          <select id="symbol-select" class="form-select">
+            <option value="">Cargando símbolos...</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="form-label">Timeframe</label>
+          <select id="timeframe-select" class="form-select">
+            <option value="">Cargando timeframes...</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="form-label">Estrategia</label>
+          <select id="strategy-select" class="form-select">
+            <option value="">Cargando estrategias...</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="form-label">Cuenta</label>
+          <select id="account-select" class="form-select">
+            <option value="">Cargando cuentas...</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="form-label">Feature Set</label>
+          <select id="feature-set-select" class="form-select">
+            <option value="">Cargando feature sets...</option>
+          </select>
+        </div>
+
+        <button id="btn-analyze" class="btn btn-primary" style="margin-top:0.25rem;">
+          <i data-lucide="zap" style="width:14px;height:14px;"></i>
+          Ejecutar Análisis
+        </button>
+
+      </div>
+    </div>
+
+    <!-- Panel de resultado -->
+    <div id="result-panel" class="card" style="padding:1.25rem;display:none;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+        <h2 style="font-size:0.95rem;font-weight:600;color:var(--text-primary);">Resultado</h2>
+        <span id="decision-badge" class="badge"></span>
+      </div>
+
+      <!-- Precios -->
+      <div id="prices-grid" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.75rem;margin-bottom:1rem;">
+        <div class="stat-card">
+          <div class="stat-label">Entrada</div>
+          <div id="res-entry" class="stat-value">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Stop Loss</div>
+          <div id="res-sl" class="stat-value" style="color:var(--danger);">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Take Profit</div>
+          <div id="res-tp" class="stat-value" style="color:var(--success);">—</div>
+        </div>
+      </div>
+
+      <!-- Métricas -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:1rem;">
+        <div class="stat-card">
+          <div class="stat-label">Tamaño Posición</div>
+          <div id="res-size" class="stat-value">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Ratio R/R</div>
+          <div id="res-rr" class="stat-value">—</div>
+        </div>
+      </div>
+
+      <!-- Razonamiento -->
+      <div style="margin-bottom:0.75rem;">
+        <div class="stat-label" style="margin-bottom:0.25rem;">Razonamiento del AI</div>
+        <div id="res-reasoning" style="font-size:0.8125rem;color:var(--text-secondary);
+             background:var(--bg-primary);border-radius:6px;padding:0.625rem;
+             border:1px solid var(--border);line-height:1.5;">—</div>
+      </div>
+
+      <!-- Fases del análisis -->
+      <div>
+        <div class="stat-label" style="margin-bottom:0.5rem;">Fases del Análisis</div>
+        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+          <span id="phase-regime" class="badge">Régimen</span>
+          <span id="phase-rules" class="badge">Reglas</span>
+          <span id="phase-rr" class="badge">R/R ≥ 2x</span>
+        </div>
+      </div>
+
+      <!-- Reglas detalladas -->
+      <div id="rules-detail-section" style="margin-top:0.875rem;display:none;">
+        <div class="stat-label" style="margin-bottom:0.5rem;">Detalle de Reglas</div>
+        <div id="rules-detail-list" style="display:flex;flex-direction:column;gap:0.25rem;"></div>
+      </div>
+
+    </div>
+
+    <!-- Placeholder cuando no hay resultado -->
+    <div id="result-placeholder" class="card"
+         style="padding:1.25rem;display:flex;align-items:center;justify-content:center;
+                flex-direction:column;gap:0.5rem;color:var(--text-muted);">
+      <i data-lucide="sparkles" style="width:32px;height:32px;opacity:0.4;"></i>
+      <p style="font-size:0.8125rem;">El resultado aparecerá aquí</p>
+    </div>
+
+  </div>
+
+  <!-- Spinner de análisis -->
+  <div id="analyzing-overlay" style="display:none;text-align:center;padding:2rem;">
+    <span class="spinner" style="width:32px;height:32px;border-width:3px;"></span>
+    <p style="margin-top:0.75rem;color:var(--text-secondary);font-size:0.875rem;">
+      Consultando al agente AI...
+    </p>
+  </div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="/static/js/agent/analyze.js?v={{ sv }}"></script>
+{% endblock %}

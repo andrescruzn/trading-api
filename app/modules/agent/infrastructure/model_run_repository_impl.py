@@ -45,6 +45,7 @@ class SqlAlchemyModelRunRepository(ModelRunRepository):
     def _apply_to_orm(run: ModelRun, orm: ModelRunORM) -> ModelRunORM:
         orm.model_id = run.model_id
         orm.dataset_id = run.dataset_id
+        orm.started_at = run.started_at
         orm.status = run.status
         orm.metrics = run.metrics
         orm.params = run.params

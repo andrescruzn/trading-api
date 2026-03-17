@@ -63,9 +63,12 @@ class AnthropicLLMClient(LLMClient):
                 messages=[{"role": "user", "content": user_message}],
                 temperature=self._temperature,
             )
-            return response.content[0].text
         except Exception as exc:
             raise LLMCallError(
                 provider="anthropic",
                 detail=str(exc),
             ) from exc
+
+        if not response.content:
+            raise LLMCallError(provider="anthropic", detail="empty content in response")
+        return response.content[0].text

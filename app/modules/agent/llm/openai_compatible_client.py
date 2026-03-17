@@ -82,9 +82,12 @@ class OpenAICompatibleClient(LLMClient):
                 temperature=self._temperature,
                 max_tokens=self._max_tokens,
             )
-            return response.choices[0].message.content or ""
         except Exception as exc:
             raise LLMCallError(
                 provider=self._provider_name,
                 detail=str(exc),
             ) from exc
+
+        if not response.choices:
+            raise LLMCallError(provider=self._provider_name, detail="empty choices in response")
+        return response.choices[0].message.content or ""

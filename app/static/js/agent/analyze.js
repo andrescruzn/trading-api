@@ -137,7 +137,7 @@ async function runAnalysis() {
 
     const json = await res.json();
 
-    if (!res.ok || json.errorCode !== 0) {
+    if (!res.ok || json.errorCode >= 400) {
       showAlert(json.msg || "Error en el análisis.");
       return;
     }

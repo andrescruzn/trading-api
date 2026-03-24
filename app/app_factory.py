@@ -33,6 +33,7 @@ from app.modules.features.rest import feature_sets_router, candle_features_route
 from app.modules.accounts.rest import accounts_router, balances_router
 from app.modules.strategies.rest import strategies_router, datasets_router
 from app.modules.agent.rest import agent_router, models_router, model_runs_router
+from app.modules.bots.rest import bots_router, signals_router
 from app.modules.users.rest import auth_router
 from app.modules.web import web_router
 
@@ -104,6 +105,10 @@ def create_app() -> FastAPI:
     app.include_router(agent_router)
     app.include_router(models_router)
     app.include_router(model_runs_router)
+
+    # Bots & Signals
+    app.include_router(bots_router)
+    app.include_router(signals_router)
 
     app.include_router(web_router)      # Páginas HTML (siempre al final)
 

@@ -424,6 +424,69 @@ Cada entrenamiento queda registrado como un "run": fecha de inicio, estado (runn
 métricas (accuracy, F1, etc.) y parámetros usados. Permite comparar versiones del mismo modelo.
 
 ---
+3.4 Módulo 7 — Bots & Signals (Bots y Señales)
+
+Un bot es la pieza que automatiza todo. Une una estrategia, un símbolo, un timeframe, una cuenta y
+un feature set en una sola unidad que puede generar señales de trading de forma continua.
+
+¿Qué es un Bot exactamente?
+
+  Bot = Cuenta + Símbolo + Timeframe + Estrategia + Feature Set + Risk %
+
+  Ejemplo: Bot #1 opera BTC/USDT en 1h usando la estrategia "Trend BTC v1.0", con el feature set
+  "default v1.0.0", en la cuenta de Binance de Andrés, arriesgando máximo 1% del capital por operación.
+
+Cada bot tiene su propio Feature Set porque distintos bots pueden necesitar diferentes conjuntos
+de indicadores. Un bot de tendencia y uno de reversión pueden usar indicadores distintos.
+
+Estados de un bot:
+
+  stopped  → El bot está detenido (estado inicial)
+  running  → El bot está activo generando señales
+  paused   → El bot está pausado temporalmente (conserva su configuración)
+  error    → El bot se detuvo por un error interno
+
+Transiciones válidas (máquina de estados):
+
+  stopped  → running            (iniciar el bot)
+  running  → paused             (pausar temporalmente)
+  running  → stopped            (detener)
+  running  → error              (fallo interno)
+  paused   → running            (reanudar)
+  paused   → stopped            (detener desde pausa)
+  error    → stopped            (resetear tras error)
+
+No se puede saltar estados: por ejemplo, desde "error" no se puede pasar directamente a "running".
+Primero hay que volver a "stopped" y luego a "running".
+
+Regla importante: solo se puede editar un bot cuando está en estado "stopped". Si el bot está
+running o paused, los cambios de configuración están bloqueados para evitar inconsistencias.
+
+Señales y cómo se generan:
+
+  1. El bot invoca al Agente de IA (M6) con su contexto:
+     símbolo + timeframe + estrategia + cuenta + feature set del bot
+  2. El Agente aplica el Prompt Maestro (4 fases: régimen → reglas → LLM → R/R)
+  3. Si APROBADA → la señal tiene acción BUY o SELL + entry, SL, TP, position_size, rr_ratio
+  4. Si RECHAZADA → la señal tiene acción HOLD, approved=False
+  5. TODAS las señales se guardan en la BD, incluyendo las rechazadas (trazabilidad completa)
+
+¿Cómo se infiere BUY vs SELL?
+
+  El agente calcula entry y stop_loss. La relación entre ellos define la dirección:
+  entry > stop_loss → BUY  (compra: ganas si el precio sube)
+  entry < stop_loss → SELL (short: ganas si el precio baja)
+
+features_hash:
+
+  Cada señal guarda un SHA-256 del snapshot de indicadores que usó para tomarla.
+  Esto permite auditar exactamente qué datos vio el agente cuando tomó la decisión.
+
+Páginas de la UI:
+  /bots       → Panel de usuario: lista de bots, crear nuevo, start/pause/stop, ver señales
+  /admin/bots → Vista admin: todos los bots del sistema con filtros de estado y modo
+
+---
 PARTE 4 — Viabilidad del negocio: Edge y Capital
 
 4.1 ¿Qué es el "edge" y por qué es lo más importante?

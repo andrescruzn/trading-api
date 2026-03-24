@@ -54,3 +54,9 @@ from app.modules.strategies.infrastructure.dataset_model import DatasetModel  # 
 # --------------------------------------------------------------
 from app.modules.agent.infrastructure.ml_model_model import MLModelORM  # noqa: F401
 from app.modules.agent.infrastructure.model_run_model import ModelRunORM  # noqa: F401
+
+# --------------------------------------------------------------
+# Bots module models
+# --------------------------------------------------------------
+from app.modules.bots.infrastructure.bot_model import BotModel  # noqa: F401
+from app.modules.bots.infrastructure.signal_model import SignalModel  # noqa: F401

@@ -302,3 +302,27 @@ def agent_analyze_page(request: Request):
     if not identity:
         return RedirectResponse(url="/login", status_code=302)
     return templates.TemplateResponse(request, "agent/analyze.html")
+
+
+# ======================================================================
+# Módulo 7 — Bots & Signals
+# ======================================================================
+
+@web_router.get("/bots", response_class=HTMLResponse, include_in_schema=False)
+def bots_page(request: Request):
+    """Panel de bots del usuario — lista bots y sus signals recientes."""
+    identity = _get_identity_from_cookie(request)
+    if not identity:
+        return RedirectResponse(url="/login", status_code=302)
+    return templates.TemplateResponse(request, "bots/index.html")
+
+
+@web_router.get("/admin/bots", response_class=HTMLResponse, include_in_schema=False)
+def admin_bots_page(request: Request):
+    """Vista admin — todos los bots del sistema."""
+    identity = _get_identity_from_cookie(request)
+    if not identity:
+        return RedirectResponse(url="/login", status_code=302)
+    if int(identity.get("role_id", 0)) != int(settings.AUTH_ADMIN_ROLE_ID):
+        return RedirectResponse(url="/dashboard", status_code=302)
+    return templates.TemplateResponse(request, "admin/bots.html")

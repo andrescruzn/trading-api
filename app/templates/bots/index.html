@@ -1,0 +1,210 @@
+{% extends "base_app.html" %}
+
+{% block title %}Bots — Trading AI{% endblock %}
+{% block nav_title %}Bots{% endblock %}
+
+{% block content %}
+
+<style>
+  /* ── Modal campos — mismo estilo que Módulo 6 ── */
+  .field { display: flex; flex-direction: column; gap: 0.35rem; }
+  .field label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+  }
+</style>
+
+  <div class="page-header">
+    <div>
+      <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.2rem;">
+        <i data-lucide="bot" style="color:var(--gold);width:18px;height:18px;"></i>
+        <h1 style="font-size:1.25rem;">Mis Bots</h1>
+      </div>
+      <p class="text-muted" style="font-size:0.8125rem;">
+        Bots de trading activos — cada bot opera una estrategia sobre un símbolo
+      </p>
+    </div>
+    <button class="btn btn--primary" id="btn-new-bot" style="width:auto;padding:0.55rem 1.1rem;font-size:0.8125rem;">
+      <i data-lucide="plus" style="width:14px;height:14px;margin-right:0.3rem;"></i>
+      Nuevo Bot
+    </button>
+  </div>
+
+  <hr class="divider">
+
+  <div id="alert-msg" class="alert hidden"></div>
+
+  <!-- Carga -->
+  <div id="table-loading" class="text-center mt-3">
+    <span class="spinner"></span>
+    <p class="text-muted mt-1">Cargando bots...</p>
+  </div>
+
+  <!-- Tabla de Bots -->
+  <div id="table-wrapper" class="hidden">
+    <table class="data-table" id="bots-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Estado</th>
+          <th>Modo</th>
+          <th>Cuenta</th>
+          <th>Símbolo</th>
+          <th>Timeframe</th>
+          <th>Estrategia</th>
+          <th>Risk %</th>
+          <th>Creado</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody id="bots-tbody"></tbody>
+    </table>
+  </div>
+
+  <!-- Vacío -->
+  <div id="empty-state" class="text-center mt-4 hidden">
+    <i data-lucide="bot" style="width:40px;height:40px;color:var(--text-muted);margin-bottom:0.5rem;"></i>
+    <p class="text-muted">No tienes bots creados todavía.</p>
+    <button class="btn btn--primary" onclick="document.getElementById('btn-new-bot').click()"
+      style="width:auto;padding:0.55rem 1.2rem;margin-top:0.75rem;font-size:0.8125rem;">
+      Crear mi primer bot
+    </button>
+  </div>
+
+  <!-- ================================================================
+       Panel lateral: Signals del bot seleccionado
+       ================================================================ -->
+  <div id="signals-panel" class="hidden" style="margin-top:2rem;">
+    <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.75rem;">
+      <i data-lucide="zap" style="color:var(--gold);width:16px;height:16px;"></i>
+      <h2 style="font-size:1rem;">Señales del Bot <span id="signals-bot-label" style="color:var(--gold);"></span></h2>
+      <button id="btn-generate-signal" class="btn btn--primary"
+        style="width:auto;padding:0.4rem 0.9rem;font-size:0.75rem;margin-left:auto;">
+        <i data-lucide="zap" style="width:12px;height:12px;margin-right:0.25rem;"></i>
+        Generar Señal
+      </button>
+      <button id="btn-close-signals" class="btn btn--secondary"
+        style="width:auto;padding:0.4rem 0.9rem;font-size:0.75rem;">
+        Cerrar
+      </button>
+    </div>
+
+    <div id="signals-loading" class="text-center hidden">
+      <span class="spinner"></span>
+    </div>
+
+    <div id="signals-wrapper" class="hidden">
+      <table class="data-table" id="signals-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Acción</th>
+            <th>Aprobada</th>
+            <th>Entry</th>
+            <th>SL</th>
+            <th>TP</th>
+            <th>R/R</th>
+            <th>Confianza</th>
+            <th>Timestamp</th>
+            <th>Detalle</th>
+          </tr>
+        </thead>
+        <tbody id="signals-tbody"></tbody>
+      </table>
+    </div>
+
+    <div id="signals-empty" class="text-center mt-3 hidden">
+      <p class="text-muted" style="font-size:0.8125rem;">Este bot no tiene señales todavía.</p>
+    </div>
+  </div>
+
+  <!-- ================================================================
+       Modal: Crear bot
+       ================================================================ -->
+  <div id="modal-create" class="modal hidden">
+    <div class="modal__backdrop"></div>
+    <div class="modal__box" style="max-width:520px;">
+      <h2>Nuevo Bot</h2>
+
+      <form id="form-create-bot" style="margin-top:1rem;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;">
+
+          <div class="field">
+            <label for="f-account">Cuenta</label>
+            <select id="f-account" class="input-select" required></select>
+          </div>
+
+          <div class="field">
+            <label for="f-symbol">Símbolo</label>
+            <select id="f-symbol" class="input-select" required></select>
+          </div>
+
+          <div class="field">
+            <label for="f-timeframe">Timeframe</label>
+            <select id="f-timeframe" class="input-select" required></select>
+          </div>
+
+          <div class="field">
+            <label for="f-strategy">Estrategia</label>
+            <select id="f-strategy" class="input-select" required></select>
+          </div>
+
+          <div class="field">
+            <label for="f-feature-set">Feature Set</label>
+            <select id="f-feature-set" class="input-select" required></select>
+          </div>
+
+          <div class="field">
+            <label for="f-mode">Modo</label>
+            <select id="f-mode" class="input-select" required>
+              <option value="paper">Paper (simulado)</option>
+              <option value="live">Live (real)</option>
+            </select>
+          </div>
+
+          <div class="field" style="grid-column:1/-1;">
+            <label for="f-risk-pct">
+              Risk % por operación
+              <span class="text-muted" style="font-weight:400;text-transform:none;letter-spacing:0;">(0.01 = 1%)</span>
+            </label>
+            <input id="f-risk-pct" type="number" class="form-input"
+              step="0.001" min="0.001" max="1" value="0.01" required>
+          </div>
+
+        </div>
+
+        <div id="create-error" class="alert alert--error hidden" style="margin-top:0.75rem;"></div>
+
+        <div style="display:flex;gap:0.5rem;margin-top:1.25rem;justify-content:flex-end;">
+          <button type="button" class="btn btn--secondary" id="btn-create-cancel"
+            style="width:auto;padding:0.55rem 1.1rem;">Cancelar</button>
+          <button type="submit" class="btn btn--primary" id="btn-create-submit"
+            style="width:auto;padding:0.55rem 1.4rem;">Crear Bot</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ================================================================
+       Modal: Detalle de señal
+       ================================================================ -->
+  <div id="modal-signal" class="modal hidden">
+    <div class="modal__backdrop"></div>
+    <div class="modal__box" style="max-width:600px;">
+      <h2>Detalle de Señal</h2>
+      <div id="signal-detail-content" style="margin-top:1rem;"></div>
+      <div style="margin-top:1.25rem;">
+        <button class="btn btn--secondary" id="btn-signal-close"
+          style="width:auto;padding:0.55rem 1.1rem;">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+{% endblock %}
+
+{% block page_scripts %}
+  <script src="/static/js/bots/index.js?v={{ sv }}"></script>
+{% endblock %}

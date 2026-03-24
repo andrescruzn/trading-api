@@ -435,6 +435,89 @@ AGENT_MASTER_PROMPT # prompt del sistema configurable (env var)
 
 ---
 
+## ✅ Módulo 7 — Bots & Signals (COMPLETO)
+
+### Tablas en BD
+| Tabla | Acción | Nota |
+|-------|--------|------|
+| `bots` | WRITE | CRUD + state machine (stopped/running/paused/error) |
+| `signals` | WRITE | Señales generadas por bot (buy/sell/hold + precios) |
+| `strategies` | READ | Para construir AnalyzeService (borrowed de M5) |
+| `accounts` | READ | Para obtener capital (borrowed de M4) |
+| `account_balances` | READ | Balance más reciente (borrowed de M4) |
+| `candles` | READ | Última vela (borrowed de M2) |
+| `candle_features` | READ | Features del feature_set del bot (borrowed de M3) |
+| `feature_sets` | READ | Validar feature_set_id del bot |
+| `symbols` | READ | Para validar (borrowed de M2) |
+| `timeframes` | READ | Para validar (borrowed de M2) |
+
+### Modelos ORM (`app/modules/bots/infrastructure/`)
+| Archivo | Clase ORM | Tabla |
+|---------|-----------|-------|
+| `bot_model.py` | `BotModel` | `bots` |
+| `signal_model.py` | `SignalModel` | `signals` |
+
+Registrados en: `app/extensions/db/models_registry.py`
+
+### Migraciones
+- `migrations/m07_add_signal_price_columns.sql` — añade entry_price, stop_loss, take_profit, position_size, rr_ratio, approved a `signals`
+- `migrations/m07b_add_bot_feature_set_id.sql` — añade feature_set_id BIGINT NULL con FK a `feature_sets` en `bots`
+
+### Repositorios
+| Domain (interfaz) | Infrastructure (impl) |
+|-------------------|-----------------------|
+| `domain/bot_repository.py` | `infrastructure/bot_repository_impl.py` → `SqlAlchemyBotRepository` |
+| `domain/signal_repository.py` | `infrastructure/signal_repository_impl.py` → `SqlAlchemySignalRepository` |
+
+### Servicios (`app/modules/bots/services/`)
+| Subdir | Servicios |
+|--------|-----------|
+| `bots/` | `list_bots_service.py`, `get_bot_service.py`, `create_bot_service.py`, `update_bot_service.py`, `update_bot_status_service.py` |
+| `signals/` | `list_signals_service.py`, `generate_signal_service.py` |
+
+Provider: `app/modules/bots/providers/bot_provider.py` → `BotServiceFactory`
+- Repos propios: `SqlAlchemyBotRepository`, `SqlAlchemySignalRepository`
+- Repos borrowed: M2 (candle/symbol/timeframe), M3 (feature/candle_feature), M4 (account/balance), M5 (strategy)
+- `_build_analyze_service()` instancia M6 AnalyzeService con todos sus deps
+
+### Endpoints REST
+| Método | Ruta | Auth | Nota |
+|--------|------|------|------|
+| GET | `/bots` | token | Admin ve todos; user filtra por account_id |
+| POST | `/bots` | token | Crea bot (siempre inicia en stopped) |
+| GET | `/bots/{id}` | token | Detalle del bot |
+| PUT | `/bots/{id}` | token | Edita config (solo cuando stopped) |
+| POST | `/bots/{id}/start` | token | Transición → running |
+| POST | `/bots/{id}/pause` | token | Transición → paused |
+| POST | `/bots/{id}/stop` | token | Transición → stopped |
+| GET | `/signals` | token | Lista señales (requiere ?bot_id=X) |
+| POST | `/signals/generate` | token | Genera señal invocando M6 |
+
+Routers registrados en `app/app_factory.py`:
+```python
+from app.modules.bots.rest import bots_router, signals_router
+```
+
+### Páginas web
+| URL | Template | JS |
+|-----|----------|----|
+| `/bots` | `templates/bots/index.html` | `static/js/bots/index.js` |
+| `/admin/bots` | `templates/admin/bots.html` | `static/js/admin/bots.js` |
+
+### Gotchas críticos M7
+- `ServiceResult` almacena el error en `result.error.code` (NO `result.code`). Error que se encontró en `generate_signal_service.py` y se corrigió.
+- `feature_set_id` es por bot, NO global. El bot pasa su propio `feature_set_id` al AnalyzeService.
+- El bot `paused` ES activo (`is_active() = True`) — puede generar señales aunque esté pausado.
+- Señales rechazadas siempre se persisten con `approved=False` para trazabilidad.
+- Dirección buy/sell se infiere: `entry > stop_loss` → buy; `entry < stop_loss` → sell.
+
+### Tests
+- `tests/bots/test_bot_entity.py` — 22 tests (máquina de estados, is_active, risk_params)
+- `tests/bots/test_update_bot_status_service.py` — 16 tests (transiciones, timestamps, session.commit)
+- `tests/bots/test_generate_signal_service.py` — 17 tests (validaciones, dirección, campos)
+
+---
+
 ## Archivos de infraestructura críticos (nunca romper)
 
 | Archivo | Qué hace |

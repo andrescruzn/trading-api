@@ -112,19 +112,20 @@ Entregables:
 
 ---
 
-## 📌 Módulo 7 — Bots & Signals
+## ✅ Módulo 7 — Bots & Signals (COMPLETO)
 **Qué hace:** Instanciar estrategias corriendo automáticamente y generar señales.
 
 Tablas: `bots`, `signals`
 
 Entregables:
-- Bot = cuenta + símbolo + estrategia + parámetros de riesgo
-- CRUD bots (activar/pausar/detener)
-- Señales generadas: BUY / SELL / HOLD con precio entrada, SL, TP, tamaño
-- Filtro automático: señales con ratio R/R < 2:1 son RECHAZADAS automáticamente
-- Regla del 1%: tamaño calculado para no arriesgar más del 1% del capital
-- Web UI: panel de bots activos y señales recientes
-- Tests de la lógica de filtrado
+- ✅ Bot = cuenta + símbolo + estrategia + feature_set + parámetros de riesgo
+- ✅ CRUD bots (start/pause/stop) con máquina de estados en domain entity
+- ✅ Cada bot tiene su propio `feature_set_id` (migración m07b)
+- ✅ Señales: BUY / SELL / HOLD con entry, SL, TP, position_size, rr_ratio (migración m07a)
+- ✅ Señales rechazadas persisten con approved=False (trazabilidad completa)
+- ✅ features_hash: SHA-256 del snapshot de features para auditoría
+- ✅ Web UI: /bots (usuario) + /admin/bots (admin)
+- ✅ 55 tests unitarios pasando (bot entity, status transitions, signal generation)
 
 ---
 

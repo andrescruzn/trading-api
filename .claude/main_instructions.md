@@ -259,3 +259,9 @@ Los skills viven en `.claude/skills/`. Claude debe leerlos con la herramienta Re
 9. No hacer `session.commit()` fuera de la capa repositorio.
 10. No hardcodear IDs de roles; usar `settings.AUTH_ADMIN_ROLE_ID` / `settings.AUTH_USER_ROLE_ID`.
 11. Leer el skill correspondiente **antes** de generar código, nunca después.
+12. Al terminar cualquier módulo, actualizar OBLIGATORIAMENTE los 4 archivos de documentación:
+    - `MODULES.md` → cambiar 📌 PENDIENTE a ✅ COMPLETO + páginas implementadas
+    - `MANUAL.md` → agregar sección en lenguaje simple del nuevo módulo
+    - `.claude/memory/roadmap.md` → marcar ✅ COMPLETO con entregables
+    - `.claude/memory/MEMORY.md` → actualizar estado y notas técnicas
+    Si no se han actualizado todos, pedirlo al usuario antes de cerrar la sesión.

@@ -168,6 +168,32 @@ Una explicación simple de los 9 módulos del sistema, sin tecnicismos.
 
 ---
 
+## Módulo 10 — Billing & Managed Accounts (Facturación y Cuentas Administradas) 📌 PENDIENTE
+
+**En palabras simples:** Es el modelo de negocio. Permite que inversores (tu jefe, clientes, socios) pongan capital en el sistema y tú te llevas un porcentaje de las ganancias que genera el bot. Si el bot no gana, tú no cobras.
+
+**Qué hace:**
+- Registra **inversores** y el capital que aportaron a cada cuenta administrada
+- Calcula automáticamente la **ganancia neta** al cierre de cada período (semana/mes)
+- Aplica la **performance fee** configurada (ej: 20% de las ganancias)
+- Genera un **estado de cuenta** por inversor: capital inicial, ganancias brutas, fee cobrado, ganancia neta del inversor
+- Registra todos los cobros en un historial auditable
+- Envía el resumen automáticamente por email al cerrar el período
+
+**Modelo de negocio (Managed Account):**
+- El inversor aporta capital (ej: $10,000 USD)
+- El bot opera ese capital con las estrategias configuradas
+- Al cierre del período: si ganó $500 → tú cobras $100 (20%) → el inversor recibe $400 netos
+- Si el bot pierde → no se cobra nada (alineación de intereses)
+
+**Páginas — Administrador (solo admin):**
+- `/admin/billing` — Panel de inversores, capital aportado, ganancias del período, fees cobrados
+
+**Páginas — Inversor (usuario con rol inversor):**
+- `/investor/dashboard` — Mi capital, rendimiento histórico, fees pagados, estado de cuenta
+
+---
+
 ## Resumen visual del flujo completo
 
 ```
@@ -200,3 +226,25 @@ Una explicación simple de los 9 módulos del sistema, sin tecnicismos.
 ---
 
 *El Módulo 1 (Auth) protege el acceso a todo el sistema. Sin estar autenticado, no se puede usar ningún módulo.*
+
+---
+
+## ⚠️ Nota importante — El sistema no garantiza ganancias por sí solo
+
+El bot ejecuta las reglas de las estrategias con disciplina perfecta. Pero la rentabilidad depende del **edge** (ventaja estadística) de esas estrategias.
+
+**¿Qué es el edge?**
+Una estrategia tiene edge cuando el historial de operaciones muestra que las ganancias superan las pérdidas de forma consistente. Se mide con: Win Rate, R/R real, Profit Factor y Max Drawdown.
+
+**¿Cómo se valida el edge en este sistema?**
+1. Correr el sistema en **modo paper** (M7 + M8 sin dinero real) durante 3-6 meses
+2. Acumular 100+ operaciones por estrategia
+3. Calcular métricas reales del historial (`signals` → `orders` → `fills`)
+4. Solo pasar a live si los números son consistentemente positivos
+
+**Capital mínimo para operar en live:**
+- $5,000 → mínimo para que la Regla del 1% genere operaciones con tamaño real
+- $10,000 → razonable para demostrar resultados
+- $50,000+ → donde empieza a ser negocio real
+
+Ver `MANUAL.md` Parte 4 para explicación completa de edge, capital y rutas de negocio.

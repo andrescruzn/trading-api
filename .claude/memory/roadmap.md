@@ -165,6 +165,34 @@ Entregables:
 
 ---
 
+## 📌 Módulo 10 — Billing & Managed Accounts
+**Qué hace:** Modelo de negocio. Inversores aportan capital, el bot lo opera, y el sistema
+cobra automáticamente un porcentaje de las ganancias (performance fee).
+
+Tablas nuevas: `investors`, `managed_accounts`, `billing_periods`, `fee_transactions`
+
+Modelo de negocio: Managed Account
+- Inversor deposita capital en una cuenta del sistema
+- Bot opera ese capital con las estrategias configuradas
+- Al cierre del período: si hay PnL positivo → se calcula y registra la performance fee
+- Si hay pérdida → no se cobra (High-Water Mark opcional para proteger al inversor)
+
+Entregables:
+- CRUD inversores (nombre, email, capital aportado, fee_pct configurado)
+- Cálculo automático de performance fee al cerrar período (diario/semanal/mensual)
+- High-Water Mark: solo cobrar fee sobre nuevos máximos de capital (evitar cobrar 2 veces)
+- Estado de cuenta por inversor: capital, ganancias brutas, fee cobrado, neto inversor
+- Historial de fee_transactions auditables
+- Email automático al inversor al cierre de período
+- Web UI admin: panel de inversores + fees acumulados
+- Web UI inversor: dashboard con rendimiento y estado de cuenta
+
+Roles necesarios:
+- role_id=3 → investor (nuevo rol, solo ve su propio dashboard)
+- role_id=2 → admin (gestiona todos los inversores y fees)
+
+---
+
 ## Orden de dependencias
 ```
 Módulo 1 (Auth)
@@ -184,4 +212,6 @@ Módulo 7 (Bots & Signals) ← necesita agent + strategies
 Módulo 8 (Orders & Execution) ← necesita signals + accounts
     ↓
 Módulo 9 (Alerts) ← puede ir en paralelo con 7 u 8
+    ↓
+Módulo 10 (Billing) ← necesita historial de orders + fills de M8
 ```

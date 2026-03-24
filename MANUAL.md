@@ -487,6 +487,78 @@ Páginas de la UI:
   /admin/bots → Vista admin: todos los bots del sistema con filtros de estado y modo
 
 ---
+3.5 Módulo 8 — Orders & Execution (Órdenes y Ejecución)
+
+Este es el módulo donde el dinero realmente se mueve. Cuando un bot genera una señal aprobada
+(BUY o SELL), este módulo ejecuta la orden en el exchange.
+
+¿Qué es una Orden?
+
+  Una orden es la instrucción concreta para comprar o vender:
+
+  Tipo market    → Ejecutar ahora al precio de mercado. Rápida pero sin control del precio.
+  Tipo limit     → Ejecutar solo si el precio llega a X. Control de precio pero puede no ejecutarse.
+  Tipo stop      → Activar una venta si el precio cae a X (Stop Loss automático).
+  Tipo stop_limit → Igual que stop pero con precio límite adicional.
+
+Ciclo de vida de una orden (máquina de estados):
+
+  new → sent → filled         (ejecución completa)
+  new → sent → partially_filled → filled  (ejecución parcial, luego completa)
+  new → sent → canceled        (cancelada por el usuario)
+  new → sent → rejected        (rechazada por el exchange)
+
+¿Qué es un Fill (Ejecución)?
+
+  Un fill es la confirmación de que una orden se ejecutó, total o parcialmente:
+  - qty:   cuánto se compró/vendió realmente
+  - price: precio real de la ejecución (puede diferir del precio solicitado)
+  - fee:   comisión cobrada por el exchange
+
+  Una orden market grande puede tener múltiples fills si se ejecuta en partes.
+
+¿Qué es una Posición?
+
+  Una posición es el estado actual de lo que tienes abierto en un símbolo:
+  - qty:          cuánto tienes (ej: 0.08 BTC)
+  - avg_price:    precio promedio de compra (Weighted Average Price)
+  - realized_pnl: ganancia/pérdida acumulada de operaciones ya cerradas
+
+  Si tienes 0 qty → posición cerrada (flat).
+
+¿Cómo se calcula el avg_price (precio promedio)?
+
+  Cada compra recalcula el precio promedio ponderado (WAP):
+  nueva posición: 0.05 BTC @ $95,000
+  compra más:     0.03 BTC @ $96,000
+  avg_price nuevo = (0.05 × $95,000 + 0.03 × $96,000) / (0.05 + 0.03)
+                  = ($4,750 + $2,880) / 0.08
+                  = $95,375 por BTC
+
+Paper mode vs Live mode:
+
+  Cada bot opera en uno de dos modos:
+
+  paper (simulado):
+    · El fill se simula usando el precio de cierre de la última vela conocida
+    · fee = 0 (sin comisión)
+    · No se toca dinero real
+    · Ideal para validar estrategias antes de arriesgar capital
+
+  live (real):
+    · La orden se envía al exchange real vía la librería ccxt
+    · El fill contiene el precio y comisión reales del exchange
+    · Usa las credenciales cifradas con Fernet almacenadas en la cuenta
+
+Regla de oro: siempre correr al menos 3 meses en paper mode antes de pasar a live.
+Esto permite acumular 50-100+ operaciones y calcular métricas reales de la estrategia.
+
+Páginas de la UI:
+  /orders       → Panel de usuario: selector de bot, tabs de Órdenes/Posiciones/Ejecuciones,
+                  crear nueva orden manual con modal
+  /admin/orders → Vista admin: todas las órdenes del sistema con filtros de lado, estado y tipo
+
+---
 PARTE 4 — Viabilidad del negocio: Edge y Capital
 
 4.1 ¿Qué es el "edge" y por qué es lo más importante?

@@ -60,3 +60,10 @@ from app.modules.agent.infrastructure.model_run_model import ModelRunORM  # noqa
 # --------------------------------------------------------------
 from app.modules.bots.infrastructure.bot_model import BotModel  # noqa: F401
 from app.modules.bots.infrastructure.signal_model import SignalModel  # noqa: F401
+
+# --------------------------------------------------------------
+# Orders module models
+# --------------------------------------------------------------
+from app.modules.orders.infrastructure.order_model import OrderModel  # noqa: F401
+from app.modules.orders.infrastructure.fill_model import FillModel  # noqa: F401
+from app.modules.orders.infrastructure.position_model import PositionModel  # noqa: F401

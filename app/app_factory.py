@@ -34,6 +34,7 @@ from app.modules.accounts.rest import accounts_router, balances_router
 from app.modules.strategies.rest import strategies_router, datasets_router
 from app.modules.agent.rest import agent_router, models_router, model_runs_router
 from app.modules.bots.rest import bots_router, signals_router
+from app.modules.orders.rest import orders_router, fills_router, positions_router
 from app.modules.users.rest import auth_router
 from app.modules.web import web_router
 
@@ -109,6 +110,11 @@ def create_app() -> FastAPI:
     # Bots & Signals
     app.include_router(bots_router)
     app.include_router(signals_router)
+
+    # Orders & Execution
+    app.include_router(orders_router)
+    app.include_router(fills_router)
+    app.include_router(positions_router)
 
     app.include_router(web_router)      # Páginas HTML (siempre al final)
 

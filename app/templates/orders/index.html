@@ -1,0 +1,237 @@
+{% extends "base_app.html" %}
+
+{% block title %}Órdenes — Trading AI{% endblock %}
+{% block nav_title %}Órdenes{% endblock %}
+
+{% block content %}
+
+<style>
+  .field { display: flex; flex-direction: column; gap: 0.35rem; }
+  .field label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+  }
+  .badge--buy  { background: rgba(34,197,94,0.15);  color: #22c55e; }
+  .badge--sell { background: rgba(239,68,68,0.15);   color: #ef4444; }
+  .badge--filled   { background: rgba(34,197,94,0.15);  color: #22c55e; }
+  .badge--new      { background: rgba(148,163,184,0.15); color: #94a3b8; }
+  .badge--sent     { background: rgba(96,165,250,0.15);  color: #60a5fa; }
+  .badge--canceled { background: rgba(100,116,139,0.15); color: #64748b; }
+  .badge--rejected { background: rgba(239,68,68,0.15);   color: #ef4444; }
+  .badge--partially_filled { background: rgba(251,191,36,0.15); color: #fbbf24; }
+
+  .tabs { display: flex; gap: 0.25rem; margin-bottom: 1.25rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+  .tab-btn {
+    padding: 0.4rem 1rem; border-radius: 6px; border: none; cursor: pointer;
+    font-size: 0.8125rem; font-weight: 500; background: transparent;
+    color: var(--text-muted); transition: all 0.15s;
+  }
+  .tab-btn:hover { color: var(--text-primary); background: rgba(255,255,255,0.05); }
+  .tab-btn.active { background: rgba(240,180,41,0.15); color: var(--gold); }
+
+  .positions-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 0.75rem; margin-top: 0.5rem;
+  }
+  .position-card {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 10px; padding: 1rem;
+  }
+  .position-card__symbol { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.35rem; }
+  .position-card__qty    { font-size: 1.4rem; font-weight: 700; font-family: monospace; color: var(--text-primary); }
+  .position-card__avg    { font-size: 0.8125rem; color: var(--text-secondary); margin-top: 0.25rem; }
+  .position-card__pnl    { font-size: 0.875rem; font-weight: 600; margin-top: 0.5rem; }
+  .pnl--positive { color: #22c55e; }
+  .pnl--negative { color: #ef4444; }
+  .pnl--zero     { color: var(--text-muted); }
+</style>
+
+<div class="page-header">
+  <div>
+    <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.2rem;">
+      <i data-lucide="receipt" style="color:var(--gold);width:18px;height:18px;"></i>
+      <h1 style="font-size:1.25rem;">Órdenes</h1>
+    </div>
+    <p class="text-muted" style="font-size:0.8125rem;">
+      Historial de órdenes ejecutadas y posiciones abiertas de tus bots
+    </p>
+  </div>
+  <button class="btn btn--primary" id="btn-new-order"
+    style="width:auto;padding:0.55rem 1.1rem;font-size:0.8125rem;">
+    <i data-lucide="plus" style="width:14px;height:14px;margin-right:0.3rem;"></i>
+    Nueva Orden
+  </button>
+</div>
+
+<hr class="divider">
+
+<!-- Selector de bot -->
+<div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:1.25rem;flex-wrap:wrap;">
+  <label style="font-size:0.8125rem;color:var(--text-muted);white-space:nowrap;">Ver bot:</label>
+  <select id="select-bot" class="input-select" style="max-width:300px;flex:1;">
+    <option value="">— Selecciona un bot —</option>
+  </select>
+</div>
+
+<div id="alert-msg" class="alert hidden"></div>
+
+<!-- Tabs -->
+<div class="tabs" id="tabs-wrapper" style="display:none;">
+  <button class="tab-btn active" data-tab="orders">
+    <i data-lucide="list-ordered" style="width:13px;height:13px;margin-right:0.3rem;"></i>
+    Órdenes
+  </button>
+  <button class="tab-btn" data-tab="positions">
+    <i data-lucide="layers" style="width:13px;height:13px;margin-right:0.3rem;"></i>
+    Posiciones
+  </button>
+  <button class="tab-btn" data-tab="fills">
+    <i data-lucide="check-circle" style="width:13px;height:13px;margin-right:0.3rem;"></i>
+    Ejecuciones
+  </button>
+</div>
+
+<!-- ── Tab: Órdenes ── -->
+<div id="tab-orders">
+  <div id="orders-loading" class="text-center mt-3 hidden">
+    <span class="spinner"></span>
+    <p class="text-muted mt-1">Cargando órdenes...</p>
+  </div>
+  <div id="orders-table-wrapper" class="hidden">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>#</th><th>Lado</th><th>Tipo</th><th>Estado</th>
+          <th>Qty</th><th>Precio</th><th>Stop Price</th>
+          <th>Señal</th><th>Timestamp</th><th>Fills</th>
+        </tr>
+      </thead>
+      <tbody id="orders-tbody"></tbody>
+    </table>
+  </div>
+  <div id="orders-empty" class="text-center mt-4 hidden">
+    <i data-lucide="inbox" style="width:36px;height:36px;color:var(--text-muted);margin-bottom:0.5rem;"></i>
+    <p class="text-muted">Este bot no tiene órdenes todavía.</p>
+  </div>
+</div>
+
+<!-- ── Tab: Posiciones ── -->
+<div id="tab-positions" class="hidden">
+  <div id="positions-loading" class="text-center mt-3 hidden">
+    <span class="spinner"></span>
+  </div>
+  <div id="positions-grid" class="positions-grid"></div>
+  <div id="positions-empty" class="text-center mt-4 hidden">
+    <i data-lucide="layers" style="width:36px;height:36px;color:var(--text-muted);margin-bottom:0.5rem;"></i>
+    <p class="text-muted">Este bot no tiene posiciones abiertas.</p>
+  </div>
+</div>
+
+<!-- ── Tab: Fills ── -->
+<div id="tab-fills" class="hidden">
+  <div id="fills-loading" class="text-center mt-3 hidden">
+    <span class="spinner"></span>
+  </div>
+  <div id="fills-table-wrapper" class="hidden">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>#</th><th>Orden</th><th>Qty</th><th>Precio</th>
+          <th>Nocional</th><th>Comisión</th><th>Timestamp</th>
+        </tr>
+      </thead>
+      <tbody id="fills-tbody"></tbody>
+    </table>
+  </div>
+  <div id="fills-empty" class="text-center mt-4 hidden">
+    <i data-lucide="check-circle" style="width:36px;height:36px;color:var(--text-muted);margin-bottom:0.5rem;"></i>
+    <p class="text-muted">Este bot no tiene ejecuciones todavía.</p>
+  </div>
+</div>
+
+<!-- ================================================================
+     Modal: Nueva Orden
+     ================================================================ -->
+<div id="modal-order" class="modal hidden">
+  <div class="modal__backdrop"></div>
+  <div class="modal__box" style="max-width:480px;">
+    <h2>Nueva Orden</h2>
+    <form id="form-create-order" style="margin-top:1rem;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;">
+
+        <div class="field" style="grid-column:1/-1;">
+          <label for="o-bot">Bot</label>
+          <select id="o-bot" class="input-select" required></select>
+        </div>
+
+        <div class="field">
+          <label for="o-side">Lado</label>
+          <select id="o-side" class="input-select" required>
+            <option value="buy">Buy (Compra)</option>
+            <option value="sell">Sell (Venta)</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="o-type">Tipo</label>
+          <select id="o-type" class="input-select" required>
+            <option value="market">Market</option>
+            <option value="limit">Limit</option>
+            <option value="stop">Stop</option>
+            <option value="stop_limit">Stop Limit</option>
+          </select>
+        </div>
+
+        <div class="field" style="grid-column:1/-1;">
+          <label for="o-qty">Cantidad</label>
+          <input id="o-qty" type="number" class="form-input"
+            step="0.0001" min="0.0001" placeholder="0.01" required>
+        </div>
+
+        <div class="field" id="field-price">
+          <label for="o-price">Precio límite</label>
+          <input id="o-price" type="number" class="form-input"
+            step="0.01" min="0" placeholder="ej: 65000">
+        </div>
+
+        <div class="field" id="field-stop-price">
+          <label for="o-stop-price">Stop Price</label>
+          <input id="o-stop-price" type="number" class="form-input"
+            step="0.01" min="0" placeholder="ej: 64000">
+        </div>
+
+      </div>
+
+      <div id="order-form-error" class="alert alert--error hidden" style="margin-top:0.75rem;"></div>
+
+      <div style="display:flex;gap:0.5rem;margin-top:1.25rem;justify-content:flex-end;">
+        <button type="button" class="btn btn--secondary" id="btn-order-cancel"
+          style="width:auto;padding:0.55rem 1.1rem;">Cancelar</button>
+        <button type="submit" class="btn btn--primary" id="btn-order-submit"
+          style="width:auto;padding:0.55rem 1.4rem;">Ejecutar Orden</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal: Fills de una orden -->
+<div id="modal-fills" class="modal hidden">
+  <div class="modal__backdrop"></div>
+  <div class="modal__box" style="max-width:560px;">
+    <h2>Ejecuciones — Orden <span id="fills-order-id" style="color:var(--gold);"></span></h2>
+    <div id="fills-modal-content" style="margin-top:1rem;"></div>
+    <div style="margin-top:1.25rem;">
+      <button class="btn btn--secondary" id="btn-fills-close"
+        style="width:auto;padding:0.55rem 1.1rem;">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block page_scripts %}
+  <script src="/static/js/orders/index.js?v={{ sv }}"></script>
+{% endblock %}

@@ -1,0 +1,109 @@
+{% extends "base_app.html" %}
+
+{% block title %}Admin — Órdenes — Trading AI{% endblock %}
+{% block nav_title %}Admin · Órdenes{% endblock %}
+
+{% block content %}
+
+<style>
+  .badge--buy  { background: rgba(34,197,94,0.15);  color: #22c55e; }
+  .badge--sell { background: rgba(239,68,68,0.15);   color: #ef4444; }
+  .badge--filled   { background: rgba(34,197,94,0.15);  color: #22c55e; }
+  .badge--new      { background: rgba(148,163,184,0.15); color: #94a3b8; }
+  .badge--sent     { background: rgba(96,165,250,0.15);  color: #60a5fa; }
+  .badge--canceled { background: rgba(100,116,139,0.15); color: #64748b; }
+  .badge--rejected { background: rgba(239,68,68,0.15);   color: #ef4444; }
+  .badge--partially-filled { background: rgba(251,191,36,0.15); color: #fbbf24; }
+</style>
+
+<div class="page-header">
+  <div>
+    <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.2rem;">
+      <i data-lucide="receipt" style="color:var(--gold);width:18px;height:18px;"></i>
+      <h1 style="font-size:1.25rem;">Todas las Órdenes</h1>
+    </div>
+    <p class="text-muted" style="font-size:0.8125rem;">
+      Vista de administrador — historial global de órdenes del sistema
+    </p>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- Filtros -->
+<div style="display:flex;gap:0.75rem;align-items:center;margin-bottom:1rem;flex-wrap:wrap;">
+  <select id="filter-side" class="input-select" style="width:auto;min-width:130px;font-size:0.8125rem;">
+    <option value="">Todos los lados</option>
+    <option value="buy">Buy</option>
+    <option value="sell">Sell</option>
+  </select>
+  <select id="filter-status" class="input-select" style="width:auto;min-width:160px;font-size:0.8125rem;">
+    <option value="">Todos los estados</option>
+    <option value="new">New</option>
+    <option value="sent">Sent</option>
+    <option value="partially_filled">Partially Filled</option>
+    <option value="filled">Filled</option>
+    <option value="canceled">Canceled</option>
+    <option value="rejected">Rejected</option>
+  </select>
+  <select id="filter-type" class="input-select" style="width:auto;min-width:140px;font-size:0.8125rem;">
+    <option value="">Todos los tipos</option>
+    <option value="market">Market</option>
+    <option value="limit">Limit</option>
+    <option value="stop">Stop</option>
+    <option value="stop_limit">Stop Limit</option>
+  </select>
+  <button id="btn-refresh" class="btn btn--secondary"
+    style="width:auto;padding:0.45rem 0.9rem;font-size:0.8125rem;">
+    <i data-lucide="refresh-cw" style="width:13px;height:13px;margin-right:0.25rem;"></i>
+    Refrescar
+  </button>
+  <span id="orders-count" class="text-muted" style="font-size:0.8rem;margin-left:auto;"></span>
+</div>
+
+<div id="alert-msg" class="alert hidden"></div>
+
+<!-- Carga -->
+<div id="table-loading" class="text-center mt-3">
+  <span class="spinner"></span>
+  <p class="text-muted mt-1">Cargando órdenes...</p>
+</div>
+
+<!-- Tabla -->
+<div id="table-wrapper" class="hidden">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>ID</th><th>Bot</th><th>Lado</th><th>Tipo</th><th>Estado</th>
+        <th>Qty</th><th>Precio</th><th>Stop Price</th>
+        <th>Señal</th><th>Timestamp</th><th>Fills</th>
+      </tr>
+    </thead>
+    <tbody id="orders-tbody"></tbody>
+  </table>
+</div>
+
+<!-- Vacío -->
+<div id="empty-state" class="text-center mt-4 hidden">
+  <i data-lucide="inbox" style="width:40px;height:40px;color:var(--text-muted);margin-bottom:0.5rem;"></i>
+  <p class="text-muted">No hay órdenes en el sistema todavía.</p>
+</div>
+
+<!-- Modal: Fills de una orden -->
+<div id="modal-fills" class="modal hidden">
+  <div class="modal__backdrop"></div>
+  <div class="modal__box" style="max-width:560px;">
+    <h2>Ejecuciones — Orden <span id="fills-order-id" style="color:var(--gold);"></span></h2>
+    <div id="fills-modal-content" style="margin-top:1rem;"></div>
+    <div style="margin-top:1.25rem;">
+      <button class="btn btn--secondary" id="btn-fills-close"
+        style="width:auto;padding:0.55rem 1.1rem;">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block page_scripts %}
+  <script src="/static/js/admin/orders.js?v={{ sv }}"></script>
+{% endblock %}

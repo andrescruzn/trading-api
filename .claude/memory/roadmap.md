@@ -129,26 +129,22 @@ Entregables:
 
 ---
 
-## 📌 Módulo 8 — Orders & Execution ← AQUÍ SE COMPRA Y SE VENDE
+## ✅ Módulo 8 — Orders & Execution (COMPLETO)
 **Qué hace:** Ejecutar las órdenes en el exchange real. Es donde el dinero se mueve.
 
 Tablas: `orders`, `fills`, `positions`
 
 Entregables:
-- Envío de órdenes al exchange vía API (market order, limit order, stop-limit)
-- Tipos de orden: OPEN (compra/venta inicial), CLOSE (cierre de posición)
-- Registro de fills: ejecución parcial o total, precio real, comisión
-- Gestión de posiciones abiertas: P&L en tiempo real
-- Cierre automático al llegar al Stop Loss o Take Profit
-- Endpoint: POST /orders (ejecutar) | GET /positions (ver abiertas)
-- Web UI: libro de órdenes, posiciones abiertas, historial de trades
-- Tests con exchange mockeado (no tocar dinero real en tests)
-
-Tipos de operaciones:
-- Compra (LONG): entra comprando, cierra vendiendo
-- Venta en corto (SHORT): entra vendiendo, cierra comprando (si el exchange lo permite)
-- Stop Loss: cierre automático si el precio va en contra
-- Take Profit: cierre automático al alcanzar la ganancia objetivo
+- ✅ Domain: Order entity (state machine), Fill entity, Position entity (WAP + P&L)
+- ✅ Infrastructure: ORM models + repository impls para orders, fills, positions
+- ✅ Execution (Strategy Pattern): PaperExecutor (simula con última vela) + LiveExecutor (ccxt real)
+- ✅ Services: list_orders, get_order, create_order, list_fills, list_positions
+- ✅ CreateOrderService: valida bot, selecciona executor según bot.mode, crea order+fill+position en transacción atómica
+- ✅ Provider: OrderServiceFactory con repos propios + borrowed de M7/M2/M4
+- ✅ REST: POST /orders, GET /orders, GET /orders/{id}, GET /fills, GET /positions
+- ✅ Web UI usuario: /orders con tabs Órdenes/Posiciones/Ejecuciones + modal crear orden
+- ✅ Web UI admin: /admin/orders con filtros por lado/estado/tipo + modal fills
+- ✅ LiveExecutor: integración completa ccxt + Fernet credentials
 
 ---
 

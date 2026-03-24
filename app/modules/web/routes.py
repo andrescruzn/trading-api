@@ -326,3 +326,27 @@ def admin_bots_page(request: Request):
     if int(identity.get("role_id", 0)) != int(settings.AUTH_ADMIN_ROLE_ID):
         return RedirectResponse(url="/dashboard", status_code=302)
     return templates.TemplateResponse(request, "admin/bots.html")
+
+
+# ======================================================================
+# Módulo 8 — Orders & Execution
+# ======================================================================
+
+@web_router.get("/orders", response_class=HTMLResponse, include_in_schema=False)
+def orders_page(request: Request):
+    """Libro de órdenes del usuario — historial y posiciones abiertas."""
+    identity = _get_identity_from_cookie(request)
+    if not identity:
+        return RedirectResponse(url="/login", status_code=302)
+    return templates.TemplateResponse(request, "orders/index.html")
+
+
+@web_router.get("/admin/orders", response_class=HTMLResponse, include_in_schema=False)
+def admin_orders_page(request: Request):
+    """Vista admin — todas las órdenes del sistema."""
+    identity = _get_identity_from_cookie(request)
+    if not identity:
+        return RedirectResponse(url="/login", status_code=302)
+    if int(identity.get("role_id", 0)) != int(settings.AUTH_ADMIN_ROLE_ID):
+        return RedirectResponse(url="/dashboard", status_code=302)
+    return templates.TemplateResponse(request, "admin/orders.html")

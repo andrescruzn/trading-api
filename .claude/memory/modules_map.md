@@ -518,6 +518,81 @@ from app.modules.bots.rest import bots_router, signals_router
 
 ---
 
+## ✅ Módulo 8 — Orders & Execution (COMPLETO)
+
+### Tablas en BD
+| Tabla | Acción | Nota |
+|-------|--------|------|
+| `orders` | WRITE | Órdenes por bot (market/limit/stop/stop_limit) |
+| `fills` | WRITE | Ejecuciones de órdenes (CASCADE delete) |
+| `positions` | WRITE | Posición abierta por bot+symbol (UNIQUE uq_positions_bot_symbol) |
+| `bots` | READ | Para validar bot existe y está running |
+| `candles` | READ | PaperExecutor usa última vela para precio |
+| `symbols` | READ | Para resolver símbolo del bot |
+| `exchanges` | READ | Para resolver exchange en LiveExecutor |
+| `accounts` | READ | Para obtener credenciales cifradas en LiveExecutor |
+
+### Modelos ORM (`app/modules/orders/infrastructure/`)
+| Archivo | Clase | Tabla |
+|---------|-------|-------|
+| `order_model.py` | `OrderModel` | `orders` |
+| `fill_model.py` | `FillModel` | `fills` |
+| `position_model.py` | `PositionModel` | `positions` |
+
+Registrados en: `app/extensions/db/models_registry.py`
+
+### Execution layer (`app/modules/orders/execution/`)
+| Archivo | Clase | Qué hace |
+|---------|-------|---------|
+| `executor_interface.py` | `ExecutorInterface` (ABC) | Interfaz: `execute(order, bot) -> Fill` |
+| `paper_executor.py` | `PaperExecutor` | Simula fill con precio de última vela, fee=0 |
+| `live_executor.py` | `LiveExecutor` | Envía orden real al exchange via ccxt + Fernet decrypt |
+
+**Selector de executor en `CreateOrderService`:** `bot.mode == "paper"` → PaperExecutor; `"live"` → LiveExecutor
+
+### Servicios (`app/modules/orders/services/`)
+| Subdir | Servicios |
+|--------|-----------|
+| `orders/` | `create_order_service.py`, `get_order_service.py`, `list_orders_service.py` |
+| `fills/` | `list_fills_service.py` |
+| `positions/` | `list_positions_service.py` |
+
+Provider: `app/modules/orders/providers/order_provider.py` → `OrderServiceFactory`
+- Repos propios: order, fill, position
+- Repos borrowed: M7 (bot), M2 (candle/symbol/exchange), M4 (account + CredentialsCipher)
+
+### Endpoints REST
+| Método | Ruta | Auth | Nota |
+|--------|------|------|------|
+| POST | `/api/orders` | token | Crea y ejecuta orden (paper o live) |
+| GET | `/api/orders` | token | Lista por bot_id (admin puede listar todo) |
+| GET | `/api/orders/{id}` | token | Detalle de una orden |
+| GET | `/api/fills` | token | Lista por order_id o bot_id |
+| GET | `/api/positions` | token | Lista por bot_id (admin puede listar todo) |
+
+**⚠️ IMPORTANTE:** Prefijo `/api/` obligatorio — sin él colisiona con las páginas web `/orders` y `/admin/orders`.
+
+Routers registrados en `app/app_factory.py`:
+```python
+from app.modules.orders.rest import orders_router, fills_router, positions_router
+```
+
+### Páginas web
+| URL | Template | JS |
+|-----|----------|----|
+| `/orders` | `templates/orders/index.html` | `static/js/orders/index.js` |
+| `/admin/orders` | `templates/admin/orders.html` | `static/js/admin/orders.js` |
+
+### Gotchas críticos M8
+- **Prefijo `/api/`:** las rutas REST DEBEN usar `/api/orders`, `/api/fills`, `/api/positions` — sin él la página web `/orders` nunca se renderiza (el router REST captura antes).
+- **PaperExecutor:** usa `candle_repo.list_candles(symbol_id, timeframe_id, limit=1)` — método se llama `list_candles`, NO `list_by_symbol_and_timeframe`.
+- **symbol string para ccxt:** se guarda en `order.meta["symbol"]` en `CreateOrderService` para que `LiveExecutor` lo use.
+- **Transacción atómica:** order + fill + upsert position en un solo `session.commit()`.
+- **WAP:** `Position.apply_buy_fill()` recalcula avg_price. `apply_sell_fill()` acumula `realized_pnl`.
+- **Migraciones M7 requeridas:** `m07_add_signal_price_columns.sql` y `m07b_add_bot_feature_set_id.sql` deben aplicarse antes de usar M8.
+
+---
+
 ## Archivos de infraestructura críticos (nunca romper)
 
 | Archivo | Qué hace |

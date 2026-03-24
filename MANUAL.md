@@ -259,8 +259,8 @@ Ahora conectemos todo en una secuencia lógica:
 │     Guarda en candle_features                                   │
 │           │                                                     │
 │           ▼                                                     │
-│  3. AI AGENT (Ollama LLM)                                       │
-│     ──────────────────────                                      │
+│  3. AI AGENT (LLM multi-provider)                               │
+│     ──────────────────────────────                              │
 │     Recibe: features + estrategia + cuenta                      │
 │     Aplica Prompt Maestro:                                      │
 │       ① ¿Régimen coincide con estrategia?  → SÍ ✓              │
@@ -333,4 +333,92 @@ Regla de coherencia (se valida automáticamente):
 Un dataset es un recorte de datos históricos (velas + features) para backtesting o entrenamiento:
 - Referencia un símbolo, timeframe y rango de fechas
 - Tiene un query_spec JSON que define cómo se construyó
-- Se usará en Módulo 6 (AI Agent) para entrenar y evaluar modelos
+- Se usará en futuros módulos (AI Agent, entrenamiento de modelos) para evaluar estrategias
+
+---
+3.3 Módulo 6 — AI Agent (Agente de IA)
+
+El agente es el motor de decisión del sistema. Recibe una combinación de símbolo + timeframe + estrategia + cuenta y
+devuelve un veredicto: APROBADA o RECHAZADA.
+
+Internamente aplica el Prompt Maestro con 4 fases en secuencia:
+
+  FASE 1 — Filtro de Régimen
+  ──────────────────────────
+  Compara el régimen actual del mercado (calculado en M3) con el régimen requerido por la estrategia.
+  Si no coinciden → RECHAZADA al instante.
+
+  Ejemplo:
+    Estrategia requiere: trend_up
+    Régimen actual:      sideways
+    → RECHAZADA ("Régimen actual no coincide con el requerido")
+
+  FASE 2 — Validación de Reglas
+  ──────────────────────────────
+  Evalúa cada regla de la estrategia contra las features calculadas.
+  Si ALGUNA regla falla → RECHAZADA.
+
+  Ejemplo de reglas:
+    [{"indicator": "rsi_14", "operator": "lt", "value": 60}]
+    → RSI de 14 períodos debe ser menor que 60
+
+  Operadores soportados: lt (<), gt (>), lte (<=), gte (>=), eq (=)
+
+  Si las reglas pasaron pero RSI actual = 72 → RECHAZADA ("rsi_14 lt 60 (actual: 72.00)")
+
+  FASE 3 — LLM calcula Entry / Stop Loss / Take Profit
+  ─────────────────────────────────────────────────────
+  El agente llama al LLM configurado con el precio actual y el ATR.
+  El LLM sugiere los niveles y Python ejecuta la fórmula de posición:
+
+    position_size = (capital × risk_pct) / |entry − stop_loss|
+
+  Ejemplo real:
+    Capital:      $10,000
+    risk_pct:     1% (0.01)
+    Entry:        $95,500
+    Stop Loss:    $94,250  (entry - ATR × 1.5)
+    Take Profit:  $98,000  (entry + ATR × 3.0)
+
+    position_size = ($10,000 × 0.01) / |$95,500 − $94,250|
+                  = $100 / $1,250
+                  = 0.08 BTC
+
+  FASE 4 — Filtro Ratio R/R
+  ──────────────────────────
+  Calcula: rr_ratio = (take_profit - entry) / (entry - stop_loss)
+  Si rr_ratio < 2.0 (configurable con AGENT_MIN_RR_RATIO) → RECHAZADA.
+
+  Con los datos del ejemplo:
+    rr_ratio = ($98,000 - $95,500) / ($95,500 - $94,250) = $2,500 / $1,250 = 2.0 ✓
+
+  → APROBADA
+
+LLM multi-provider
+──────────────────
+El agente no está atado a un solo proveedor de IA. Soporta:
+
+  LLM_PROVIDER  | Servicio              | Notas
+  ──────────────────────────────────────────────────────────
+  openai        | OpenAI (GPT-4o, etc.) | Default
+  anthropic     | Anthropic (Claude)    | Requiere API key
+  xai           | xAI (Grok)            | API key de xAI
+  deepseek      | DeepSeek              | Económico, bueno
+  gemini        | Google Gemini         | API key de Google
+  ollama        | Ollama local          | Sin costo, sin red
+
+  Configurar en .env:
+    LLM_PROVIDER=ollama
+    LLM_MODEL=gemma3:4b
+    LLM_API_KEY=           (vacío para ollama)
+
+Modelos ML (tabla `models`)
+───────────────────────────
+El módulo también registra modelos de machine learning (xgboost, lightgbm, sklearn, nn) con su metadata:
+nombre, versión, estado (active/deprecated/archived), URI del artefacto.
+Esto prepara el sistema para el futuro entrenamiento y evaluación formal de modelos en el Módulo 7+.
+
+Model Runs (tabla `model_runs`)
+────────────────────────────────
+Cada entrenamiento queda registrado como un "run": fecha de inicio, estado (running/success/failed),
+métricas (accuracy, F1, etc.) y parámetros usados. Permite comparar versiones del mismo modelo.

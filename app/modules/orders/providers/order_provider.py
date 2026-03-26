@@ -55,6 +55,7 @@ from app.modules.market.infrastructure import (
     SqlAlchemyExchangeRepository,
 )
 from app.modules.accounts.infrastructure import SqlAlchemyAccountRepository
+from app.modules.alerts.providers.alert_provider import build_evaluate_alerts_service
 
 
 class OrderServiceFactory:
@@ -119,6 +120,7 @@ class OrderServiceFactory:
             paper_executor=self._paper_executor,
             live_executor=self._live_executor,
             session=self._session,
+            evaluate_alerts=build_evaluate_alerts_service(self._session),
         )
 
     # ------------------------------------------------------------------

@@ -48,6 +48,7 @@ from app.modules.market.infrastructure import (
     SqlAlchemySymbolRepository,
     SqlAlchemyTimeframeRepository,
 )
+from app.modules.alerts.providers.alert_provider import build_evaluate_alerts_service
 
 
 class BotServiceFactory:
@@ -134,6 +135,7 @@ class BotServiceFactory:
             signal_repo=self._signal_repo,
             analyze_service=self._build_analyze_service(),
             session=self._session,
+            evaluate_alerts=build_evaluate_alerts_service(self._session),
         )
 
 

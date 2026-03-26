@@ -1,0 +1,246 @@
+{% extends "base_app.html" %}
+
+{% block title %}Alertas — Trading AI{% endblock %}
+{% block nav_title %}Alertas{% endblock %}
+
+{% block content %}
+
+<style>
+  .rule-type-badge {
+    display: inline-flex; align-items: center; gap: 0.3rem;
+    padding: 0.2rem 0.6rem; border-radius: 20px;
+    font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em;
+  }
+  .rt--price    { background: rgba(96,165,250,0.15);  color: #60a5fa; }
+  .rt--signal   { background: rgba(34,197,94,0.15);   color: #22c55e; }
+  .rt--pnl      { background: rgba(251,191,36,0.15);  color: #fbbf24; }
+  .rt--drawdown { background: rgba(249,115,22,0.15);  color: #f97316; }
+  .rt--error    { background: rgba(239,68,68,0.15);   color: #ef4444; }
+
+  .severity--info     { background: rgba(96,165,250,0.15);  color: #60a5fa; }
+  .severity--warning  { background: rgba(251,191,36,0.15);  color: #fbbf24; }
+  .severity--critical { background: rgba(239,68,68,0.15);   color: #ef4444; }
+
+  .delivery--sent    { background: rgba(34,197,94,0.15);   color: #22c55e; }
+  .delivery--pending { background: rgba(148,163,184,0.15); color: #94a3b8; }
+  .delivery--failed  { background: rgba(239,68,68,0.15);   color: #ef4444; }
+
+  .tabs { display: flex; gap: 0.25rem; margin-bottom: 1.25rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+  .tab-btn {
+    padding: 0.4rem 1rem; border-radius: 6px; border: none; cursor: pointer;
+    font-size: 0.8125rem; font-weight: 500; background: transparent;
+    color: var(--text-muted); transition: all 0.15s;
+  }
+  .tab-btn:hover { color: var(--text-primary); background: rgba(255,255,255,0.05); }
+  .tab-btn.active { background: rgba(240,180,41,0.15); color: var(--gold); }
+
+  .channel-icon { display: inline-flex; align-items:center; gap:0.25rem; font-size:0.75rem; color: var(--text-muted); }
+  .channel-icon i { width:12px; height:12px; }
+  .channel-icon.active { color: #22c55e; }
+</style>
+
+<div class="page-header">
+  <div>
+    <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.2rem;">
+      <i data-lucide="bell" style="color:var(--gold);width:18px;height:18px;"></i>
+      <h1 style="font-size:1.25rem;">Alertas</h1>
+    </div>
+    <p class="text-muted" style="font-size:0.8125rem;">
+      Reglas de notificación e historial de alertas recibidas
+    </p>
+  </div>
+  <button class="btn btn--primary" id="btnNewRule" style="display:flex;align-items:center;gap:0.4rem;">
+    <i data-lucide="plus" style="width:14px;height:14px;"></i>
+    Nueva Regla
+  </button>
+</div>
+
+<!-- Tabs -->
+<div class="tabs">
+  <button class="tab-btn active" id="tabRules" data-tab="rules">Mis Reglas</button>
+  <button class="tab-btn" id="tabEvents" data-tab="events">Historial</button>
+</div>
+
+<!-- Tab: Reglas -->
+<div id="panelRules">
+  <div class="card">
+    <div class="table-wrapper">
+      <table class="table" id="tblRules">
+        <thead>
+          <tr>
+            <th>Nombre</th>
+            <th>Tipo</th>
+            <th>Bot</th>
+            <th>Canales</th>
+            <th>Estado</th>
+            <th>Creada</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="tbodyRules">
+          <tr><td colspan="7" class="text-center text-muted">Cargando...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Tab: Historial -->
+<div id="panelEvents" style="display:none;">
+  <div class="card">
+    <div class="table-wrapper">
+      <table class="table" id="tblEvents">
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Título</th>
+            <th>Severidad</th>
+            <th>Entrega</th>
+            <th>Mensaje</th>
+          </tr>
+        </thead>
+        <tbody id="tbodyEvents">
+          <tr><td colspan="5" class="text-center text-muted">Cargando...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Crear/Editar Regla -->
+<div class="modal hidden" id="ruleModal">
+  <div class="modal__backdrop" id="modalBackdrop"></div>
+  <div class="modal__box" style="max-width:520px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;">
+      <h2 style="font-size:1rem;margin:0;" id="modalRuleTitle">Nueva Regla de Alerta</h2>
+      <button class="btn btn--ghost" id="btnCloseModal" style="padding:0.25rem;">
+        <i data-lucide="x" style="width:16px;height:16px;"></i>
+      </button>
+    </div>
+    <div>
+      <div style="display:flex;flex-direction:column;gap:1rem;">
+
+        <div class="field">
+          <label>Nombre</label>
+          <input class="input" id="inputRuleName" type="text" placeholder="Ej: Alerta BUY bot principal" maxlength="255" />
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;">
+          <div class="field">
+            <label>Tipo de Regla</label>
+            <select class="input" id="selectRuleType">
+              <option value="signal">Señal (signal)</option>
+              <option value="price">Precio (price)</option>
+              <option value="pnl">P&L (pnl)</option>
+              <option value="drawdown">Drawdown</option>
+              <option value="error">Error</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Bot ID (opcional)</label>
+            <input class="input" id="inputBotId" type="number" placeholder="ID del bot" min="1" />
+          </div>
+        </div>
+
+        <!-- Spec dinámico según tipo -->
+        <div id="ruleSpecContainer">
+          <!-- Signal spec -->
+          <div id="specSignal">
+            <div class="field">
+              <label>Acción a monitorear</label>
+              <select class="input" id="specSignalAction">
+                <option value="any">Cualquier señal (buy/sell/hold)</option>
+                <option value="buy">Solo BUY</option>
+                <option value="sell">Solo SELL</option>
+                <option value="hold">Solo HOLD</option>
+              </select>
+            </div>
+          </div>
+          <!-- Price spec -->
+          <div id="specPrice" style="display:none;">
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.75rem;">
+              <div class="field">
+                <label>Symbol ID</label>
+                <input class="input" id="specPriceSymbol" type="number" min="1" placeholder="ID símbolo" />
+              </div>
+              <div class="field">
+                <label>Operador</label>
+                <select class="input" id="specPriceOp">
+                  <option value="lt">Menor que (&lt;)</option>
+                  <option value="lte">Menor o igual (≤)</option>
+                  <option value="gt">Mayor que (&gt;)</option>
+                  <option value="gte">Mayor o igual (≥)</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Umbral</label>
+                <input class="input" id="specPriceThreshold" type="number" step="any" placeholder="80000" />
+              </div>
+            </div>
+          </div>
+          <!-- PnL spec -->
+          <div id="specPnl" style="display:none;">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;">
+              <div class="field">
+                <label>Umbral (%)</label>
+                <input class="input" id="specPnlThreshold" type="number" step="any" placeholder="-5.0" />
+              </div>
+              <div class="field">
+                <label>Período</label>
+                <select class="input" id="specPnlPeriod">
+                  <option value="daily">Diario</option>
+                  <option value="total">Total acumulado</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <!-- Drawdown spec -->
+          <div id="specDrawdown" style="display:none;">
+            <div class="field">
+              <label>Umbral de Drawdown (%)</label>
+              <input class="input" id="specDrawdownThreshold" type="number" step="any" placeholder="10.0" />
+            </div>
+          </div>
+          <!-- Error spec — sin campos adicionales -->
+          <div id="specError" style="display:none;">
+            <p class="text-muted" style="font-size:0.8125rem;">
+              Esta regla se disparará cuando cualquier bot entre en estado de error.
+            </p>
+          </div>
+        </div>
+
+        <!-- Canales -->
+        <div>
+          <label style="font-size:0.72rem;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);display:block;margin-bottom:0.5rem;">Canales</label>
+          <div style="display:flex;flex-wrap:wrap;gap:0.75rem;">
+            <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;font-size:0.875rem;">
+              <input type="checkbox" id="chEmail" />
+              <i data-lucide="mail" style="width:14px;height:14px;"></i> Email
+            </label>
+            <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;font-size:0.875rem;">
+              <input type="checkbox" id="chTelegram" />
+              <i data-lucide="send" style="width:14px;height:14px;"></i> Telegram
+            </label>
+            <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;font-size:0.875rem;">
+              <input type="checkbox" id="chDesktop" />
+              <i data-lucide="monitor" style="width:14px;height:14px;"></i> Desktop
+            </label>
+          </div>
+          <div class="field" style="margin-top:0.75rem;">
+            <label>Webhook URL (opcional)</label>
+            <input class="input" id="inputWebhookUrl" type="url" placeholder="https://hooks.ejemplo.com/trading" />
+          </div>
+        </div>
+
+        <div id="ruleModalError" class="error-msg" style="display:none;"></div>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:0.75rem;margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--border);">
+      <button class="btn btn--ghost" id="btnCancelModal">Cancelar</button>
+      <button class="btn btn--primary" id="btnSaveRule">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<script src="/static/js/alerts/index.js?v={{ sv }}"></script>
+{% endblock %}

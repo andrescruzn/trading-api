@@ -67,3 +67,9 @@ from app.modules.bots.infrastructure.signal_model import SignalModel  # noqa: F4
 from app.modules.orders.infrastructure.order_model import OrderModel  # noqa: F401
 from app.modules.orders.infrastructure.fill_model import FillModel  # noqa: F401
 from app.modules.orders.infrastructure.position_model import PositionModel  # noqa: F401
+
+# --------------------------------------------------------------
+# Alerts module models
+# --------------------------------------------------------------
+from app.modules.alerts.infrastructure.alert_rule_model import AlertRuleModel  # noqa: F401
+from app.modules.alerts.infrastructure.alert_event_model import AlertEventModel  # noqa: F401

@@ -44,6 +44,10 @@ from app.modules.orders.execution.executor_interface import ExecutorInterface
 from app.modules.orders.execution.live_executor import LiveExecutor
 from app.modules.orders.execution.paper_executor import PaperExecutor
 
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from app.modules.alerts.services.evaluation.evaluate_alerts_service import EvaluateAlertsService
+
 
 class CreateOrderService:
     """
@@ -68,6 +72,7 @@ class CreateOrderService:
         paper_executor: PaperExecutor,
         live_executor: LiveExecutor,
         session: Session,
+        evaluate_alerts: "EvaluateAlertsService | None" = None,
     ):
         self._order_repo = order_repo
         self._fill_repo = fill_repo
@@ -77,6 +82,7 @@ class CreateOrderService:
         self._paper_executor = paper_executor
         self._live_executor = live_executor
         self._session = session
+        self._evaluate_alerts = evaluate_alerts
 
     def create(
         self,
@@ -221,6 +227,17 @@ class CreateOrderService:
         # 10. Commit único — confirma order + fill + position en la BD
         # ------------------------------------------------------------------
         self._session.commit()
+
+        # ------------------------------------------------------------------
+        # 11. Hook de alertas (fire-and-forget — no revierte si falla)
+        # ------------------------------------------------------------------
+        if self._evaluate_alerts is not None:
+            try:
+                self._evaluate_alerts.evaluate_order_alerts(
+                    order=order, bot_id=bot_id
+                )
+            except Exception:
+                pass  # Las alertas nunca bloquean la operación principal
 
         return ServiceResult.ok(data=order)
 

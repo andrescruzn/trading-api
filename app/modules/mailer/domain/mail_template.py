@@ -44,3 +44,9 @@ OTP_TEMPLATE = MailTemplate(
     subject="Tu código OTP de acceso",
     filename="otp.html",
 )
+
+ALERT_TEMPLATE = MailTemplate(
+    code="alert",
+    subject="Alerta Trading AI",
+    filename="alert.html",
+)

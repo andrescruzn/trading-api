@@ -36,7 +36,7 @@ _CSP_WEB = (
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
     "font-src 'self' https://fonts.gstatic.com; "
     "img-src 'self' data:; "
-    "connect-src 'self'; "
+    "connect-src 'self' https://unpkg.com; "
     "frame-ancestors 'none'; "
     "base-uri 'self'; "
     "form-action 'self';"
@@ -58,7 +58,7 @@ def _is_web_route(path: str) -> bool:
         "/login", "/dashboard", "/profile",
         "/static/",
         "/market/", "/admin/", "/features", "/portfolio",
-        "/strategies", "/agent", "/bots", "/orders",
+        "/strategies", "/agent", "/bots", "/orders", "/alerts",
     )
     return any(path.startswith(p) for p in web_prefixes) or path == "/"
 

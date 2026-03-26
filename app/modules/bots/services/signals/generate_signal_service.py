@@ -33,6 +33,11 @@ from app.modules.bots.domain.bot_repository import BotRepository
 from app.modules.bots.domain.signal_entity import Signal
 from app.modules.bots.domain.signal_repository import SignalRepository
 
+# TYPE_CHECKING para evitar import circular — se resuelve en runtime
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from app.modules.alerts.services.evaluation.evaluate_alerts_service import EvaluateAlertsService
+
 
 class GenerateSignalService:
     """
@@ -52,11 +57,13 @@ class GenerateSignalService:
         signal_repo: SignalRepository,
         analyze_service: AnalyzeService,
         session: Session,
+        evaluate_alerts: "EvaluateAlertsService | None" = None,
     ):
         self._bot_repo = bot_repo
         self._signal_repo = signal_repo
         self._analyze = analyze_service
         self._session = session
+        self._evaluate_alerts = evaluate_alerts
 
     def generate(self, bot_id: int) -> ServiceResult[Signal]:
         # ------------------------------------------------------------------
@@ -147,4 +154,16 @@ class GenerateSignalService:
         # ------------------------------------------------------------------
         created = self._signal_repo.create(signal)
         self._session.commit()
+
+        # ------------------------------------------------------------------
+        # 6. Hook de alertas (fire-and-forget — no revierte si falla)
+        # ------------------------------------------------------------------
+        if self._evaluate_alerts is not None:
+            try:
+                self._evaluate_alerts.evaluate_signal_alerts(
+                    signal=created, bot_id=bot_id
+                )
+            except Exception:
+                pass  # Las alertas nunca bloquean la operación principal
+
         return ServiceResult.ok(data=created)

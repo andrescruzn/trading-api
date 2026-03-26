@@ -607,6 +607,90 @@ from app.modules.orders.rest import orders_router, fills_router, positions_route
 
 ---
 
+## ✅ Módulo 9 — Alerts (COMPLETO)
+
+### Tablas en BD
+| Tabla | Acción | Nota |
+|-------|--------|------|
+| `alert_rules` | WRITE | Reglas configuradas por usuario/bot |
+| `alert_events` | WRITE | Historial de alertas disparadas |
+| `bots` | READ (hook) | Para evaluar reglas tipo 'signal'/'error' |
+| `signals` | READ (hook) | Datos de la señal para el payload |
+| `orders` | READ (hook) | Datos de la orden para el payload |
+
+### Modelos ORM (`app/modules/alerts/infrastructure/`)
+| Archivo | Clase | Tabla |
+|---------|-------|-------|
+| `alert_rule_model.py` | `AlertRuleModel` | `alert_rules` |
+| `alert_event_model.py` | `AlertEventModel` | `alert_events` |
+
+### Repositorios
+| Domain (Protocol) | Infrastructure (impl) |
+|-------------------|-----------------------|
+| `domain/alert_rule_repository.py` | `infrastructure/alert_rule_repository_impl.py` → `SqlAlchemyAlertRuleRepository` |
+| `domain/alert_event_repository.py` | `infrastructure/alert_event_repository_impl.py` → `SqlAlchemyAlertEventRepository` |
+
+### Canales (`app/modules/alerts/channels/`)
+| Archivo | Clase | Canal |
+|---------|-------|-------|
+| `channel_interface.py` | `NotificationChannel` (Protocol) | Contrato |
+| `email_channel.py` | `EmailChannel` | SMTP via MailerService |
+| `telegram_channel.py` | `TelegramChannel` | Bot API via httpx |
+| `webhook_channel.py` | `WebhookChannel` | HTTP POST via httpx |
+| `desktop_channel.py` | `DesktopChannel` | plyer (macOS/Win/Linux) |
+
+### Servicios (`app/modules/alerts/services/`)
+| Subdir | Servicios |
+|--------|-----------|
+| `alert_rules/` | `list_alert_rules_service.py`, `create_alert_rule_service.py`, `update_alert_rule_service.py` |
+| `alert_events/` | `list_alert_events_service.py` |
+| `evaluation/` | `fire_alert_service.py` (crea evento + despacha), `evaluate_alerts_service.py` (evalúa reglas) |
+
+Provider: `app/modules/alerts/providers/alert_provider.py` → `AlertServiceFactory`, `get_alert_factory()`, `build_evaluate_alerts_service()`
+
+### Endpoints REST
+| Método | Ruta | Auth | Nota |
+|--------|------|------|------|
+| GET | `/api/alert-rules` | token | Admin ve todas; user ve las suyas |
+| POST | `/api/alert-rules` | token | Crea regla de alerta |
+| GET | `/api/alert-rules/{id}` | token | Detalle; ownership check |
+| PUT | `/api/alert-rules/{id}` | token | Actualiza regla; ownership check |
+| DELETE | `/api/alert-rules/{id}` | token | Soft delete (is_active=False) |
+| GET | `/api/alert-events` | token | Historial de eventos |
+| POST | `/api/alerts/evaluate` | admin | Evaluación manual de reglas tipo price |
+| POST | `/api/alerts/test-telegram` | admin | Test de conexión Telegram |
+
+### Páginas web
+| URL | Template | JS |
+|-----|----------|----|
+| `/alerts` | `templates/alerts/index.html` | `static/js/alerts/index.js` |
+| `/admin/alerts` | `templates/admin/alerts.html` | `static/js/admin/alerts.js` |
+| `/admin/telegram` | `templates/admin/telegram.html` | `static/js/admin/telegram.js` |
+
+### Hooks en otros módulos
+- `app/modules/bots/services/signals/generate_signal_service.py` — hook post-commit: `evaluate_alerts.evaluate_signal_alerts()`
+- `app/modules/orders/services/orders/create_order_service.py` — hook post-commit: `evaluate_alerts.evaluate_order_alerts()`
+- `app/modules/bots/providers/bot_provider.py` — inyecta `build_evaluate_alerts_service(session)` en `generate_signal()`
+- `app/modules/orders/providers/order_provider.py` — inyecta `build_evaluate_alerts_service(session)` en `create_order()`
+
+### Settings nuevos (`.env`)
+```
+TELEGRAM_BOT_TOKEN=<token>
+TELEGRAM_DEFAULT_CHAT_ID=<chat_id>
+DESKTOP_NOTIFICATIONS_ENABLED=false
+```
+
+### Gotchas críticos M9
+- `admin_required` se importa de `app.common.security.jwt.role_guard` (NO usar `role_guard(settings.AUTH_ADMIN_ROLE_ID)`)
+- `build_evaluate_alerts_service(session)` evita imports circulares entre M7/M8 y M9
+- `TYPE_CHECKING` guard en `generate_signal_service.py` y `create_order_service.py` para evitar import circular en runtime
+- Los hooks siempre en `try/except pass` — las alertas nunca abortan el flujo de trading
+- El email de alerta usa `ALERT_TEMPLATE` desde `app.modules.mailer.domain.mail_template`
+- Template HTML en `app/modules/mailer/templates/alert.html`
+- `httpx` ya instalado (v0.28.1) — `plyer` opcional para desktop
+
+---
+
 ## Checklist al crear un módulo nuevo
 
 1. [ ] Crear `domain/` — entidades + interfaces repositorio

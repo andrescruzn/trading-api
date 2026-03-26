@@ -1,0 +1,50 @@
+{% extends "base_app.html" %}
+
+{% block title %}Admin — Telegram — Trading AI{% endblock %}
+{% block nav_title %}Admin / Telegram{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.2rem;">
+      <i data-lucide="send" style="color:var(--gold);width:18px;height:18px;"></i>
+      <h1 style="font-size:1.25rem;">Canal Telegram</h1>
+    </div>
+    <p class="text-muted" style="font-size:0.8125rem;">
+      Verificar conexión con el Bot Telegram configurado en el servidor
+    </p>
+  </div>
+</div>
+
+<div class="card" style="max-width:540px;">
+  <div style="display:flex;flex-direction:column;gap:1.25rem;">
+
+    <div style="background:rgba(96,165,250,0.08);border:1px solid rgba(96,165,250,0.2);border-radius:8px;padding:1rem;">
+      <p style="font-size:0.875rem;line-height:1.6;color:var(--text-secondary);">
+        Las siguientes variables de entorno deben estar configuradas en tu <code>.env</code>:
+      </p>
+      <pre style="margin-top:0.5rem;font-size:0.8rem;color:#60a5fa;background:rgba(0,0,0,0.2);padding:0.75rem;border-radius:6px;overflow:auto;">TELEGRAM_BOT_TOKEN=&lt;tu_bot_token&gt;
+TELEGRAM_DEFAULT_CHAT_ID=&lt;tu_chat_id&gt;</pre>
+      <p style="font-size:0.8125rem;color:var(--text-muted);margin-top:0.5rem;">
+        Obtén el token creando un bot con <strong>@BotFather</strong> en Telegram.<br>
+        Obtén tu Chat ID enviando un mensaje al bot y consultando la API.
+      </p>
+    </div>
+
+    <div id="testResult" style="display:none;"></div>
+
+    <button class="btn btn--primary" id="btnTestTelegram" style="display:flex;align-items:center;gap:0.5rem;width:fit-content;">
+      <i data-lucide="send" style="width:14px;height:14px;"></i>
+      Enviar mensaje de prueba
+    </button>
+
+    <a href="/admin/alerts" class="btn btn--ghost" style="width:fit-content;">
+      ← Volver a Alertas
+    </a>
+
+  </div>
+</div>
+
+<script src="/static/js/admin/telegram.js?v={{ sv }}"></script>
+{% endblock %}

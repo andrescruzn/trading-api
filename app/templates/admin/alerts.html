@@ -1,0 +1,105 @@
+{% extends "base_app.html" %}
+
+{% block title %}Admin — Alertas — Trading AI{% endblock %}
+{% block nav_title %}Admin / Alertas{% endblock %}
+
+{% block content %}
+
+<style>
+  .rule-type-badge {
+    display: inline-flex; align-items: center; gap: 0.3rem;
+    padding: 0.2rem 0.6rem; border-radius: 20px;
+    font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em;
+  }
+  .rt--price    { background: rgba(96,165,250,0.15);  color: #60a5fa; }
+  .rt--signal   { background: rgba(34,197,94,0.15);   color: #22c55e; }
+  .rt--pnl      { background: rgba(251,191,36,0.15);  color: #fbbf24; }
+  .rt--drawdown { background: rgba(249,115,22,0.15);  color: #f97316; }
+  .rt--error    { background: rgba(239,68,68,0.15);   color: #ef4444; }
+  .severity--info     { background: rgba(96,165,250,0.15);  color: #60a5fa; }
+  .severity--warning  { background: rgba(251,191,36,0.15);  color: #fbbf24; }
+  .severity--critical { background: rgba(239,68,68,0.15);   color: #ef4444; }
+  .delivery--sent    { background: rgba(34,197,94,0.15);   color: #22c55e; }
+  .delivery--pending { background: rgba(148,163,184,0.15); color: #94a3b8; }
+  .delivery--failed  { background: rgba(239,68,68,0.15);   color: #ef4444; }
+  .tabs { display: flex; gap: 0.25rem; margin-bottom: 1.25rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+  .tab-btn {
+    padding: 0.4rem 1rem; border-radius: 6px; border: none; cursor: pointer;
+    font-size: 0.8125rem; font-weight: 500; background: transparent;
+    color: var(--text-muted); transition: all 0.15s;
+  }
+  .tab-btn:hover { color: var(--text-primary); background: rgba(255,255,255,0.05); }
+  .tab-btn.active { background: rgba(240,180,41,0.15); color: var(--gold); }
+</style>
+
+<div class="page-header">
+  <div>
+    <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.2rem;">
+      <i data-lucide="bell-ring" style="color:var(--gold);width:18px;height:18px;"></i>
+      <h1 style="font-size:1.25rem;">Alertas — Admin</h1>
+    </div>
+    <p class="text-muted" style="font-size:0.8125rem;">
+      Todas las reglas y eventos de alerta del sistema
+    </p>
+  </div>
+  <a href="/admin/telegram" class="btn btn--ghost" style="display:flex;align-items:center;gap:0.4rem;font-size:0.8125rem;">
+    <i data-lucide="send" style="width:14px;height:14px;"></i>
+    Configurar Telegram
+  </a>
+</div>
+
+<!-- Tabs -->
+<div class="tabs">
+  <button class="tab-btn active" id="tabRules" data-tab="rules">Reglas</button>
+  <button class="tab-btn" id="tabEvents" data-tab="events">Eventos</button>
+</div>
+
+<!-- Tab: Rules -->
+<div id="panelRules">
+  <div class="card">
+    <div class="table-wrapper">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Nombre</th>
+            <th>Tipo</th>
+            <th>Usuario</th>
+            <th>Bot</th>
+            <th>Canales</th>
+            <th>Estado</th>
+          </tr>
+        </thead>
+        <tbody id="tbodyRules">
+          <tr><td colspan="7" class="text-center text-muted">Cargando...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Tab: Events -->
+<div id="panelEvents" style="display:none;">
+  <div class="card">
+    <div class="table-wrapper">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Título</th>
+            <th>Severidad</th>
+            <th>Entrega</th>
+            <th>Usuario</th>
+            <th>Bot</th>
+          </tr>
+        </thead>
+        <tbody id="tbodyEvents">
+          <tr><td colspan="6" class="text-center text-muted">Cargando...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script src="/static/js/admin/alerts.js?v={{ sv }}"></script>
+{% endblock %}

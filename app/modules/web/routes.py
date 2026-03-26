@@ -350,3 +350,38 @@ def admin_orders_page(request: Request):
     if int(identity.get("role_id", 0)) != int(settings.AUTH_ADMIN_ROLE_ID):
         return RedirectResponse(url="/dashboard", status_code=302)
     return templates.TemplateResponse(request, "admin/orders.html")
+
+
+# ======================================================================
+# Módulo 9 — Alerts
+# ======================================================================
+
+@web_router.get("/alerts", response_class=HTMLResponse, include_in_schema=False)
+def alerts_page(request: Request):
+    """Panel de alertas del usuario — reglas configuradas e historial."""
+    identity = _get_identity_from_cookie(request)
+    if not identity:
+        return RedirectResponse(url="/login", status_code=302)
+    return templates.TemplateResponse(request, "alerts/index.html")
+
+
+@web_router.get("/admin/alerts", response_class=HTMLResponse, include_in_schema=False)
+def admin_alerts_page(request: Request):
+    """Vista admin — todas las reglas y eventos de alerta del sistema."""
+    identity = _get_identity_from_cookie(request)
+    if not identity:
+        return RedirectResponse(url="/login", status_code=302)
+    if int(identity.get("role_id", 0)) != int(settings.AUTH_ADMIN_ROLE_ID):
+        return RedirectResponse(url="/dashboard", status_code=302)
+    return templates.TemplateResponse(request, "admin/alerts.html")
+
+
+@web_router.get("/admin/telegram", response_class=HTMLResponse, include_in_schema=False)
+def admin_telegram_page(request: Request):
+    """Configuración y prueba del canal Telegram. Solo admin."""
+    identity = _get_identity_from_cookie(request)
+    if not identity:
+        return RedirectResponse(url="/login", status_code=302)
+    if int(identity.get("role_id", 0)) != int(settings.AUTH_ADMIN_ROLE_ID):
+        return RedirectResponse(url="/dashboard", status_code=302)
+    return templates.TemplateResponse(request, "admin/telegram.html")

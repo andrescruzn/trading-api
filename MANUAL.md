@@ -653,6 +653,68 @@ Con el sistema completo (M1-M9) y un historial verificado de edge positivo:
                               Requiere track record + posiblemente registro regulatorio.
 
 ---
+PARTE 4.5 — Módulo 9: Alerts (Sistema de Notificaciones)
+════════════════════════════════════════════════════════
+
+El sistema opera 24/7 tomando decisiones automáticas. Sin alertas, el trader no sabe
+qué está pasando a menos que esté mirando la pantalla constantemente. El Módulo 9
+resuelve esto: te avisa automáticamente cuando ocurre algo relevante.
+
+4.5.1 ¿Qué es una regla de alerta?
+───────────────────────────────────
+Una regla de alerta define QUÉ vigilar y POR DÓNDE notificar:
+
+  Componente    Qué define
+  ──────────────────────────────────────────────────────────────────────────────
+  rule_type     El tipo de evento a monitorear (precio, señal, P&L, drawdown, error)
+  rule_spec     Los parámetros concretos (umbral, símbolo, bot, etc.)
+  channels      Los canales de entrega (email, telegram, webhook, desktop)
+
+4.5.2 Tipos de reglas disponibles
+───────────────────────────────────
+  Tipo       Ejemplo de uso
+  ──────────────────────────────────────────────────────────────────────────────
+  signal     "Avísame cuando el bot #3 genere una señal BUY"
+  price      "Avísame si BTC/USDT cae por debajo de $80,000"
+  pnl        "Avísame si el P&L del bot baja del -5% en el día"
+  drawdown   "Avísame si el drawdown acumulado supera el 10%"
+  error      "Avísame si cualquier bot entra en estado de error"
+
+4.5.3 Canales de entrega
+──────────────────────────
+El sistema soporta 4 canales simultáneos:
+
+  Canal     Cómo funciona
+  ──────────────────────────────────────────────────────────────────────────────
+  Email     Envía un correo HTML usando el servidor SMTP configurado
+  Telegram  Manda un mensaje a tu bot Telegram personal (requiere TELEGRAM_BOT_TOKEN)
+  Webhook   Hace un HTTP POST a una URL externa (Slack, Discord, IFTTT, etc.)
+  Desktop   Notificación nativa del sistema operativo (macOS, Windows, Linux)
+
+4.5.4 Disparadores automáticos (hooks)
+──────────────────────────────────────
+Las alertas se disparan automáticamente desde los módulos clave:
+
+  Evento                             Qué evalúa
+  ──────────────────────────────────────────────────────────────────────────────
+  GenerateSignalService (M7)         Evalúa reglas tipo 'signal' post-señal aprobada
+  CreateOrderService (M8)            Evalúa reglas tipo 'error' si la orden fue rechazada
+  POST /api/alerts/evaluate (manual) Evalúa reglas tipo 'price' para un símbolo
+
+El despacho es fire-and-forget: si falla una alerta, NO se cancela la señal u orden.
+Las alertas son informativas — nunca bloquean el flujo de trading.
+
+4.5.5 Historial de eventos
+───────────────────────────
+Cada vez que se dispara una regla, se crea un AlertEvent con:
+  - título y mensaje descriptivo
+  - severidad (info / warning / critical)
+  - estado de entrega (pending / sent / failed)
+  - el payload completo del contexto (signal_id, precio, etc.)
+
+Esto crea un log de auditoría de todas las notificaciones enviadas.
+
+---
 PARTE 5 — Módulo 10: Billing & Managed Accounts (El modelo de negocio)
 
 5.1 ¿Qué es una Managed Account?

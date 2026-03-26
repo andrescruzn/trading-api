@@ -264,3 +264,12 @@ class Settings:
 
         agent_prompt_raw = os.getenv("AGENT_MASTER_PROMPT", "").strip()
         self.AGENT_MASTER_PROMPT: str = agent_prompt_raw or ""
+
+        # --------------------------------------------------------------
+        # Alerts — Canales de notificación
+        # --------------------------------------------------------------
+        self.TELEGRAM_BOT_TOKEN: str = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
+        self.TELEGRAM_DEFAULT_CHAT_ID: str = os.getenv("TELEGRAM_DEFAULT_CHAT_ID", "").strip()
+        self.DESKTOP_NOTIFICATIONS_ENABLED: bool = (
+            os.getenv("DESKTOP_NOTIFICATIONS_ENABLED", "false").lower() == "true"
+        )

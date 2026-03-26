@@ -175,7 +175,8 @@ label {
 input[type="email"],
 input[type="password"],
 input[type="text"],
-input[type="number"] {
+input[type="number"],
+input[type="url"] {
   width: 100%;
   padding: 0.625rem 0.875rem;
   border: 1px solid var(--border-color);
@@ -247,6 +248,7 @@ input.input--error:focus { box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15); }
 }
 
 /* === Select === */
+select.input,
 .input-select {
   width: 100%;
   padding: 0.625rem 2.25rem 0.625rem 0.875rem;
@@ -263,6 +265,7 @@ input.input--error:focus { box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15); }
   background-position: right 0.625rem center;
   transition: border-color var(--transition), box-shadow var(--transition);
 }
+select.input:focus,
 .input-select:focus {
   outline: none;
   border-color: var(--gold);
@@ -408,6 +411,17 @@ input.input--error:focus { box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15); }
   border-color: rgba(240, 180, 41, 0.3);
   color: var(--gold);
   background: var(--gold-dim);
+}
+
+/* === Inline error message (modals) === */
+.error-msg {
+  padding: 0.6rem 0.875rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.8125rem;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #fca5a5;
+  background: var(--error-dim);
+  display: none;
 }
 
 /* === Badge === */

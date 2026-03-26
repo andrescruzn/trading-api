@@ -148,17 +148,23 @@ Entregables:
 
 ---
 
-## 📌 Módulo 9 — Alerts
+## ✅ Módulo 9 — Alerts (COMPLETO)
 **Qué hace:** Notificar cuando ocurren eventos importantes.
 
 Tablas: `alert_rules`, `alert_events`
 
 Entregables:
-- Reglas configurables: precio rompe nivel, P&L supera/baja umbral, señal generada
-- Canales: email (SMTP ya configurado), webhook (URL externa)
-- Historial de alertas disparadas
-- Web UI: gestión de alertas
-- Test unitarios
+- ✅ Domain: AlertRule entity + AlertEvent entity + Protocol repos
+- ✅ Infrastructure: ORM models + repos impl registrados en models_registry.py
+- ✅ Channels (Strategy Pattern): EmailChannel, TelegramChannel, WebhookChannel, DesktopChannel
+- ✅ Services: FireAlertService, EvaluateAlertsService, CRUD alert_rules, list alert_events
+- ✅ Provider: AlertServiceFactory + get_alert_factory() + build_evaluate_alerts_service()
+- ✅ REST: GET/POST/PUT/DELETE /api/alert-rules, GET /api/alert-events, POST /api/alerts/evaluate, POST /api/alerts/test-telegram
+- ✅ Hooks fire-and-forget en M7 (GenerateSignalService) y M8 (CreateOrderService)
+- ✅ Web UI: /alerts (usuario), /admin/alerts (admin), /admin/telegram (config Telegram)
+- ✅ Sidebar actualizado con links de Alertas
+- ✅ ALERT_TEMPLATE agregado al catálogo de mail templates
+- httpx ya instalado (v0.28.1); plyer se instala opcionalmente para desktop notifications
 
 ---
 

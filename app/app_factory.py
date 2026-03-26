@@ -36,6 +36,7 @@ from app.modules.agent.rest import agent_router, models_router, model_runs_route
 from app.modules.bots.rest import bots_router, signals_router
 from app.modules.orders.rest import orders_router, fills_router, positions_router
 from app.modules.alerts.rest import alert_rules_router, alert_events_router, alerts_admin_router
+from app.modules.billing.rest import investors_router, managed_accounts_router, billing_periods_router
 from app.modules.users.rest import auth_router
 from app.modules.web import web_router
 
@@ -121,6 +122,11 @@ def create_app() -> FastAPI:
     app.include_router(alert_rules_router)
     app.include_router(alert_events_router)
     app.include_router(alerts_admin_router)
+
+    # Billing & Managed Accounts
+    app.include_router(investors_router)
+    app.include_router(managed_accounts_router)
+    app.include_router(billing_periods_router)
 
     app.include_router(web_router)      # Páginas HTML (siempre al final)
 

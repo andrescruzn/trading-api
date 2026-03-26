@@ -1,0 +1,116 @@
+{% extends "base_app.html" %}
+
+{% block title %}Mi Dashboard — Trading AI{% endblock %}
+{% block nav_title %}Mi Inversión{% endblock %}
+
+{% block content %}
+
+<style>
+  .kpi-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:1rem; margin-bottom:1.5rem; }
+  .kpi-card { background:var(--bg-card); border:1px solid var(--border); border-radius:10px; padding:1rem 1.25rem; }
+  .kpi-card__label { font-size:0.75rem; color:var(--text-muted); margin-bottom:0.35rem; text-transform:uppercase; letter-spacing:0.06em; }
+  .kpi-card__value { font-size:1.5rem; font-weight:700; }
+  .kpi-card__value.positive { color:#22c55e; }
+  .kpi-card__value.negative { color:#ef4444; }
+  .kpi-card__value.neutral  { color:var(--gold); }
+  .status--open   { background: rgba(96,165,250,0.15);  color:#60a5fa; font-size:0.7rem; padding:0.2rem 0.5rem; border-radius:20px; font-weight:600; }
+  .status--closed { background: rgba(34,197,94,0.15);   color:#22c55e; font-size:0.7rem; padding:0.2rem 0.5rem; border-radius:20px; font-weight:600; }
+  .fee--pending { background: rgba(251,191,36,0.15);  color:#fbbf24; font-size:0.7rem; padding:0.2rem 0.5rem; border-radius:20px; font-weight:600; }
+  .fee--charged { background: rgba(34,197,94,0.15);   color:#22c55e; font-size:0.7rem; padding:0.2rem 0.5rem; border-radius:20px; font-weight:600; }
+  .fee--waived  { background: rgba(148,163,184,0.15); color:#94a3b8; font-size:0.7rem; padding:0.2rem 0.5rem; border-radius:20px; font-weight:600; }
+</style>
+
+<div class="page-header">
+  <div>
+    <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.2rem;">
+      <i data-lucide="trending-up" style="color:var(--gold);width:18px;height:18px;"></i>
+      <h1 style="font-size:1.25rem;">Mi Dashboard de Inversión</h1>
+    </div>
+    <p class="text-muted" style="font-size:0.8125rem;">Rendimiento, PnL y fees de tu capital gestionado</p>
+  </div>
+</div>
+
+<!-- Selector de cuenta -->
+<div class="card" style="margin-bottom:1rem;">
+  <div style="display:flex;align-items:center;gap:1rem;">
+    <label class="form-label" style="margin:0;white-space:nowrap;">Cuenta:</label>
+    <select id="sel-account" class="input-select" style="max-width:320px;" onchange="loadDashboard()">
+      <option value="">-- Seleccionar cuenta --</option>
+    </select>
+  </div>
+</div>
+
+<!-- KPIs -->
+<div id="kpi-section" style="display:none;">
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-card__label">Capital Inicial</div>
+      <div class="kpi-card__value neutral" id="kpi-initial">—</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-card__label">High-Water Mark</div>
+      <div class="kpi-card__value neutral" id="kpi-hwm">—</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-card__label">PnL Neto Total</div>
+      <div class="kpi-card__value" id="kpi-net-pnl">—</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-card__label">Fees Totales Pagados</div>
+      <div class="kpi-card__value" id="kpi-total-fees" style="color:#ef4444;">—</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-card__label">Tu Performance Fee</div>
+      <div class="kpi-card__value neutral" id="kpi-fee-pct">—</div>
+    </div>
+  </div>
+</div>
+
+<!-- Histórico de períodos -->
+<div id="periods-section" style="display:none;">
+  <h2 style="font-size:1rem;font-weight:600;margin-bottom:0.75rem;">Historial de Períodos</h2>
+  <div class="card" style="margin-bottom:1.5rem;">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Período</th>
+          <th>Apertura</th>
+          <th>Cierre</th>
+          <th>Equity Apertura</th>
+          <th>Equity Cierre</th>
+          <th>Gross PnL</th>
+          <th>Fee</th>
+          <th>Net PnL</th>
+          <th>Estado</th>
+        </tr>
+      </thead>
+      <tbody id="periods-body"></tbody>
+    </table>
+    <div id="periods-empty" class="text-muted" style="padding:1.5rem;text-align:center;display:none;">Sin períodos registrados.</div>
+  </div>
+</div>
+
+<!-- Histórico de fees -->
+<div id="fees-section" style="display:none;">
+  <h2 style="font-size:1rem;font-weight:600;margin-bottom:0.75rem;">Transacciones de Performance Fee</h2>
+  <div class="card">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Período ID</th>
+          <th>Monto</th>
+          <th>Estado</th>
+          <th>Cobrado</th>
+          <th>Registrado</th>
+        </tr>
+      </thead>
+      <tbody id="fees-body"></tbody>
+    </table>
+    <div id="fees-empty" class="text-muted" style="padding:1.5rem;text-align:center;display:none;">Sin transacciones de fee.</div>
+  </div>
+</div>
+
+<div id="dashboard-loading" class="text-muted" style="padding:2rem;text-align:center;">Selecciona una cuenta para ver tu dashboard.</div>
+
+<script src="/static/js/investor/dashboard.js?v={{ sv }}"></script>
+{% endblock %}

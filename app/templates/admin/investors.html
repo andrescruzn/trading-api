@@ -1,0 +1,107 @@
+{% extends "base_app.html" %}
+
+{% block title %}Admin — Inversores — Trading AI{% endblock %}
+{% block nav_title %}Admin / Inversores{% endblock %}
+
+{% block content %}
+
+<style>
+  .fee-badge {
+    display: inline-flex; align-items: center;
+    padding: 0.2rem 0.6rem; border-radius: 20px;
+    font-size: 0.7rem; font-weight: 600;
+    background: rgba(240,180,41,0.15); color: var(--gold);
+  }
+  .status--active   { background: rgba(34,197,94,0.15);  color: #22c55e; }
+  .status--inactive { background: rgba(148,163,184,0.15); color: #94a3b8; }
+</style>
+
+<div class="page-header">
+  <div>
+    <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.2rem;">
+      <i data-lucide="users" style="color:var(--gold);width:18px;height:18px;"></i>
+      <h1 style="font-size:1.25rem;">Inversores</h1>
+    </div>
+    <p class="text-muted" style="font-size:0.8125rem;">Gestión de perfiles de inversores y performance fee</p>
+  </div>
+  <button class="btn btn--primary" onclick="openCreateModal()" style="display:flex;align-items:center;gap:0.4rem;font-size:0.8125rem;">
+    <i data-lucide="plus" style="width:14px;height:14px;"></i>
+    Nuevo Inversor
+  </button>
+</div>
+
+<!-- Tabla de inversores -->
+<div class="card">
+  <div id="investors-loading" class="text-muted" style="padding:1.5rem;text-align:center;">Cargando...</div>
+  <table id="investors-table" class="table" style="display:none;">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>User ID</th>
+        <th>Performance Fee</th>
+        <th>Estado</th>
+        <th>Creado</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody id="investors-body"></tbody>
+  </table>
+  <div id="investors-empty" class="text-muted" style="padding:1.5rem;text-align:center;display:none;">No hay inversores registrados.</div>
+</div>
+
+<!-- Modal Crear -->
+<div id="modal-create" class="modal-overlay" style="display:none;">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal__header">
+      <span>Nuevo Inversor</span>
+      <button class="modal__close" onclick="closeCreateModal()"><i data-lucide="x"></i></button>
+    </div>
+    <div class="modal__body">
+      <div id="create-error" class="alert alert--error" style="display:none;"></div>
+      <div class="form-group">
+        <label class="form-label">User ID <span style="color:var(--error)">*</span></label>
+        <input id="inp-user-id" type="number" class="form-control" placeholder="ID del usuario con rol investor">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Performance Fee (%) <span style="color:var(--error)">*</span></label>
+        <input id="inp-fee-pct" type="number" step="0.01" min="0" max="100" class="form-control" placeholder="Ej: 20 (para 20%)">
+        <small class="text-muted">Ingresa el porcentaje (0-100). Se guarda como fracción internamente.</small>
+      </div>
+    </div>
+    <div class="modal__footer">
+      <button class="btn btn--ghost" onclick="closeCreateModal()">Cancelar</button>
+      <button class="btn btn--primary" onclick="submitCreate()">Crear</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Editar -->
+<div id="modal-edit" class="modal-overlay" style="display:none;">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal__header">
+      <span>Editar Inversor</span>
+      <button class="modal__close" onclick="closeEditModal()"><i data-lucide="x"></i></button>
+    </div>
+    <div class="modal__body">
+      <div id="edit-error" class="alert alert--error" style="display:none;"></div>
+      <input type="hidden" id="edit-id">
+      <div class="form-group">
+        <label class="form-label">Performance Fee (%)</label>
+        <input id="edit-fee-pct" type="number" step="0.01" min="0" max="100" class="form-control">
+      </div>
+      <div class="form-group">
+        <label class="form-label" style="display:flex;align-items:center;gap:0.5rem;">
+          <input id="edit-is-active" type="checkbox">
+          Activo
+        </label>
+      </div>
+    </div>
+    <div class="modal__footer">
+      <button class="btn btn--ghost" onclick="closeEditModal()">Cancelar</button>
+      <button class="btn btn--primary" onclick="submitEdit()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<script src="/static/js/admin/investors.js?v={{ sv }}"></script>
+{% endblock %}

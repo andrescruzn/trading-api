@@ -385,3 +385,51 @@ def admin_telegram_page(request: Request):
     if int(identity.get("role_id", 0)) != int(settings.AUTH_ADMIN_ROLE_ID):
         return RedirectResponse(url="/dashboard", status_code=302)
     return templates.TemplateResponse(request, "admin/telegram.html")
+
+
+# ======================================================================
+# Módulo 10 — Billing & Managed Accounts
+# ======================================================================
+
+@web_router.get("/admin/investors", response_class=HTMLResponse, include_in_schema=False)
+def admin_investors_page(request: Request):
+    """CRUD de inversores. Solo admin."""
+    identity = _get_identity_from_cookie(request)
+    if not identity:
+        return RedirectResponse(url="/login", status_code=302)
+    if int(identity.get("role_id", 0)) != int(settings.AUTH_ADMIN_ROLE_ID):
+        return RedirectResponse(url="/dashboard", status_code=302)
+    return templates.TemplateResponse(request, "admin/investors.html")
+
+
+@web_router.get("/admin/managed-accounts", response_class=HTMLResponse, include_in_schema=False)
+def admin_managed_accounts_page(request: Request):
+    """Vista de cuentas gestionadas. Solo admin."""
+    identity = _get_identity_from_cookie(request)
+    if not identity:
+        return RedirectResponse(url="/login", status_code=302)
+    if int(identity.get("role_id", 0)) != int(settings.AUTH_ADMIN_ROLE_ID):
+        return RedirectResponse(url="/dashboard", status_code=302)
+    return templates.TemplateResponse(request, "admin/managed_accounts.html")
+
+
+@web_router.get("/admin/billing", response_class=HTMLResponse, include_in_schema=False)
+def admin_billing_page(request: Request):
+    """Períodos de facturación y gestión de fees. Solo admin."""
+    identity = _get_identity_from_cookie(request)
+    if not identity:
+        return RedirectResponse(url="/login", status_code=302)
+    if int(identity.get("role_id", 0)) != int(settings.AUTH_ADMIN_ROLE_ID):
+        return RedirectResponse(url="/dashboard", status_code=302)
+    return templates.TemplateResponse(request, "admin/billing.html")
+
+
+@web_router.get("/investor/dashboard", response_class=HTMLResponse, include_in_schema=False)
+def investor_dashboard_page(request: Request):
+    """Dashboard del inversor — equity, PnL y fees cobrados."""
+    identity = _get_identity_from_cookie(request)
+    if not identity:
+        return RedirectResponse(url="/login", status_code=302)
+    if int(identity.get("role_id", 0)) != int(settings.AUTH_INVESTOR_ROLE_ID):
+        return RedirectResponse(url="/dashboard", status_code=302)
+    return templates.TemplateResponse(request, "investor/dashboard.html")

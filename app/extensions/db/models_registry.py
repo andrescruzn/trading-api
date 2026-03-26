@@ -73,3 +73,11 @@ from app.modules.orders.infrastructure.position_model import PositionModel  # no
 # --------------------------------------------------------------
 from app.modules.alerts.infrastructure.alert_rule_model import AlertRuleModel  # noqa: F401
 from app.modules.alerts.infrastructure.alert_event_model import AlertEventModel  # noqa: F401
+
+# --------------------------------------------------------------
+# Billing module models
+# --------------------------------------------------------------
+from app.modules.billing.infrastructure.investor_model import InvestorModel  # noqa: F401
+from app.modules.billing.infrastructure.managed_account_model import ManagedAccountModel  # noqa: F401
+from app.modules.billing.infrastructure.billing_period_model import BillingPeriodModel  # noqa: F401
+from app.modules.billing.infrastructure.fee_transaction_model import FeeTransactionModel  # noqa: F401

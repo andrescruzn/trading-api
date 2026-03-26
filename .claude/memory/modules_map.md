@@ -691,6 +691,117 @@ DESKTOP_NOTIFICATIONS_ENABLED=false
 
 ---
 
+## ✅ Módulo 10 — Billing & Managed Accounts (COMPLETO)
+
+### Tablas en BD
+| Tabla | Acción | Nota |
+|-------|--------|------|
+| `investors` | WRITE | Perfil de inversor: user_id (UNIQUE), fee_pct Decimal(5,4), is_active |
+| `managed_accounts` | WRITE | Cuenta administrada: investor_id, account_id, bot_id opcional, capital, HWM, period_type |
+| `billing_periods` | WRITE | Períodos: opening_equity, closing_equity, gross_pnl, fee_pct snapshot, fee_amount, net_pnl, status (open/closed) |
+| `fee_transactions` | WRITE | Cobros de fee: billing_period_id (UNIQUE), amount, status (pending/charged/waived) |
+| `users` | READ | Para verificar que user_id existe al crear inversor |
+| `bots` | READ | Validación opcional del bot_id en managed_account |
+
+### Modelos ORM (`app/modules/billing/infrastructure/`)
+| Archivo | Clase | Tabla |
+|---------|-------|-------|
+| `investor_model.py` | `InvestorModel` | `investors` |
+| `managed_account_model.py` | `ManagedAccountModel` | `managed_accounts` |
+| `billing_period_model.py` | `BillingPeriodModel` | `billing_periods` |
+| `fee_transaction_model.py` | `FeeTransactionModel` | `fee_transactions` |
+
+Registrados en: `app/extensions/db/models_registry.py`
+
+### Repositorios (`app/modules/billing/`)
+| Domain (Protocol) | Infrastructure (impl) |
+|-------------------|-----------------------|
+| `domain/investor_repository.py` | `infrastructure/investor_repository_impl.py` → `SqlAlchemyInvestorRepository` |
+| `domain/managed_account_repository.py` | `infrastructure/managed_account_repository_impl.py` → `SqlAlchemyManagedAccountRepository` |
+| `domain/billing_period_repository.py` | `infrastructure/billing_period_repository_impl.py` → `SqlAlchemyBillingPeriodRepository` |
+| `domain/fee_transaction_repository.py` | `infrastructure/fee_transaction_repository_impl.py` → `SqlAlchemyFeeTransactionRepository` |
+
+### Domain Entities (`app/modules/billing/domain/`)
+| Archivo | Entidad | Clave |
+|---------|---------|-------|
+| `investor_entity.py` | `Investor` | `fee_as_percentage()`, `is_valid_fee_pct()` |
+| `managed_account_entity.py` | `ManagedAccount` | `VALID_PERIOD_TYPES`, `update_high_water_mark()` |
+| `billing_period_entity.py` | `BillingPeriod` | `calculate_fee(closing_equity, hwm)` — baseline = max(opening_equity, hwm) |
+| `fee_transaction_entity.py` | `FeeTransaction` | `mark_as_charged()`, `waive()`. States: pending/charged/waived |
+
+### Lógica HWM (crítica)
+```python
+# BillingPeriod.calculate_fee(closing_equity, high_water_mark)
+baseline = max(self.opening_equity, high_water_mark)
+gross_pnl = closing_equity - self.opening_equity
+profit_above_hwm = closing_equity - baseline   # puede ser negativo
+fee_amount = max(profit_above_hwm, 0) * self.fee_pct
+```
+- Si `closing_equity <= baseline` → fee_amount = 0 (no cobrar si no hay nuevos máximos)
+- `has_fee_to_charge()` → `fee_amount > 0`
+
+### Servicios (`app/modules/billing/services/`)
+| Subdir | Servicios |
+|--------|-----------|
+| `investors/` | `list_investors_service.py`, `create_investor_service.py`, `update_investor_service.py` |
+| `managed_accounts/` | `list_managed_accounts_service.py`, `get_managed_account_service.py`, `create_managed_account_service.py`, `update_managed_account_service.py` |
+| `billing/` | `list_billing_periods_service.py`, `open_billing_period_service.py`, `close_billing_period_service.py`, `list_fee_transactions_service.py` |
+
+Provider: `app/modules/billing/providers/billing_provider.py` → `BillingServiceFactory` + `get_billing_factory(session)`
+
+### Endpoints REST
+| Método | Ruta | Auth | Nota |
+|--------|------|------|------|
+| GET | `/api/investors` | admin | Lista todos los inversores |
+| POST | `/api/investors` | admin | Crea inversor (valida user_id único, fee_pct 0-1) |
+| GET | `/api/investors/{id}` | admin | Detalle inversor |
+| PUT | `/api/investors/{id}` | admin | Actualiza fee_pct y/o is_active |
+| GET | `/api/managed-accounts` | token | Admin ve todas; investor ve las suyas (find_by_user_id) |
+| POST | `/api/managed-accounts` | admin | Crea cuenta administrada (HWM = initial_capital) |
+| GET | `/api/managed-accounts/{id}` | token | Detalle con ownership check |
+| PUT | `/api/managed-accounts/{id}` | admin | Actualiza nombre, bot_id, period_type, is_active |
+| GET | `/api/billing-periods` | token | Filtro por managed_account_id |
+| POST | `/api/billing-periods/open` | admin | Abre período (valida que no haya uno abierto) |
+| POST | `/api/billing-periods/{id}/close` | admin | Cierra período (HWM + fee_tx atómico) |
+| GET | `/api/fee-transactions` | token | Filtro por managed_account_id |
+
+**⚠️ IMPORTANTE:** Prefijo `/api/` obligatorio para evitar colisión con páginas web.
+
+Routers registrados en `app/app_factory.py`:
+```python
+from app.modules.billing.rest import investors_router, managed_accounts_router, billing_periods_router
+```
+
+### Páginas web
+| URL | Template | JS | Rol |
+|-----|----------|----|-----|
+| `/admin/investors` | `templates/admin/investors.html` | `static/js/admin/investors.js` | admin |
+| `/admin/managed-accounts` | `templates/admin/managed_accounts.html` | `static/js/admin/managed_accounts.js` | admin |
+| `/admin/billing` | `templates/admin/billing.html` | `static/js/admin/billing.js` | admin |
+| `/investor/dashboard` | `templates/investor/dashboard.html` | `static/js/investor/dashboard.js` | investor |
+
+### Sidebar
+- `sidebar.js` detecta `isInvestor = (jwtPayload.role_id === AUTH_INVESTOR_ROLE_ID)` desde el JWT
+- Muestra `#investor-panel` div con link "Mi Dashboard" → `/investor/dashboard`
+- Los admins no ven el panel de inversor; los inversores no ven los menús de admin/trading
+
+### Settings nuevos (`app/common/config/settings.py`)
+```python
+AUTH_INVESTOR_ROLE_ID: int = 3  # leído de env AUTH_INVESTOR_ROLE_ID, default 3
+```
+
+### Gotchas críticos M10
+- **Prefijo `/api/`:** billing routes DEBEN usar `/api/billing-periods`, `/api/investors`, etc.
+- **fee_pct en BD:** `Numeric(5,4)` — se guarda como decimal (0.20 = 20%). El JS divide por 100 al enviar.
+- **HWM inicial:** en `create_managed_account`, `high_water_mark = initial_capital` (no cero).
+- **Snapshot fee_pct:** al abrir período se copia `investor.fee_pct` al período — si cambia el fee futuro no afecta períodos pasados.
+- **Cierre atómico:** `close_billing_period_service.py` hace un solo `session.commit()` que incluye: actualizar período + crear fee_tx + llamar `update_high_water_mark()`.
+- **Investor ownership:** `list_managed_accounts` llama `find_by_user_id(current_user.id)` para filtrar al inversor. Admin usa `list_all()`.
+- **CSP:** prefijo `/investor/` agregado a `_is_web_route()` en `security_headers.py`.
+- **Migración:** `migrations/m10_billing.sql` + seed `seeds/seed_billing.sql` (INSERT IGNORE del rol investor id=3).
+
+---
+
 ## Checklist al crear un módulo nuevo
 
 1. [ ] Crear `domain/` — entidades + interfaces repositorio

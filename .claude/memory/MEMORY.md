@@ -24,11 +24,16 @@ Este archivo es la fuente de verdad del proyecto — describe en lenguaje simple
 - ✅ M4 Accounts & Portfolio completo: CRUD cuentas, balances, cifrado Fernet, 36 tests pasando
 - ✅ M5 Strategies completo: CRUD strategies + datasets, validación coherencia tipo↔régimen, UI usuario+admin
 - ✅ M6 AI Agent / Models completo: multi-provider LLM, Prompt Maestro 4 fases, CRUD models+model_runs, 20 tests
-- Web pages: /login, /dashboard, /profile, /market/symbols, /market/candles, /features, /portfolio, /strategies, /agent
-- Admin pages: /admin/exchanges, /admin/symbols, /admin/timeframes, /admin/candles/ingest, /admin/feature-sets, /admin/accounts, /admin/strategies
+- ✅ M7 Bots & Signals completo: CRUD bots + state machine, generate_signal con M6, 55 tests
+- ✅ M8 Orders & Execution completo: PaperExecutor + LiveExecutor (ccxt), order+fill+position atómico
+- ✅ M9 Alerts completo: 4 canales (email/telegram/webhook/desktop), hooks fire-and-forget en M7/M8
+- ✅ M10 Billing & Managed Accounts completo: inversores, cuentas administradas, HWM, performance fee
+- Web pages: /login, /dashboard, /profile, /market/symbols, /market/candles, /features, /portfolio, /strategies, /agent, /bots, /orders, /alerts
+- Admin pages: /admin/exchanges, /admin/symbols, /admin/timeframes, /admin/candles/ingest, /admin/feature-sets, /admin/accounts, /admin/strategies, /admin/bots, /admin/orders, /admin/alerts, /admin/telegram, /admin/investors, /admin/managed-accounts, /admin/billing
+- Investor pages: /investor/dashboard
 - Security headers middleware — NUNCA usar onclick/onchange inline en HTML
 - Todos los handlers de eventos van en JS vía addEventListener
-- 107+ tests pasando (42 auth + 45 audit + 36 accounts + 20 agent + otros)
+- 107+ tests pasando (42 auth + 45 audit + 36 accounts + 20 agent + 55 bots + otros)
 - pandas-ta 0.4.71b0 instalado en .venv (TA library M3)
 
 ## Bugs corregidos en M2 (importantes para no repetir)
@@ -123,13 +128,14 @@ Al completar un módulo (o cualquier feature significativa) SIEMPRE actualizar A
 ## Roles en BD
 - role_id=1 → Usuario (user)
 - role_id=2 → Administrador (admin)
+- role_id=3 → Inversor (investor) — solo ve /investor/dashboard; settings.AUTH_INVESTOR_ROLE_ID = 3
 
 ## Hoja de ruta y mapa de módulos
 - `MODULES.md` (raíz del proyecto) ← LEER AL INICIAR SESIÓN
-- Ver `.claude/memory/roadmap.md` — detalle técnico de los 9 módulos
+- Ver `.claude/memory/roadmap.md` — detalle técnico de los 10 módulos
 - Ver `.claude/memory/modules_map.md` — mapa detallado de tablas, archivos, endpoints y páginas por módulo ← LEER ANTES DE CODEAR
 - Comprar/Vender está en el **Módulo 8 — Orders & Execution**
-- ✅ M1 → ✅ M2 → ✅ M3 → ✅ M4 → ✅ M5 → ✅ M6 completo → 📌 M7 Bots & Signals es el siguiente
+- ✅ M1 → ✅ M2 → ✅ M3 → ✅ M4 → ✅ M5 → ✅ M6 → ✅ M7 → ✅ M8 → ✅ M9 → ✅ M10 — todos completos
 
 ## Concepto del proyecto
 Agente de Trading con IA que elimina el sesgo emocional. Toma decisiones basadas en:

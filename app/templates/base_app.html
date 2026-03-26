@@ -141,6 +141,27 @@
             <i data-lucide="send"></i>
             Telegram
           </a>
+          <a href="/admin/investors" class="sidebar__link" data-path="/admin/investors">
+            <i data-lucide="users"></i>
+            Inversores
+          </a>
+          <a href="/admin/managed-accounts" class="sidebar__link" data-path="/admin/managed-accounts">
+            <i data-lucide="briefcase"></i>
+            Cuentas Gestionadas
+          </a>
+          <a href="/admin/billing" class="sidebar__link" data-path="/admin/billing">
+            <i data-lucide="dollar-sign"></i>
+            Facturación
+          </a>
+        </div>
+
+        <!-- Investor panel (oculto hasta que sidebar.js confirme rol investor) -->
+        <div class="sidebar__section hidden" id="investor-panel">
+          <div class="sidebar__section-title">Mi Inversión</div>
+          <a href="/investor/dashboard" class="sidebar__link" data-path="/investor/dashboard">
+            <i data-lucide="trending-up"></i>
+            Mi Dashboard
+          </a>
         </div>
 
         <!-- Cuenta -->

@@ -163,6 +163,9 @@ class Settings:
         self.AUTH_ADMIN_ROLE_ID: int = int(admin_role_raw) if admin_role_raw.isdigit() else 1
         self.AUTH_USER_ROLE_ID: int = int(user_role_raw) if user_role_raw.isdigit() else 2
 
+        investor_role_raw = os.getenv("AUTH_INVESTOR_ROLE_ID", "3").strip()
+        self.AUTH_INVESTOR_ROLE_ID: int = int(investor_role_raw) if investor_role_raw.isdigit() else 3
+
         # --------------------------------------------------------------
         # AUTH / Cookie Settings
         # --------------------------------------------------------------

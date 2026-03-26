@@ -168,31 +168,29 @@ Entregables:
 
 ---
 
-## 📌 Módulo 10 — Billing & Managed Accounts
+## ✅ Módulo 10 — Billing & Managed Accounts (COMPLETO)
 **Qué hace:** Modelo de negocio. Inversores aportan capital, el bot lo opera, y el sistema
 cobra automáticamente un porcentaje de las ganancias (performance fee).
 
 Tablas nuevas: `investors`, `managed_accounts`, `billing_periods`, `fee_transactions`
 
-Modelo de negocio: Managed Account
-- Inversor deposita capital en una cuenta del sistema
-- Bot opera ese capital con las estrategias configuradas
-- Al cierre del período: si hay PnL positivo → se calcula y registra la performance fee
-- Si hay pérdida → no se cobra (High-Water Mark opcional para proteger al inversor)
-
 Entregables:
-- CRUD inversores (nombre, email, capital aportado, fee_pct configurado)
-- Cálculo automático de performance fee al cerrar período (diario/semanal/mensual)
-- High-Water Mark: solo cobrar fee sobre nuevos máximos de capital (evitar cobrar 2 veces)
-- Estado de cuenta por inversor: capital, ganancias brutas, fee cobrado, neto inversor
-- Historial de fee_transactions auditables
-- Email automático al inversor al cierre de período
-- Web UI admin: panel de inversores + fees acumulados
-- Web UI inversor: dashboard con rendimiento y estado de cuenta
-
-Roles necesarios:
-- role_id=3 → investor (nuevo rol, solo ve su propio dashboard)
-- role_id=2 → admin (gestiona todos los inversores y fees)
+- ✅ Migración `migrations/m10_billing.sql` — 4 tablas + seed `seeds/seed_billing.sql` (rol investor id=3)
+- ✅ Domain entities: Investor, ManagedAccount, BillingPeriod (HWM logic), FeeTransaction con Protocol repos
+- ✅ Infrastructure: ORM models (Numeric(5,4) fee_pct, Numeric(30,12) capital) + 4 repos impl
+- ✅ HWM logic en `BillingPeriod.calculate_fee()`: `baseline = max(opening_equity, high_water_mark)`
+- ✅ Services: CRUD investors, CRUD managed_accounts, open_billing_period, close_billing_period (atómico)
+- ✅ Provider: BillingServiceFactory + get_billing_factory(session)
+- ✅ REST: GET/POST /api/investors, GET/PUT /api/investors/{id}
+- ✅ REST: GET/POST /api/managed-accounts, GET/PUT /api/managed-accounts/{id}
+- ✅ REST: GET /api/billing-periods, POST /api/billing-periods/open, POST /api/billing-periods/{id}/close
+- ✅ REST: GET /api/fee-transactions
+- ✅ Web UI admin: /admin/investors, /admin/managed-accounts, /admin/billing
+- ✅ Web UI inversor: /investor/dashboard (KPIs + historial períodos + fee transactions)
+- ✅ Sidebar: panel inversor visible solo para role_id=3 (isInvestor flag en sidebar.js)
+- ✅ Nuevo rol: role_id=3 → investor; settings.AUTH_INVESTOR_ROLE_ID = 3
+- ✅ CSP: prefijo /investor/ en security_headers.py
+- ✅ Tests unitarios: 53 tests pasando (entity HWM, close/open period service)
 
 ---
 

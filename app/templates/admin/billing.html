@@ -1,0 +1,160 @@
+{% extends "base_app.html" %}
+
+{% block title %}Admin — Facturación — Trading AI{% endblock %}
+{% block nav_title %}Admin / Facturación{% endblock %}
+
+{% block content %}
+
+<style>
+  .status--open   { background: rgba(96,165,250,0.15);  color:#60a5fa; }
+  .status--closed { background: rgba(34,197,94,0.15);   color:#22c55e; }
+  .fee--pending  { background: rgba(251,191,36,0.15);  color:#fbbf24; }
+  .fee--charged  { background: rgba(34,197,94,0.15);   color:#22c55e; }
+  .fee--waived   { background: rgba(148,163,184,0.15); color:#94a3b8; }
+  .pnl--positive { color: #22c55e; font-weight:600; }
+  .pnl--negative { color: #ef4444; font-weight:600; }
+  .tabs { display:flex; gap:0.25rem; margin-bottom:1.25rem; border-bottom:1px solid var(--border); padding-bottom:0.5rem; }
+  .tab-btn { padding:0.4rem 1rem; border-radius:6px; border:none; cursor:pointer; font-size:0.8125rem; font-weight:500; background:transparent; color:var(--text-muted); transition:all 0.15s; }
+  .tab-btn:hover { color:var(--text-primary); background:rgba(255,255,255,0.05); }
+  .tab-btn.active { background:rgba(240,180,41,0.15); color:var(--gold); }
+</style>
+
+<div class="page-header">
+  <div>
+    <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.2rem;">
+      <i data-lucide="dollar-sign" style="color:var(--gold);width:18px;height:18px;"></i>
+      <h1 style="font-size:1.25rem;">Facturación</h1>
+    </div>
+    <p class="text-muted" style="font-size:0.8125rem;">Períodos de facturación y transacciones de performance fee</p>
+  </div>
+  <div style="display:flex;gap:0.5rem;">
+    <button class="btn btn--ghost" onclick="openOpenPeriodModal()" style="display:flex;align-items:center;gap:0.4rem;font-size:0.8125rem;">
+      <i data-lucide="play" style="width:14px;height:14px;"></i>
+      Abrir Período
+    </button>
+  </div>
+</div>
+
+<!-- Selector de cuenta gestionada -->
+<div class="card" style="margin-bottom:1rem;">
+  <div style="display:flex;align-items:center;gap:1rem;padding:0.25rem 0;">
+    <label class="form-label" style="margin:0;white-space:nowrap;">Cuenta Gestionada:</label>
+    <select id="sel-managed-account" class="input-select" style="max-width:300px;" onchange="loadData()">
+      <option value="">-- Seleccionar --</option>
+    </select>
+    <div id="hwm-display" style="display:none;font-size:0.8125rem;" class="text-muted">
+      HWM: <span id="hwm-value" style="color:var(--gold);font-weight:600;">—</span>
+    </div>
+  </div>
+</div>
+
+<!-- Tabs -->
+<div class="tabs">
+  <button class="tab-btn active" onclick="switchTab('periods', this)">Períodos</button>
+  <button class="tab-btn" onclick="switchTab('fees', this)">Transacciones de Fee</button>
+</div>
+
+<!-- Tabla períodos -->
+<div id="tab-periods">
+  <div class="card">
+    <div id="periods-loading" class="text-muted" style="padding:1.5rem;text-align:center;display:none;">Cargando...</div>
+    <table id="periods-table" class="table" style="display:none;">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Inicio</th>
+          <th>Cierre</th>
+          <th>Equity Apertura</th>
+          <th>Equity Cierre</th>
+          <th>Gross PnL</th>
+          <th>Fee %</th>
+          <th>Fee $</th>
+          <th>Net PnL</th>
+          <th>Estado</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody id="periods-body"></tbody>
+    </table>
+    <div id="periods-empty" class="text-muted" style="padding:1.5rem;text-align:center;">Selecciona una cuenta para ver sus períodos.</div>
+  </div>
+</div>
+
+<!-- Tabla fee transactions -->
+<div id="tab-fees" style="display:none;">
+  <div class="card">
+    <div id="fees-loading" class="text-muted" style="padding:1.5rem;text-align:center;display:none;">Cargando...</div>
+    <table id="fees-table" class="table" style="display:none;">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Período ID</th>
+          <th>Monto</th>
+          <th>Estado</th>
+          <th>Cobrado</th>
+          <th>Notas</th>
+          <th>Creado</th>
+        </tr>
+      </thead>
+      <tbody id="fees-body"></tbody>
+    </table>
+    <div id="fees-empty" class="text-muted" style="padding:1.5rem;text-align:center;">Selecciona una cuenta para ver las transacciones de fee.</div>
+  </div>
+</div>
+
+<!-- Modal Abrir Período -->
+<div id="modal-open-period" class="modal-overlay" style="display:none;">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal__header">
+      <span>Abrir Período de Facturación</span>
+      <button class="modal__close" onclick="closeOpenPeriodModal()"><i data-lucide="x"></i></button>
+    </div>
+    <div class="modal__body">
+      <div id="open-period-error" class="alert alert--error" style="display:none;"></div>
+      <p class="text-muted" style="font-size:0.8125rem;margin-bottom:1rem;">
+        Solo puede haber un período abierto por cuenta a la vez. Cierra el anterior antes de abrir uno nuevo.
+      </p>
+      <div class="form-group">
+        <label class="form-label">Equity de Apertura (USD) <span style="color:var(--error)">*</span></label>
+        <input id="inp-opening-equity" type="number" step="0.01" min="0" class="form-control" placeholder="Ej: 10000.00">
+      </div>
+    </div>
+    <div class="modal__footer">
+      <button class="btn btn--ghost" onclick="closeOpenPeriodModal()">Cancelar</button>
+      <button class="btn btn--primary" onclick="submitOpenPeriod()">Abrir</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Cerrar Período -->
+<div id="modal-close-period" class="modal-overlay" style="display:none;">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal__header">
+      <span>Cerrar Período — Calcular Fee</span>
+      <button class="modal__close" onclick="closeClosePeriodModal()"><i data-lucide="x"></i></button>
+    </div>
+    <div class="modal__body">
+      <div id="close-period-error" class="alert alert--error" style="display:none;"></div>
+      <input type="hidden" id="close-period-id">
+      <div id="close-period-preview" style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:0.75rem;margin-bottom:1rem;font-size:0.8125rem;display:none;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">
+          <div><span class="text-muted">Apertura:</span> <span id="preview-opening">—</span></div>
+          <div><span class="text-muted">Fee %:</span> <span id="preview-fee-pct">—</span></div>
+          <div><span class="text-muted">HWM actual:</span> <span id="preview-hwm">—</span></div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Equity de Cierre (USD) <span style="color:var(--error)">*</span></label>
+        <input id="inp-closing-equity" type="number" step="0.01" min="0" class="form-control" placeholder="Ej: 12000.00">
+        <small class="text-muted">La performance fee se calculará sobre la ganancia por encima del High-Water Mark.</small>
+      </div>
+    </div>
+    <div class="modal__footer">
+      <button class="btn btn--ghost" onclick="closeClosePeriodModal()">Cancelar</button>
+      <button class="btn btn--danger" onclick="submitClosePeriod()">Cerrar y Calcular Fee</button>
+    </div>
+  </div>
+</div>
+
+<script src="/static/js/admin/billing.js?v={{ sv }}"></script>
+{% endblock %}

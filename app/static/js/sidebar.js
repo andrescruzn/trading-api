@@ -33,7 +33,8 @@
 
     var json = await res.json();
     var user  = json.data;
-    var isAdmin = user.role_label === "Administrador";
+    var isAdmin    = user.role_label === "Administrador";
+    var isInvestor = user.role_label === "Inversor";
 
     /* Email en sidebar footer */
     var emailEl = document.getElementById("sidebar-user-email");
@@ -63,6 +64,12 @@
     if (isAdmin) {
       var adminPanel = document.getElementById("admin-panel");
       if (adminPanel) adminPanel.classList.remove("hidden");
+    }
+
+    /* Sección investor en sidebar */
+    if (isInvestor) {
+      var investorPanel = document.getElementById("investor-panel");
+      if (investorPanel) investorPanel.classList.remove("hidden");
     }
 
     /* Re-inicializar iconos Lucide tras cambios en DOM */

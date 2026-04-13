@@ -11,6 +11,8 @@
 # 1) Registro de modelos ORM (necesario para FKs)
 import app.extensions.db.models_registry  # noqa: F401
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -41,6 +43,18 @@ from app.modules.users.rest import auth_router
 from app.modules.web import web_router
 
 
+@asynccontextmanager
+async def _lifespan(app: FastAPI):
+    """
+    Lifespan de FastAPI: arranca el scheduler al iniciar el servidor
+    y lo detiene limpiamente al apagarlo.
+    """
+    from app.modules.scheduler import start as start_scheduler, stop as stop_scheduler
+    start_scheduler()
+    yield
+    stop_scheduler()
+
+
 def create_app() -> FastAPI:
     # ------------------------------------------------------------------
     # Configurar logging
@@ -50,7 +64,11 @@ def create_app() -> FastAPI:
         json_format=settings.APP_ENV != "development",
     )
 
-    app = FastAPI(title=settings.API_TITLE, version=settings.API_VERSION)
+    app = FastAPI(
+        title=settings.API_TITLE,
+        version=settings.API_VERSION,
+        lifespan=_lifespan,
+    )
 
     # ------------------------------------------------------------------
     # Static files (CSS, JS)

@@ -276,3 +276,30 @@ class Settings:
         self.DESKTOP_NOTIFICATIONS_ENABLED: bool = (
             os.getenv("DESKTOP_NOTIFICATIONS_ENABLED", "false").lower() == "true"
         )
+
+        # --------------------------------------------------------------
+        # Scheduler — Actualización automática de velas y features
+        # --------------------------------------------------------------
+        # SCHEDULER_ENABLED: false para deshabilitar (tests, entorno manual).
+        # SCHEDULER_INTERVAL_SECONDS: cada cuántos segundos corre el ciclo.
+        #   Default 60 s — revisa cada minuto qué pares necesitan vela nueva.
+        # SCHEDULER_RETENTION_CANDLES: cuántas velas mantener por par.
+        #   Default 500 — suficiente para EMA200 (~20 días en 1h).
+        # --------------------------------------------------------------
+        self.SCHEDULER_ENABLED: bool = (
+            os.getenv("SCHEDULER_ENABLED", "true").lower() == "true"
+        )
+
+        try:
+            self.SCHEDULER_INTERVAL_SECONDS: int = int(
+                os.getenv("SCHEDULER_INTERVAL_SECONDS", "60")
+            )
+        except ValueError:
+            self.SCHEDULER_INTERVAL_SECONDS = 60
+
+        try:
+            self.SCHEDULER_RETENTION_CANDLES: int = int(
+                os.getenv("SCHEDULER_RETENTION_CANDLES", "500")
+            )
+        except ValueError:
+            self.SCHEDULER_RETENTION_CANDLES = 500

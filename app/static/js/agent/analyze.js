@@ -32,6 +32,15 @@ function showAlert(msg, type = "error") {
   setTimeout(() => el.classList.add("hidden"), 6000);
 }
 
+function showErrorPanel(msg) {
+  document.getElementById("result-panel").style.display = "none";
+  document.getElementById("result-placeholder").style.display = "none";
+  document.getElementById("analyzing-overlay").style.display = "none";
+  document.getElementById("error-msg-panel").textContent = msg;
+  document.getElementById("error-panel").style.display = "block";
+  if (window.lucide) lucide.createIcons();
+}
+
 function populateSelect(id, items, valueFn, labelFn, placeholder) {
   const sel = document.getElementById(id);
   sel.innerHTML = `<option value="">${placeholder}</option>`;
@@ -117,6 +126,7 @@ async function runAnalysis() {
   // Mostrar spinner, ocultar resultado
   document.getElementById("result-panel").style.display = "none";
   document.getElementById("result-placeholder").style.display = "none";
+  document.getElementById("error-panel").style.display = "none";
   document.getElementById("analyzing-overlay").style.display = "block";
   document.getElementById("btn-analyze").disabled = true;
   document.getElementById("alert-msg").classList.add("hidden");
@@ -138,14 +148,14 @@ async function runAnalysis() {
     const json = await res.json();
 
     if (!res.ok || json.errorCode >= 400) {
-      showAlert(json.msg || "Error en el análisis.");
+      showErrorPanel(json.msg || "Error en el análisis.");
       return;
     }
 
     renderResult(json.data);
 
   } catch (err) {
-    showAlert("Error de red: " + err.message);
+    showErrorPanel("Error de red: " + err.message);
   } finally {
     document.getElementById("analyzing-overlay").style.display = "none";
     document.getElementById("btn-analyze").disabled = false;

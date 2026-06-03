@@ -22,7 +22,7 @@ class CandleFeatureRepository(ABC):
         self,
         symbol_id: int,
         timeframe_id: int,
-        feature_set_id: int,
+        feature_set_id: Optional[int] = None,
         from_ts: Optional[datetime] = None,
         to_ts: Optional[datetime] = None,
         limit: int = 500,

@@ -48,7 +48,7 @@ class SqlAlchemyCandleFeatureRepository(CandleFeatureRepository):
         self,
         symbol_id: int,
         timeframe_id: int,
-        feature_set_id: int,
+        feature_set_id: Optional[int] = None,
         from_ts: Optional[datetime] = None,
         to_ts: Optional[datetime] = None,
         limit: int = 500,
@@ -56,8 +56,9 @@ class SqlAlchemyCandleFeatureRepository(CandleFeatureRepository):
         query = self._session.query(CandleFeatureModel).filter(
             CandleFeatureModel.symbol_id == symbol_id,
             CandleFeatureModel.timeframe_id == timeframe_id,
-            CandleFeatureModel.feature_set_id == feature_set_id,
         )
+        if feature_set_id is not None:
+            query = query.filter(CandleFeatureModel.feature_set_id == feature_set_id)
         if from_ts is not None:
             query = query.filter(CandleFeatureModel.ts >= from_ts)
         if to_ts is not None:

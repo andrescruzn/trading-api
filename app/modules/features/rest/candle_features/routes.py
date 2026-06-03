@@ -51,7 +51,7 @@ def _cf_to_dict(cf: Any) -> dict:
 def list_candle_features(
     symbol_id: int = Query(description="ID del símbolo"),
     timeframe_id: int = Query(description="ID del timeframe"),
-    feature_set_id: int = Query(description="ID del feature set"),
+    feature_set_id: Optional[int] = Query(default=None, description="ID del feature set (opcional)"),
     from_ts: Optional[datetime] = Query(default=None, description="Fecha inicio (ISO 8601)"),
     to_ts: Optional[datetime] = Query(default=None, description="Fecha fin (ISO 8601)"),
     limit: int = Query(default=500, ge=1, le=1000),

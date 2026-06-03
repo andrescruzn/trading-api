@@ -31,7 +31,7 @@ class ListCandleFeaturesService:
         self,
         symbol_id: int,
         timeframe_id: int,
-        feature_set_id: int,
+        feature_set_id: Optional[int] = None,
         from_ts: Optional[datetime] = None,
         to_ts: Optional[datetime] = None,
         limit: int = 500,
@@ -42,7 +42,7 @@ class ListCandleFeaturesService:
         if self._timeframe_repo.get_by_id(timeframe_id) is None:
             return ServiceResult.fail(code="TIMEFRAME_NOT_FOUND", http_status=404)
 
-        if self._feature_set_repo.get_by_id(feature_set_id) is None:
+        if feature_set_id is not None and self._feature_set_repo.get_by_id(feature_set_id) is None:
             return ServiceResult.fail(code="FEATURE_SET_NOT_FOUND", http_status=404)
 
         features = self._candle_feature_repo.list_features(

@@ -79,4 +79,55 @@
     window.location.href = "/login";
   }
 
+  const buttonTopbar = document.querySelector(".topbar__button button");
+  buttonTopbar.addEventListener("click", () => {
+    const isOpen = document.documentElement.classList.contains("sidebar-open");
+
+    if (isOpen) {
+      document.documentElement.classList.remove("sidebar-open");
+      unlockScroll();
+    } else {
+      document.documentElement.classList.add("sidebar-open");
+      lockScroll();
+    }
+  })
+
+  function getScrollbarWidth() {
+    return window.innerWidth
+        - document.documentElement.clientWidth;
+  }
+
+  function lockScroll() {
+    const sb = getScrollbarWidth();
+
+    const y = window.scrollY;
+    document.body.dataset.scrollY = y;
+
+    document.body.style.overflow  = 'hidden';
+    document.body.style.position  = 'fixed';
+    document.body.style.top       = `-${y}px`;
+    document.body.style.width     = '100%';
+    document.body.style.paddingRight = `${sb}px`;
+
+    document.querySelectorAll('[data-lock-pad]')
+      .forEach(el => {
+        const cur = parseInt(getComputedStyle(el).paddingRight);
+        el.style.paddingRight = `${cur + sb}px`;
+      });
+  }
+
+  function unlockScroll() {
+    const y = parseInt(document.body.dataset.scrollY || '0');
+
+    document.body.style.overflow     = '';
+    document.body.style.position     = '';
+    document.body.style.top          = '';
+    document.body.style.width        = '';
+    document.body.style.paddingRight = '';
+
+    document.querySelectorAll('[data-lock-pad]')
+      .forEach(el => el.style.paddingRight = '');
+
+    window.scrollTo(0, y);
+  }
 })();

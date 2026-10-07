@@ -196,6 +196,9 @@ def configure_logging(
     # Reducir ruido de librerías
     logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
     logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
+    logging.getLogger("urllib3").setLevel(logging.WARNING)
+    logging.getLogger("requests").setLevel(logging.WARNING)
+    logging.getLogger("ccxt").setLevel(logging.WARNING)
 
 
 def get_logger(name: str) -> logging.Logger:

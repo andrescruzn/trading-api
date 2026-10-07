@@ -52,16 +52,20 @@ Ver hoja de ruta completa en `.claude/memory/roadmap.md`
 
 ### 1️⃣ Crear entorno virtual
 
-python3.12 -m venv .venv
-source .venv/bin/activate
+uv venv --python 3.12
+# (o: python3.12 -m venv .venv && source .venv/bin/activate)
 
-### Instalar requirements
+### Instalar dependencias (pyproject.toml + uv.lock)
 
-pip install -r requirements.txt
+uv sync
 
-### Congelar dependencias
+# Sin uv: pip install --group dev -e .   (pip >= 25.1)
 
-pip freeze > requirements.txt
+### Agregar / actualizar dependencias
+
+uv add <paquete>
+uv add --dev <paquete>
+uv lock --upgrade-package <paquete>
 
 ### Ejecución en desarrollo
 

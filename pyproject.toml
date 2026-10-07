@@ -1,0 +1,46 @@
+[project]
+name = "trading-api"
+version = "0.1.0"
+description = "Trading AI API: FastAPI + SQLAlchemy + MySQL"
+readme = "README.md"
+# numba==0.61.2 / llvmlite==0.44.0 (via pandas-ta) no soportan Python 3.14
+requires-python = ">=3.12,<3.14"
+dependencies = [
+  # Web / ASGI
+  "fastapi==0.128.0",
+  "starlette==0.50.0",
+  "uvicorn[standard]==0.40.0",
+  "Jinja2==3.1.6",
+  "httpx==0.28.1",
+  # Validación / config
+  "pydantic==2.12.5",
+  "email-validator==2.3.0",  # requerido por pydantic EmailStr
+  "python-dotenv==1.2.1",
+  # Base de datos
+  "SQLAlchemy==2.0.45",
+  "PyMySQL==1.1.2",
+  # Seguridad
+  "python-jose==3.5.0",
+  "bcrypt==4.2.0",
+  "cryptography==46.0.3",
+  "bleach==6.3.0",
+  # Market data / features
+  "ccxt==4.4.96",
+  "pandas==3.0.1",
+  "pandas-ta==0.4.71b0",
+  # LLM providers
+  "anthropic==0.85.0",
+  "openai==2.29.0",
+  # Notificaciones de escritorio
+  "plyer==2.1.0",
+  "pyobjus==1.2.4; sys_platform == 'darwin'",
+]
+
+[dependency-groups]
+dev = [
+  "pytest==8.3.5",
+]
+
+[tool.uv]
+# Aplicación, no librería: no se construye ni se instala como paquete
+package = false

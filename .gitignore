@@ -60,7 +60,7 @@ instance/*
 # Ignorar configuración local (settings, cache, etc.)
 .claude/*
 # Pero compartir el contexto del proyecto con el equipo
-!.claude/main_instructions.md
+!.claude/MAIN_INSTRUCTIONS.md
 !.claude/db_schema.sql
 !.claude/skills/
 !.claude/skills/**

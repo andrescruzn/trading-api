@@ -6,8 +6,8 @@ MEMORY.md se carga automáticamente en cada sesión — ya tengo el contexto.
 Si quieres compartir algo nuevo dilo directamente (ej: "instalé ccxt para exchanges").
 
 ## ⚠️ OBLIGATORIO AL INICIAR CUALQUIER SESIÓN
-**Leer primero:** `/Users/codelabs/Sites/andrescruzn/www/trading-api/MODULES.md`
-Este archivo es la fuente de verdad del proyecto — describe en lenguaje simple qué hace cada módulo, qué páginas tiene (usuario vs admin) y cuál es el estado actual (✅ completo / 📌 pendiente). Sin leerlo no se debe codear nada.
+**Leer primero:** `specs/_ROOT.md` (raíz del proyecto) y luego la spec del módulo (`specs/MNN-*.md`)
+Es la fuente de verdad del proyecto — describe en lenguaje simple qué hace cada módulo, qué páginas tiene (usuario vs admin) y cuál es el estado actual (✅ completo / 📌 pendiente). Sin leerlo no se debe codear nada.
 
 ## Comandos
 - Correr servidor: `source .venv/bin/activate && uvicorn app.main:app --reload`
@@ -110,19 +110,19 @@ Este archivo es la fuente de verdad del proyecto — describe en lenguaje simple
 ## Convenciones clave
 - `utc_now()` de `app.common.utils` — no usar `datetime.now(timezone.utc)` directo
 - Jinja2 templates: `TemplateResponse(request, "template.html", {context})` (nuevo formato Starlette)
-- Los skills están en `.claude/skills/` — leer antes de codear (ver main_instructions.md)
+- Los skills están en `.claude/skills/` — leer antes de codear (ver MAIN_INSTRUCTIONS.md)
 - CSP bloquea onclick inline → siempre usar addEventListener en archivos .js servidos desde /static/
 - NUNCA usar `curl` para hacer login durante debugging — cambia `token_current_jti` e invalida la sesión activa del browser
 - Cache-busting: sin `?v={{ sv }}` el browser sirve el JS viejo → agregar a TODOS los `<script>` nuevos
 
 ## Documentación del proyecto
 - `MANUAL.md` (raíz) — explicación conceptual en lenguaje simple. Actualizar cuando se agreguen conceptos nuevos.
-- `MODULES.md` (raíz) — estado de cada módulo (✅/📌) + páginas usuario vs admin. ← LEER AL INICIAR
+- `specs/_ROOT.md` (+ `specs/MNN-*.md`) — estado de cada módulo (✅/📌) + páginas usuario vs admin. ← LEER AL INICIAR
 - `README.md` (raíz) — setup técnico del proyecto
 
 ## ⚠️ OBLIGATORIO AL TERMINAR CUALQUIER MÓDULO
 Al completar un módulo (o cualquier feature significativa) SIEMPRE actualizar AMBOS archivos:
-1. **`MODULES.md`** — cambiar 📌 PENDIENTE → ✅ COMPLETO, agregar páginas y descripción
+1. **`specs/MNN-*.md` + tabla de `specs/_ROOT.md`** — cambiar 📌 PENDIENTE → ✅ COMPLETO, agregar páginas y descripción
 2. **`MANUAL.md`** — agregar sección explicativa en lenguaje simple del nuevo concepto/módulo
 
 ## Roles en BD
@@ -131,9 +131,9 @@ Al completar un módulo (o cualquier feature significativa) SIEMPRE actualizar A
 - role_id=3 → Inversor (investor) — solo ve /investor/dashboard; settings.AUTH_INVESTOR_ROLE_ID = 3
 
 ## Hoja de ruta y mapa de módulos
-- `MODULES.md` (raíz del proyecto) ← LEER AL INICIAR SESIÓN
-- Ver `.claude/memory/roadmap.md` — detalle técnico de los 10 módulos
-- Ver `.claude/memory/modules_map.md` — mapa detallado de tablas, archivos, endpoints y páginas por módulo ← LEER ANTES DE CODEAR
+- `specs/_ROOT.md` (raíz del proyecto) ← LEER AL INICIAR SESIÓN
+- Ver `.claude/memory/ROADMAP.md` — detalle técnico de los 10 módulos
+- Ver `.claude/memory/MODULES_MAP.md` — mapa detallado de tablas, archivos, endpoints y páginas por módulo ← LEER ANTES DE CODEAR
 - Comprar/Vender está en el **Módulo 8 — Orders & Execution**
 - ✅ M1 → ✅ M2 → ✅ M3 → ✅ M4 → ✅ M5 → ✅ M6 → ✅ M7 → ✅ M8 → ✅ M9 → ✅ M10 — todos completos
 

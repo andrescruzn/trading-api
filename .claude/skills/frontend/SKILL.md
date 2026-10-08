@@ -34,8 +34,7 @@ frontend/
       shared/                 api-client, types/api.ts, lib/format.ts, DataTable, OptionSelect, StatCard,
                               ErrorAlert, PageListHeader, TablePagination, layouts, páginas de error
       app-shell/              sidebar (app-sidebar.tsx), nav-user, breadcrumb, layout autenticado
-      auth/                   login (password + OTP), AuthProvider/useAuth, roles, guards
-      profile/                cambiar contraseña
+      auth/                   login (solo código OTP), AuthProvider/useAuth, roles, guards
       <dominio>/              market · features · accounts · strategies · agent · bots · orders · alerts · billing · dashboard
         api/<dominio>.api.ts          funciones + tipos del JSON del backend
         hooks/use-<dominio>-queries.ts    query keys + useQuery
@@ -89,7 +88,7 @@ Un módulo del front por módulo de backend (M2 → `market`, M3 → `features`,
 - `useAuth()` → `{status, user, refreshUser, clear}`. `user` es `GET /users/me` (`role_code`, `role_label`, `full_name`, `email`…).
 - Roles por **`role_code`** (`ROLES.USER | ADMIN | INVESTOR` en `auth/lib/roles.ts`), nunca por `role_id` ni `role_label`.
 - Mostrar/ocultar UI: `<HasRole role={ROLES.ADMIN}>…</HasRole>` o `useHasRole(...)`.
-- Login: contraseña (`POST /users/login`) o código por correo (mismo endpoint sin password → `POST /users/login/otp/verify`). El login solo pone la cookie; después se llama `refreshUser()`.
+- Login solo por código: `POST /users/login` con el correo envía el OTP → `POST /users/login/otp/verify` pone la cookie; después se llama `refreshUser()`. No hay contraseñas ni página de perfil.
 
 ## Páginas
 

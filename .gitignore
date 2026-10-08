@@ -49,21 +49,7 @@ htmlcov/
 Thumbs.db
 
 # =========================
-# Instance folder (local-only)
-# =========================
-instance/*
-!instance/.gitkeep
-
-# =========================
 # Claude Code
 # =========================
-# Ignorar configuración local (settings, cache, etc.)
-.claude/*
-# Pero compartir el contexto del proyecto con el equipo
-!.claude/db_schema.sql
-!.claude/skills/
-!.claude/skills/**
 # settings.local.json siempre local — no commitear
 .claude/settings.local.json
-# CLAUDE.md es el archivo de entrada — compartirlo
-!CLAUDE.md

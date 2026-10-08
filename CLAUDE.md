@@ -78,7 +78,7 @@ pnpm build                                                 # build de producció
 
 - **Gestor de paquetes del front: solo `pnpm`.** Nunca `npm`, `npx` ni `pnpx`: `package.json` fija `packageManager` y `devEngines`, y npm falla con `EBADDEVENGINES`. Para ejecutar un binario ya instalado en el proyecto, `pnpm exec <bin>` (p. ej. `pnpm exec tsr generate`); para ejecutar un paquete sin instalarlo, `pnpm dlx <paquete>` (p. ej. `pnpm dlx shadcn@latest add button`). Si un skill o una doc externa trae `npm`/`npx`, traducirlo así.
 - En desarrollo corren **dos procesos**: la API (`uvicorn`, :8000) y el front (`pnpm dev`, :5193). El front llama a `/api/*` y Vite lo reenvía a la API (mismo origen → la cookie de sesión funciona sin CORS).
-- Variables del front en **`.env_frontend`** (copiar de `.env_frontend.example`), nunca en el `.env` del backend.
+- Variables del front en **`.env.frontend`** (copiar de `.env.frontend.example`), nunca en el `.env` del backend.
 
 - **NUNCA** correr `pytest tests/` completo salvo que el usuario lo pida.
 - **No crear tests por defecto** (gastan tokens): solo cuando el usuario los pida.

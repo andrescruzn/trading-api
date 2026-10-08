@@ -9,10 +9,10 @@ import { defineConfig } from 'vite';
 const ROOT_DIR = import.meta.dirname;
 const FRONTEND_DIR = path.resolve(ROOT_DIR, 'frontend');
 
-// El front lee sus variables de `.env_frontend` (raíz del repo), no del `.env`
+// El front lee sus variables de `.env.frontend` (raíz del repo), no del `.env`
 // del backend. Vite expone al cliente las `VITE_*` que encuentre en
 // `process.env`, así que basta con volcarlas antes de definir la config.
-const ENV_FILE = path.resolve(ROOT_DIR, '.env_frontend');
+const ENV_FILE = path.resolve(ROOT_DIR, '.env.frontend');
 if (existsSync(ENV_FILE)) {
 	const parsed = parseEnv(readFileSync(ENV_FILE, 'utf8'));
 	for (const [key, value] of Object.entries(parsed)) {

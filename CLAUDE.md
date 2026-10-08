@@ -58,13 +58,15 @@ Funcionan en macOS, Linux y Windows (Git Bash) gracias a `uv`:
 uv sync                                                    # instalar dependencias
 uv run uvicorn app.main:app --reload                       # servidor de desarrollo (http://localhost:8000, Swagger en /docs)
 uv run python -m pytest tests/<modulo>/test_<x>.py -v      # tests de UN archivo
+uv run alembic revision --autogenerate -m "mNN ..."        # generar migración desde los modelos
+uv run alembic upgrade head                                # aplicar migraciones pendientes
 ```
 
 - **NUNCA** correr `pytest tests/` completo salvo que el usuario lo pida.
 - **No crear tests por defecto** (gastan tokens): solo cuando el usuario los pida.
 - **NUNCA** hacer login con `curl` al depurar: rota `token_current_jti` e invalida la sesión del navegador.
-- **Comandos `uv` / `python` de alto impacto los ejecuta el usuario, no el agente.** Esto incluye: `uv sync`, `uv add`/`uv remove`, `uv lock`, levantar el servidor, scripts o seeds que escriban en la BD, migraciones, jobs que llamen a exchanges o al LLM (coste/órdenes reales), y la suite de tests completa. El agente debe darle el comando exacto (sugiriendo el prefijo `! <comando>` para que la salida llegue a la conversación) y **esperar su respuesta** antes de continuar. Ante la duda sobre si un comando es de alto impacto, tratarlo como tal.
-- MySQL (CLI, seeds, migraciones): ver el skill `database`.
+- **Comandos `uv` / `python` de alto impacto los ejecuta el usuario, no el agente.** Esto incluye: `uv sync`, `uv add`/`uv remove`, `uv lock`, levantar el servidor, scripts o seeds que escriban en la BD, cualquier comando `alembic` que toque la BD (`revision --autogenerate`, `upgrade`, `downgrade`, `stamp`, `check`), jobs que llamen a exchanges o al LLM (coste/órdenes reales), y la suite de tests completa. El agente debe darle el comando exacto (sugiriendo el prefijo `! <comando>` para que la salida llegue a la conversación) y **esperar su respuesta** antes de continuar. Ante la duda sobre si un comando es de alto impacto, tratarlo como tal.
+- MySQL (CLI, seeds) y migraciones con Alembic: ver el skill `database`. `migrations/*.sql` es legacy y está congelada: los cambios de esquema nuevos van en `alembic/versions/`.
 
 ## Arquitectura en 30 segundos
 
@@ -105,6 +107,6 @@ Al terminar un módulo o una feature significativa, ejecutar el skill [`update-s
 | [`specs/_ROOT.md`](specs/_ROOT.md) | Índice de módulos, estado, flujo, dependencias, mapa de páginas, prioridades |
 | `specs/MNN-*.md` | Fuente de verdad de cada módulo |
 | [`.claude/skills/`](.claude/skills/) | Cómo se escribe el código en este repo (bajo demanda) |
-| [`.claude/db_schema.sql`](.claude/db_schema.sql) + [`migrations/`](migrations/) | Esquema de la BD (se consulta vía skill `database`, no se carga siempre) |
+| [`.claude/db_schema.sql`](.claude/db_schema.sql) + [`migrations/`](migrations/) (legacy) + [`alembic/versions/`](alembic/versions/) | Esquema de la BD (se consulta vía skill `database`, no se carga siempre) |
 | [`MANUAL.md`](MANUAL.md) | Explicación para humanos, sin tecnicismos |
 | [`README.md`](README.md) | Instalación y ejecución |

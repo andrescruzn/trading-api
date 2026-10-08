@@ -45,6 +45,29 @@ uv lock --upgrade-package <paquete>
 
 ---
 
+## Base de datos y migraciones
+
+El esquema se gestiona con **Alembic** (`alembic.ini` + carpeta `alembic/`). La conexión se toma del `.env` (`DB_*`).
+
+BD que ya existía antes de Alembic (solo una vez, no ejecuta SQL):
+
+```bash
+uv run alembic stamp 0001_baseline
+```
+
+BD nueva desde cero: cargar `.claude/db_schema.sql`, `migrations/m10_billing.sql` y los `seeds/*.sql` con el cliente de MySQL, y luego `uv run alembic stamp 0001_baseline`.
+
+Día a día:
+
+```bash
+uv run alembic upgrade head                            # aplicar migraciones pendientes
+uv run alembic revision --autogenerate -m "mNN ..."    # generar una nueva desde los modelos (revisar el archivo antes de aplicarla)
+uv run alembic downgrade -1                            # deshacer la última
+uv run alembic current                                 # ver en qué revisión está la BD
+```
+
+---
+
 ## Ejecución
 
 Con el entorno activado:

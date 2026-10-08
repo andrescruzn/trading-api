@@ -7,9 +7,9 @@ description: Base de datos MySQL 8 de Trading AI API (base trading_ai). Usar ant
 
 ## Dónde está el esquema
 
-El esquema real = **[`.claude/db_schema.sql`](../../db_schema.sql)** (dump del 2026-02-24, 25 tablas) **+ las migraciones posteriores en [`migrations/`](../../../migrations/)**:
+El esquema real = **[`.claude/db_schema.sql`](../../db_schema.sql)** (dump del 2026-02-24, 25 tablas) **+ las migraciones legacy en [`migrations/`](../../../migrations/)** **+ las revisiones de Alembic en [`alembic/versions/`](../../../alembic/versions/)** (posteriores a `0001_baseline`):
 
-| Migración | Estado en el dump |
+| Migración legacy (congelada) | Estado en el dump |
 |---|---|
 | `m07_add_signal_price_columns.sql` (entry/SL/TP/size/rr/approved en `signals`) | ✅ incluida |
 | `m07b_add_bot_feature_set_id.sql` (`bots.feature_set_id`) | ✅ incluida |
@@ -70,12 +70,44 @@ Otras restricciones que suelen morder:
 - Datos flexibles en columnas `JSON` (`meta`, `spec`, `params`, `payload`, `reasons`) con `CHECK (json_valid(col))`.
 - ENUMs como `VARCHAR` + `CHECK (col IN (...))`, nombrado `chk_<tabla>_<col>`; índices `idx_<tabla>_<cols>`, FKs `fk_<tabla>_<ref>`, únicos `uq_<tabla>_<cols>`.
 
-## Migraciones y seeds
+## Migraciones con Alembic
 
-- **Migración:** `migrations/mNN_<descripcion>.sql` (NN = número de módulo, sufijo `b`, `c`… si hay varias). Cabecera con motivo, `ALTER/CREATE ... IF NOT EXISTS` cuando se pueda, y `SELECT` de verificación al final.
+Todo cambio de esquema nuevo es una **revisión de Alembic** en `alembic/versions/`. La carpeta `migrations/` (`mNN_*.sql`) es **legacy y está congelada**: no se añaden archivos ahí.
+
+- Config: `alembic.ini` (sin URL) + `alembic/env.py`, que reutiliza `engine` de `app.extensions.db` (URL de `.env`, sesión en UTC) y `Base.metadata` vía `models_registry`.
+- `0001_baseline` es una revisión vacía que representa el esquema previo (dump + `migrations/*.sql` hasta `m10`). Una BD existente se marca con `stamp`, no con `upgrade`.
+- `env.py` ignora las tablas que existen en la BD sin modelo ORM (`audit_logs`, `system_events`, `predictions`, `portfolio_snapshots`, `http_audit_YYYY`), así autogenerate no propone borrarlas. Para gestionar una de ellas con Alembic, primero crearle su modelo.
+
+### Flujo para un cambio de esquema
+
+1. Crear o modificar el modelo en `infrastructure/<x>_model.py` (y registrarlo en `models_registry.py` si es nuevo).
+2. El usuario genera la revisión: `uv run alembic revision --autogenerate -m "m11 crear tabla x"`. El mensaje empieza por el módulo (`mNN`).
+3. **Revisar y editar el archivo generado siempre.** Autogenerate no detecta `CHECK`, ENUMs vía `CHECK`, comentarios ni cambios de `server_default`, y puede proponer índices o FKs con otros nombres si el modelo no declara el mismo nombre que la BD (`idx_…`, `fk_…`, `uq_…`). Añadir a mano con `op.create_check_constraint(...)` / `op.execute(...)` lo que falte, completar `MOTIVO:` en el docstring y escribir un `downgrade()` real.
+4. El usuario aplica: `uv run alembic upgrade head`.
+5. Recordar que `.claude/db_schema.sql` queda desactualizado (regenerarlo con `mysqldump --no-data`).
+
+Para tablas nuevas, declarar en el modelo los nombres reales de índices y constraints (`Index("idx_x_y", ...)`, `ForeignKey(..., name="fk_x_y")`, `UniqueConstraint(..., name="uq_x_y")`) y `mysql_engine` / `mysql_charset` / `mysql_collate` en `__table_args__`, para que la revisión generada siga las convenciones de arriba.
+
+### Comandos (los ejecuta el usuario: escriben o leen su BD)
+
+```bash
+uv run alembic current                                 # revisión aplicada en la BD
+uv run alembic history --verbose                       # lista de revisiones
+uv run alembic check                                   # ¿hay diferencias modelos ↔ BD? (no escribe)
+uv run alembic revision --autogenerate -m "mNN ..."    # generar revisión desde los modelos
+uv run alembic revision -m "mNN ..."                   # revisión vacía (SQL/datos a mano)
+uv run alembic upgrade head                            # aplicar pendientes
+uv run alembic upgrade head --sql                      # solo imprimir el SQL, sin ejecutar
+uv run alembic downgrade -1                            # deshacer la última
+uv run alembic stamp 0001_baseline                     # marcar una BD existente sin ejecutar nada
+```
+
+**BD nueva desde cero:** cargar `.claude/db_schema.sql` + `migrations/m10_billing.sql` + seeds, luego `alembic stamp 0001_baseline` y `alembic upgrade head`.
+
+## Seeds
+
 - **Seed:** `seeds/seed_<modulo>.sql`, **idempotente** (`INSERT IGNORE` o `ON DUPLICATE KEY UPDATE`), referencias por nombre con subqueries (`SELECT id FROM exchanges WHERE name = 'Binance'`), nunca IDs hardcodeados salvo `roles`.
 - Seeds existentes: `seed_market_data.sql` (exchanges, timeframes, symbols), `seed_accounts.sql`, `seed_strategies.sql`, `seed_billing.sql` (rol investor).
-- Tras crear una migración, recordar al usuario que el dump `.claude/db_schema.sql` queda desactualizado (regenerarlo con `mysqldump --no-data`).
 
 ## Comandos MySQL
 
@@ -87,7 +119,7 @@ MYSQL=/Applications/MAMP/Library/bin/mysql80/bin/mysql
 # Windows (Git Bash) — ajustar a la instalación local
 MYSQL="/c/Program Files/MySQL/MySQL Server 8.0/bin/mysql.exe"
 
-"$MYSQL" -u root -p trading_ai < migrations/m10_billing.sql      # ejecutar archivo
+"$MYSQL" -u root -p trading_ai < seeds/seed_billing.sql          # ejecutar archivo
 "$MYSQL" -u root -p trading_ai -e "SELECT COUNT(*) FROM candles;" # query directa
 "$MYSQL" -u root -p trading_ai                                    # shell interactivo
 ```
@@ -98,7 +130,7 @@ El warning `Using a password on the command line interface can be insecure` es e
 
 - Modelos solo en `infrastructure/<x>_model.py`, heredan de `app.extensions.db.base.Base`, y se registran en `app/extensions/db/models_registry.py` (si no, las relaciones/FK fallan al arrancar).
 - Estilo de los modelos existentes: `Column(...)` clásico (no `Mapped`/`mapped_column`); seguirlo por consistencia.
-- Las tablas se crean con SQL (migraciones), no con `create_all`. Si se genera DDL desde código (como `app/common/audit/audit_table_factory.py`), usar `sqlalchemy.dialects.mysql.TIMESTAMP(fsp=6)`: en el `TIMESTAMP` genérico el primer argumento es `timezone`, no la precisión.
+- Las tablas se crean con revisiones de Alembic, nunca con `create_all`. Si se genera DDL desde código (como `app/common/audit/audit_table_factory.py`), usar `sqlalchemy.dialects.mysql.TIMESTAMP(fsp=6)`: en el `TIMESTAMP` genérico el primer argumento es `timezone`, no la precisión.
 - Columnas `DECIMAL` llegan como `Decimal` de Python; convertir explícitamente si se opera con `float`.
 - Queries siempre parametrizadas (ORM o `text()` con `:param`), nunca f-strings con input.
 - `session.commit()` solo dentro de la capa repositorio (base `SqlAlchemyRepository`); el servicio llama `repo.commit()` (ver `backend-core`).

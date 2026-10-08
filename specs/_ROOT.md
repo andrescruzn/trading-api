@@ -25,7 +25,7 @@ Más detalle:
 - Cada spec `MNN-*.md` es la **fuente de verdad de su módulo**: descripción, páginas, entregables, decisiones, avance, mejoras, detalle técnico (tablas, archivos, endpoints), gotchas y tests. (Reemplaza a los antiguos `ROADMAP.md` y `MODULES_MAP.md`.)
 - Orden de dependencias y mapa de páginas: [más abajo](#orden-de-dependencias).
 - Manual en lenguaje simple: [`MANUAL.md`](../MANUAL.md)
-- Esquema de base de datos: `.claude/db_schema.sql` + `migrations/` (ver skill [`database`](../.claude/skills/database/SKILL.md))
+- Esquema de base de datos: `.claude/db_schema.sql` + `migrations/` (legacy) + `alembic/versions/` (ver skill [`database`](../.claude/skills/database/SKILL.md))
 
 ### Cómo usar estas specs
 - Al iniciar cada sesión: leer este archivo para saber en qué módulo estamos y luego la spec del módulo (se leen bajo demanda, no se importan en `CLAUDE.md`).

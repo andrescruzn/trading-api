@@ -140,6 +140,25 @@ Tablas usadas: `users`, `roles`
   - Prefijos actuales: `/login`, `/dashboard`, `/profile`, `/static/`, `/market/`, `/admin/`
 - `app/common/audit/` — AuditMiddleware, tablas `http_audit_<año>`
 
+### Roles en BD
+- `role_id=1` → Usuario (`user`)
+- `role_id=2` → Administrador (`admin`)
+- `role_id=3` → Inversor (`investor`, lo introduce [M10](M10-BILLING.md)) — solo ve `/investor/dashboard`; `settings.AUTH_INVESTOR_ROLE_ID = 3`
+- No hardcodear IDs: usar `settings.AUTH_ADMIN_ROLE_ID` / `settings.AUTH_USER_ROLE_ID` / `settings.AUTH_INVESTOR_ROLE_ID`.
+
+### Auditoría HTTP (`app/common/audit/`)
+- Todo request HTTP queda auditado automáticamente vía `AuditMiddleware` (`BaseHTTPMiddleware`).
+- Tablas dinámicas por año: `http_audit_2026`, `http_audit_2027`… se crean solas en el primer request del año.
+- **No bloqueante:** el insert se hace en un hilo daemon, no afecta la latencia del usuario.
+- Campos redactados: `password`, `otp_code`, `token`, `access_token` → `"***REDACTED***"` (la clave se preserva).
+- Rutas excluidas: `/health`, `/static/`, `/favicon`.
+- Para columnas `TIMESTAMP(6)` en SQLAlchemy Core usar `sqlalchemy.dialects.mysql.TIMESTAMP(fsp=6)`.
+
+### Dashboard — stats + gráfica (`/dashboard`, implementado en marzo de 2026)
+- 4 tarjetas: BTC/USDT (dorado), ETH/USDT (cian), Mis cuentas (violeta), Estrategias (verde).
+- Gráfica de línea de BTC/USDT con las últimas 48 velas de 1h, dibujada con la Canvas API (sin CDN).
+- Datos reales desde: `/api/strategies`, `/accounts`, `/symbols`, `/timeframes`, `/candles`, `/candle-features`.
+
 ## Gotchas críticos
 
 ### Gotcha crítico — JWT subject

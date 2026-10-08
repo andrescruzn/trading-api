@@ -4,6 +4,32 @@ API backend de trading asistido por IA: conecta exchanges (Binance, Bybit, Krake
 
 @.claude/db_schema.sql
 
+## Concepto del proyecto
+
+Agente de Trading con IA que elimina el sesgo emocional. Toma decisiones basadas en:
+1. Filtro de Régimen: tendencia (HH/HL) vs rango lateral
+2. Validación de reglas de la estrategia
+3. Matemática de posición: Capital × %Riesgo / (Entrada − StopLoss)
+4. Ratio Riesgo/Beneficio mínimo 2:1
+
+Regla del 1%: nunca arriesgar más del 1% del capital por operación.
+LLM multi-provider (openai/anthropic/xai/deepseek/gemini/ollama) genera entry/SL/TP.
+
+## Inicio de sesión (OBLIGATORIO)
+
+Solo di: **"comenzamos Módulo X"** o **"continuamos donde quedamos"**.
+
+**Leer primero:** `specs/_ROOT.md` y luego la spec del módulo (`specs/MNN-*.md`). Son la fuente de verdad del proyecto: describen qué hace cada módulo, sus páginas (usuario vs admin), decisiones, estado, avance y el mapa técnico (tablas, archivos, endpoints). Sin leerlas no se debe codear nada. Si hay algo nuevo (ej: "instalé ccxt para exchanges"), se dice directamente.
+
+## Comandos de desarrollo
+
+- Correr servidor: `source .venv/bin/activate && uvicorn app.main:app --reload`
+- Correr tests: `source .venv/bin/activate && python -m pytest tests/<archivo_específico> -v`
+- Ejecutar SQL en BD: `/Applications/MAMP/Library/bin/mysql80/bin/mysql -u root -proot trading_ai < archivo.sql`
+- Shell MySQL: `/Applications/MAMP/Library/bin/mysql80/bin/mysql -u root -proot trading_ai`
+- NUNCA correr `pytest tests/` completo salvo que el usuario lo pida explícitamente
+- ⚠️ TESTS GASTAN TOKENS: crear tests solo cuando el usuario lo pida explícitamente. No crearlos por defecto al terminar un módulo.
+
 ---
 
 ## Trading AI API — Instrucciones para Claude
@@ -144,6 +170,13 @@ return ServiceResult.fail(
 - Passwords: siempre bcrypt via `password_hasher.py`
 - OTP: generar con `otp_generator.py`, hashear con `otp_hasher.py` antes de guardar en DB
 - JWT: HS256, cookie HTTP-only, rotación de JTI en cada sesión activa
+- `utc_now()` de `app.common.utils` — no usar `datetime.now(timezone.utc)` directo
+- Jinja2: `TemplateResponse(request, "template.html", {context})` (nuevo formato Starlette)
+- El middleware de security headers aplica CSP: NUNCA usar `onclick`/`onchange` inline en HTML; todos los handlers van en JS vía `addEventListener` en archivos servidos desde `/static/`
+- Cache-busting: todo `<script>` nuevo lleva `?v={{ sv }}` o el navegador sirve el JS viejo (ver `specs/_ROOT.md`)
+- Respuestas REST: `errorCode` en éxito es 200/201, nunca 0 (detectar errores con `>= 400`); `build_list_response` retorna `{"data": [...]}`
+- Rutas REST nuevas con página web homónima: prefijo `/api/<recurso>` para no colisionar con la página
+- NUNCA usar `curl` para hacer login durante el debugging: cambia `token_current_jti` e invalida la sesión activa del navegador
 
 ---
 
@@ -267,10 +300,9 @@ Los skills viven en `.claude/skills/`. Claude debe leerlos con la herramienta Re
 9. No hacer `session.commit()` fuera de la capa repositorio.
 10. No hardcodear IDs de roles; usar `settings.AUTH_ADMIN_ROLE_ID` / `settings.AUTH_USER_ROLE_ID`.
 11. Leer el skill correspondiente **antes** de generar código, nunca después.
-12. Al terminar cualquier módulo, actualizar OBLIGATORIAMENTE los 3 archivos de documentación:
-    - `specs/MNN-*.md` (spec del módulo: estado, entregables, decisiones, avance, mejoras, detalle técnico) + tabla de `specs/_ROOT.md` → cambiar 📌 PENDIENTE a ✅ COMPLETO + páginas implementadas + % de avance
+12. Al terminar cualquier módulo (o feature significativa), actualizar OBLIGATORIAMENTE los 2 archivos de documentación:
+    - `specs/MNN-*.md` (spec del módulo: estado, entregables, decisiones, avance, mejoras, detalle técnico, bugs/gotchas nuevos) + tabla de `specs/_ROOT.md` → cambiar 📌 PENDIENTE a ✅ COMPLETO + páginas implementadas + % de avance
     - `MANUAL.md` → agregar sección en lenguaje simple del nuevo módulo
-    - `.claude/memory/MEMORY.md` → actualizar estado y notas técnicas
     Si no se han actualizado todos, pedirlo al usuario antes de cerrar la sesión.
 
 ---
@@ -285,32 +317,18 @@ Los skills viven en `.claude/skills/`. Claude debe leerlos con la herramienta Re
 - **Base de datos:** MySQL 8.x — `trading_ai`
 - **Auth:** JWT HS256 en cookies HTTP-only
 - **IA:** Ollama local (`gemma3:4b`) — sin API externa
-- **Exchanges:** ccxt 4.5.40 (Binance, Bybit, Kraken, Coinbase, Bitget, OKX)
+- **Exchanges:** ccxt 4.4.96 (Binance, Bybit, Kraken, Coinbase, Bitget, OKX)
 - **Arquitectura:** Screaming Architecture (módulos por dominio)
 
 ---
 
 ## Contexto para Claude Code (colaboradores)
 
-El proyecto usa **Claude Code** con contexto compartido en `.claude/memory/`.
-Estos archivos se cargan automáticamente via `CLAUDE.md`:
+El proyecto usa **Claude Code** con todo el contexto versionado en el repo: no hay que copiar nada a carpetas locales. `CLAUDE.md` y `.claude/db_schema.sql` se cargan automáticamente; el resto se lee bajo demanda:
 
-- [`specs/_ROOT.md`](specs/_ROOT.md) — índice de módulos; cada módulo tiene su spec en `specs/MNN-*.md` (se leen bajo demanda, no se importan)
-- `specs/MNN-*.md` — hoja de ruta, decisiones, avance, mejoras y mapa técnico (tablas, archivos, endpoints) de cada módulo; reemplazan a los antiguos `ROADMAP.md` y `MODULES_MAP.md`. **Leer la spec del módulo antes de codear en él.**
-- `CLAUDE.md` — arquitectura, convenciones y reglas (antes en `.claude/MAIN_INSTRUCTIONS.md`)
+- `CLAUDE.md` — arquitectura, convenciones, reglas y comandos (antes en `.claude/MAIN_INSTRUCTIONS.md` y `.claude/memory/MEMORY.md`)
+- [`specs/_ROOT.md`](specs/_ROOT.md) — índice de módulos, orden de dependencias, mapa de páginas y checklist de módulo nuevo
+- `specs/MNN-*.md` — hoja de ruta, decisiones, avance, mejoras, mapa técnico (tablas, archivos, endpoints) y bugs conocidos de cada módulo; reemplazan a los antiguos `ROADMAP.md`, `MODULES_MAP.md` y `MEMORY.md`. **Leer la spec del módulo antes de codear en él.**
 - `.claude/skills/` — guías de código para Claude
-
-### Para configurar el contexto de sesión (una sola vez)
-
-Después de clonar el repo, copia el `MEMORY.md` a tu carpeta local de Claude:
-
-```bash
-# Reemplaza la ruta con la ruta ABSOLUTA donde clonaste el repo en tu máquina
-# Ejemplo: /Users/tu-nombre/projects/trading-api -> -Users-tu-nombre-projects-trading-api
-
-PROYECTO_PATH=$(pwd | sed 's|/|-|g' | sed 's|^-||')
-mkdir -p ~/.claude/projects/${PROYECTO_PATH}/memory/
-cp .claude/memory/MEMORY.md ~/.claude/projects/${PROYECTO_PATH}/memory/MEMORY.md
-```
-
-Esto hace que Claude Code cargue el mismo contexto de sesión (bugs conocidos, convenciones, estado) que el resto del equipo.
+- `MANUAL.md` — explicación conceptual en lenguaje simple (actualizar cuando se agreguen conceptos nuevos)
+- `README.md` — setup técnico del proyecto

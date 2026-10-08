@@ -213,6 +213,7 @@ AGENT_MASTER_PROMPT # prompt del sistema configurable (env var)
 ## Gotchas críticos
 
 - **Defaults del proveedor:** `LLM_PROVIDER=openai` y `LLM_MODEL=gpt-4o` si no se configuran. Para usar IA local hay que fijar `LLM_PROVIDER=ollama` y el modelo (p. ej. `gemma3:4b`, como indica `CLAUDE.md`) en `.env`.
+- **CSP:** el prefijo `/agent` ya está en `web_prefixes` de `security_headers.py`.
 - `POST /agent/analyze` responde 200 también cuando la operación es **RECHAZADA**: mirar el veredicto en `data`, no el código HTTP.
 - `regime_required = None` acepta cualquier régimen (fase 1 no filtra).
 - El `AnalyzeService` lo reutiliza [M7](M07-BOTS-SIGNALS.md) a través de `BotServiceFactory._build_analyze_service()`; un cambio de firma aquí rompe la generación de señales.

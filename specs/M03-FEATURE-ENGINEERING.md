@@ -172,9 +172,25 @@ from app.modules.features.rest import feature_sets_router, candle_features_route
 - `sideways`: cualquier otro patrón
 - Mínimo 10 velas para detectar swings
 
+### Columnas exactas de pandas-ta (versión 0.4.71b0)
+| Indicador | Columna generada |
+|---|---|
+| RSI(14) | `RSI_14` |
+| EMA(20) | `EMA_20` |
+| EMA(50) | `EMA_50` |
+| EMA(200) | `EMA_200` |
+| MACD line | `MACD_12_26_9` |
+| MACD signal | `MACDs_12_26_9` |
+| MACD hist | `MACDh_12_26_9` |
+| ATR(14) | `ATRr_14` ← OJO: tiene 'r' minúscula |
+| BB Upper | `BBU_20_2.0_2.0` ← OJO: doble `_2.0` |
+| BB Mid | `BBM_20_2.0_2.0` |
+| BB Lower | `BBL_20_2.0_2.0` |
+
 ## Gotchas críticos
 
-- `pandas-ta` genera `ATRr_14` (con **r** minúscula), no `ATR_14`, y las bandas de Bollinger como `BBU_20_2.0_2.0` (doble `_2.0`). Verificar siempre los nombres reales con `df.columns` antes de usarlos en `dropna(subset=...)`. Tabla completa de columnas en `.claude/memory/MEMORY.md`.
+- `pandas-ta` genera `ATRr_14` (con **r** minúscula), no `ATR_14`, y las bandas de Bollinger como `BBU_20_2.0_2.0` / `BBL_20_2.0_2.0` / `BBM_20_2.0_2.0` (doble `_2.0`), no `BBU_20_2.0`. Verificar siempre los nombres reales con `df.columns` antes de usarlos en `dropna(subset=...)`: `df.ta.<indicador>(append=True); print(df.columns)`. Tabla completa de columnas [arriba](#columnas-exactas-de-pandas-ta-versión-0471b0).
+- `pandas-ta 0.4.71b0` está instalado en el `.venv` (con `pandas 3.0.1`); `numba` / `llvmlite` (vía pandas-ta) no soportan Python 3.14, por eso el proyecto usa Python 3.12.
 - Con menos de 220 velas el servicio devuelve error (`meta.required` / `meta.available`); la retención del scheduler (500 por defecto) lo cubre, pero un par con poca historia no calculará.
 
 ## Tests

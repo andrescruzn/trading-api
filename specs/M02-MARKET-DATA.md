@@ -205,6 +205,8 @@ El scheduler **no genera señales ni órdenes**: solo mantiene velas y features 
 - **JWT sin `role_id` ⇒ todas las páginas admin redirigen al dashboard.** Detalle y servicios afectados en [M1 — Gotchas](M01-AUTH.md#gotchas-críticos).
 - **CSP:** al crear rutas web con prefijo nuevo (`/market/`, `/admin/`, …) hay que añadirlo a `web_prefixes` en `_is_web_route()` o el navegador bloquea CSS y JS.
 - **Botón "Nuevo" encimaba el texto en móvil:** usar la clase `.page-header` (`align-items: flex-start`) en vez de `.flex.items-center`.
+- **Estilos de las tablas con paginación (cliente, 20 ítems/página):** clases `.page-header`, `.pagination`, `.pagination__info`, `.pagination__btns` en `app.css`.
+- **ccxt:** versión fijada en `pyproject.toml` (`ccxt==4.4.96`).
 - **Dropdowns de símbolos duplicados** (BTC/USDT ×2 en Binance y Bybit): la entidad `Symbol` incluye `exchange_name` vía JOIN → se muestra `BTC/USDT (Binance)`.
 
 ### Patrones clave M2

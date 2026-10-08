@@ -30,7 +30,7 @@ Más detalle:
 ### Cómo usar estas specs
 - Al iniciar cada sesión: leer este archivo para saber en qué módulo estamos y luego la spec del módulo (se leen bajo demanda, no se importan en `CLAUDE.md`).
 - **Leer la spec del módulo ANTES de codear** para no pisar lo anterior (tablas, archivos y endpoints están en su sección "Detalle técnico").
-- Al terminar un módulo o una feature significativa: actualizar su spec (estado, entregables, avance, decisiones, mejoras), la tabla de arriba, `MANUAL.md` y `.claude/memory/MEMORY.md`.
+- Al terminar un módulo o una feature significativa: actualizar su spec (estado, entregables, avance, decisiones, mejoras), la tabla de arriba y `MANUAL.md`. (Ya no existe `.claude/memory/MEMORY.md`: sus convenciones están en `CLAUDE.md` y sus bugs/notas en la spec de cada módulo.)
 
 ---
 
@@ -121,7 +121,20 @@ Módulo 10 (Billing) ← necesita historial de orders + fills de M8
 
 - `templates.env.globals["sv"] = str(int(time.time()))` en `app/modules/web/routes.py`
 - Todos los `<script src="...">` usan `?v={{ sv }}` — fuerza recarga tras reinicio del servidor
-- Aplica a TODOS los templates (`base_app.html` incluido); el CSS también se versiona (`app.css?v={{ sv }}` en `base.html`)
+- Aplica a TODOS los templates (`base_app.html` incluido); el CSS también se versiona (`<link rel="stylesheet" href="/static/css/app.css?v={{ sv }}">` en `base.html`)
+- **Bug que lo motivó:** `app.css` no tenía cache-busting y el navegador servía la versión vieja tras los cambios; ahora CSS y JS se versionan en cada reinicio del servidor. Sin `?v={{ sv }}` el navegador sirve el JS viejo: agregarlo a TODOS los `<script>` nuevos.
+
+---
+
+## Mapa de páginas web
+
+| Rol | Páginas |
+|---|---|
+| Usuario | `/login`, `/dashboard`, `/profile`, `/market/symbols`, `/market/candles`, `/features`, `/portfolio`, `/strategies`, `/agent`, `/bots`, `/orders`, `/alerts` |
+| Admin | `/admin/exchanges`, `/admin/symbols`, `/admin/timeframes`, `/admin/candles/ingest`, `/admin/feature-sets`, `/admin/accounts`, `/admin/strategies`, `/admin/bots`, `/admin/orders`, `/admin/alerts`, `/admin/telegram`, `/admin/investors`, `/admin/managed-accounts`, `/admin/billing` |
+| Inversor | `/investor/dashboard` |
+
+Comprar/Vender vive en el [Módulo 8 — Orders & Execution](M08-ORDERS-EXECUTION.md).
 
 ---
 

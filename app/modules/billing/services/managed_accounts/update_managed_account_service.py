@@ -6,8 +6,6 @@
 
 from __future__ import annotations
 
-from sqlalchemy.orm import Session
-
 from app.common.contracts.service_result import ServiceResult
 from app.modules.billing.domain.managed_account_entity import ManagedAccount
 from app.modules.billing.domain.managed_account_repository import ManagedAccountRepository
@@ -16,9 +14,8 @@ from app.modules.billing.domain.managed_account_repository import ManagedAccount
 class UpdateManagedAccountService:
     """Actualiza nombre, bot_id, period_type y/o is_active de una cuenta gestionada."""
 
-    def __init__(self, repo: ManagedAccountRepository, session: Session):
+    def __init__(self, repo: ManagedAccountRepository):
         self._repo = repo
-        self._session = session
 
     def execute(
         self,
@@ -51,5 +48,5 @@ class UpdateManagedAccountService:
             account.is_active = is_active
 
         saved = self._repo.save(account)
-        self._session.commit()
+        self._repo.commit()
         return ServiceResult.ok(data=saved)

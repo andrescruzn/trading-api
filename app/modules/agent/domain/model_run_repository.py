@@ -12,9 +12,10 @@ from abc import ABC, abstractmethod
 from typing import Optional
 
 from app.modules.agent.domain.model_run_entity import ModelRun
+from app.common.contracts import TransactionalRepository
 
 
-class ModelRunRepository(ABC):
+class ModelRunRepository(TransactionalRepository, ABC):
 
     @abstractmethod
     def get_by_id(self, run_id: int) -> Optional[ModelRun]:

@@ -28,17 +28,16 @@ def _make_service(exchange=None, created_account=None):
     exchange_repo = MagicMock()
     exchange_repo.get_by_id.return_value = exchange
 
-    session = MagicMock()
     cipher = MagicMock()
     cipher.encrypt.return_value = "encrypted_token"
 
     svc = CreateAccountService(
         account_repo=account_repo,
         exchange_repo=exchange_repo,
-        session=session,
         cipher=cipher,
     )
-    return svc, account_repo, exchange_repo, session, cipher
+    tx_repo = account_repo  # commit()/rollback() viven en el repositorio
+    return svc, account_repo, exchange_repo, tx_repo, cipher
 
 
 class TestCreateAccountService:
@@ -48,14 +47,14 @@ class TestCreateAccountService:
     # ------------------------------------------------------------------
 
     def test_creates_paper_account_without_credentials(self):
-        svc, repo, _, session, cipher = _make_service()
+        svc, repo, _, tx_repo, cipher = _make_service()
 
         result = svc.create(user_id=5, name="Paper Trading", mode="paper")
 
         assert result.success is True
         assert result.data.id == 1
         repo.create.assert_called_once()
-        session.commit.assert_called_once()
+        tx_repo.commit.assert_called_once()
         cipher.encrypt.assert_not_called()
 
     # ------------------------------------------------------------------
@@ -68,7 +67,7 @@ class TestCreateAccountService:
             credentials_ref="encrypted",
             meta={"enc_creds": "encrypted_token"},
         )
-        svc, repo, _, session, cipher = _make_service(
+        svc, repo, _, tx_repo, cipher = _make_service(
             exchange=_make_exchange(),
             created_account=created,
         )
@@ -84,7 +83,7 @@ class TestCreateAccountService:
 
         assert result.success is True
         cipher.encrypt.assert_called_once_with(api_key="my_key", api_secret="my_secret")
-        session.commit.assert_called_once()
+        tx_repo.commit.assert_called_once()
 
     # ------------------------------------------------------------------
     # Éxito — con exchange válido
@@ -103,7 +102,7 @@ class TestCreateAccountService:
     # ------------------------------------------------------------------
 
     def test_fails_with_invalid_mode(self):
-        svc, repo, _, session, _ = _make_service()
+        svc, repo, _, tx_repo, _ = _make_service()
 
         result = svc.create(user_id=5, name="Test", mode="invalid")
 
@@ -111,14 +110,14 @@ class TestCreateAccountService:
         assert result.error.code == "ACCOUNT_INVALID_MODE"
         assert result.error.http_status == 422
         repo.create.assert_not_called()
-        session.commit.assert_not_called()
+        tx_repo.commit.assert_not_called()
 
     # ------------------------------------------------------------------
     # Error — exchange no encontrado
     # ------------------------------------------------------------------
 
     def test_fails_if_exchange_not_found(self):
-        svc, repo, _, session, _ = _make_service(exchange=None)
+        svc, repo, _, tx_repo, _ = _make_service(exchange=None)
 
         result = svc.create(user_id=5, name="Test", mode="paper", exchange_id=99)
 
@@ -126,7 +125,7 @@ class TestCreateAccountService:
         assert result.error.code == "EXCHANGE_NOT_FOUND"
         assert result.error.http_status == 404
         repo.create.assert_not_called()
-        session.commit.assert_not_called()
+        tx_repo.commit.assert_not_called()
 
     # ------------------------------------------------------------------
     # Normalización

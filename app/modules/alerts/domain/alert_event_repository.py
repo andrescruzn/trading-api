@@ -12,9 +12,10 @@ from datetime import datetime
 from typing import Protocol
 
 from app.modules.alerts.domain.alert_event_entity import AlertEvent
+from app.common.contracts import TransactionalRepository
 
 
-class AlertEventRepository(Protocol):
+class AlertEventRepository(TransactionalRepository, Protocol):
 
     def list_by_user(
         self,

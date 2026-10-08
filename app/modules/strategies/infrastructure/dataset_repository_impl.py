@@ -15,9 +15,10 @@ from sqlalchemy.orm import Session
 from app.modules.strategies.domain.dataset_entity import Dataset
 from app.modules.strategies.domain.dataset_repository import DatasetRepository
 from app.modules.strategies.infrastructure.dataset_model import DatasetModel
+from app.extensions.db.sqlalchemy_repository import SqlAlchemyRepository
 
 
-class SqlAlchemyDatasetRepository(DatasetRepository):
+class SqlAlchemyDatasetRepository(SqlAlchemyRepository, DatasetRepository):
     """Repositorio concreto de datasets usando SQLAlchemy."""
 
     def __init__(self, session: Session):

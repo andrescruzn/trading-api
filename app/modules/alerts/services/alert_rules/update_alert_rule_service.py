@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from sqlalchemy.orm import Session
-
 from app.common.contracts import ServiceResult
 from app.modules.alerts.domain.alert_rule_entity import AlertRule
 from app.modules.alerts.domain.alert_rule_repository import AlertRuleRepository
@@ -13,9 +11,8 @@ from app.modules.alerts.domain.alert_rule_repository import AlertRuleRepository
 
 class UpdateAlertRuleService:
 
-    def __init__(self, repo: AlertRuleRepository, session: Session):
+    def __init__(self, repo: AlertRuleRepository):
         self._repo = repo
-        self._session = session
 
     def update(
         self,
@@ -39,5 +36,5 @@ class UpdateAlertRuleService:
             rule.is_active = is_active
 
         updated = self._repo.update(rule)
-        self._session.commit()
+        self._repo.commit()
         return ServiceResult.ok(data=updated)

@@ -18,8 +18,6 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from decimal import Decimal
 
-from sqlalchemy.orm import Session
-
 from app.common.contracts.service_result import ServiceResult
 from app.modules.billing.domain.billing_period_entity import BillingPeriod
 from app.modules.billing.domain.billing_period_repository import BillingPeriodRepository
@@ -44,12 +42,10 @@ class CloseBillingPeriodService:
         period_repo: BillingPeriodRepository,
         fee_tx_repo: FeeTransactionRepository,
         managed_account_repo: ManagedAccountRepository,
-        session: Session,
     ):
         self._period_repo = period_repo
         self._fee_tx_repo = fee_tx_repo
         self._managed_account_repo = managed_account_repo
-        self._session = session
 
     def execute(
         self,
@@ -111,5 +107,5 @@ class CloseBillingPeriodService:
                 new_hwm=closing_equity,
             )
 
-        self._session.commit()
+        self._period_repo.commit()
         return ServiceResult.ok(data=period)

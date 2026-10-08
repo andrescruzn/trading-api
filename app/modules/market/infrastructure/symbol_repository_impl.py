@@ -17,9 +17,10 @@ from app.modules.market.domain.symbol_entity import Symbol
 from app.modules.market.domain.symbol_repository import SymbolRepository
 from app.modules.market.infrastructure.exchange_model import ExchangeModel
 from app.modules.market.infrastructure.symbol_model import SymbolModel
+from app.extensions.db.sqlalchemy_repository import SqlAlchemyRepository
 
 
-class SqlAlchemySymbolRepository(SymbolRepository):
+class SqlAlchemySymbolRepository(SqlAlchemyRepository, SymbolRepository):
     """Repositorio concreto de symbols usando SQLAlchemy."""
 
     def __init__(self, session: Session):

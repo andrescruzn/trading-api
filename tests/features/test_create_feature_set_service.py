@@ -15,9 +15,9 @@ from app.modules.features.services.feature_sets.create_feature_set_service impor
 def _make_service(existing: FeatureSet | None = None) -> tuple:
     repo = MagicMock()
     repo.get_by_name_version.return_value = existing
-    session = MagicMock()
-    svc = CreateFeatureSetService(repo=repo, session=session)
-    return svc, repo, session
+    svc = CreateFeatureSetService(repo=repo)
+    tx_repo = repo  # commit()/rollback() viven en el repositorio
+    return svc, repo, tx_repo
 
 
 def _make_feature_set(id: int = 1, name: str = "default", version: str = "1.0.0") -> FeatureSet:
@@ -32,7 +32,7 @@ class TestCreateFeatureSetService:
 
     def test_creates_feature_set_successfully(self):
         created = _make_feature_set(id=1, name="full_set", version="1.0.0")
-        svc, repo, session = _make_service(existing=None)
+        svc, repo, tx_repo = _make_service(existing=None)
         repo.create.return_value = created
 
         result = svc.create(
@@ -46,17 +46,17 @@ class TestCreateFeatureSetService:
         assert result.data.name == "full_set"
         assert result.data.version == "1.0.0"
         repo.create.assert_called_once()
-        session.commit.assert_called_once()
+        tx_repo.commit.assert_called_once()
 
     def test_creates_feature_set_without_description(self):
         created = _make_feature_set(id=2, name="minimal")
-        svc, repo, session = _make_service(existing=None)
+        svc, repo, tx_repo = _make_service(existing=None)
         repo.create.return_value = created
 
         result = svc.create(name="minimal", version="1.0.0", spec={})
 
         assert result.success is True
-        session.commit.assert_called_once()
+        tx_repo.commit.assert_called_once()
 
     # ------------------------------------------------------------------
     # Duplicado
@@ -64,7 +64,7 @@ class TestCreateFeatureSetService:
 
     def test_fails_if_name_version_already_exists(self):
         existing = _make_feature_set(id=1, name="default", version="1.0.0")
-        svc, repo, session = _make_service(existing=existing)
+        svc, repo, tx_repo = _make_service(existing=existing)
 
         result = svc.create(name="default", version="1.0.0", spec={"rsi": 14})
 
@@ -72,11 +72,11 @@ class TestCreateFeatureSetService:
         assert result.error.code == "FEATURE_SET_ALREADY_EXISTS"
         assert result.error.http_status == 409
         repo.create.assert_not_called()
-        session.commit.assert_not_called()
+        tx_repo.commit.assert_not_called()
 
     def test_allows_same_name_with_different_version(self):
         created = _make_feature_set(id=3, name="default", version="2.0.0")
-        svc, repo, session = _make_service(existing=None)
+        svc, repo, tx_repo = _make_service(existing=None)
         repo.create.return_value = created
 
         result = svc.create(name="default", version="2.0.0", spec={"rsi": 14})

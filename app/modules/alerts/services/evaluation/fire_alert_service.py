@@ -17,8 +17,6 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any
 
-from sqlalchemy.orm import Session
-
 from app.modules.alerts.domain.alert_event_entity import AlertEvent
 from app.modules.alerts.domain.alert_event_repository import AlertEventRepository
 from app.modules.alerts.domain.alert_rule_entity import AlertRule
@@ -38,13 +36,11 @@ class FireAlertService:
     def __init__(
         self,
         event_repo: AlertEventRepository,
-        session: Session,
         settings: "Settings",
         mailer: "MailerService | None" = None,
         user_email: str | None = None,
     ):
         self._event_repo = event_repo
-        self._session = session
         self._settings = settings
         self._mailer = mailer
         self._user_email = user_email
@@ -98,7 +94,7 @@ class FireAlertService:
                 event.mark_failed()
             self._event_repo.update(event)
 
-        self._session.commit()
+        self._event_repo.commit()
         return event
 
     # ------------------------------------------------------------------

@@ -32,20 +32,19 @@ def _make_service(account=None, recorded=None):
     balance_repo = MagicMock()
     balance_repo.record.return_value = recorded or _make_recorded_balance()
 
-    session = MagicMock()
 
     svc = RecordBalanceService(
         account_repo=account_repo,
         balance_repo=balance_repo,
-        session=session,
     )
-    return svc, balance_repo, session
+    tx_repo = balance_repo  # commit()/rollback() viven en el repositorio
+    return svc, balance_repo, tx_repo
 
 
 class TestRecordBalanceService:
 
     def test_records_balance_successfully(self):
-        svc, repo, session = _make_service(account=_make_account(user_id=10))
+        svc, repo, tx_repo = _make_service(account=_make_account(user_id=10))
 
         result = svc.record(
             account_id=1, requester_user_id=10,
@@ -55,11 +54,11 @@ class TestRecordBalanceService:
         assert result.success is True
         assert result.data.asset == "USDT"
         repo.record.assert_called_once()
-        session.commit.assert_called_once()
+        tx_repo.commit.assert_called_once()
 
     def test_records_balance_with_locked_amount(self):
         recorded = _make_recorded_balance(free="300", locked="200")
-        svc, _, session = _make_service(account=_make_account(user_id=10), recorded=recorded)
+        svc, _, tx_repo = _make_service(account=_make_account(user_id=10), recorded=recorded)
 
         result = svc.record(
             account_id=1, requester_user_id=10,
@@ -70,7 +69,7 @@ class TestRecordBalanceService:
         assert result.data.total == Decimal("500")
 
     def test_admin_can_record_balance_on_any_account(self):
-        svc, _, session = _make_service(account=_make_account(user_id=10))
+        svc, _, tx_repo = _make_service(account=_make_account(user_id=10))
 
         result = svc.record(
             account_id=1, requester_user_id=99, is_admin=True,
@@ -78,10 +77,10 @@ class TestRecordBalanceService:
         )
 
         assert result.success is True
-        session.commit.assert_called_once()
+        tx_repo.commit.assert_called_once()
 
     def test_fails_if_account_not_found(self):
-        svc, repo, session = _make_service(account=None)
+        svc, repo, tx_repo = _make_service(account=None)
 
         result = svc.record(
             account_id=99, requester_user_id=10,
@@ -92,10 +91,10 @@ class TestRecordBalanceService:
         assert result.error.code == "ACCOUNT_NOT_FOUND"
         assert result.error.http_status == 404
         repo.record.assert_not_called()
-        session.commit.assert_not_called()
+        tx_repo.commit.assert_not_called()
 
     def test_fails_if_not_owner_and_not_admin(self):
-        svc, repo, session = _make_service(account=_make_account(user_id=10))
+        svc, repo, tx_repo = _make_service(account=_make_account(user_id=10))
 
         result = svc.record(
             account_id=1, requester_user_id=55, is_admin=False,
@@ -105,10 +104,10 @@ class TestRecordBalanceService:
         assert result.success is False
         assert result.error.code == "ACCOUNT_FORBIDDEN"
         repo.record.assert_not_called()
-        session.commit.assert_not_called()
+        tx_repo.commit.assert_not_called()
 
     def test_fails_if_free_is_negative(self):
-        svc, repo, session = _make_service(account=_make_account(user_id=10))
+        svc, repo, tx_repo = _make_service(account=_make_account(user_id=10))
 
         result = svc.record(
             account_id=1, requester_user_id=10,
@@ -121,7 +120,7 @@ class TestRecordBalanceService:
         repo.record.assert_not_called()
 
     def test_fails_if_locked_is_negative(self):
-        svc, repo, session = _make_service(account=_make_account(user_id=10))
+        svc, repo, tx_repo = _make_service(account=_make_account(user_id=10))
 
         result = svc.record(
             account_id=1, requester_user_id=10,

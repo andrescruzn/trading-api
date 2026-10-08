@@ -26,8 +26,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
-from sqlalchemy.orm import Session
-
 from app.common.config.settings import Settings
 from app.common.contracts import ServiceResult
 from app.common.security.jwt import create_access_token
@@ -56,7 +54,6 @@ class VerifyOtpService:
         self,
         *,
         repo: UserRepository,
-        session: Session,
         settings: Settings,
         max_failed_attempts: int = 3,
         lock_minutes: int = 60,
@@ -65,7 +62,6 @@ class VerifyOtpService:
         # Dependencias
         # --------------------------------------------------------------
         self._repo = repo
-        self._session = session
         self._settings = settings
 
         # --------------------------------------------------------------
@@ -149,7 +145,7 @@ class VerifyOtpService:
                 now=now,
             )
             self._repo.update(user)
-            self._session.commit()
+            self._repo.commit()
 
             return ServiceResult.fail(code="OTP_EXPIRED", http_status=401)
 
@@ -163,7 +159,7 @@ class VerifyOtpService:
                 now=now,
             )
             self._repo.update(user)
-            self._session.commit()
+            self._repo.commit()
 
             return ServiceResult.fail(code="OTP_INVALID", http_status=401)
 
@@ -189,7 +185,7 @@ class VerifyOtpService:
         user.token_current_jti = token_pack["jti"]
 
         self._repo.update(user)
-        self._session.commit()
+        self._repo.commit()
 
         return ServiceResult.ok(
             VerifyOtpPayload(

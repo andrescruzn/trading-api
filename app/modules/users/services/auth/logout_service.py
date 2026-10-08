@@ -16,8 +16,6 @@
 
 from __future__ import annotations
 
-from sqlalchemy.orm import Session
-
 from app.common.contracts import ServiceResult
 from app.modules.users.domain import UserRepository
 
@@ -27,9 +25,8 @@ class LogoutService:
     Service para cerrar sesión (revocar token).
     """
 
-    def __init__(self, *, repo: UserRepository, session: Session):
+    def __init__(self, *, repo: UserRepository):
         self._repo = repo
-        self._session = session
 
     def logout(self, user_id: int) -> ServiceResult[None]:
         """
@@ -53,6 +50,6 @@ class LogoutService:
         user.token_current_jti = None
 
         self._repo.update(user)
-        self._session.commit()
+        self._repo.commit()
 
         return ServiceResult.ok(None)

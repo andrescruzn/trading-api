@@ -4,6 +4,7 @@
 from .base import Base
 from .config import get_database_url
 from .session import engine, SessionLocal, get_db
+from .sqlalchemy_repository import SqlAlchemyRepository
 
 __all__ = [
     "Base",
@@ -11,4 +12,5 @@ __all__ = [
     "engine",
     "SessionLocal",
     "get_db",
+    "SqlAlchemyRepository",
 ]

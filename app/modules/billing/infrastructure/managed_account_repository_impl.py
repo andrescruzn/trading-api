@@ -14,9 +14,10 @@ from sqlalchemy.orm import Session
 
 from app.modules.billing.domain.managed_account_entity import ManagedAccount
 from app.modules.billing.infrastructure.managed_account_model import ManagedAccountModel
+from app.extensions.db.sqlalchemy_repository import SqlAlchemyRepository
 
 
-class SqlAlchemyManagedAccountRepository:
+class SqlAlchemyManagedAccountRepository(SqlAlchemyRepository):
     """Repositorio de cuentas gestionadas con SQLAlchemy."""
 
     def __init__(self, session: Session):

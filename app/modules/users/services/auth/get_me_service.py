@@ -10,8 +10,7 @@
 # - Alimentar el dashboard con datos reales del usuario + su rol.
 #
 # DISEÑO:
-# - Consulta la tabla `roles` directamente para obtener code y name,
-#   siguiendo el mismo patrón que jwt_guard.py.
+# - Obtiene code y name del rol desde la tabla `roles` vía el repositorio.
 # - Así el label del rol viene de la BD y no de una comparación
 #   hardcodeada en settings.
 # ======================================================================
@@ -21,9 +20,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
-
-from sqlalchemy import text
-from sqlalchemy.orm import Session
 
 from app.common.contracts import ServiceResult
 from app.modules.users.domain import UserRepository
@@ -51,9 +47,8 @@ class GetMeService:
     Service para obtener el perfil del usuario autenticado.
     """
 
-    def __init__(self, *, repo: UserRepository, session: Session):
+    def __init__(self, *, repo: UserRepository):
         self._repo = repo
-        self._session = session
 
     def get(self, user_id: int) -> ServiceResult[UserProfilePayload]:
         """
@@ -73,10 +68,7 @@ class GetMeService:
         # --------------------------------------------------------------
         # 2) Leer rol desde la tabla `roles` (mismo patrón que jwt_guard)
         # --------------------------------------------------------------
-        role_row = self._session.execute(
-            text("SELECT code, name FROM roles WHERE id = :role_id LIMIT 1"),
-            {"role_id": int(user.role_id)},
-        ).mappings().first()
+        role_row = self._repo.get_role_info(int(user.role_id))
 
         if role_row is None:
             return ServiceResult.fail(code="ROLE_NOT_FOUND", http_status=500)

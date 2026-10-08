@@ -12,9 +12,10 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 
 from app.modules.orders.domain.fill_entity import Fill
+from app.common.contracts import TransactionalRepository
 
 
-class FillRepository(ABC):
+class FillRepository(TransactionalRepository, ABC):
 
     @abstractmethod
     def list_by_order(self, order_id: int) -> list[Fill]:

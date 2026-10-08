@@ -23,7 +23,6 @@ from typing import Optional
 
 import pandas as pd
 import pandas_ta as ta
-from sqlalchemy.orm import Session
 
 from app.common.contracts import ServiceResult
 from app.modules.features.domain.candle_feature_entity import CandleFeature
@@ -57,14 +56,12 @@ class CalculateFeaturesService:
         candle_feature_repo: CandleFeatureRepository,
         symbol_repo: SymbolRepository,
         timeframe_repo: TimeframeRepository,
-        session: Session,
     ):
         self._candle_repo = candle_repo
         self._feature_set_repo = feature_set_repo
         self._candle_feature_repo = candle_feature_repo
         self._symbol_repo = symbol_repo
         self._timeframe_repo = timeframe_repo
-        self._session = session
 
     def calculate(
         self,
@@ -178,7 +175,7 @@ class CalculateFeaturesService:
         # 7. Persistir
         # ------------------------------------------------------------------
         rows_affected = self._candle_feature_repo.bulk_upsert(feature_entities)
-        self._session.commit()
+        self._candle_feature_repo.commit()
 
         return ServiceResult.ok(data={
             "symbol_id": symbol_id,

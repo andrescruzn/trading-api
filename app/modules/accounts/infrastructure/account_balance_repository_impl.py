@@ -16,9 +16,10 @@ from sqlalchemy.orm import Session
 from app.modules.accounts.domain.account_balance_entity import AccountBalance
 from app.modules.accounts.domain.account_balance_repository import AccountBalanceRepository
 from app.modules.accounts.infrastructure.account_balance_model import AccountBalanceModel
+from app.extensions.db.sqlalchemy_repository import SqlAlchemyRepository
 
 
-class SqlAlchemyAccountBalanceRepository(AccountBalanceRepository):
+class SqlAlchemyAccountBalanceRepository(SqlAlchemyRepository, AccountBalanceRepository):
     """Repositorio concreto de balances de cuenta usando SQLAlchemy."""
 
     def __init__(self, session: Session):

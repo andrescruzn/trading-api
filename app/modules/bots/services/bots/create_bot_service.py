@@ -10,8 +10,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from sqlalchemy.orm import Session
-
 from app.common.contracts import ServiceResult
 from app.modules.bots.domain.bot_entity import Bot
 from app.modules.bots.domain.bot_repository import BotRepository
@@ -27,9 +25,8 @@ class CreateBotService:
     - El bot siempre inicia en estado 'stopped'.
     """
 
-    def __init__(self, repo: BotRepository, session: Session):
+    def __init__(self, repo: BotRepository):
         self._repo = repo
-        self._session = session
 
     def create(
         self,
@@ -61,5 +58,5 @@ class CreateBotService:
             return ServiceResult.fail(code="BOT_INVALID_RISK_PCT", http_status=422)
 
         created = self._repo.create(bot)
-        self._session.commit()
+        self._repo.commit()
         return ServiceResult.ok(data=created)

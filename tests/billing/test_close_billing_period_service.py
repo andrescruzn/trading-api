@@ -64,7 +64,6 @@ def make_service(
     period_repo = MagicMock()
     fee_tx_repo = MagicMock()
     ma_repo = MagicMock()
-    session = MagicMock()
 
     period_repo.find_by_id.return_value = period
     ma_repo.find_by_id.return_value = account
@@ -73,9 +72,9 @@ def make_service(
         period_repo=period_repo,
         fee_tx_repo=fee_tx_repo,
         managed_account_repo=ma_repo,
-        session=session,
     )
-    return svc, period_repo, fee_tx_repo, ma_repo, session
+    tx_repo = period_repo  # commit()/rollback() viven en el repositorio
+    return svc, period_repo, fee_tx_repo, ma_repo, tx_repo
 
 
 # ======================================================================
@@ -114,7 +113,7 @@ class TestClosePeriodWithGain:
     def setup_method(self):
         self.period = make_open_period(opening_equity="10000", fee_pct="0.2000")
         self.account = make_managed_account(high_water_mark="10000")
-        self.svc, self.period_repo, self.fee_tx_repo, self.ma_repo, self.session = \
+        self.svc, self.period_repo, self.fee_tx_repo, self.ma_repo, self.tx_repo = \
             make_service(self.period, self.account)
 
     def test_returns_success(self):
@@ -147,9 +146,9 @@ class TestClosePeriodWithGain:
             new_hwm=Decimal("11000"),
         )
 
-    def test_session_commit_called(self):
+    def test_repo_commit_called(self):
         self.svc.execute(period_id=5, closing_equity=Decimal("11000"))
-        self.session.commit.assert_called_once()
+        self.tx_repo.commit.assert_called_once()
 
     def test_period_updated_in_repo(self):
         self.svc.execute(period_id=5, closing_equity=Decimal("11000"))
@@ -165,7 +164,7 @@ class TestClosePeriodWithLoss:
     def setup_method(self):
         self.period = make_open_period(opening_equity="10000", fee_pct="0.2000")
         self.account = make_managed_account(high_water_mark="10000")
-        self.svc, self.period_repo, self.fee_tx_repo, self.ma_repo, self.session = \
+        self.svc, self.period_repo, self.fee_tx_repo, self.ma_repo, self.tx_repo = \
             make_service(self.period, self.account)
 
     def test_returns_success(self):
@@ -184,10 +183,10 @@ class TestClosePeriodWithLoss:
         self.svc.execute(period_id=5, closing_equity=Decimal("9000"))
         self.ma_repo.update_high_water_mark.assert_not_called()
 
-    def test_session_commit_still_called(self):
+    def test_repo_commit_still_called(self):
         """Aunque no haya fee, el período se cierra y hay commit."""
         self.svc.execute(period_id=5, closing_equity=Decimal("9000"))
-        self.session.commit.assert_called_once()
+        self.tx_repo.commit.assert_called_once()
 
 
 # ======================================================================

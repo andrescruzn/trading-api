@@ -21,8 +21,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
-from sqlalchemy.orm import Session
-
 from app.common.config.settings import Settings
 from app.common.contracts import ServiceResult
 from app.common.security.jwt import create_access_token
@@ -44,9 +42,8 @@ class RotateTokenService:
     Service para rotar token (renovar sesión).
     """
 
-    def __init__(self, *, repo: UserRepository, session: Session, settings: Settings):
+    def __init__(self, *, repo: UserRepository, settings: Settings):
         self._repo = repo
-        self._session = session
         self._settings = settings
 
     def rotate(self, user_id: int) -> ServiceResult[RotateTokenPayload]:
@@ -81,7 +78,7 @@ class RotateTokenService:
         # --------------------------------------------------------------
         user.token_current_jti = token_pack["jti"]
         self._repo.update(user)
-        self._session.commit()
+        self._repo.commit()
 
         return ServiceResult.ok(
             RotateTokenPayload(

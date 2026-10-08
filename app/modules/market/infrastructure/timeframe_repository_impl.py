@@ -15,9 +15,10 @@ from sqlalchemy.orm import Session
 from app.modules.market.domain.timeframe_entity import Timeframe
 from app.modules.market.domain.timeframe_repository import TimeframeRepository
 from app.modules.market.infrastructure.timeframe_model import TimeframeModel
+from app.extensions.db.sqlalchemy_repository import SqlAlchemyRepository
 
 
-class SqlAlchemyTimeframeRepository(TimeframeRepository):
+class SqlAlchemyTimeframeRepository(SqlAlchemyRepository, TimeframeRepository):
     """Repositorio concreto de timeframes usando SQLAlchemy."""
 
     def __init__(self, session: Session):

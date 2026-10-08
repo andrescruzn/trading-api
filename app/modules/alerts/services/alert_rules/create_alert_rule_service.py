@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from sqlalchemy.orm import Session
-
 from app.common.contracts import ServiceResult
 from app.modules.alerts.domain.alert_rule_entity import AlertRule
 from app.modules.alerts.domain.alert_rule_repository import AlertRuleRepository
@@ -13,9 +11,8 @@ from app.modules.alerts.domain.alert_rule_repository import AlertRuleRepository
 
 class CreateAlertRuleService:
 
-    def __init__(self, repo: AlertRuleRepository, session: Session):
+    def __init__(self, repo: AlertRuleRepository):
         self._repo = repo
-        self._session = session
 
     def create(
         self,
@@ -45,5 +42,5 @@ class CreateAlertRuleService:
         )
 
         created = self._repo.create(rule)
-        self._session.commit()
+        self._repo.commit()
         return ServiceResult.ok(data=created)

@@ -14,9 +14,10 @@ from sqlalchemy.orm import Session
 
 from app.modules.billing.domain.investor_entity import Investor
 from app.modules.billing.infrastructure.investor_model import InvestorModel
+from app.extensions.db.sqlalchemy_repository import SqlAlchemyRepository
 
 
-class SqlAlchemyInvestorRepository:
+class SqlAlchemyInvestorRepository(SqlAlchemyRepository):
     """Repositorio de inversores con SQLAlchemy."""
 
     def __init__(self, session: Session):

@@ -12,9 +12,10 @@ from decimal import Decimal
 from typing import Protocol
 
 from app.modules.billing.domain.managed_account_entity import ManagedAccount
+from app.common.contracts import TransactionalRepository
 
 
-class ManagedAccountRepository(Protocol):
+class ManagedAccountRepository(TransactionalRepository, Protocol):
     """Contrato para el repositorio de cuentas gestionadas."""
 
     def find_by_id(self, managed_account_id: int) -> ManagedAccount | None: ...

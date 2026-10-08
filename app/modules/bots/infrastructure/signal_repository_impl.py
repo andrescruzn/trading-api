@@ -16,9 +16,10 @@ from sqlalchemy.orm import Session
 from app.modules.bots.domain.signal_entity import Signal
 from app.modules.bots.domain.signal_repository import SignalRepository
 from app.modules.bots.infrastructure.signal_model import SignalModel
+from app.extensions.db.sqlalchemy_repository import SqlAlchemyRepository
 
 
-class SqlAlchemySignalRepository(SignalRepository):
+class SqlAlchemySignalRepository(SqlAlchemyRepository, SignalRepository):
     """Repositorio concreto de signals usando SQLAlchemy."""
 
     def __init__(self, session: Session):

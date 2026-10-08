@@ -119,7 +119,6 @@ class OrderServiceFactory:
             symbol_repo=self._symbol_repo,
             paper_executor=self._paper_executor,
             live_executor=self._live_executor,
-            session=self._session,
             evaluate_alerts=build_evaluate_alerts_service(self._session),
         )
 

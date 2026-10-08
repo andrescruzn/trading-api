@@ -81,14 +81,3 @@ def make_mock_repo(user: Optional[User] = None) -> MagicMock:
     repo.get_by_email.return_value = user
     repo.update.return_value = None
     return repo
-
-
-# ======================================================================
-# Mock session
-# ======================================================================
-
-@pytest.fixture
-def mock_session():
-    session = MagicMock()
-    session.commit.return_value = None
-    return session

@@ -12,9 +12,10 @@ from abc import ABC, abstractmethod
 from typing import Optional
 
 from app.modules.strategies.domain.dataset_entity import Dataset
+from app.common.contracts import TransactionalRepository
 
 
-class DatasetRepository(ABC):
+class DatasetRepository(TransactionalRepository, ABC):
 
     @abstractmethod
     def get_by_id(self, dataset_id: int) -> Optional[Dataset]:

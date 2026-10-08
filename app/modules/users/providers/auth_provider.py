@@ -105,7 +105,6 @@ class AuthServiceFactory:
         """
         return LoginPasswordService(
             repo=self._repo,
-            session=self._session,
             settings=self._config,
             max_failed_attempts=self._max_failed_attempts,
             lock_minutes=self._lock_minutes,
@@ -122,7 +121,6 @@ class AuthServiceFactory:
         """
         return LoginOtpService(
             repo=self._repo,
-            session=self._session,
             settings=self._config,
             mailer=build_mailer(self._config),
             otp_length=self._otp_length,
@@ -140,7 +138,6 @@ class AuthServiceFactory:
         """
         return VerifyOtpService(
             repo=self._repo,
-            session=self._session,
             settings=self._config,
             max_failed_attempts=self._max_failed_attempts,
             lock_minutes=self._lock_minutes,
@@ -156,7 +153,6 @@ class AuthServiceFactory:
         """
         return LogoutService(
             repo=self._repo,
-            session=self._session,
         )
 
     def rotate_token(self) -> RotateTokenService:
@@ -170,7 +166,6 @@ class AuthServiceFactory:
         """
         return RotateTokenService(
             repo=self._repo,
-            session=self._session,
             settings=self._config,
         )
 
@@ -182,7 +177,7 @@ class AuthServiceFactory:
         - Usuario autenticado solicita sus propios datos
         - Alimenta el dashboard con datos reales del rol desde BD
         """
-        return GetMeService(repo=self._repo, session=self._session)
+        return GetMeService(repo=self._repo)
 
     def change_password(self) -> ChangePasswordService:
         """
@@ -194,7 +189,6 @@ class AuthServiceFactory:
         """
         return ChangePasswordService(
             repo=self._repo,
-            session=self._session,
         )
 
 

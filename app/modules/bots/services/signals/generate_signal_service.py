@@ -25,8 +25,6 @@ import json
 from datetime import datetime, timezone
 from decimal import Decimal
 
-from sqlalchemy.orm import Session
-
 from app.common.contracts import ServiceResult
 from app.modules.agent.services.agent.analyze_service import AnalyzeService
 from app.modules.bots.domain.bot_repository import BotRepository
@@ -56,13 +54,11 @@ class GenerateSignalService:
         bot_repo: BotRepository,
         signal_repo: SignalRepository,
         analyze_service: AnalyzeService,
-        session: Session,
         evaluate_alerts: "EvaluateAlertsService | None" = None,
     ):
         self._bot_repo = bot_repo
         self._signal_repo = signal_repo
         self._analyze = analyze_service
-        self._session = session
         self._evaluate_alerts = evaluate_alerts
 
     def generate(self, bot_id: int) -> ServiceResult[Signal]:
@@ -153,7 +149,7 @@ class GenerateSignalService:
         # 5. Persistir
         # ------------------------------------------------------------------
         created = self._signal_repo.create(signal)
-        self._session.commit()
+        self._signal_repo.commit()
 
         # ------------------------------------------------------------------
         # 6. Hook de alertas (fire-and-forget — no revierte si falla)

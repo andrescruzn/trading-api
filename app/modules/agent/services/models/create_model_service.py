@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from sqlalchemy.orm import Session
-
 from app.common.contracts import ServiceResult
 from app.modules.agent.domain.ml_model_entity import MLModel
 from app.modules.agent.domain.ml_model_repository import MLModelRepository
@@ -20,9 +18,8 @@ class CreateModelService:
     - model_type debe ser uno de: xgboost, lightgbm, sklearn, nn.
     """
 
-    def __init__(self, repo: MLModelRepository, session: Session):
+    def __init__(self, repo: MLModelRepository):
         self._repo = repo
-        self._session = session
 
     def create(
         self,
@@ -56,5 +53,5 @@ class CreateModelService:
         )
 
         created = self._repo.create(model)
-        self._session.commit()
+        self._repo.commit()
         return ServiceResult.ok(data=created)

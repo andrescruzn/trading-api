@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from typing import Optional
 
-from sqlalchemy.orm import Session
-
 from app.common.contracts import ServiceResult
 from app.common.security.credentials_cipher import CredentialsCipher
 from app.modules.accounts.domain.account_entity import Account
@@ -27,12 +25,10 @@ class UpdateAccountService:
         self,
         account_repo: AccountRepository,
         exchange_repo: ExchangeRepository,
-        session: Session,
         cipher: CredentialsCipher,
     ):
         self._account_repo = account_repo
         self._exchange_repo = exchange_repo
-        self._session = session
         self._cipher = cipher
 
     def update(
@@ -83,5 +79,5 @@ class UpdateAccountService:
             account.credentials_ref = credentials_label or "encrypted"
 
         updated = self._account_repo.update(account)
-        self._session.commit()
+        self._account_repo.commit()
         return ServiceResult.ok(data=updated)

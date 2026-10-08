@@ -11,9 +11,10 @@ from __future__ import annotations
 from typing import Protocol
 
 from app.modules.alerts.domain.alert_rule_entity import AlertRule
+from app.common.contracts import TransactionalRepository
 
 
-class AlertRuleRepository(Protocol):
+class AlertRuleRepository(TransactionalRepository, Protocol):
 
     def list_by_user(self, user_id: int) -> list[AlertRule]: ...
 

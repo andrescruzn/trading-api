@@ -11,9 +11,10 @@ from __future__ import annotations
 from typing import Protocol
 
 from app.modules.billing.domain.billing_period_entity import BillingPeriod
+from app.common.contracts import TransactionalRepository
 
 
-class BillingPeriodRepository(Protocol):
+class BillingPeriodRepository(TransactionalRepository, Protocol):
     """Contrato para el repositorio de períodos de facturación."""
 
     def find_by_id(self, period_id: int) -> BillingPeriod | None: ...

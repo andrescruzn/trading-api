@@ -10,8 +10,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from sqlalchemy.orm import Session
-
 from app.common.contracts import ServiceResult
 from app.modules.bots.domain.bot_entity import Bot
 from app.modules.bots.domain.bot_repository import BotRepository
@@ -27,9 +25,8 @@ class UpdateBotService:
       de un bot activo (podría dejar posiciones huérfanas).
     """
 
-    def __init__(self, repo: BotRepository, session: Session):
+    def __init__(self, repo: BotRepository):
         self._repo = repo
-        self._session = session
 
     def update(
         self,
@@ -56,5 +53,5 @@ class UpdateBotService:
             bot.risk_params = risk_params
 
         updated = self._repo.update(bot)
-        self._session.commit()
+        self._repo.commit()
         return ServiceResult.ok(data=updated)

@@ -45,7 +45,6 @@ class AlertServiceFactory:
 
         self._fire_service = FireAlertService(
             event_repo=self._event_repo,
-            session=session,
             settings=settings,
             mailer=self._mailer,
             user_email=user_email,
@@ -59,10 +58,10 @@ class AlertServiceFactory:
         return ListAlertRulesService(repo=self._rule_repo)
 
     def create_alert_rule(self) -> CreateAlertRuleService:
-        return CreateAlertRuleService(repo=self._rule_repo, session=self._session)
+        return CreateAlertRuleService(repo=self._rule_repo)
 
     def update_alert_rule(self) -> UpdateAlertRuleService:
-        return UpdateAlertRuleService(repo=self._rule_repo, session=self._session)
+        return UpdateAlertRuleService(repo=self._rule_repo)
 
     # ------------------------------------------------------------------
     # Alert Events

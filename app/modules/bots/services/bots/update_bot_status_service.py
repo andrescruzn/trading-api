@@ -10,8 +10,6 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from sqlalchemy.orm import Session
-
 from app.common.contracts import ServiceResult
 from app.modules.bots.domain.bot_entity import Bot
 from app.modules.bots.domain.bot_repository import BotRepository
@@ -34,9 +32,8 @@ class UpdateBotStatusService:
     - Al pasar a 'error'    → no se modifica started_at ni stopped_at.
     """
 
-    def __init__(self, repo: BotRepository, session: Session):
+    def __init__(self, repo: BotRepository):
         self._repo = repo
-        self._session = session
 
     def transition(self, bot_id: int, new_status: str) -> ServiceResult[Bot]:
         bot = self._repo.get_by_id(bot_id)
@@ -63,5 +60,5 @@ class UpdateBotStatusService:
         bot.status = new_status
 
         updated = self._repo.update(bot)
-        self._session.commit()
+        self._repo.commit()
         return ServiceResult.ok(data=updated)

@@ -14,9 +14,10 @@ from sqlalchemy.orm import Session
 
 from app.modules.billing.domain.fee_transaction_entity import FeeTransaction
 from app.modules.billing.infrastructure.fee_transaction_model import FeeTransactionModel
+from app.extensions.db.sqlalchemy_repository import SqlAlchemyRepository
 
 
-class SqlAlchemyFeeTransactionRepository:
+class SqlAlchemyFeeTransactionRepository(SqlAlchemyRepository):
     """Repositorio de transacciones de fee con SQLAlchemy."""
 
     def __init__(self, session: Session):

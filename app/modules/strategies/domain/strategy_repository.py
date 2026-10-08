@@ -12,9 +12,10 @@ from abc import ABC, abstractmethod
 from typing import Optional
 
 from app.modules.strategies.domain.strategy_entity import Strategy
+from app.common.contracts import TransactionalRepository
 
 
-class StrategyRepository(ABC):
+class StrategyRepository(TransactionalRepository, ABC):
 
     @abstractmethod
     def get_by_id(self, strategy_id: int) -> Optional[Strategy]:

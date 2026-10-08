@@ -28,32 +28,31 @@ def _make_service(account=None, exchange=None):
     exchange_repo = MagicMock()
     exchange_repo.get_by_id.return_value = exchange
 
-    session = MagicMock()
     cipher = MagicMock()
     cipher.encrypt.return_value = "new_encrypted_token"
 
     svc = UpdateAccountService(
         account_repo=account_repo,
         exchange_repo=exchange_repo,
-        session=session,
         cipher=cipher,
     )
-    return svc, account_repo, session, cipher
+    tx_repo = account_repo  # commit()/rollback() viven en el repositorio
+    return svc, account_repo, tx_repo, cipher
 
 
 class TestUpdateAccountService:
 
     def test_owner_can_update_name(self):
-        svc, repo, session, _ = _make_service(account=_make_account(user_id=10))
+        svc, repo, tx_repo, _ = _make_service(account=_make_account(user_id=10))
 
         result = svc.update(account_id=1, requester_user_id=10, name="Nuevo nombre")
 
         assert result.success is True
         assert result.data.name == "Nuevo nombre"
-        session.commit.assert_called_once()
+        tx_repo.commit.assert_called_once()
 
     def test_admin_can_update_any_account(self):
-        svc, _, session, _ = _make_service(account=_make_account(user_id=10))
+        svc, _, tx_repo, _ = _make_service(account=_make_account(user_id=10))
 
         result = svc.update(account_id=1, requester_user_id=99, is_admin=True, status="suspended")
 
@@ -61,7 +60,7 @@ class TestUpdateAccountService:
         assert result.data.status == "suspended"
 
     def test_re_encrypts_credentials_when_provided(self):
-        svc, _, session, cipher = _make_service(account=_make_account(user_id=10))
+        svc, _, tx_repo, cipher = _make_service(account=_make_account(user_id=10))
 
         result = svc.update(
             account_id=1, requester_user_id=10,
@@ -80,43 +79,43 @@ class TestUpdateAccountService:
         cipher.encrypt.assert_not_called()
 
     def test_fails_if_account_not_found(self):
-        svc, _, session, _ = _make_service(account=None)
+        svc, _, tx_repo, _ = _make_service(account=None)
 
         result = svc.update(account_id=99, requester_user_id=10)
 
         assert result.success is False
         assert result.error.code == "ACCOUNT_NOT_FOUND"
         assert result.error.http_status == 404
-        session.commit.assert_not_called()
+        tx_repo.commit.assert_not_called()
 
     def test_fails_if_not_owner_and_not_admin(self):
-        svc, _, session, _ = _make_service(account=_make_account(user_id=10))
+        svc, _, tx_repo, _ = _make_service(account=_make_account(user_id=10))
 
         result = svc.update(account_id=1, requester_user_id=99, is_admin=False)
 
         assert result.success is False
         assert result.error.code == "ACCOUNT_FORBIDDEN"
         assert result.error.http_status == 403
-        session.commit.assert_not_called()
+        tx_repo.commit.assert_not_called()
 
     def test_fails_with_invalid_status(self):
-        svc, _, session, _ = _make_service(account=_make_account(user_id=10))
+        svc, _, tx_repo, _ = _make_service(account=_make_account(user_id=10))
 
         result = svc.update(account_id=1, requester_user_id=10, status="deleted")
 
         assert result.success is False
         assert result.error.code == "ACCOUNT_INVALID_STATUS"
         assert result.error.http_status == 422
-        session.commit.assert_not_called()
+        tx_repo.commit.assert_not_called()
 
     def test_fails_if_new_exchange_not_found(self):
-        svc, _, session, _ = _make_service(account=_make_account(user_id=10), exchange=None)
+        svc, _, tx_repo, _ = _make_service(account=_make_account(user_id=10), exchange=None)
 
         result = svc.update(account_id=1, requester_user_id=10, exchange_id=99)
 
         assert result.success is False
         assert result.error.code == "EXCHANGE_NOT_FOUND"
-        session.commit.assert_not_called()
+        tx_repo.commit.assert_not_called()
 
     def test_normalizes_base_currency_to_uppercase(self):
         svc, _, _, _ = _make_service(account=_make_account(user_id=10))

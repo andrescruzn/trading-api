@@ -48,9 +48,8 @@ CURRENT_HASH = "$2b$12$real_hash"
 
 def _make_service(user=None):
     repo = make_mock_repo(user)
-    session = MagicMock()
-    session.commit.return_value = None
-    return ChangePasswordService(repo=repo, session=session), repo, session
+    tx_repo = repo  # commit()/rollback() viven en el repositorio
+    return ChangePasswordService(repo=repo), repo, tx_repo
 
 
 class TestChangePasswordService:
@@ -66,7 +65,7 @@ class TestChangePasswordService:
         mock_hash.return_value = "$2b$12$new_hash"
 
         user = make_user(password_hash=CURRENT_HASH, token_current_jti="old-jti")
-        svc, repo, session = _make_service(user)
+        svc, repo, tx_repo = _make_service(user)
 
         result = svc.change(
             user_id=1,
@@ -78,7 +77,7 @@ class TestChangePasswordService:
         assert user.password_hash == "$2b$12$new_hash"
         assert user.token_current_jti is None   # sesión revocada
         repo.update.assert_called_once()
-        session.commit.assert_called_once()
+        tx_repo.commit.assert_called_once()
 
     # ------------------------------------------------------------------
     # Usuario no encontrado

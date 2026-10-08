@@ -5,8 +5,6 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy.orm import Session
-
 from app.common.contracts import ServiceResult
 from app.modules.strategies.domain.dataset_entity import Dataset
 from app.modules.strategies.domain.dataset_repository import DatasetRepository
@@ -20,9 +18,8 @@ class CreateDatasetService:
     símbolo y timeframe. El query_spec define los filtros.
     """
 
-    def __init__(self, repo: DatasetRepository, session: Session):
+    def __init__(self, repo: DatasetRepository):
         self._repo = repo
-        self._session = session
 
     def create(
         self,
@@ -50,5 +47,5 @@ class CreateDatasetService:
         )
 
         created = self._repo.create(dataset)
-        self._session.commit()
+        self._repo.commit()
         return ServiceResult.ok(data=created)

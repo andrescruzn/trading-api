@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from sqlalchemy.orm import Session
-
 from app.common.contracts import ServiceResult
 from app.modules.market.domain.timeframe_entity import Timeframe
 from app.modules.market.domain.timeframe_repository import TimeframeRepository
@@ -12,9 +10,8 @@ from app.modules.market.domain.timeframe_repository import TimeframeRepository
 class CreateTimeframeService:
     """Crea un nuevo timeframe verificando unicidad del código."""
 
-    def __init__(self, repo: TimeframeRepository, session: Session):
+    def __init__(self, repo: TimeframeRepository):
         self._repo = repo
-        self._session = session
 
     def create(self, code: str, seconds: int) -> ServiceResult[Timeframe]:
         if seconds <= 0:
@@ -26,6 +23,6 @@ class CreateTimeframeService:
 
         new_tf = Timeframe(id=0, code=code, seconds=seconds)
         created = self._repo.create(new_tf)
-        self._session.commit()
+        self._repo.commit()
 
         return ServiceResult.ok(data=created)

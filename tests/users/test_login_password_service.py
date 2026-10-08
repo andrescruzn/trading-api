@@ -22,13 +22,12 @@ def _make_settings():
 
 def _make_service(user=None, settings=None):
     repo = make_mock_repo(user)
-    session = MagicMock()
     svc = LoginPasswordService(
         repo=repo,
-        session=session,
         settings=settings or _make_settings(),
     )
-    return svc, repo, session
+    tx_repo = repo  # commit()/rollback() viven en el repositorio
+    return svc, repo, tx_repo
 
 
 class TestLoginPasswordService:
@@ -47,7 +46,7 @@ class TestLoginPasswordService:
             "expires_at": datetime.now(timezone.utc) + timedelta(hours=1),
         }
         user = make_user(token_current_jti=None)
-        svc, repo, session = _make_service(user)
+        svc, repo, tx_repo = _make_service(user)
 
         result = svc.login("test@example.com", "Password1")
 
@@ -56,7 +55,7 @@ class TestLoginPasswordService:
         assert result.data.jti == "test-jti"
         assert user.token_current_jti == "test-jti"
         assert user.otp_code is None
-        session.commit.assert_called_once()
+        tx_repo.commit.assert_called_once()
 
     # ------------------------------------------------------------------
     # Usuario no encontrado (anti-enumeration)
@@ -79,14 +78,14 @@ class TestLoginPasswordService:
     def test_wrong_password_increments_attempts(self, mock_verify):
         mock_verify.return_value = False
         user = make_user(failed_attempts=0)
-        svc, repo, session = _make_service(user)
+        svc, repo, tx_repo = _make_service(user)
 
         result = svc.login("test@example.com", "WrongPass")
 
         assert result.success is False
         assert result.error.code == "INVALID_CREDENTIALS"
         repo.update.assert_called_once()
-        session.commit.assert_called_once()
+        tx_repo.commit.assert_called_once()
 
     # ------------------------------------------------------------------
     # Cuenta bloqueada

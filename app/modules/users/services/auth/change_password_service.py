@@ -18,8 +18,6 @@ from __future__ import annotations
 
 import re
 
-from sqlalchemy.orm import Session
-
 from app.common.contracts import ServiceResult
 from app.common.security.password_hasher import hash_password, verify_password
 from app.common.utils.input_cleaner import clean_str
@@ -50,9 +48,8 @@ class ChangePasswordService:
     Service para cambiar la contraseña del usuario autenticado.
     """
 
-    def __init__(self, *, repo: UserRepository, session: Session):
+    def __init__(self, *, repo: UserRepository):
         self._repo = repo
-        self._session = session
 
     def change(
         self,
@@ -123,6 +120,6 @@ class ChangePasswordService:
         user.token_current_jti = None  # Revoca sesión activa
 
         self._repo.update(user)
-        self._session.commit()
+        self._repo.commit()
 
         return ServiceResult.ok(None)

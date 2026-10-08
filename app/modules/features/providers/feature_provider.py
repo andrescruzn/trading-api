@@ -49,7 +49,7 @@ class FeatureServiceFactory:
         return ListFeatureSetsService(repo=self._feature_set_repo)
 
     def create_feature_set(self) -> CreateFeatureSetService:
-        return CreateFeatureSetService(repo=self._feature_set_repo, session=self._session)
+        return CreateFeatureSetService(repo=self._feature_set_repo)
 
     def calculate_features(self) -> CalculateFeaturesService:
         return CalculateFeaturesService(
@@ -58,7 +58,6 @@ class FeatureServiceFactory:
             candle_feature_repo=self._candle_feature_repo,
             symbol_repo=self._symbol_repo,
             timeframe_repo=self._timeframe_repo,
-            session=self._session,
         )
 
     def list_candle_features(self) -> ListCandleFeaturesService:

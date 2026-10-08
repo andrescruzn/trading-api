@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from sqlalchemy.orm import Session
-
 from app.common.contracts import ServiceResult
 from app.modules.strategies.domain.strategy_entity import Strategy
 from app.modules.strategies.domain.strategy_repository import StrategyRepository
@@ -23,9 +21,8 @@ class CreateStrategyService:
         · mean_reversion  → sideways (no trend_up ni trend_down)
     """
 
-    def __init__(self, repo: StrategyRepository, session: Session):
+    def __init__(self, repo: StrategyRepository):
         self._repo = repo
-        self._session = session
 
     def create(
         self,
@@ -56,5 +53,5 @@ class CreateStrategyService:
             return ServiceResult.fail(code="STRATEGY_INCOHERENT_REGIME", http_status=422)
 
         created = self._repo.create(strategy)
-        self._session.commit()
+        self._repo.commit()
         return ServiceResult.ok(data=created)

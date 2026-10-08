@@ -66,7 +66,6 @@ class AccountServiceFactory:
         return CreateAccountService(
             account_repo=self._account_repo,
             exchange_repo=self._exchange_repo,
-            session=self._session,
             cipher=self._cipher,
         )
 
@@ -74,7 +73,6 @@ class AccountServiceFactory:
         return UpdateAccountService(
             account_repo=self._account_repo,
             exchange_repo=self._exchange_repo,
-            session=self._session,
             cipher=self._cipher,
         )
 
@@ -92,7 +90,6 @@ class AccountServiceFactory:
         return RecordBalanceService(
             account_repo=self._account_repo,
             balance_repo=self._balance_repo,
-            session=self._session,
         )
 
 

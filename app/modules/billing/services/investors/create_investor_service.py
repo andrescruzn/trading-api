@@ -10,8 +10,6 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-from sqlalchemy.orm import Session
-
 from app.common.contracts.service_result import ServiceResult
 from app.modules.billing.domain.investor_entity import Investor
 from app.modules.billing.domain.investor_repository import InvestorRepository
@@ -26,9 +24,8 @@ class CreateInvestorService:
     - fee_pct debe estar entre 0 y 1 (0% a 100%).
     """
 
-    def __init__(self, repo: InvestorRepository, session: Session):
+    def __init__(self, repo: InvestorRepository):
         self._repo = repo
-        self._session = session
 
     def execute(
         self,
@@ -52,5 +49,5 @@ class CreateInvestorService:
 
         investor = Investor(id=0, user_id=user_id, fee_pct=fee_pct)
         saved = self._repo.save(investor)
-        self._session.commit()
+        self._repo.commit()
         return ServiceResult.ok(data=saved)

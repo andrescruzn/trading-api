@@ -14,9 +14,10 @@ from sqlalchemy.orm import Session
 from app.modules.features.domain.feature_set_entity import FeatureSet
 from app.modules.features.domain.feature_set_repository import FeatureSetRepository
 from app.modules.features.infrastructure.feature_set_model import FeatureSetModel
+from app.extensions.db.sqlalchemy_repository import SqlAlchemyRepository
 
 
-class SqlAlchemyFeatureSetRepository(FeatureSetRepository):
+class SqlAlchemyFeatureSetRepository(SqlAlchemyRepository, FeatureSetRepository):
 
     def __init__(self, session: Session):
         self._session = session

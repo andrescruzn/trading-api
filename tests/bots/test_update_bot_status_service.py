@@ -46,17 +46,17 @@ def make_bot(status: str = "stopped") -> Bot:
 
 
 def make_service(bot: Bot | None = None):
-    """Retorna (service, mock_repo, mock_session)."""
+    """Retorna (service, mock_repo, tx_repo)."""
     mock_repo = MagicMock()
-    mock_session = MagicMock()
 
     # Por defecto get_by_id devuelve el bot dado
     mock_repo.get_by_id.return_value = bot
     # update devuelve el mismo bot que recibe
     mock_repo.update.side_effect = lambda b: b
 
-    service = UpdateBotStatusService(repo=mock_repo, session=mock_session)
-    return service, mock_repo, mock_session
+    service = UpdateBotStatusService(repo=mock_repo)
+    tx_repo = mock_repo  # commit()/rollback() viven en el repositorio
+    return service, mock_repo, tx_repo
 
 
 # ======================================================================
@@ -219,17 +219,17 @@ class TestTimestampSideEffects:
         assert result.success is True
         assert result.data.stopped_at is None
 
-    def test_session_commit_is_called_on_success(self):
+    def test_repo_commit_is_called_on_success(self):
         bot = make_bot(status="stopped")
-        service, _, mock_session = make_service(bot=bot)
+        service, _, tx_repo = make_service(bot=bot)
 
         service.transition(bot_id=1, new_status="running")
 
-        mock_session.commit.assert_called_once()
+        tx_repo.commit.assert_called_once()
 
-    def test_session_commit_not_called_on_failure(self):
-        service, _, mock_session = make_service(bot=None)
+    def test_repo_commit_not_called_on_failure(self):
+        service, _, tx_repo = make_service(bot=None)
 
         service.transition(bot_id=99, new_status="running")
 
-        mock_session.commit.assert_not_called()
+        tx_repo.commit.assert_not_called()

@@ -7,8 +7,6 @@ from decimal import Decimal
 
 import ccxt
 
-from sqlalchemy.orm import Session
-
 from app.common.contracts import ServiceResult
 from app.modules.market.domain.candle_entity import Candle
 from app.modules.market.domain.candle_repository import CandleRepository
@@ -42,13 +40,11 @@ class FetchCandlesService:
         symbol_repo: SymbolRepository,
         timeframe_repo: TimeframeRepository,
         exchange_repo: ExchangeRepository,
-        session: Session,
     ):
         self._candle_repo = candle_repo
         self._symbol_repo = symbol_repo
         self._timeframe_repo = timeframe_repo
         self._exchange_repo = exchange_repo
-        self._session = session
 
     def fetch(
         self,
@@ -134,7 +130,7 @@ class FetchCandlesService:
 
         # 6) Persistir
         rows_affected = self._candle_repo.bulk_upsert(candles)
-        self._session.commit()
+        self._candle_repo.commit()
 
         return ServiceResult.ok(data={
             "exchange": exchange_entity.name,

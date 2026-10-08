@@ -5,8 +5,6 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any
 
-from sqlalchemy.orm import Session
-
 from app.common.contracts import ServiceResult
 from app.modules.agent.domain.model_run_entity import ModelRun
 from app.modules.agent.domain.model_run_repository import ModelRunRepository
@@ -20,9 +18,8 @@ class FinishModelRunService:
     - Registra las métricas obtenidas y el timestamp de finalización.
     """
 
-    def __init__(self, repo: ModelRunRepository, session: Session):
+    def __init__(self, repo: ModelRunRepository):
         self._repo = repo
-        self._session = session
 
     def finish(
         self,
@@ -52,5 +49,5 @@ class FinishModelRunService:
             run.logs_uri = logs_uri
 
         updated = self._repo.update(run)
-        self._session.commit()
+        self._repo.commit()
         return ServiceResult.ok(data=updated)

@@ -11,9 +11,10 @@ from __future__ import annotations
 from typing import Protocol
 
 from app.modules.billing.domain.fee_transaction_entity import FeeTransaction
+from app.common.contracts import TransactionalRepository
 
 
-class FeeTransactionRepository(Protocol):
+class FeeTransactionRepository(TransactionalRepository, Protocol):
     """Contrato para el repositorio de transacciones de fee."""
 
     def find_by_id(self, fee_tx_id: int) -> FeeTransaction | None: ...

@@ -20,8 +20,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
-from sqlalchemy.orm import Session
-
 from app.common.config.settings import Settings
 from app.common.contracts import ServiceResult
 from app.common.utils.input_cleaner import clean_email, clean_str
@@ -51,13 +49,11 @@ class LoginPasswordService:
         self,
         *,
         repo: UserRepository,
-        session: Session,
         settings: Settings,
         max_failed_attempts: int = 3,
         lock_minutes: int = 60,
     ):
         self._repo = repo
-        self._session = session
         self._settings = settings
         self._max_failed_attempts = max_failed_attempts
         self._lock_minutes = lock_minutes
@@ -121,7 +117,7 @@ class LoginPasswordService:
                 now=now,
             )
             self._repo.update(user)
-            self._session.commit()
+            self._repo.commit()
 
             return ServiceResult.fail(code="INVALID_CREDENTIALS", http_status=401)
 
@@ -147,7 +143,7 @@ class LoginPasswordService:
         user.token_current_jti = token_pack["jti"]
 
         self._repo.update(user)
-        self._session.commit()
+        self._repo.commit()
 
         return ServiceResult.ok(
             LoginPasswordPayload(

@@ -110,10 +110,10 @@ class AgentServiceFactory:
         return GetModelService(repo=self._model_repo)
 
     def create_model(self) -> CreateModelService:
-        return CreateModelService(repo=self._model_repo, session=self._session)
+        return CreateModelService(repo=self._model_repo)
 
     def update_model(self) -> UpdateModelService:
-        return UpdateModelService(repo=self._model_repo, session=self._session)
+        return UpdateModelService(repo=self._model_repo)
 
     # ------------------------------------------------------------------
     # Model Runs
@@ -126,11 +126,10 @@ class AgentServiceFactory:
         return CreateModelRunService(
             run_repo=self._run_repo,
             model_repo=self._model_repo,
-            session=self._session,
         )
 
     def finish_model_run(self) -> FinishModelRunService:
-        return FinishModelRunService(repo=self._run_repo, session=self._session)
+        return FinishModelRunService(repo=self._run_repo)
 
 
 def get_agent_factory(session: Session) -> AgentServiceFactory:

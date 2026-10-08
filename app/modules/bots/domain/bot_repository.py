@@ -13,9 +13,10 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 
 from app.modules.bots.domain.bot_entity import Bot
+from app.common.contracts import TransactionalRepository
 
 
-class BotRepository(ABC):
+class BotRepository(TransactionalRepository, ABC):
 
     @abstractmethod
     def get_by_id(self, bot_id: int) -> Bot | None:
@@ -30,6 +31,11 @@ class BotRepository(ABC):
     @abstractmethod
     def list_all(self) -> list[Bot]:
         """Lista todos los bots del sistema (uso admin)."""
+        ...
+
+    @abstractmethod
+    def list_by_statuses(self, statuses: list[str]) -> list[Bot]:
+        """Lista los bots cuyo status está en `statuses` (uso scheduler)."""
         ...
 
     @abstractmethod

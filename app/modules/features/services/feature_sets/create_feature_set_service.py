@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from sqlalchemy.orm import Session
-
 from app.common.contracts import ServiceResult
 from app.modules.features.domain.feature_set_entity import FeatureSet
 from app.modules.features.domain.feature_set_repository import FeatureSetRepository
@@ -13,9 +11,8 @@ from app.modules.features.domain.feature_set_repository import FeatureSetReposit
 
 class CreateFeatureSetService:
 
-    def __init__(self, repo: FeatureSetRepository, session: Session):
+    def __init__(self, repo: FeatureSetRepository):
         self._repo = repo
-        self._session = session
 
     def create(
         self,
@@ -40,5 +37,5 @@ class CreateFeatureSetService:
             description=description,
         )
         created = self._repo.create(feature_set)
-        self._session.commit()
+        self._repo.commit()
         return ServiceResult.ok(data=created)

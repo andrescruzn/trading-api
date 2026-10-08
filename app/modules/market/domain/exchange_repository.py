@@ -13,9 +13,10 @@ from abc import ABC, abstractmethod
 from typing import Optional
 
 from app.modules.market.domain.exchange_entity import Exchange
+from app.common.contracts import TransactionalRepository
 
 
-class ExchangeRepository(ABC):
+class ExchangeRepository(TransactionalRepository, ABC):
 
     @abstractmethod
     def get_by_id(self, exchange_id: int) -> Optional[Exchange]: ...

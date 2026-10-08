@@ -13,9 +13,10 @@ from sqlalchemy.orm import Session
 from app.modules.bots.domain.bot_entity import Bot
 from app.modules.bots.domain.bot_repository import BotRepository
 from app.modules.bots.infrastructure.bot_model import BotModel
+from app.extensions.db.sqlalchemy_repository import SqlAlchemyRepository
 
 
-class SqlAlchemyBotRepository(BotRepository):
+class SqlAlchemyBotRepository(SqlAlchemyRepository, BotRepository):
     """Repositorio concreto de bots usando SQLAlchemy."""
 
     def __init__(self, session: Session):
@@ -77,6 +78,14 @@ class SqlAlchemyBotRepository(BotRepository):
         models = (
             self._session.query(BotModel)
             .order_by(BotModel.created_at.desc())
+            .all()
+        )
+        return [self._to_domain(m) for m in models]
+
+    def list_by_statuses(self, statuses: list[str]) -> list[Bot]:
+        models = (
+            self._session.query(BotModel)
+            .filter(BotModel.status.in_(statuses))
             .all()
         )
         return [self._to_domain(m) for m in models]

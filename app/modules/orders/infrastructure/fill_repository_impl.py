@@ -16,9 +16,10 @@ from app.modules.orders.domain.fill_entity import Fill
 from app.modules.orders.domain.fill_repository import FillRepository
 from app.modules.orders.infrastructure.fill_model import FillModel
 from app.modules.orders.infrastructure.order_model import OrderModel
+from app.extensions.db.sqlalchemy_repository import SqlAlchemyRepository
 
 
-class SqlAlchemyFillRepository(FillRepository):
+class SqlAlchemyFillRepository(SqlAlchemyRepository, FillRepository):
     """Repositorio concreto de fills usando SQLAlchemy."""
 
     def __init__(self, session: Session):

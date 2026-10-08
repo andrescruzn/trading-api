@@ -14,9 +14,10 @@ from sqlalchemy.orm import Session
 
 from app.modules.billing.domain.billing_period_entity import BillingPeriod
 from app.modules.billing.infrastructure.billing_period_model import BillingPeriodModel
+from app.extensions.db.sqlalchemy_repository import SqlAlchemyRepository
 
 
-class SqlAlchemyBillingPeriodRepository:
+class SqlAlchemyBillingPeriodRepository(SqlAlchemyRepository):
     """Repositorio de períodos de facturación con SQLAlchemy."""
 
     def __init__(self, session: Session):

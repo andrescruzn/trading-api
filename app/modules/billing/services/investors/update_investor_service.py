@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-from sqlalchemy.orm import Session
-
 from app.common.contracts.service_result import ServiceResult
 from app.modules.billing.domain.investor_entity import Investor
 from app.modules.billing.domain.investor_repository import InvestorRepository
@@ -18,9 +16,8 @@ from app.modules.billing.domain.investor_repository import InvestorRepository
 class UpdateInvestorService:
     """Actualiza fee_pct y/o is_active de un inversor."""
 
-    def __init__(self, repo: InvestorRepository, session: Session):
+    def __init__(self, repo: InvestorRepository):
         self._repo = repo
-        self._session = session
 
     def execute(
         self,
@@ -47,5 +44,5 @@ class UpdateInvestorService:
             investor.is_active = is_active
 
         saved = self._repo.save(investor)
-        self._session.commit()
+        self._repo.commit()
         return ServiceResult.ok(data=saved)

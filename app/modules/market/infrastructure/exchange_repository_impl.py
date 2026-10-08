@@ -15,9 +15,10 @@ from sqlalchemy.orm import Session
 from app.modules.market.domain.exchange_entity import Exchange
 from app.modules.market.domain.exchange_repository import ExchangeRepository
 from app.modules.market.infrastructure.exchange_model import ExchangeModel
+from app.extensions.db.sqlalchemy_repository import SqlAlchemyRepository
 
 
-class SqlAlchemyExchangeRepository(ExchangeRepository):
+class SqlAlchemyExchangeRepository(SqlAlchemyRepository, ExchangeRepository):
     """Repositorio concreto de exchanges usando SQLAlchemy."""
 
     def __init__(self, session: Session):

@@ -15,9 +15,10 @@ from sqlalchemy.orm import Session
 from app.modules.orders.domain.position_entity import Position
 from app.modules.orders.domain.position_repository import PositionRepository
 from app.modules.orders.infrastructure.position_model import PositionModel
+from app.extensions.db.sqlalchemy_repository import SqlAlchemyRepository
 
 
-class SqlAlchemyPositionRepository(PositionRepository):
+class SqlAlchemyPositionRepository(SqlAlchemyRepository, PositionRepository):
     """Repositorio concreto de posiciones usando SQLAlchemy."""
 
     def __init__(self, session: Session):

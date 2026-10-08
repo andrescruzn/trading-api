@@ -12,9 +12,10 @@ from abc import ABC, abstractmethod
 from typing import Optional
 
 from app.modules.market.domain.symbol_entity import Symbol
+from app.common.contracts import TransactionalRepository
 
 
-class SymbolRepository(ABC):
+class SymbolRepository(TransactionalRepository, ABC):
 
     @abstractmethod
     def get_by_id(self, symbol_id: int) -> Optional[Symbol]: ...

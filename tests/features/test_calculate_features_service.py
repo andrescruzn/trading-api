@@ -89,7 +89,6 @@ def _make_service(
     candle_feature_repo = MagicMock()
     candle_feature_repo.bulk_upsert.return_value = rows_affected
 
-    session = MagicMock()
 
     svc = CalculateFeaturesService(
         candle_repo=candle_repo,
@@ -97,9 +96,9 @@ def _make_service(
         candle_feature_repo=candle_feature_repo,
         symbol_repo=symbol_repo,
         timeframe_repo=timeframe_repo,
-        session=session,
     )
-    return svc, candle_feature_repo, session
+    tx_repo = candle_feature_repo  # commit()/rollback() viven en el repositorio
+    return svc, candle_feature_repo, tx_repo
 
 
 # ======================================================================
@@ -182,7 +181,7 @@ class TestCalculateFeaturesServiceSuccess:
 
     def test_calculates_and_persists_with_minimum_candles(self):
         candles = _make_candles(n=_MIN_CANDLES)
-        svc, candle_feature_repo, session = _make_service(
+        svc, candle_feature_repo, tx_repo = _make_service(
             symbol=_make_symbol(),
             timeframe=_make_timeframe(),
             feature_set=_make_feature_set(),
@@ -200,8 +199,8 @@ class TestCalculateFeaturesServiceSuccess:
         assert result.data["rows_calculated"] > 0
         assert result.data["rows_affected"] == 15
 
-    def test_commits_session_after_calculation(self):
-        svc, _, session = _make_service(
+    def test_commits_repo_after_calculation(self):
+        svc, _, tx_repo = _make_service(
             symbol=_make_symbol(),
             timeframe=_make_timeframe(),
             feature_set=_make_feature_set(),
@@ -210,7 +209,7 @@ class TestCalculateFeaturesServiceSuccess:
 
         svc.calculate(symbol_id=1, timeframe_id=3, feature_set_id=1)
 
-        session.commit.assert_called_once()
+        tx_repo.commit.assert_called_once()
 
     def test_bulk_upsert_receives_candle_features(self):
         svc, candle_feature_repo, _ = _make_service(

@@ -14,9 +14,10 @@ from datetime import datetime
 from typing import Optional
 
 from app.modules.accounts.domain.account_balance_entity import AccountBalance
+from app.common.contracts import TransactionalRepository
 
 
-class AccountBalanceRepository(ABC):
+class AccountBalanceRepository(TransactionalRepository, ABC):
 
     @abstractmethod
     def list_by_account(

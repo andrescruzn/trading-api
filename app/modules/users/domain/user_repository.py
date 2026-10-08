@@ -17,9 +17,10 @@ from abc import ABC, abstractmethod
 from typing import Optional
 
 from app.modules.users.domain.user_entity import User
+from app.common.contracts import TransactionalRepository
 
 
-class UserRepository(ABC):
+class UserRepository(TransactionalRepository, ABC):
     """
     Contrato (interface) para persistencia/consulta de usuarios.
     """
@@ -36,6 +37,11 @@ class UserRepository(ABC):
     @abstractmethod
     def get_by_email(self, email: str) -> Optional[User]:
         """Retorna un User si existe, o None si no existe."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_role_info(self, role_id: int) -> Optional[dict[str, str]]:
+        """Retorna {"code", "name"} del rol, o None si no existe."""
         raise NotImplementedError
 
     # ------------------------------------------------------------------

@@ -119,11 +119,10 @@ def make_service(
     analysis_ok: bool = True,
     analysis_error_code: str = "AGENT_NO_DATA",
 ):
-    """Retorna (service, mock_bot_repo, mock_signal_repo, mock_analyze, mock_session)."""
+    """Retorna (service, mock_bot_repo, mock_signal_repo, mock_analyze, tx_repo)."""
     mock_bot_repo = MagicMock()
     mock_signal_repo = MagicMock()
     mock_analyze = MagicMock()
-    mock_session = MagicMock()
 
     # Si no se pasó bot → crear uno running por defecto
     # Si se pasó None explícitamente → simular "no encontrado"
@@ -149,9 +148,9 @@ def make_service(
         bot_repo=mock_bot_repo,
         signal_repo=mock_signal_repo,
         analyze_service=mock_analyze,
-        session=mock_session,
     )
-    return service, mock_bot_repo, mock_signal_repo, mock_analyze, mock_session
+    tx_repo = mock_signal_repo  # commit()/rollback() viven en el repositorio
+    return service, mock_bot_repo, mock_signal_repo, mock_analyze, tx_repo
 
 
 # ======================================================================
@@ -365,12 +364,12 @@ class TestSignalFields:
         assert result.data.features_hash is not None
         assert len(result.data.features_hash) <= 64  # máximo 64 chars
 
-    def test_session_commit_called_on_success(self):
-        service, _, _, _, mock_session = make_service()
+    def test_repo_commit_called_on_success(self):
+        service, _, _, _, tx_repo = make_service()
 
         service.generate(bot_id=1)
 
-        mock_session.commit.assert_called_once()
+        tx_repo.commit.assert_called_once()
 
     def test_analyze_service_receives_bot_context(self):
         bot = make_bot(status="running", feature_set_id=7)

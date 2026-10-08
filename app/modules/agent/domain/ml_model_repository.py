@@ -13,9 +13,10 @@ from abc import ABC, abstractmethod
 from typing import Optional
 
 from app.modules.agent.domain.ml_model_entity import MLModel
+from app.common.contracts import TransactionalRepository
 
 
-class MLModelRepository(ABC):
+class MLModelRepository(TransactionalRepository, ABC):
 
     @abstractmethod
     def get_by_id(self, model_id: int) -> Optional[MLModel]:

@@ -15,9 +15,10 @@ from sqlalchemy.orm import Session
 from app.modules.accounts.domain.account_entity import Account
 from app.modules.accounts.domain.account_repository import AccountRepository
 from app.modules.accounts.infrastructure.account_model import AccountModel
+from app.extensions.db.sqlalchemy_repository import SqlAlchemyRepository
 
 
-class SqlAlchemyAccountRepository(AccountRepository):
+class SqlAlchemyAccountRepository(SqlAlchemyRepository, AccountRepository):
     """Repositorio concreto de cuentas usando SQLAlchemy."""
 
     def __init__(self, session: Session):

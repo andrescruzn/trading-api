@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from typing import Optional
 
-from sqlalchemy.orm import Session
-
 from app.common.contracts import ServiceResult
 from app.modules.market.domain.exchange_entity import Exchange
 from app.modules.market.domain.exchange_repository import ExchangeRepository
@@ -14,9 +12,8 @@ from app.modules.market.domain.exchange_repository import ExchangeRepository
 class UpdateExchangeService:
     """Actualiza nombre, tipo y estado activo de un exchange."""
 
-    def __init__(self, repo: ExchangeRepository, session: Session):
+    def __init__(self, repo: ExchangeRepository):
         self._repo = repo
-        self._session = session
 
     def update(
         self,
@@ -47,6 +44,6 @@ class UpdateExchangeService:
             exchange.is_active = is_active
 
         updated = self._repo.update(exchange)
-        self._session.commit()
+        self._repo.commit()
 
         return ServiceResult.ok(data=updated)

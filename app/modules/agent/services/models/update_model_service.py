@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from sqlalchemy.orm import Session
-
 from app.common.contracts import ServiceResult
 from app.modules.agent.domain.ml_model_entity import MLModel
 from app.modules.agent.domain.ml_model_repository import MLModelRepository
@@ -18,9 +16,8 @@ class UpdateModelService:
     artifact_uri y meta.
     """
 
-    def __init__(self, repo: MLModelRepository, session: Session):
+    def __init__(self, repo: MLModelRepository):
         self._repo = repo
-        self._session = session
 
     def update(
         self,
@@ -45,5 +42,5 @@ class UpdateModelService:
             model.meta = meta
 
         updated = self._repo.update(model)
-        self._session.commit()
+        self._repo.commit()
         return ServiceResult.ok(data=updated)

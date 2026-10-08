@@ -12,9 +12,10 @@ from abc import ABC, abstractmethod
 from typing import Optional
 
 from app.modules.features.domain.feature_set_entity import FeatureSet
+from app.common.contracts import TransactionalRepository
 
 
-class FeatureSetRepository(ABC):
+class FeatureSetRepository(TransactionalRepository, ABC):
 
     @abstractmethod
     def list_all(self) -> list[FeatureSet]: ...

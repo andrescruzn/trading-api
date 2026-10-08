@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-from sqlalchemy.orm import Session
-
 from app.common.contracts import ServiceResult
 from app.modules.accounts.domain.account_balance_entity import AccountBalance
 from app.modules.accounts.domain.account_balance_repository import AccountBalanceRepository
@@ -30,11 +28,9 @@ class RecordBalanceService:
         self,
         account_repo: AccountRepository,
         balance_repo: AccountBalanceRepository,
-        session: Session,
     ):
         self._account_repo = account_repo
         self._balance_repo = balance_repo
-        self._session = session
 
     def record(
         self,
@@ -67,5 +63,5 @@ class RecordBalanceService:
         )
 
         recorded = self._balance_repo.record(balance)
-        self._session.commit()
+        self._balance_repo.commit()
         return ServiceResult.ok(data=recorded)

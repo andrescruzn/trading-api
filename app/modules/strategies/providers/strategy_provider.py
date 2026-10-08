@@ -53,10 +53,10 @@ class StrategyServiceFactory:
         return GetStrategyService(repo=self._strategy_repo)
 
     def create_strategy(self) -> CreateStrategyService:
-        return CreateStrategyService(repo=self._strategy_repo, session=self._session)
+        return CreateStrategyService(repo=self._strategy_repo)
 
     def update_strategy(self) -> UpdateStrategyService:
-        return UpdateStrategyService(repo=self._strategy_repo, session=self._session)
+        return UpdateStrategyService(repo=self._strategy_repo)
 
     # ------------------------------------------------------------------
     # Datasets
@@ -69,4 +69,4 @@ class StrategyServiceFactory:
         return GetDatasetService(repo=self._dataset_repo)
 
     def create_dataset(self) -> CreateDatasetService:
-        return CreateDatasetService(repo=self._dataset_repo, session=self._session)
+        return CreateDatasetService(repo=self._dataset_repo)

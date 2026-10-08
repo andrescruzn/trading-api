@@ -15,9 +15,10 @@ from sqlalchemy.orm import Session
 from app.modules.agent.domain.model_run_entity import ModelRun
 from app.modules.agent.domain.model_run_repository import ModelRunRepository
 from app.modules.agent.infrastructure.model_run_model import ModelRunORM
+from app.extensions.db.sqlalchemy_repository import SqlAlchemyRepository
 
 
-class SqlAlchemyModelRunRepository(ModelRunRepository):
+class SqlAlchemyModelRunRepository(SqlAlchemyRepository, ModelRunRepository):
     """Repositorio concreto de ejecuciones de entrenamiento usando SQLAlchemy."""
 
     def __init__(self, session: Session):

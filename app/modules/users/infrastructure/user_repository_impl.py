@@ -23,10 +23,12 @@ from sqlalchemy.orm import Session
 
 from app.modules.users.domain.user_entity import User
 from app.modules.users.domain.user_repository import UserRepository
+from app.modules.users.infrastructure.role_model import RoleModel
 from app.modules.users.infrastructure.user_model import UserModel
+from app.extensions.db.sqlalchemy_repository import SqlAlchemyRepository
 
 
-class SqlAlchemyUserRepository(UserRepository):
+class SqlAlchemyUserRepository(SqlAlchemyRepository, UserRepository):
     """
     Repositorio concreto usando SQLAlchemy.
 
@@ -133,6 +135,12 @@ class SqlAlchemyUserRepository(UserRepository):
             .one_or_none()
         )
         return None if model is None else self._to_domain(model)
+
+    def get_role_info(self, role_id: int) -> Optional[dict[str, str]]:
+        role = self._session.get(RoleModel, int(role_id))
+        if role is None:
+            return None
+        return {"code": str(role.code), "name": str(role.name)}
 
     def create(self, user: User) -> User:
         model = UserModel()

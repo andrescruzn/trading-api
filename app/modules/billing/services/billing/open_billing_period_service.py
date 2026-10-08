@@ -11,8 +11,6 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-from sqlalchemy.orm import Session
-
 from app.common.contracts.service_result import ServiceResult
 from app.modules.billing.domain.billing_period_entity import BillingPeriod
 from app.modules.billing.domain.billing_period_repository import BillingPeriodRepository
@@ -36,12 +34,10 @@ class OpenBillingPeriodService:
         period_repo: BillingPeriodRepository,
         managed_account_repo: ManagedAccountRepository,
         investor_repo: InvestorRepository,
-        session: Session,
     ):
         self._period_repo = period_repo
         self._managed_account_repo = managed_account_repo
         self._investor_repo = investor_repo
-        self._session = session
 
     def execute(
         self,
@@ -82,5 +78,5 @@ class OpenBillingPeriodService:
         )
 
         saved = self._period_repo.save(period)
-        self._session.commit()
+        self._period_repo.commit()
         return ServiceResult.ok(data=saved)

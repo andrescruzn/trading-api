@@ -5,8 +5,6 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import Optional
 
-from sqlalchemy.orm import Session
-
 from app.common.contracts import ServiceResult
 from app.modules.market.domain.symbol_entity import Symbol
 from app.modules.market.domain.symbol_repository import SymbolRepository
@@ -15,9 +13,8 @@ from app.modules.market.domain.symbol_repository import SymbolRepository
 class UpdateSymbolService:
     """Actualiza un símbolo existente (campos opcionales)."""
 
-    def __init__(self, repo: SymbolRepository, session: Session):
+    def __init__(self, repo: SymbolRepository):
         self._repo = repo
-        self._session = session
 
     def update(
         self,
@@ -51,6 +48,6 @@ class UpdateSymbolService:
             symbol.is_active = is_active
 
         updated = self._repo.update(symbol)
-        self._session.commit()
+        self._repo.commit()
 
         return ServiceResult.ok(data=updated)

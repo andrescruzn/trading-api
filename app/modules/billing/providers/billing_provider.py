@@ -62,13 +62,11 @@ class BillingServiceFactory:
     def create_investor(self) -> CreateInvestorService:
         return CreateInvestorService(
             repo=self._investor_repo,
-            session=self._session,
         )
 
     def update_investor(self) -> UpdateInvestorService:
         return UpdateInvestorService(
             repo=self._investor_repo,
-            session=self._session,
         )
 
     # ------------------------------------------------------------------
@@ -85,13 +83,11 @@ class BillingServiceFactory:
         return CreateManagedAccountService(
             investor_repo=self._investor_repo,
             managed_account_repo=self._managed_account_repo,
-            session=self._session,
         )
 
     def update_managed_account(self) -> UpdateManagedAccountService:
         return UpdateManagedAccountService(
             repo=self._managed_account_repo,
-            session=self._session,
         )
 
     # ------------------------------------------------------------------
@@ -109,7 +105,6 @@ class BillingServiceFactory:
             period_repo=self._period_repo,
             managed_account_repo=self._managed_account_repo,
             investor_repo=self._investor_repo,
-            session=self._session,
         )
 
     def close_billing_period(self) -> CloseBillingPeriodService:
@@ -117,7 +112,6 @@ class BillingServiceFactory:
             period_repo=self._period_repo,
             fee_tx_repo=self._fee_tx_repo,
             managed_account_repo=self._managed_account_repo,
-            session=self._session,
         )
 
     def list_fee_transactions(self) -> ListFeeTransactionsService:

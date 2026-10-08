@@ -19,9 +19,10 @@ from sqlalchemy.orm import Session
 from app.modules.market.domain.candle_entity import Candle
 from app.modules.market.domain.candle_repository import CandleRepository
 from app.modules.market.infrastructure.candle_model import CandleModel
+from app.extensions.db.sqlalchemy_repository import SqlAlchemyRepository
 
 
-class SqlAlchemyCandleRepository(CandleRepository):
+class SqlAlchemyCandleRepository(SqlAlchemyRepository, CandleRepository):
     """Repositorio concreto de candles usando SQLAlchemy."""
 
     def __init__(self, session: Session):
@@ -121,4 +122,42 @@ class SqlAlchemyCandleRepository(CandleRepository):
         )
 
         result = self._session.execute(stmt, rows)
+        return result.rowcount
+
+    def get_latest_ts(self, symbol_id: int, timeframe_id: int) -> Optional[datetime]:
+        latest = self._session.execute(
+            text(
+                "SELECT MAX(ts) FROM candles "
+                "WHERE symbol_id = :sid AND timeframe_id = :tid"
+            ),
+            {"sid": symbol_id, "tid": timeframe_id},
+        ).scalar()
+
+        if latest is None:
+            return None
+        # MySQL devuelve datetime naive → normalizar a UTC aware
+        if latest.tzinfo is None:
+            return latest.replace(tzinfo=timezone.utc)
+        return latest.astimezone(timezone.utc)
+
+    def delete_beyond_retention(self, symbol_id: int, timeframe_id: int, retention: int) -> int:
+        # El subquery doble es necesario en MySQL (no permite self-reference
+        # directo en DELETE ... WHERE).
+        result = self._session.execute(
+            text("""
+                DELETE FROM candles
+                WHERE symbol_id = :sid
+                  AND timeframe_id = :tid
+                  AND ts < (
+                      SELECT ts FROM (
+                          SELECT ts FROM candles
+                          WHERE symbol_id = :sid
+                            AND timeframe_id = :tid
+                          ORDER BY ts DESC
+                          LIMIT 1 OFFSET :offset
+                      ) AS _cutoff
+                  )
+            """),
+            {"sid": symbol_id, "tid": timeframe_id, "offset": retention - 1},
+        )
         return result.rowcount

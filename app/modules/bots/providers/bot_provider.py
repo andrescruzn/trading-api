@@ -114,13 +114,13 @@ class BotServiceFactory:
         return GetBotService(repo=self._bot_repo)
 
     def create_bot(self) -> CreateBotService:
-        return CreateBotService(repo=self._bot_repo, session=self._session)
+        return CreateBotService(repo=self._bot_repo)
 
     def update_bot(self) -> UpdateBotService:
-        return UpdateBotService(repo=self._bot_repo, session=self._session)
+        return UpdateBotService(repo=self._bot_repo)
 
     def update_bot_status(self) -> UpdateBotStatusService:
-        return UpdateBotStatusService(repo=self._bot_repo, session=self._session)
+        return UpdateBotStatusService(repo=self._bot_repo)
 
     # ------------------------------------------------------------------
     # Signals
@@ -134,7 +134,6 @@ class BotServiceFactory:
             bot_repo=self._bot_repo,
             signal_repo=self._signal_repo,
             analyze_service=self._build_analyze_service(),
-            session=self._session,
             evaluate_alerts=build_evaluate_alerts_service(self._session),
         )
 

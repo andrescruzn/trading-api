@@ -15,9 +15,10 @@ from sqlalchemy.orm import Session
 from app.modules.orders.domain.order_entity import Order
 from app.modules.orders.domain.order_repository import OrderRepository
 from app.modules.orders.infrastructure.order_model import OrderModel
+from app.extensions.db.sqlalchemy_repository import SqlAlchemyRepository
 
 
-class SqlAlchemyOrderRepository(OrderRepository):
+class SqlAlchemyOrderRepository(SqlAlchemyRepository, OrderRepository):
     """Repositorio concreto de órdenes usando SQLAlchemy."""
 
     def __init__(self, session: Session):

@@ -19,9 +19,10 @@ from sqlalchemy.orm import Session
 from app.modules.features.domain.candle_feature_entity import CandleFeature
 from app.modules.features.domain.candle_feature_repository import CandleFeatureRepository
 from app.modules.features.infrastructure.candle_feature_model import CandleFeatureModel
+from app.extensions.db.sqlalchemy_repository import SqlAlchemyRepository
 
 
-class SqlAlchemyCandleFeatureRepository(CandleFeatureRepository):
+class SqlAlchemyCandleFeatureRepository(SqlAlchemyRepository, CandleFeatureRepository):
 
     def __init__(self, session: Session):
         self._session = session
@@ -93,4 +94,38 @@ class SqlAlchemyCandleFeatureRepository(CandleFeatureRepository):
             """
         )
         result = self._session.execute(stmt, rows)
+        return result.rowcount
+
+    def delete_beyond_retention(
+        self,
+        symbol_id: int,
+        timeframe_id: int,
+        feature_set_id: int,
+        retention: int,
+    ) -> int:
+        # Mismo criterio que SqlAlchemyCandleRepository.delete_beyond_retention.
+        result = self._session.execute(
+            text("""
+                DELETE FROM candle_features
+                WHERE symbol_id = :sid
+                  AND timeframe_id = :tid
+                  AND feature_set_id = :fsid
+                  AND ts < (
+                      SELECT ts FROM (
+                          SELECT ts FROM candle_features
+                          WHERE symbol_id = :sid
+                            AND timeframe_id = :tid
+                            AND feature_set_id = :fsid
+                          ORDER BY ts DESC
+                          LIMIT 1 OFFSET :offset
+                      ) AS _cutoff
+                  )
+            """),
+            {
+                "sid": symbol_id,
+                "tid": timeframe_id,
+                "fsid": feature_set_id,
+                "offset": retention - 1,
+            },
+        )
         return result.rowcount

@@ -13,9 +13,10 @@ from datetime import datetime
 from typing import Optional
 
 from app.modules.market.domain.candle_entity import Candle
+from app.common.contracts import TransactionalRepository
 
 
-class CandleRepository(ABC):
+class CandleRepository(TransactionalRepository, ABC):
 
     @abstractmethod
     def list_candles(
@@ -33,4 +34,14 @@ class CandleRepository(ABC):
         Inserta o actualiza velas en lote.
         Retorna el número de filas afectadas.
         """
+        ...
+
+    @abstractmethod
+    def get_latest_ts(self, symbol_id: int, timeframe_id: int) -> Optional[datetime]:
+        """Timestamp (UTC aware) de la vela más reciente del par, o None si no hay."""
+        ...
+
+    @abstractmethod
+    def delete_beyond_retention(self, symbol_id: int, timeframe_id: int, retention: int) -> int:
+        """Borra las velas más antiguas que las últimas `retention`. Retorna filas borradas."""
         ...

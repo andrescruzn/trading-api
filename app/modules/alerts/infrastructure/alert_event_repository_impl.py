@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.modules.alerts.domain.alert_event_entity import AlertEvent
 from app.modules.alerts.infrastructure.alert_event_model import AlertEventModel
+from app.extensions.db.sqlalchemy_repository import SqlAlchemyRepository
 
 
 def _to_entity(m: AlertEventModel) -> AlertEvent:
@@ -29,7 +30,7 @@ def _to_entity(m: AlertEventModel) -> AlertEvent:
     )
 
 
-class SqlAlchemyAlertEventRepository:
+class SqlAlchemyAlertEventRepository(SqlAlchemyRepository):
 
     def __init__(self, session: Session):
         self._session = session

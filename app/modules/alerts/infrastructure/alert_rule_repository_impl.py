@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.modules.alerts.domain.alert_rule_entity import AlertRule
 from app.modules.alerts.infrastructure.alert_rule_model import AlertRuleModel
+from app.extensions.db.sqlalchemy_repository import SqlAlchemyRepository
 
 
 def _to_entity(m: AlertRuleModel) -> AlertRule:
@@ -26,7 +27,7 @@ def _to_entity(m: AlertRuleModel) -> AlertRule:
     )
 
 
-class SqlAlchemyAlertRuleRepository:
+class SqlAlchemyAlertRuleRepository(SqlAlchemyRepository):
 
     def __init__(self, session: Session):
         self._session = session

@@ -15,9 +15,10 @@ from sqlalchemy.orm import Session
 from app.modules.agent.domain.ml_model_entity import MLModel
 from app.modules.agent.domain.ml_model_repository import MLModelRepository
 from app.modules.agent.infrastructure.ml_model_model import MLModelORM
+from app.extensions.db.sqlalchemy_repository import SqlAlchemyRepository
 
 
-class SqlAlchemyMLModelRepository(MLModelRepository):
+class SqlAlchemyMLModelRepository(SqlAlchemyRepository, MLModelRepository):
     """Repositorio concreto de modelos ML usando SQLAlchemy."""
 
     def __init__(self, session: Session):

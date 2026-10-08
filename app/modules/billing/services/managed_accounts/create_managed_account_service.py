@@ -11,8 +11,6 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-from sqlalchemy.orm import Session
-
 from app.common.contracts.service_result import ServiceResult
 from app.modules.billing.domain.managed_account_entity import ManagedAccount
 from app.modules.billing.domain.investor_repository import InvestorRepository
@@ -33,11 +31,9 @@ class CreateManagedAccountService:
         self,
         investor_repo: InvestorRepository,
         managed_account_repo: ManagedAccountRepository,
-        session: Session,
     ):
         self._investor_repo = investor_repo
         self._managed_account_repo = managed_account_repo
-        self._session = session
 
     def execute(
         self,
@@ -88,5 +84,5 @@ class CreateManagedAccountService:
         )
 
         saved = self._managed_account_repo.save(managed_account)
-        self._session.commit()
+        self._managed_account_repo.commit()
         return ServiceResult.ok(data=saved)

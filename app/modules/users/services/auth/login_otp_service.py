@@ -23,8 +23,6 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from sqlalchemy.orm import Session
-
 from app.common.config.settings import Settings
 from app.common.contracts import ServiceResult
 from app.common.utils.input_cleaner import clean_email
@@ -54,7 +52,6 @@ class LoginOtpService:
         self,
         *,
         repo: UserRepository,
-        session: Session,
         settings: Settings,
         mailer: MailerService,
         otp_length: int = 6,
@@ -64,7 +61,6 @@ class LoginOtpService:
         # Dependencias
         # --------------------------------------------------------------
         self._repo = repo
-        self._session = session
         self._settings = settings
         self._mailer = mailer
 
@@ -140,7 +136,7 @@ class LoginOtpService:
         user.otp_expires_at = expires_at
 
         self._repo.update(user)
-        self._session.commit()
+        self._repo.commit()
 
         # --------------------------------------------------------------
         # 6) Enviar correo
@@ -166,7 +162,7 @@ class LoginOtpService:
             user.otp_expires_at = None
 
             self._repo.update(user)
-            self._session.commit()
+            self._repo.commit()
 
             return ServiceResult.fail(
                 code="OTP_EMAIL_SEND_FAILED",

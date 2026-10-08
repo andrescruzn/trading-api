@@ -12,9 +12,10 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 
 from app.modules.bots.domain.signal_entity import Signal
+from app.common.contracts import TransactionalRepository
 
 
-class SignalRepository(ABC):
+class SignalRepository(TransactionalRepository, ABC):
 
     @abstractmethod
     def get_by_id(self, signal_id: int) -> Signal | None:

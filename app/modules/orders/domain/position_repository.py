@@ -13,9 +13,10 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 
 from app.modules.orders.domain.position_entity import Position
+from app.common.contracts import TransactionalRepository
 
 
-class PositionRepository(ABC):
+class PositionRepository(TransactionalRepository, ABC):
 
     @abstractmethod
     def get_by_bot_and_symbol(self, bot_id: int, symbol_id: int) -> Position | None:

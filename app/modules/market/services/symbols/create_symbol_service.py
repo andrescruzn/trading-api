@@ -5,8 +5,6 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import Optional
 
-from sqlalchemy.orm import Session
-
 from app.common.contracts import ServiceResult
 from app.modules.market.domain.exchange_repository import ExchangeRepository
 from app.modules.market.domain.symbol_entity import Symbol
@@ -20,11 +18,9 @@ class CreateSymbolService:
         self,
         symbol_repo: SymbolRepository,
         exchange_repo: ExchangeRepository,
-        session: Session,
     ):
         self._symbol_repo = symbol_repo
         self._exchange_repo = exchange_repo
-        self._session = session
 
     def create(
         self,
@@ -63,6 +59,6 @@ class CreateSymbolService:
             is_active=True,
         )
         created = self._symbol_repo.create(new_symbol)
-        self._session.commit()
+        self._symbol_repo.commit()
 
         return ServiceResult.ok(data=created)

@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from sqlalchemy.orm import Session
-
 from app.common.contracts import ServiceResult
 from app.modules.agent.domain.model_run_entity import ModelRun
 from app.modules.agent.domain.model_run_repository import ModelRunRepository
@@ -25,11 +23,9 @@ class CreateModelRunService:
         self,
         run_repo: ModelRunRepository,
         model_repo: MLModelRepository,
-        session: Session,
     ):
         self._run_repo = run_repo
         self._model_repo = model_repo
-        self._session = session
 
     def create(
         self,
@@ -54,5 +50,5 @@ class CreateModelRunService:
         )
 
         created = self._run_repo.create(run)
-        self._session.commit()
+        self._run_repo.commit()
         return ServiceResult.ok(data=created)

@@ -12,9 +12,10 @@ from abc import ABC, abstractmethod
 from typing import Optional
 
 from app.modules.market.domain.timeframe_entity import Timeframe
+from app.common.contracts import TransactionalRepository
 
 
-class TimeframeRepository(ABC):
+class TimeframeRepository(TransactionalRepository, ABC):
 
     @abstractmethod
     def get_by_id(self, timeframe_id: int) -> Optional[Timeframe]: ...

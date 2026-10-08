@@ -7,8 +7,6 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy.orm import Session
-
 from app.common.contracts import ServiceResult
 from app.modules.market.domain.candle_entity import Candle
 from app.modules.market.domain.candle_repository import CandleRepository
@@ -49,12 +47,10 @@ class IngestCandlesService:
         candle_repo: CandleRepository,
         symbol_repo: SymbolRepository,
         timeframe_repo: TimeframeRepository,
-        session: Session,
     ):
         self._candle_repo = candle_repo
         self._symbol_repo = symbol_repo
         self._timeframe_repo = timeframe_repo
-        self._session = session
 
     def ingest(
         self,
@@ -106,7 +102,7 @@ class IngestCandlesService:
             candles.append(candle)
 
         rows_affected = self._candle_repo.bulk_upsert(candles)
-        self._session.commit()
+        self._candle_repo.commit()
 
         return ServiceResult.ok(
             data=IngestPayload(

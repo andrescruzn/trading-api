@@ -15,21 +15,19 @@
 #   7. Persistir el Fill
 #   8. Actualizar order.status = "filled"
 #   9. Upsert Position (crear si no existe, actualizar si ya existe)
-#  10. session.commit() único — todo o nada
+#  10. Commit único (order_repo.commit()) — todo o nada
 #  11. Retornar ServiceResult.ok(data=order)
 #
 # DECISIÓN DE DISEÑO — Atomicidad:
 #   Todo ocurre en una sola transacción. Si el executor falla
-#   (ej: exchange rechaza la orden), hacemos session.rollback()
-#   implícito ya que no se llama commit().
+#   (ej: exchange rechaza la orden), se descarta todo con
+#   order_repo.rollback() antes de retornar el error.
 #   Así nunca queda una Order en BD sin su Fill correspondiente.
 # ======================================================================
 
 from __future__ import annotations
 
 from decimal import Decimal
-
-from sqlalchemy.orm import Session
 
 from app.common.contracts import ServiceResult
 from app.common.utils.datetime_utils import utc_now
@@ -71,7 +69,6 @@ class CreateOrderService:
         symbol_repo: SymbolRepository,
         paper_executor: PaperExecutor,
         live_executor: LiveExecutor,
-        session: Session,
         evaluate_alerts: "EvaluateAlertsService | None" = None,
     ):
         self._order_repo = order_repo
@@ -81,7 +78,6 @@ class CreateOrderService:
         self._symbol_repo = symbol_repo
         self._paper_executor = paper_executor
         self._live_executor = live_executor
-        self._session = session
         self._evaluate_alerts = evaluate_alerts
 
     def create(
@@ -190,6 +186,7 @@ class CreateOrderService:
         try:
             fill = executor.execute(order, bot)
         except RuntimeError as exc:
+            self._order_repo.rollback()
             return ServiceResult.fail(
                 code="ORDER_EXECUTION_FAILED",
                 http_status=502,
@@ -226,7 +223,7 @@ class CreateOrderService:
         # ------------------------------------------------------------------
         # 10. Commit único — confirma order + fill + position en la BD
         # ------------------------------------------------------------------
-        self._session.commit()
+        self._order_repo.commit()
 
         # ------------------------------------------------------------------
         # 11. Hook de alertas (fire-and-forget — no revierte si falla)

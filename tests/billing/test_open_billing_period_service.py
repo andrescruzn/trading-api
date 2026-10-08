@@ -64,7 +64,6 @@ def make_service(
     period_repo = MagicMock()
     ma_repo = MagicMock()
     inv_repo = MagicMock()
-    session = MagicMock()
 
     ma_repo.find_by_id.return_value = account
     period_repo.find_open_by_managed_account.return_value = existing_open
@@ -81,9 +80,9 @@ def make_service(
         period_repo=period_repo,
         managed_account_repo=ma_repo,
         investor_repo=inv_repo,
-        session=session,
     )
-    return svc, period_repo, ma_repo, inv_repo, session
+    tx_repo = period_repo  # commit()/rollback() viven en el repositorio
+    return svc, period_repo, ma_repo, inv_repo, tx_repo
 
 
 # ======================================================================
@@ -129,7 +128,7 @@ class TestOpenBillingPeriodErrors:
 class TestOpenBillingPeriodSuccess:
 
     def setup_method(self):
-        self.svc, self.period_repo, self.ma_repo, self.inv_repo, self.session = \
+        self.svc, self.period_repo, self.ma_repo, self.inv_repo, self.tx_repo = \
             make_service(
                 account=make_active_account(investor_id=2),
                 existing_open=None,
@@ -144,9 +143,9 @@ class TestOpenBillingPeriodSuccess:
         self.svc.execute(managed_account_id=1, opening_equity=Decimal("10000"))
         self.period_repo.save.assert_called_once()
 
-    def test_session_commit_called(self):
+    def test_repo_commit_called(self):
         self.svc.execute(managed_account_id=1, opening_equity=Decimal("10000"))
-        self.session.commit.assert_called_once()
+        self.tx_repo.commit.assert_called_once()
 
     def test_fee_pct_snapshot_from_investor(self):
         """El fee_pct del período debe ser el del inversor en el momento de apertura."""

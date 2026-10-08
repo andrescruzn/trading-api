@@ -7,5 +7,6 @@
 # ======================================================================
 
 from .service_result import ServiceResult, ServiceError
+from .transactional_repository import TransactionalRepository
 
-__all__ = ["ServiceResult", "ServiceError"]
+__all__ = ["ServiceResult", "ServiceError", "TransactionalRepository"]

@@ -64,10 +64,10 @@ class MarketServiceFactory:
         return ListExchangesService(repo=self._exchange_repo)
 
     def create_exchange(self) -> CreateExchangeService:
-        return CreateExchangeService(repo=self._exchange_repo, session=self._session)
+        return CreateExchangeService(repo=self._exchange_repo)
 
     def update_exchange(self) -> UpdateExchangeService:
-        return UpdateExchangeService(repo=self._exchange_repo, session=self._session)
+        return UpdateExchangeService(repo=self._exchange_repo)
 
     # ------------------------------------------------------------------
     # Symbols
@@ -80,11 +80,10 @@ class MarketServiceFactory:
         return CreateSymbolService(
             symbol_repo=self._symbol_repo,
             exchange_repo=self._exchange_repo,
-            session=self._session,
         )
 
     def update_symbol(self) -> UpdateSymbolService:
-        return UpdateSymbolService(repo=self._symbol_repo, session=self._session)
+        return UpdateSymbolService(repo=self._symbol_repo)
 
     # ------------------------------------------------------------------
     # Timeframes
@@ -94,7 +93,7 @@ class MarketServiceFactory:
         return ListTimeframesService(repo=self._timeframe_repo)
 
     def create_timeframe(self) -> CreateTimeframeService:
-        return CreateTimeframeService(repo=self._timeframe_repo, session=self._session)
+        return CreateTimeframeService(repo=self._timeframe_repo)
 
     # ------------------------------------------------------------------
     # Candles
@@ -112,7 +111,6 @@ class MarketServiceFactory:
             candle_repo=self._candle_repo,
             symbol_repo=self._symbol_repo,
             timeframe_repo=self._timeframe_repo,
-            session=self._session,
         )
 
     def fetch_candles(self) -> FetchCandlesService:
@@ -121,7 +119,6 @@ class MarketServiceFactory:
             symbol_repo=self._symbol_repo,
             timeframe_repo=self._timeframe_repo,
             exchange_repo=self._exchange_repo,
-            session=self._session,
         )
 
 

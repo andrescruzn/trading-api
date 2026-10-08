@@ -13,9 +13,10 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 
 from app.modules.orders.domain.order_entity import Order
+from app.common.contracts import TransactionalRepository
 
 
-class OrderRepository(ABC):
+class OrderRepository(TransactionalRepository, ABC):
 
     @abstractmethod
     def get_by_id(self, order_id: int) -> Order | None:

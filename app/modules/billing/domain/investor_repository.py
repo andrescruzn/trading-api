@@ -12,9 +12,10 @@ from __future__ import annotations
 from typing import Protocol
 
 from app.modules.billing.domain.investor_entity import Investor
+from app.common.contracts import TransactionalRepository
 
 
-class InvestorRepository(Protocol):
+class InvestorRepository(TransactionalRepository, Protocol):
     """Contrato para el repositorio de inversores."""
 
     def find_by_id(self, investor_id: int) -> Investor | None: ...

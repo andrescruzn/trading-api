@@ -15,9 +15,10 @@ from sqlalchemy.orm import Session
 from app.modules.strategies.domain.strategy_entity import Strategy
 from app.modules.strategies.domain.strategy_repository import StrategyRepository
 from app.modules.strategies.infrastructure.strategy_model import StrategyModel
+from app.extensions.db.sqlalchemy_repository import SqlAlchemyRepository
 
 
-class SqlAlchemyStrategyRepository(StrategyRepository):
+class SqlAlchemyStrategyRepository(SqlAlchemyRepository, StrategyRepository):
     """Repositorio concreto de estrategias usando SQLAlchemy."""
 
     def __init__(self, session: Session):

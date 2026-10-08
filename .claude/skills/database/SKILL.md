@@ -101,13 +101,31 @@ uv run alembic downgrade -1                            # deshacer la última
 uv run alembic stamp head                              # marcar una BD que ya tiene el esquema, sin ejecutar nada
 ```
 
-- **BD nueva desde cero:** `alembic upgrade head` y luego los seeds.
+- **BD nueva desde cero:** `alembic upgrade head` y luego `python -m seeds`.
 - **BD que ya tenía el esquema** (creada con el dump antes de Alembic): `alembic stamp head`, sin `upgrade`.
 
 ## Seeds
 
-- **Seed:** `seeds/seed_<modulo>.sql`, **idempotente** (`INSERT IGNORE` o `ON DUPLICATE KEY UPDATE`), referencias por nombre con subqueries (`SELECT id FROM exchanges WHERE name = 'Binance'`), nunca IDs hardcodeados salvo `roles`.
-- Seeds existentes: `seed_market_data.sql` (exchanges, timeframes, symbols), `seed_accounts.sql`, `seed_strategies.sql`, `seed_billing.sql` (rol investor).
+Los seeds son módulos Python en `seeds/`, uno por dominio, y se ejecutan con el runner (los ejecuta el usuario: escriben en la BD):
+
+```bash
+uv run python -m seeds                      # todos, en orden de dependencias
+uv run python -m seeds roles market_data    # solo los indicados
+uv run python -m seeds --list               # ver los disponibles
+```
+
+| Seed | Contenido |
+|---|---|
+| `roles` | user / admin / investor con los IDs de `settings.AUTH_*_ROLE_ID` |
+| `market_data` | 7 exchanges, 14 timeframes, 24 símbolos |
+| `strategies` | 6 estrategias de ejemplo |
+| `accounts` | 2 cuentas paper con balances para el usuario demo (se omite si el usuario no existe) |
+
+Reglas para un seed nuevo:
+- Archivo `seeds/<dominio>.py` con `def run(session: Session) -> SeedStats`, registrado en `SEEDS` de `seeds/__main__.py` respetando el orden de dependencias.
+- **Idempotente:** insertar con `get_or_create(session, Model, lookup={clave natural}, values={...}, stats=stats)` de `seeds/_helpers.py`. Busca por clave natural y nunca actualiza filas existentes. No depender de `INSERT IGNORE`: si la tabla no tiene `UNIQUE` sobre esa clave, duplica.
+- Usar los modelos ORM y enlazar por nombre (exchange por `name`, usuario por `email`), nunca por IDs fijos. La excepción son los roles, que salen de `settings`.
+- El seed no hace commit: el runner confirma uno por seed con `SqlAlchemyRepository.commit()` y hace rollback si falla.
 
 ## Comandos MySQL
 
@@ -119,7 +137,7 @@ MYSQL=/Applications/MAMP/Library/bin/mysql80/bin/mysql
 # Windows (Git Bash) — ajustar a la instalación local
 MYSQL="/c/Program Files/MySQL/MySQL Server 8.0/bin/mysql.exe"
 
-"$MYSQL" -u root -p trading_ai < seeds/seed_billing.sql          # ejecutar archivo
+"$MYSQL" -u root -p trading_ai < archivo.sql                     # ejecutar archivo
 "$MYSQL" -u root -p trading_ai -e "SELECT COUNT(*) FROM candles;" # query directa
 "$MYSQL" -u root -p trading_ai                                    # shell interactivo
 ```

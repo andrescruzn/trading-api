@@ -57,7 +57,15 @@ BD nueva desde cero:
 uv run alembic upgrade head    # crea todas las tablas
 ```
 
-Después, cargar los `seeds/*.sql` con el cliente de MySQL.
+Después, cargar los datos iniciales (roles, exchanges, timeframes, símbolos, estrategias de ejemplo):
+
+```bash
+uv run python -m seeds                      # todos (se pueden correr varias veces)
+uv run python -m seeds roles market_data    # solo los indicados
+uv run python -m seeds --list               # ver los disponibles
+```
+
+El seed `accounts` crea cuentas paper de ejemplo para el usuario demo; si ese usuario todavía no existe, se omite. Regístralo desde la web y vuelve a correr `uv run python -m seeds accounts`.
 
 BD que ya tenía el esquema antes de Alembic (creada con el dump; solo una vez, no ejecuta SQL):
 

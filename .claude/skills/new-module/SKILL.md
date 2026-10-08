@@ -19,8 +19,8 @@ Trabajo para: **$ARGUMENTS**
 
 - [ ] Modelo ORM en `infrastructure/` + registro en `models_registry.py`.
 - [ ] Revisión de Alembic generada por el usuario (`alembic revision --autogenerate -m "mNN ..."`), luego revisada y completada a mano (CHECKs, nombres, `downgrade`). Flujo en el skill `database`.
-- [ ] Seed idempotente `seeds/seed_<modulo>.sql` si hay datos de catálogo o de ejemplo.
-- [ ] Dar al usuario los comandos (`alembic upgrade head`, seed) y esperar; no ejecutar contra su BD.
+- [ ] Seed idempotente `seeds/<dominio>.py` registrado en `seeds/__main__.py`, si hay datos de catálogo o de ejemplo (reglas en el skill `database`).
+- [ ] Dar al usuario los comandos (`alembic upgrade head`, `python -m seeds <dominio>`) y esperar; no ejecutar contra su BD.
 
 ## 2. Domain — `app/modules/<modulo>/domain/`
 

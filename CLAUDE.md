@@ -60,13 +60,14 @@ uv run uvicorn app.main:app --reload                       # servidor de desarro
 uv run python -m pytest tests/<modulo>/test_<x>.py -v      # tests de UN archivo
 uv run alembic revision --autogenerate -m "mNN ..."        # generar migración desde los modelos
 uv run alembic upgrade head                                # aplicar migraciones pendientes
+uv run python -m seeds [nombre ...]                        # datos iniciales (idempotente; --list para ver)
 ```
 
 - **NUNCA** correr `pytest tests/` completo salvo que el usuario lo pida.
 - **No crear tests por defecto** (gastan tokens): solo cuando el usuario los pida.
 - **NUNCA** hacer login con `curl` al depurar: rota `token_current_jti` e invalida la sesión del navegador.
 - **Comandos `uv` / `python` de alto impacto los ejecuta el usuario, no el agente.** Esto incluye: `uv sync`, `uv add`/`uv remove`, `uv lock`, levantar el servidor, scripts o seeds que escriban en la BD, cualquier comando `alembic` que toque la BD (`revision --autogenerate`, `upgrade`, `downgrade`, `stamp`, `check`), jobs que llamen a exchanges o al LLM (coste/órdenes reales), y la suite de tests completa. El agente debe darle el comando exacto (sugiriendo el prefijo `! <comando>` para que la salida llegue a la conversación) y **esperar su respuesta** antes de continuar. Ante la duda sobre si un comando es de alto impacto, tratarlo como tal.
-- MySQL (CLI, seeds) y migraciones con Alembic: ver el skill `database`. `migrations/*.sql` es legacy y está congelada: los cambios de esquema nuevos van en `alembic/versions/`.
+- MySQL (CLI), migraciones con Alembic y seeds en Python (`seeds/<dominio>.py`): ver el skill `database`. `migrations/*.sql` es legacy y está congelada: los cambios de esquema nuevos van en `alembic/versions/`.
 
 ### Migraciones (Alembic)
 

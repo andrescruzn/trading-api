@@ -120,8 +120,7 @@ Entregables:
 Registrados en: `app/extensions/db/models_registry.py`
 
 ### Migraciones
-- `migrations/m07_add_signal_price_columns.sql` — añade entry_price, stop_loss, take_profit, position_size, rr_ratio, approved a `signals`
-- `migrations/m07b_add_bot_feature_set_id.sql` — añade feature_set_id BIGINT NULL con FK a `feature_sets` en `bots`
+- Columnas de precio en `signals` (entry_price, stop_loss, take_profit, position_size, rr_ratio, approved) y `bots.feature_set_id`: antes en `migrations/m07*.sql` (eliminados); hoy las declara el modelo y las crea la migración inicial de Alembic.
 
 ### Repositorios
 | Domain (interfaz) | Infrastructure (impl) |
@@ -192,5 +191,5 @@ from app.modules.bots.rest import bots_router, signals_router
 ## Historial
 
 - **2026-03** — Módulo completado: CRUD de bots con máquina de estados, `GenerateSignalService`, UI `/bots` y `/admin/bots`, 55 tests.
-- **Migraciones:** `m07_add_signal_price_columns.sql`, `m07b_add_bot_feature_set_id.sql` (deben aplicarse antes de usar [M8](M08-ORDERS-EXECUTION.md)).
+- **Migraciones:** `m07_add_signal_price_columns.sql`, `m07b_add_bot_feature_set_id.sql` (hoy incluidas en el esquema inicial de Alembic).
 - **Posterior** — Hook post-commit de alertas ([M9](M09-ALERTS.md)).

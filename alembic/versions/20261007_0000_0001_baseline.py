@@ -7,11 +7,11 @@ Revises:
 Create Date: 2026-10-07
 
 MOTIVO:
-- Punto de partida de Alembic. Representa el esquema que ya existía antes
-  de adoptar Alembic: `.claude/db_schema.sql` + `migrations/*.sql` (legacy,
-  hasta m10_billing.sql inclusive).
-- No ejecuta nada. Una BD existente se marca con `alembic stamp 0001_baseline`
-  (sin correr upgrade) y a partir de ahí todo cambio va en una revisión nueva.
+- Punto de partida de Alembic. No ejecuta nada.
+- El esquema completo lo crea la revisión siguiente ("esquema inicial"),
+  generada con --autogenerate desde los modelos ORM.
+- Una BD que ya tenía el esquema antes de Alembic se marca con
+  `alembic stamp head` (sin correr upgrade).
 """
 
 from __future__ import annotations

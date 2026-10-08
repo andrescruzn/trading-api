@@ -54,7 +54,7 @@
 Tablas nuevas: `investors`, `managed_accounts`, `billing_periods`, `fee_transactions`
 
 Entregables:
-- ✅ Migración `migrations/m10_billing.sql` — 4 tablas + rol investor en el seed `seeds/roles.py` (id = `AUTH_INVESTOR_ROLE_ID`)
+- ✅ 4 tablas (modelos en `billing/infrastructure/`, creadas por Alembic) + rol investor en el seed `seeds/roles.py` (id = `AUTH_INVESTOR_ROLE_ID`)
 - ✅ Domain entities: Investor, ManagedAccount, BillingPeriod (HWM logic), FeeTransaction con Protocol repos
 - ✅ Infrastructure: ORM models (Numeric(5,4) fee_pct, Numeric(30,12) capital) + 4 repos impl
 - ✅ HWM logic en `BillingPeriod.calculate_fee()`: `baseline = max(opening_equity, high_water_mark)`
@@ -227,7 +227,7 @@ AUTH_INVESTOR_ROLE_ID: int = 3  # leído de env AUTH_INVESTOR_ROLE_ID, default 3
 - **Cierre atómico:** `close_billing_period_service.py` hace un solo `session.commit()` que incluye: actualizar período + crear fee_tx + llamar `update_high_water_mark()`.
 - **Investor ownership:** `list_managed_accounts` llama `find_by_user_id(current_user.id)` para filtrar al inversor. Admin usa `list_all()`.
 - **CSP:** prefijo `/investor/` agregado a `_is_web_route()` en `security_headers.py`.
-- **Migración:** `migrations/m10_billing.sql` (legacy; hoy el esquema lo crea Alembic desde los modelos) + rol investor en `seeds/roles.py`.
+- **Esquema:** 4 tablas declaradas en los modelos de `billing/infrastructure/` (antes `migrations/m10_billing.sql`, eliminado) + rol investor en `seeds/roles.py`.
 
 ## Tests
 

@@ -7,15 +7,11 @@ description: Base de datos MySQL 8 de Trading AI API (base trading_ai). Usar ant
 
 ## Dónde está el esquema
 
-El esquema lo definen los **modelos ORM** (`app/modules/*/infrastructure/*_model.py`, registrados en `models_registry.py`) y se aplica con las **revisiones de Alembic** en [`alembic/versions/`](../../../alembic/versions/). Referencia histórica: **[`.claude/db_schema.sql`](../../db_schema.sql)** (dump del 2026-02-24, 25 tablas) **+ las migraciones legacy en [`migrations/`](../../../migrations/)**, con las que se alinearon los modelos:
+El esquema lo definen los **modelos ORM** (`app/modules/*/infrastructure/*_model.py`, registrados en `app/extensions/db/models_registry.py`) y se aplica con las **revisiones de Alembic** en [`alembic/versions/`](../../../alembic/versions/). No hay dump ni `.sql` de referencia.
 
-| Migración legacy (congelada) | Estado en el dump |
-|---|---|
-| `m07_add_signal_price_columns.sql` (entry/SL/TP/size/rr/approved en `signals`) | ✅ incluida |
-| `m07b_add_bot_feature_set_id.sql` (`bots.feature_set_id`) | ✅ incluida |
-| `m10_billing.sql` (`investors`, `managed_accounts`, `billing_periods`, `fee_transactions`) | ❌ **no** está en el dump: leer la migración |
-
-Para ver una tabla concreta, buscar `CREATE TABLE \`<tabla>\`` en esos archivos con Grep en vez de leer el dump entero (~38 KB). La fuente última de verdad es la BD local: `SHOW CREATE TABLE <tabla>;`.
+- Una tabla concreta: leer su modelo (`grep -rn '__tablename__ = "<tabla>"' app`), que declara columnas, índices, FKs y CHECKs.
+- DDL completo sin tocar la BD: `uv run alembic upgrade head --sql` (modo offline, solo imprime el SQL).
+- Fuente última de verdad: la BD local, `SHOW CREATE TABLE <tabla>;`.
 
 ## Tablas por dominio
 
@@ -72,7 +68,7 @@ Otras restricciones que suelen morder:
 
 ## Migraciones con Alembic
 
-Todo cambio de esquema nuevo es una **revisión de Alembic** en `alembic/versions/`. La carpeta `migrations/` (`mNN_*.sql`) es **legacy y está congelada**: no se añaden archivos ahí.
+Todo cambio de esquema es una **revisión de Alembic** en `alembic/versions/`; nunca SQL suelto.
 
 - Config: `alembic.ini` (sin URL) + `alembic/env.py`, que reutiliza `engine` de `app.extensions.db` (URL de `.env`, sesión en UTC) y `Base.metadata` vía `models_registry`.
 - `0001_baseline` es una revisión vacía (punto de partida). El esquema completo (29 tablas) lo crea la revisión **generada con `--autogenerate` desde los modelos**, que le sigue.
@@ -84,8 +80,7 @@ Todo cambio de esquema nuevo es una **revisión de Alembic** en `alembic/version
 1. Crear o modificar el modelo en `infrastructure/<x>_model.py` (y registrarlo en `models_registry.py` si es nuevo), siguiendo "Modelos y Alembic".
 2. El usuario genera la revisión: `uv run alembic revision --autogenerate -m "m11 crear tabla x"`. El mensaje empieza por el módulo (`mNN`).
 3. **Revisar y editar el archivo generado siempre.** En tablas **nuevas** autogenerate incluye CHECKs, comentarios y defaults del modelo. En tablas **existentes** no detecta CHECKs añadidos/quitados ni cambios de `server_default`: añadirlos a mano (`op.create_check_constraint(...)`, `op.alter_column(..., server_default=...)`). Completar `MOTIVO:` en el docstring y revisar que `downgrade()` sea correcto.
-4. El usuario aplica: `uv run alembic upgrade head`.
-5. Recordar que `.claude/db_schema.sql` queda desactualizado (regenerarlo con `mysqldump --no-data`).
+4. El usuario aplica: `uv run alembic upgrade head`, y luego `uv run alembic check` debe responder `No new upgrade operations detected`.
 
 ### Comandos (los ejecuta el usuario: escriben o leen su BD)
 

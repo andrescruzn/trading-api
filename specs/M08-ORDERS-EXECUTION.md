@@ -175,7 +175,7 @@ from app.modules.orders.rest import orders_router, fills_router, positions_route
 - **symbol string para ccxt:** se guarda en `order.meta["symbol"]` en `CreateOrderService` para que `LiveExecutor` lo use.
 - **Transacción atómica:** order + fill + upsert position en un solo `order_repo.commit()`; si el executor lanza `RuntimeError`, `order_repo.rollback()` explícito.
 - **WAP:** `Position.apply_buy_fill()` recalcula avg_price. `apply_sell_fill()` acumula `realized_pnl`.
-- **Migraciones M7 requeridas:** `m07_add_signal_price_columns.sql` y `m07b_add_bot_feature_set_id.sql` deben aplicarse antes de usar M8.
+- **Esquema M7 requerido:** columnas de precio en `signals` y `bots.feature_set_id` (incluidas en el esquema inicial de Alembic).
 
 ## Tests
 

@@ -44,7 +44,7 @@ Mantener el orden de secciones de la plantilla (ver `specs/_ROOT.md` → "Planti
 
 - [ ] `CLAUDE.md`: solo si cambió una regla global, un comando o se añadió un skill. No meter detalle de módulo.
 - [ ] Skills: si se descubrió una convención o gotcha que aplica a todo el repo, añadirlo al skill correspondiente.
-- [ ] `.claude/db_schema.sql`: si hubo revisión de Alembic, recordar al usuario regenerar el dump.
+- [ ] Si hubo revisión de Alembic: confirmar que el usuario la aplicó (`alembic upgrade head`) y que `alembic check` sale limpio.
 
 ## 5. Cierre
 

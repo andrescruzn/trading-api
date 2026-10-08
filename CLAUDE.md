@@ -67,7 +67,7 @@ uv run python -m seeds [nombre ...]                        # datos iniciales (id
 - **No crear tests por defecto** (gastan tokens): solo cuando el usuario los pida.
 - **NUNCA** hacer login con `curl` al depurar: rota `token_current_jti` e invalida la sesión del navegador.
 - **Comandos `uv` / `python` de alto impacto los ejecuta el usuario, no el agente.** Esto incluye: `uv sync`, `uv add`/`uv remove`, `uv lock`, levantar el servidor, scripts o seeds que escriban en la BD, cualquier comando `alembic` que toque la BD (`revision --autogenerate`, `upgrade`, `downgrade`, `stamp`, `check`), jobs que llamen a exchanges o al LLM (coste/órdenes reales), y la suite de tests completa. El agente debe darle el comando exacto (sugiriendo el prefijo `! <comando>` para que la salida llegue a la conversación) y **esperar su respuesta** antes de continuar. Ante la duda sobre si un comando es de alto impacto, tratarlo como tal.
-- MySQL (CLI), migraciones con Alembic y seeds en Python (`seeds/<dominio>.py`): ver el skill `database`. `migrations/*.sql` es legacy y está congelada: los cambios de esquema nuevos van en `alembic/versions/`.
+- MySQL (CLI), migraciones con Alembic y seeds en Python (`seeds/<dominio>.py`): ver el skill `database`. El esquema lo definen los modelos ORM; todo cambio va en una revisión de `alembic/versions/`.
 
 ### Migraciones (Alembic)
 
@@ -124,6 +124,6 @@ Al terminar un módulo o una feature significativa, ejecutar el skill [`update-s
 | [`specs/_ROOT.md`](specs/_ROOT.md) | Índice de módulos, estado, flujo, dependencias, mapa de páginas, prioridades |
 | `specs/MNN-*.md` | Fuente de verdad de cada módulo |
 | [`.claude/skills/`](.claude/skills/) | Cómo se escribe el código en este repo (bajo demanda) |
-| [`.claude/db_schema.sql`](.claude/db_schema.sql) + [`migrations/`](migrations/) (legacy) + [`alembic/versions/`](alembic/versions/) | Esquema de la BD (se consulta vía skill `database`, no se carga siempre) |
+| [`alembic/versions/`](alembic/versions/) + modelos ORM (`app/modules/*/infrastructure/*_model.py`) | Esquema de la BD (se consulta vía skill `database`, no se carga siempre) |
 | [`MANUAL.md`](MANUAL.md) | Explicación para humanos, sin tecnicismos |
 | [`README.md`](README.md) | Instalación y ejecución |

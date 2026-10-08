@@ -23,7 +23,7 @@
 **Qué hace:**
 - Te deja iniciar sesión **solo con un código de un solo uso (OTP)** que llega a tu correo: no hay contraseñas
 - Guarda una "sesión" segura en tu navegador para que no tengas que pedir un código cada vez
-- Si te equivocas el código 3 veces, te bloquea temporalmente por seguridad
+- Limita cuántos códigos puedes pedir y probar por correo (sin bloquear tu cuenta)
 - Tiene dos tipos de usuario: **Administrador** (puede hacer todo) y **Usuario** (solo puede ver)
 
 - Además es dueño del **frontend** (`frontend/`): el armazón de la app (menú lateral, migas de pan, menú de usuario), el inicio de sesión y el panel principal. Cada módulo de negocio pone sus páginas dentro de ese armazón.
@@ -66,7 +66,9 @@ Tablas usadas: `users`, `roles`
 | `role_id` va dentro del `subject` del JWT | Lo usaban las antiguas páginas Jinja para decidir sin consultar la BD (ver gotcha); hoy `jwt_guard` lee el rol de la BD | Consultar `users` en cada página |
 | Páginas admin del front redirigen a `/dashboard` (`RoleGuard` en `_app/admin.tsx` / `_app/investor.tsx`); la API responde 403 | UX: el usuario sin permiso no ve un error crudo. El guard es solo UX: el backend valida el rol en cada endpoint | 403 con página de error |
 | OTP se genera con `otp_generator` y se guarda **hasheado** (`otp_hasher`) | Si se filtra la BD, los códigos no son utilizables | OTP en claro con expiración corta |
-| Lockout: 3 códigos fallidos o vencidos → bloqueo de 1 h (`login_locked_until`); pedir otro código reemplaza al anterior | Frena fuerza bruta sobre un correo concreto | Solo rate limit por IP · cooldown entre reenvíos (descartado por ahora) |
+| **Anti-enumeración en el login:** `POST /users/login` responde igual (200 `otp_required`) si el correo no tiene cuenta o está inactiva, sin generar OTP ni enviar correo; en `verify`, correo sin cuenta / sin código / vencido / incorrecto → 401 con el mismo texto (`OTP_VERIFY_ERROR_MESSAGES`), y `USER_NOT_ALLOWED` solo tras un código correcto. El front dice "Si {correo} tiene una cuenta, te enviamos un código" | La pantalla no confirma qué correos están registrados | Mensaje "No encontramos una cuenta con ese correo" (eliminado el 2026-10-08) |
+| **Sin lockout de cuenta; rate limit por correo e IP.** Por correo: 3 códigos pedidos y 5 intentos de verificación cada 10 min (`otp_request_rate_limiter` / `otp_verify_rate_limiter`); por IP: 10/min por ruta. Cuenta igual exista o no el correo. Pedir otro código reemplaza al anterior. Se eliminan `users.failed_attempts` y `users.login_locked_until` (migración `9ca3ab02fd7a`) | Con 6 dígitos y 10 min de vigencia, 5 intentos por ventana dejan ~1 en 200.000 de acertar; el lockout delataba qué correos tienen cuenta y dejaba bloquear cuentas ajenas | Lockout 3 fallos → 1 h (eliminado el 2026-10-08) |
+| **Correo del OTP en segundo plano** (`MailerService.send_by_template_in_background` → `app/common/utils/background.py`, pool de 4 hilos, 3 intentos con esperas de 2 s y 10 s; el fallo final va al log con el correo enmascarado) | La respuesta no espera al SMTP: tarda lo mismo exista o no la cuenta y ya no hay 502 por el proveedor de correo | Envío síncrono con 502 `OTP_EMAIL_SEND_FAILED` (eliminado) · cola externa (Celery/Redis) |
 | API **headless** bajo `/api` + SPA React separada (`frontend/`, hash routing) | Un solo contrato JSON para cualquier cliente; el front se despliega aparte y las URLs (`/#/bots`) no chocan con la API | Páginas Jinja2 servidas por FastAPI (eliminadas el 2026-10-08) |
 | CSP única y restrictiva (`default-src 'none'`) para toda la API; excepción solo para `/docs` y `/redoc` | La API no sirve HTML propio | CSP por ruta con prefijos web |
 | Sin refresh token: un 401 fuera del login cierra la sesión en el front, muestra "Tu sesión expiró" y vuelve a `/login` | Cookie HttpOnly con un solo `jti` activo; mantenerlo simple | Refresh token + rotación silenciosa |
@@ -81,7 +83,7 @@ Tablas usadas: `users`, `roles`
 | Madurez | **≈ 81 %** | Funcionalidad 100 · Tests 60 · Seguridad 90 · Operación 75 |
 
 - **Tests (60):** hay tests de `get_me`, security headers / API headless y 3 suites de auditoría; **no hay** tests de `login_otp` ni `verify_otp` (el único camino de login), `logout` ni `rotate_token`, ni tests del frontend.
-- **Seguridad (90):** OTP hasheado y de un solo uso, lockout, cookies seguras, sanitización, rate limiter en rutas de auth; sin contraseñas que filtrar.
+- **Seguridad (90):** OTP hasheado y de un solo uso, rate limit por correo e IP, anti-enumeración, cookies seguras, sanitización, rate limiter en rutas de auth; sin contraseñas que filtrar.
 - **Operación (75):** sin gestión de usuarios desde la UI; si el correo (SMTP) falla, nadie puede entrar.
 
 ## Posibles mejoras
@@ -94,8 +96,8 @@ Tablas usadas: `users`, `roles`
 | Media | 2FA/TOTP opcional para admin e inversores (manejan dinero) | M |
 | Media | CRUD de usuarios (no hay endpoint de alta; hoy solo el seed `users`) | M |
 | Media | Permitir varias sesiones (varios dispositivos) con un JTI por sesión | M |
-| Media | Cooldown entre reenvíos de código por correo (hoy solo rate limit por IP) | S |
-| Baja | Vista de intentos fallidos/lockouts para admin | S |
+| Media | Rate limit en Redis: hoy es en memoria (se reinicia con el proceso y no se comparte entre instancias) | S |
+| Baja | Cola de correo persistente: hoy un reinicio pierde los correos aún no enviados | M |
 
 ## Fuera de alcance y pendientes conocidos
 
@@ -109,7 +111,7 @@ Tablas usadas: `users`, `roles`
 ### Tablas en BD
 | Tabla | Uso |
 |-------|-----|
-| `users` | Usuarios, OTP, JTI de sesión, lockout, last_login_at (sin columna de contraseña) |
+| `users` | Usuarios, OTP, JTI de sesión, last_login_at (sin columnas de contraseña ni de lockout) |
 | `roles` | id=1→user, id=2→admin |
 
 ### Modelos ORM
@@ -143,7 +145,7 @@ Todas las rutas REST se montan bajo `settings.API_PREFIX` (`/api`) en `app/app_f
 ### Errores
 - Todo error (401/403/404/405/422/429) sale con el envelope `{msg, errorCode, data}` (`app/common/errors/errors.py`).
 - Errores del guard (`AuthException`) → texto de UI en español de `AUTH_ERROR_MESSAGES` (`app/common/errors/error_messages.py`); 422 → `data: [{field, message}]`; 429 → `data.retry_after_seconds` + header `Retry-After`.
-- Mensajes de las rutas de auth: `app/modules/users/rest/auth/error_messages.py` (`OTP_REQUEST_ERROR_MESSAGES`).
+- Mensajes de las rutas de auth: `app/modules/users/rest/auth/error_messages.py` (`OTP_VERIFY_ERROR_MESSAGES`: un solo texto para código inválido, vencido o no solicitado).
 
 ### Frontend (`frontend/src/modules/...`)
 | Ruta | Archivo de ruta | Página / componentes |
@@ -213,6 +215,12 @@ Vite **no** lee el `.env` del backend: `vite.config.ts` carga `.env.frontend` a 
 - `tests/web/` se eliminó junto con las páginas Jinja.
 - **Huecos:** `login_otp`, `verify_otp` (único camino de login), `logout`, `rotate_token`; sin tests del frontend.
 
+### Gotcha — anti-enumeración
+- Pedir código y verificarlo responden igual exista o no la cuenta (mismo status, mismo `msg`, mismo límite por correo, correo en segundo plano).
+- **Excepción en development:** `otp_code` solo viene en la respuesta si la cuenta existe. Nunca sale con `APP_ENV` distinto de `development`.
+- El rate limit vive en memoria del proceso: con varias instancias de la API cada una cuenta por separado (ver mejoras).
+- Si el SMTP falla tras los reintentos la persona no recibe nada y la UI no lo sabe: debe pedir otro código. Revisar el log `app.modules.mailer.services.mailer_service`.
+
 ## Riesgos
 
 - Sesión única por usuario: un login accidental (p. ej. una prueba con `curl`) cierra la sesión del navegador.
@@ -227,3 +235,5 @@ Vite **no** lee el `.env` del backend: `vite.config.ts` carga `.env.frontend` a 
 - **2026-10-07** — Defaults de `AUTH_USER_ROLE_ID`/`AUTH_ADMIN_ROLE_ID` en `settings.py` corregidos (1/2, antes invertidos). `GetMeService` lee el rol con `UserRepository.get_role_info()`. Servicios de auth sin `Session`: confirman con `repo.commit()`.
 - **2026-10-08** — API headless (/api), páginas migradas a React (frontend/).
 - **2026-10-08** — Login solo por OTP: se eliminan login con contraseña, `PATCH /users/me/password`, la página `/#/profile` y `SEED_USERS_PASSWORD`; se elimina la columna `users.password_hash` (migración `c4497f5a0188`).
+- **2026-10-08** — Anti-enumeración en el login: se elimina "No encontramos una cuenta con ese correo"; el front avanza siempre al paso del código.
+- **2026-10-08** — Se quita el lockout de cuenta (migración `9ca3ab02fd7a`) y se reemplaza por rate limit por correo; el correo del OTP sale en segundo plano (sin 502); el 429 dice cuánto esperar.

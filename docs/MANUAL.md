@@ -316,8 +316,13 @@ Las direcciones de la web llevan un "#" después del dominio. Por ejemplo:
 
 Para iniciar sesión no hay contraseña: escribes tu correo, te llega un código de 6 dígitos
 y lo escribes antes de que venza (10 minutos). Si no te llegó o se venció, pide uno nuevo;
-el código anterior deja de servir. Si escribes mal el código 3 veces, el acceso se bloquea
-por una hora.
+el código anterior deja de servir. Para frenar a quien intente adivinar códigos, cada correo
+puede pedir 3 códigos y probar 5 cada 10 minutos; si se pasa, la pantalla dice cuánto esperar.
+Tu cuenta nunca se bloquea por esto.
+
+Por seguridad, la pantalla nunca dice si un correo está registrado: siempre pasa al paso del
+código y te avisa que, si el correo tiene una cuenta, te llegó un código. Así nadie puede
+averiguar quién usa la app probando correos.
 
 Por seguridad solo hay una sesión abierta por persona: si entras desde otro navegador, la
 sesión anterior se cierra y la web te muestra "Tu sesión expiró" y te lleva al login.

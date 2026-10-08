@@ -2,7 +2,10 @@ import { dispatchSessionCleared } from '@/modules/auth/lib/auth-bridge';
 import { useSessionExpiredStore } from '@/modules/auth/lib/session-expired-store';
 import type { ApiEnvelope } from '@/modules/shared/types/api';
 
-const API_URL = import.meta.env.VITE_API_URL ?? '/api';
+// URL completa de la API (otro origen): la cookie viaja por CORS con
+// `credentials: 'include'`. En dev usar `localhost`, no `127.0.0.1`, para que
+// front y API sean el mismo sitio y la cookie `SameSite=Lax` se envíe.
+const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000/api';
 
 // Rutas de auth cuyo 401 es parte del propio flujo (credenciales malas, OTP
 // vencido…): nunca deben cerrar la sesión ni redirigir a `/login`.
@@ -80,7 +83,7 @@ async function toResult<T>(response: Response): Promise<ApiEnvelope<T>> {
 	const status = body?.errorCode ?? response.status;
 
 	// El backend marca el error con `errorCode >= 400`; `!response.ok` cubre
-	// respuestas que no vienen del envelope (proxy caído, 502 del servidor…).
+	// respuestas que no vienen del envelope (API caída, 502 del servidor…).
 	if (!response.ok || !body || status >= 400) {
 		throw new ApiClientError(
 			body?.msg || NETWORK_ERROR_MESSAGE,

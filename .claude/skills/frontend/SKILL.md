@@ -151,8 +151,7 @@ export function AdminExchangesPage() {
 
 | Variable | Uso |
 |---|---|
-| `VITE_API_URL` | Base de la API. Dev: `/api` (proxy de Vite → misma origen, cookie `SameSite=Lax` OK). Prod: URL pública, idealmente mismo dominio |
-| `VITE_API_PROXY_TARGET` | Solo dev: a dónde reenvía el proxy `/api` (default `http://localhost:8000`) |
+| `VITE_API_URL` | URL completa de la API; no hay proxy, se llama directo con CORS + `credentials: 'include'`. Dev: `http://localhost:8000/api` (siempre `localhost`, no `127.0.0.1`: mismo sitio que el front → cookie `SameSite=Lax` OK). Prod: URL pública de la API |
 
 Solo las `VITE_*` llegan al navegador: nunca secretos. Nueva variable → `.env.frontend.example` + `frontend/src/vite-env.d.ts`.
 
@@ -160,7 +159,7 @@ Solo las `VITE_*` llegan al navegador: nunca secretos. Nueva variable → `.env.
 
 ```bash
 pnpm install           # lo ejecuta el usuario
-pnpm dev               # http://localhost:5193 (lo ejecuta el usuario; requiere la API en :8000)
+pnpm dev               # http://localhost:5193 (lo ejecuta el usuario; llama directo a la API en :8000)
 pnpm check-types       # tsr generate + tsc -b — correr tras cada cambio
 pnpm lint              # biome check (formato, imports, lint) — correr tras cada cambio
 pnpm build             # build de producción en frontend/dist

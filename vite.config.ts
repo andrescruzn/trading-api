@@ -20,9 +20,6 @@ if (existsSync(ENV_FILE)) {
 	}
 }
 
-const API_PROXY_TARGET =
-	process.env.VITE_API_PROXY_TARGET || 'http://localhost:8000';
-
 // https://vite.dev/config/
 export default defineConfig({
 	root: FRONTEND_DIR,
@@ -31,13 +28,6 @@ export default defineConfig({
 	build: {
 		outDir: 'dist',
 		emptyOutDir: true,
-	},
-	server: {
-		// En desarrollo el front y la API comparten origen (proxy), así la cookie
-		// HttpOnly `SameSite=Lax` viaja sin configurar CORS ni HTTPS.
-		proxy: {
-			'/api': { target: API_PROXY_TARGET, changeOrigin: true },
-		},
 	},
 	plugins: [
 		tanstackRouter({

@@ -61,8 +61,7 @@ cp .env.frontend.example .env.frontend      # variables del front (VITE_*)
 
 | Variable (`.env.frontend`) | Para qué |
 |---|---|
-| `VITE_API_URL` | Base de la API. En desarrollo `/api` (pasa por el proxy de Vite). En producción, la URL pública, idealmente en el mismo dominio que el front |
-| `VITE_API_PROXY_TARGET` | Solo desarrollo: a dónde reenvía Vite las peticiones `/api` (por defecto `http://localhost:8000`) |
+| `VITE_API_URL` | URL completa de la API; el front la llama directo, sin proxy. En desarrollo `http://localhost:8000/api` (usa `localhost`, no `127.0.0.1`, o la cookie no viaja). En producción, la URL pública de la API |
 
 El front **no** lee el `.env` del backend: solo `.env.frontend`.
 
@@ -167,5 +166,6 @@ pnpm preview           # sirve el build localmente
 ### Producción
 
 - Sirve `frontend/dist` como sitio estático (usa hash routing: `/#/bots`, no necesita reescrituras).
-- Publica la API en el **mismo dominio** detrás de un reverse proxy en `/api` (así la cookie `SameSite=Lax` funciona) y define `CORS_ORIGINS` con el origen del front.
-- Si el front y la API viven en dominios distintos: `AUTH_COOKIE_SAMESITE=None`, HTTPS obligatorio y `VITE_API_URL` con la URL completa de la API.
+- `VITE_API_URL` siempre es la URL completa de la API y `CORS_ORIGINS` debe incluir el origen exacto del front.
+- Recomendado: front y API en subdominios del mismo dominio (`app.midominio.com` / `api.midominio.com`), así la cookie `SameSite=Lax` funciona.
+- Si el front y la API viven en dominios distintos: `AUTH_COOKIE_SAMESITE=None` y HTTPS obligatorio.

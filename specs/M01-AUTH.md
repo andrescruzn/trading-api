@@ -160,13 +160,13 @@ Todas las rutas REST se montan bajo `settings.API_PREFIX` (`/api`) en `app/app_f
 - **Sesión expirada:** `shared/lib/api-client.ts` — un 401 fuera de `/users/login`, `/users/login/otp/verify`, `/users/logout` y `/users/me` llama `endSession(true)` → `auth/lib/session-expired-store.ts` (zustand) → `auth/components/session-expired-dialog.tsx` en `/login`. No hay refresh token.
 - **Shell:** `app-shell/layouts/app-shell.tsx` (sidebar + breadcrumb), `app-shell/components/app-sidebar.tsx` (`navSections`: General, Mercado, Trading, "Mi inversión" con `role: investor`, "Administración" con `role: admin`), `nav-user.tsx` (menú de usuario / cerrar sesión), `app-brand.tsx`, `app-not-found-page.tsx`; migas con `usePageBreadcrumb`.
 - **Compartido:** `shared/lib/api-client.ts` (`credentials: 'include'`, desempaqueta `{msg, errorCode, data}`, lanza `ApiClientError` si `errorCode >= 400`), `DataTable`, `OptionSelect`, `StatCard`, `PageListHeader`, `ErrorAlert`, `shared/lib/format.ts`.
-- **Variables de entorno:** `.env.frontend` en la raíz (copiar de `.env.frontend.example`, no se commitea): `VITE_API_URL` (dev `/api` vía proxy de Vite) y `VITE_API_PROXY_TARGET` (default `http://localhost:8000`). `pnpm dev` → `http://localhost:5193`.
+- **Variables de entorno:** `.env.frontend` en la raíz (copiar de `.env.frontend.example`, no se commitea): `VITE_API_URL` (URL completa; dev `http://localhost:8000/api`, sin proxy). `pnpm dev` → `http://localhost:5193`.
 - Convenciones: skill [`frontend`](../.claude/skills/frontend/SKILL.md).
 
 ### Middleware relevante
 - `app/common/security/security_headers.py` — CSP restrictiva (`default-src 'none'; frame-ancestors 'none'`) en toda la API; `_is_docs_route()` relaja la CSP solo para `/docs` y `/redoc` (Swagger UI / ReDoc desde `cdn.jsdelivr.net`).
 - `app/common/audit/` — AuditMiddleware, tablas `http_audit_<año>`; `_resolve_event_type` quita `API_PREFIX` antes de mapear (`/api/users/login` → `/users/login`).
-- `settings.CORS_ORIGINS` (dev): `http://localhost:5193`, `http://127.0.0.1:5193` y `:5173`; en dev normalmente se usa el proxy `/api` de Vite (mismo origen, cookie `SameSite=Lax`).
+- `settings.CORS_ORIGINS` (dev): `http://localhost:5193`, `http://127.0.0.1:5193` y `:5173`; el front llama directo a la API con CORS (sin proxy de Vite). `localhost:5193` → `localhost:8000` es same-site, así que la cookie `SameSite=Lax` viaja; no mezclar `localhost` con `127.0.0.1`.
 
 ### Roles en BD
 - `role_id=1` → Usuario (`user`)

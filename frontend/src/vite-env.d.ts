@@ -1,10 +1,8 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
-	/** Base de la API REST (p. ej. `/api` en desarrollo, vía proxy de Vite). */
+	/** URL completa de la API REST (p. ej. `http://localhost:8000/api`). */
 	readonly VITE_API_URL: string;
-	/** Solo desarrollo: destino del proxy `/api` de Vite. */
-	readonly VITE_API_PROXY_TARGET?: string;
 }
 
 interface ImportMeta {

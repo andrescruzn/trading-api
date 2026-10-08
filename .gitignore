@@ -62,3 +62,4 @@ frontend/src/routeTree.gen.ts
 # El patrón .env.* no cubre .env_frontend (guion bajo)
 .env_frontend
 !.env_frontend.example
+.tanstack

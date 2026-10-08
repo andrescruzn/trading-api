@@ -15,10 +15,10 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
 
 from sqlalchemy.engine import Engine
 
+from app.common.utils import utc_now
 from app.common.audit.audit_table_factory import get_or_create_table
 
 logger = logging.getLogger(__name__)
@@ -63,7 +63,7 @@ class AuditRepository:
         Silencia toda excepción para no afectar la latencia del usuario.
         """
         try:
-            year = datetime.now(timezone.utc).year
+            year = utc_now().year
             table = get_or_create_table(year=year, engine=self._engine)
 
             with self._engine.begin() as conn:

@@ -16,13 +16,13 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 from typing import Any, Dict
 
 from fastapi import APIRouter, Depends, status
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from app.common.utils import utc_now
 from app.common.config import settings
 from app.common.http import build_success_response
 from app.extensions.db import get_db
@@ -54,7 +54,7 @@ def health_check():
             "status": "ok",
             "version": settings.API_VERSION,
             "environment": settings.APP_ENV,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": utc_now().isoformat(),
         }
     )
 
@@ -127,7 +127,7 @@ def readiness_check(db: Session = Depends(get_db)):
     response_data = {
         "status": overall_status,
         "checks": checks,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": utc_now().isoformat(),
     }
 
     if overall_status != "ok":

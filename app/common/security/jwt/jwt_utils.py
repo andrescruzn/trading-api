@@ -20,10 +20,12 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 from typing import Any, Dict, Optional
 
 from jose import JWTError, jwt
+
+from app.common.utils import utc_now
 
 
 class JwtCodecError(Exception):
@@ -55,7 +57,7 @@ def create_access_token(
     - guardar jti en DB
     - retornar token + expires_at
     """
-    now = datetime.now(timezone.utc)
+    now = utc_now()
     exp = now + expires_delta
     token_jti = jti or generate_jti()
 

@@ -19,7 +19,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from typing import Optional
 
 from app.common.utils import ensure_aware_utc, utc_now
@@ -127,7 +127,7 @@ class User:
         Nota:
         - El lock es una marca temporal; no cambia el status del usuario.
         """
-        now = now or datetime.now(timezone.utc)
+        now = now or utc_now()
         self.login_locked_until = now + timedelta(minutes=minutes)
 
     def register_failed_attempt(
@@ -144,7 +144,7 @@ class User:
         - Incrementa failed_attempts
         - Si llega a max_attempts -> lock por lock_minutes
         """
-        now = now or datetime.now(timezone.utc)
+        now = now or utc_now()
 
         # Incremento defensivo (DB también tiene CHECK >= 0)
         self.failed_attempts = max(0, int(self.failed_attempts)) + 1

@@ -45,7 +45,7 @@ Entregables:
 - ✅ Validación coherencia tipo/régimen (hint en vivo en UI + validación backend)
 - ✅ Web UI: /strategies (viewer) + /admin/strategies (CRUD admin)
 - ✅ API: GET/POST `/api/strategies`, GET/PUT `/api/strategies/{id}`
-- ✅ Seed: 6 estrategias de ejemplo (`seeds/seed_strategies.sql`)
+- ✅ Seed: 6 estrategias de ejemplo (`seeds/strategies.py`)
 - Tests unitarios: pendientes (no solicitados)
 
 ## Decisiones de diseño
@@ -158,7 +158,7 @@ from app.modules.strategies.rest import strategies_router, datasets_router
 - Hint en vivo en UI + validación en backend (service devuelve warning)
 
 ### Seed
-- `seeds/seed_strategies.sql` — 6 estrategias de ejemplo con `INSERT IGNORE`
+- `seeds/strategies.py` — 6 estrategias de ejemplo, idempotente por (name, version)
 
 ### Cache-busting JS (global)
 - El mecanismo `templates.env.globals["sv"]` aplica a **todos** los módulos; se documenta en [`_ROOT.md`](_ROOT.md#cache-busting-js-global).

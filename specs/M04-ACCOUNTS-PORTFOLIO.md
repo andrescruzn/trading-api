@@ -149,7 +149,7 @@ from app.modules.accounts.rest import accounts_router, balances_router
 | `/admin/accounts` | `templates/admin/accounts.html` | `static/js/admin/accounts.js` |
 
 ### Seed
-- `seeds/seed_accounts.sql` — cuentas de ejemplo (p. ej. paper en Binance) con `INSERT IGNORE`.
+- `seeds/accounts.py` — cuentas paper de ejemplo (Binance y Bybit) con balances, idempotente por (usuario, nombre). Requiere que exista el usuario demo.
 
 ## Gotchas críticos
 

@@ -41,10 +41,10 @@ app/
 ```
 domain/
   strategy_entity.py              # clase Strategy: pura, sin ORM ni FastAPI, con reglas de negocio
-  strategy_repository.py          # contrato StrategyRepository (ABC/Protocol)
+  strategy_repository.py          # contrato StrategyRepository(TransactionalRepository, ABC|Protocol)
 infrastructure/
   strategy_model.py               # StrategyModel(Base)
-  strategy_repository_impl.py     # SqlAlchemyStrategyRepository: mapea Model ↔ Entity, add/flush
+  strategy_repository_impl.py     # SqlAlchemyStrategyRepository(SqlAlchemyRepository, ...): Model ↔ Entity
 providers/
   strategy_provider.py            # StrategyServiceFactory(session) → un método por servicio
 services/
@@ -82,7 +82,7 @@ class StrategyServiceFactory:
         self._strategy_repo = SqlAlchemyStrategyRepository(session)
 
     def create_strategy(self) -> CreateStrategyService:
-        return CreateStrategyService(repo=self._strategy_repo, session=self._session)
+        return CreateStrategyService(repo=self._strategy_repo)   # el servicio nunca recibe Session
 
 # rest/strategies/routes.py
 def get_factory(db: Session = Depends(get_db)) -> StrategyServiceFactory:
@@ -91,9 +91,12 @@ def get_factory(db: Session = Depends(get_db)) -> StrategyServiceFactory:
 
 ## Transacciones
 
-- El **servicio** es la frontera transaccional: hace `self._session.commit()` cuando el caso de uso termina bien.
-- Los repositorios solo hacen `add` / `flush` / queries. **Nunca** `commit`.
-- Así un caso de uso que toca varios repositorios es atómico.
+- `session.commit()` / `rollback()` existen **solo** en `app/extensions/db/sqlalchemy_repository.py` (`SqlAlchemyRepository`), base de todos los repositorios.
+- Todo contrato de dominio hereda `TransactionalRepository` (`app/common/contracts`), que declara `commit()` y `rollback()`.
+- Los métodos de escritura del repositorio (`create`, `update`, `save`…) hacen `add` / `flush`, sin commit.
+- El **servicio** decide *cuándo* confirmar: `self._repo.commit()` al final del caso de uso, o `self._repo.rollback()` si algo falla a mitad. **Nunca** recibe ni usa `Session`.
+- Todos los repositorios de un request comparten la sesión: un solo `commit()` confirma las escrituras de varios repos de forma atómica (p. ej. order + fill + position en `CreateOrderService`).
+- Procesos fuera de request (scheduler) abren su `SessionLocal()`, construyen repos con ella y confirman con `repo.commit()`.
 
 ## Prohibiciones
 

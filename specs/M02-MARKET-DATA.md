@@ -189,7 +189,7 @@ Ciclo (`run_cycle`):
 1. Lee bots con `status IN ('running','paused')`; si no hay ninguno, omite el ciclo.
 2. Agrupa pares únicos `(symbol_id, timeframe_id)` y decide si hace falta fetch: sin velas → carga inicial de **500**; última vela vencida (`ahora − ts ≥ seconds`) → incremental de **3**; vigente → nada.
 3. Descarga con `MarketServiceFactory(session).fetch_candles()` (una sesión por operación; un fallo no detiene los demás).
-4. Limpia velas más antiguas que la retención (`DELETE` con subconsulta doble por la restricción de MySQL).
+4. Limpia velas más antiguas que la retención con `CandleRepository.delete_beyond_retention()` (`DELETE` con subconsulta doble por la restricción de MySQL).
 5. Para cada tripla `(symbol_id, timeframe_id, feature_set_id)` con velas nuevas, recalcula features con `FeatureServiceFactory(...).calculate_features()` ([M3](M03-FEATURE-ENGINEERING.md)) y limpia `candle_features` más allá de la retención.
 
 Settings (`app/common/config/settings.py`):
@@ -231,3 +231,4 @@ El scheduler **no genera señales ni órdenes**: solo mantiene velas y features 
 - **2026-01** — Seed inicial: 7 exchanges, 14 timeframes y 24 símbolos (`seeds/seed_market_data.sql`).
 - **2026-03** — `POST /candles/fetch` con ccxt; paginación cliente en tablas; fix de CSP para `/market/` y `/admin/`.
 - **Posterior** — Scheduler de ingesta automática con retención de velas.
+- **2026-10-07** — El scheduler deja de usar SQL crudo y modelos ORM: usa `BotRepository.list_by_statuses`, `CandleRepository.get_latest_ts` / `delete_beyond_retention` y `CandleFeatureRepository.delete_beyond_retention`; el commit lo hace el repositorio.

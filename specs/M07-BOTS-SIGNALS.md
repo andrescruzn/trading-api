@@ -179,7 +179,7 @@ from app.modules.bots.rest import bots_router, signals_router
 ## Tests
 
 - `tests/bots/test_bot_entity.py` — 22 tests (máquina de estados, is_active, risk_params)
-- `tests/bots/test_update_bot_status_service.py` — 16 tests (transiciones, timestamps, session.commit)
+- `tests/bots/test_update_bot_status_service.py` — 16 tests (transiciones, timestamps, repo.commit)
 - `tests/bots/test_generate_signal_service.py` — 17 tests (validaciones, dirección, campos)
 - Total: 55 tests unitarios (22 + 16 + 17).
 - **Huecos:** rutas REST, listado/ownership, hook de alertas.

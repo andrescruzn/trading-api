@@ -27,7 +27,7 @@ Módulos **sin tests** hoy (prioridad alta en `specs/_ROOT.md`): market, strateg
 
 ## Test unitario de servicio (patrón del repo)
 
-Sin BD: el servicio se instancia con repositorios y sesión `MagicMock`.
+Sin BD: el servicio se instancia con repositorios `MagicMock` (los servicios no reciben `Session`).
 
 ```python
 # tests/strategies/test_create_strategy_service.py
@@ -41,26 +41,25 @@ def _make_service(existing: Strategy | None = None):
     repo = MagicMock()
     repo.get_by_name_version.return_value = existing
     repo.create.side_effect = lambda s: s
-    session = MagicMock()
-    return CreateStrategyService(repo=repo, session=session), repo, session
+    return CreateStrategyService(repo=repo), repo
 
 
 class TestCreateStrategyService:
 
     def test_fails_with_409_when_name_version_exists(self):
-        svc, repo, session = _make_service(existing=MagicMock())
+        svc, repo = _make_service(existing=MagicMock())
 
         result = svc.create(name="X", version="1.0.0", parameters={})
 
         assert result.success is False
         assert result.error.code == "STRATEGY_DUPLICATE_NAME_VERSION"
         assert result.error.http_status == 409
-        session.commit.assert_not_called()
+        repo.commit.assert_not_called()
 ```
 
 Qué verificar:
-- Éxito: `result.success`, `result.data`, y que se hizo `session.commit()`.
-- Error: `result.error.code` y `result.error.http_status`; que **no** se hizo commit.
+- Éxito: `result.success`, `result.data`, y que se hizo `repo.commit()`.
+- Error: `result.error.code` y `result.error.http_status`; que **no** se hizo `repo.commit()`.
 - Reglas de trading con números concretos (tamaño de posición, R:R ≥ 2, regla del 1 %).
 
 ## Test de rutas

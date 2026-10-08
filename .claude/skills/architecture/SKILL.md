@@ -21,12 +21,12 @@ La estructura grita *qué hace el sistema*: `app/modules/market`, `bots`, `order
 
 - Contrato en `domain/<x>_repository.py`; implementación `SqlAlchemy<X>Repository` en `infrastructure/<x>_repository_impl.py`.
 - El repositorio recibe y devuelve **entidades de dominio**, nunca modelos ORM.
-- No hace `commit` (lo hace el servicio).
+- Hereda `SqlAlchemyRepository` (implementación) / `TransactionalRepository` (contrato): es la única capa que toca `session.commit()`. El servicio decide cuándo, llamando `repo.commit()`.
 - Contratos: el código existente usa `ABC` (la mayoría) y `Protocol` (alerts, billing). **En código nuevo preferir `typing.Protocol`**; no migrar los ABC existentes salvo que el usuario lo pida.
 
 ```python
 # domain/strategy_repository.py
-class StrategyRepository(Protocol):
+class StrategyRepository(TransactionalRepository, Protocol):
     def get_by_id(self, strategy_id: int) -> Strategy | None: ...
     def create(self, strategy: Strategy) -> Strategy: ...
 ```
@@ -42,7 +42,7 @@ def create(self, ...) -> ServiceResult[Strategy]:
     if self._repo.get_by_name_version(name, version):
         return ServiceResult.fail(code="STRATEGY_DUPLICATE_NAME_VERSION", http_status=409)
     created = self._repo.create(strategy)
-    self._session.commit()
+    self._repo.commit()
     return ServiceResult.ok(data=created)
 ```
 
@@ -82,7 +82,7 @@ Ya se usa en tres sitios; seguir el mismo enfoque si aparece otro caso:
 
 | Capa | Hace | No hace |
 |---|---|---|
-| Service | Reglas de negocio, orquesta repos, commit | Textos UI, HTTP, schemas Pydantic |
+| Service | Reglas de negocio, orquesta repos, decide cuándo `repo.commit()` | Textos UI, HTTP, schemas Pydantic, `Session` |
 | REST | Valida input (Pydantic), autentica, serializa, mensajes UI | Reglas de negocio |
-| Repository | Persistencia y mapeo Model ↔ Entity | Commit, reglas de negocio |
+| Repository | Persistencia, mapeo Model ↔ Entity, `commit()`/`rollback()` | Reglas de negocio |
 | Entity | Estado + invariantes del dominio (`is_valid_type()`, `is_coherent()`…) | I/O |

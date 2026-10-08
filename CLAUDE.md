@@ -84,7 +84,7 @@ Transversal en `app/common/` (config, contracts, http, security, utils, audit, l
 1. Capas: `rest → services → domain ← infrastructure`. Domain no importa nada de FastAPI ni de SQLAlchemy.
 2. Los servicios devuelven siempre `ServiceResult` (`ok(data)` / `fail(code="SCREAMING_SNAKE", http_status=...)`). **Nunca** lanzan excepciones de negocio ni definen textos de UI; los textos van en `rest/<recurso>/error_messages.py`.
 3. Las rutas responden siempre con los helpers de `app.common.http` (`send`, `build_*_response`). En éxito `errorCode` = 200/201, nunca 0; los errores se detectan con `errorCode >= 400`.
-4. Transacciones: el **servicio** es la frontera transaccional (`self._session.commit()`); los repositorios hacen `add`/`flush`, nunca `commit`.
+4. `session.commit()` **solo en la capa repositorio** (base `SqlAlchemyRepository`). Los servicios no reciben `Session`: al final del caso de uso llaman `self._repo.commit()`, y si algo falla a mitad, `self._repo.rollback()`. Todos los repos de un request comparten sesión, así que un commit confirma todo de forma atómica.
 5. Todo modelo ORM nuevo se registra en `app/extensions/db/models_registry.py`; todo router nuevo en `app/app_factory.py`.
 6. No hardcodear IDs de rol: `settings.AUTH_USER_ROLE_ID`, `AUTH_ADMIN_ROLE_ID`, `AUTH_INVESTOR_ROLE_ID`.
 7. Fechas con `utc_now()` de `app.common.utils`, nunca `datetime.now(...)` directo.

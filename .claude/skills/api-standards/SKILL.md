@@ -16,7 +16,7 @@ Toda respuesta pasa por `app.common.http.send()` (directo o vía `build_*_respon
 - `errorCode` **es el HTTP status real** (200, 201, 400, 404, 409, 422, 500…). Nunca 0.
 - El frontend detecta error con `errorCode >= 400`.
 - `data` nunca es `null`: si no hay datos, `[]`.
-- `send()` exige `data` como argumento: `send(msg=..., status_code=403, data=[])`. Omitirlo lanza `TypeError` (→ 500).
+- En `send()` el argumento `data` es opcional (por defecto `[]`).
 
 ## Helpers (`from app.common.http import ...`)
 

@@ -24,19 +24,19 @@ Trabajo para: **$ARGUMENTS**
 ## 2. Domain — `app/modules/<modulo>/domain/`
 
 - [ ] `<x>_entity.py`: clase pura con estado e invariantes de negocio (métodos `is_valid_*()`, etc.).
-- [ ] `<x>_repository.py`: contrato (`Protocol` en código nuevo).
+- [ ] `<x>_repository.py`: contrato que hereda `TransactionalRepository` (`Protocol` en código nuevo).
 - [ ] `__init__.py` con barrel export.
 
 ## 3. Infrastructure — `app/modules/<modulo>/infrastructure/`
 
 - [ ] `<x>_model.py`: `class <X>Model(Base)` con columnas idénticas a la migración.
-- [ ] `<x>_repository_impl.py`: `SqlAlchemy<X>Repository`, mapea Model ↔ Entity, `add`/`flush`, **sin commit**.
+- [ ] `<x>_repository_impl.py`: `SqlAlchemy<X>Repository(SqlAlchemyRepository, <X>Repository)`, mapea Model ↔ Entity; las escrituras hacen `add`/`flush`.
 - [ ] Registrar el modelo en `app/extensions/db/models_registry.py`.
 
 ## 4. Services — `app/modules/<modulo>/services/<recurso>/`
 
 - [ ] Un archivo por caso de uso: `<verbo>_<recurso>_service.py` → `ServiceResult[T]`.
-- [ ] Códigos de error `<RECURSO>_<MOTIVO>` con su `http_status`; `commit()` al final del caso de uso.
+- [ ] Códigos de error `<RECURSO>_<MOTIVO>` con su `http_status`; `self._repo.commit()` al final del caso de uso. El servicio **no** recibe `Session`.
 - [ ] Ownership: filtrar por `user_id` cuando el recurso pertenece a un usuario.
 
 ## 5. Providers — `app/modules/<modulo>/providers/<modulo>_provider.py`

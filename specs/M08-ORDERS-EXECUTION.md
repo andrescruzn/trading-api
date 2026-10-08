@@ -62,7 +62,7 @@ Entregables:
 | El executor lo elige `bot.mode` (`paper` → `PaperExecutor`, `live` → `LiveExecutor`) en `CreateOrderService` | El modo vive en el bot; no se puede ejecutar *live* por error desde una cuenta paper | Parámetro `mode` en cada request |
 | `PaperExecutor` rellena con el cierre de la última vela y `fee = 0` | Simulación simple y determinista, sin red | Simular *slippage* y comisiones |
 | `LiveExecutor` descifra las credenciales con Fernet ([M4](M04-ACCOUNTS-PORTFOLIO.md)) y envía la orden con ccxt | Las claves nunca viajan ni se guardan en claro | Credenciales en variables de entorno |
-| **Transacción atómica:** orden + fill + upsert de posición en un solo `session.commit()` | Nunca queda una orden sin su fill/posición | Commits separados |
+| **Transacción atómica:** orden + fill + upsert de posición en un solo `order_repo.commit()` (repos con sesión compartida); `order_repo.rollback()` si falla el executor | Nunca queda una orden sin su fill/posición | Commits separados |
 | Posición con **precio medio ponderado (WAP)**: `apply_buy_fill()` recalcula `avg_price`; `apply_sell_fill()` acumula `realized_pnl` | Cálculo estándar de coste medio y P&L realizado | FIFO / lotes |
 | `positions` único por `(bot_id, symbol_id)` y `qty >= 0` (CHECK) | Una posición abierta por bot y símbolo; **no admite posiciones cortas** | Cantidades negativas |
 | El símbolo para ccxt se guarda en `order.meta["symbol"]` | `LiveExecutor` no tiene que re-resolver el símbolo | Resolverlo en cada llamada |
@@ -173,7 +173,7 @@ from app.modules.orders.rest import orders_router, fills_router, positions_route
 - **Prefijo `/api/`:** las rutas REST DEBEN usar `/api/orders`, `/api/fills`, `/api/positions` — sin él la página web `/orders` nunca se renderiza (el router REST captura antes).
 - **PaperExecutor:** usa `candle_repo.list_candles(symbol_id, timeframe_id, limit=1)` — método se llama `list_candles`, NO `list_by_symbol_and_timeframe`.
 - **symbol string para ccxt:** se guarda en `order.meta["symbol"]` en `CreateOrderService` para que `LiveExecutor` lo use.
-- **Transacción atómica:** order + fill + upsert position en un solo `session.commit()`.
+- **Transacción atómica:** order + fill + upsert position en un solo `order_repo.commit()`; si el executor lanza `RuntimeError`, `order_repo.rollback()` explícito.
 - **WAP:** `Position.apply_buy_fill()` recalcula avg_price. `apply_sell_fill()` acumula `realized_pnl`.
 - **Migraciones M7 requeridas:** `m07_add_signal_price_columns.sql` y `m07b_add_bot_feature_set_id.sql` deben aplicarse antes de usar M8.
 
@@ -194,3 +194,4 @@ from app.modules.orders.rest import orders_router, fills_router, positions_route
 - **2026-03** — Módulo completado: Order/Fill/Position, `PaperExecutor` + `LiveExecutor`, `CreateOrderService` atómico, UI `/orders` y `/admin/orders`.
 - **Requisito:** aplicar antes las migraciones de [M7](M07-BOTS-SIGNALS.md).
 - **Posterior** — Hook de alertas post-commit ([M9](M09-ALERTS.md)).
+- **2026-10-07** — `commit()` movido a la capa repositorio; rollback explícito cuando falla el executor. Las rutas admin devolvían 500 en vez de 403 (`send()` sin `data`): corregido.

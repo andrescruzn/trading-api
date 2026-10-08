@@ -34,7 +34,7 @@ description: Seguridad de Trading AI API. Usar antes de tocar autenticación, ro
 | admin | 2 | `settings.AUTH_ADMIN_ROLE_ID` |
 | investor | 3 | `settings.AUTH_INVESTOR_ROLE_ID` |
 
-- **Gotcha:** los *defaults* de `settings.py` están invertidos respecto a la BD (admin=1, user=2). Funciona solo porque `.env` define `AUTH_USER_ROLE_ID=1` y `AUTH_ADMIN_ROLE_ID=2`. Un `.env` nuevo sin esas variables convierte a todos los usuarios en admin.
+- Los *defaults* de `settings.py` coinciden con la BD (1 user, 2 admin, 3 investor). Si alguien cambia los IDs en la tabla `roles`, debe cambiarlos también en `.env`.
 - Nunca hardcodear IDs; usar siempre los settings.
 - Rutas solo admin: `Depends(admin_required)`. Recursos de usuario: verificar ownership (`user_id` del token) en el servicio.
 

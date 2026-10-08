@@ -190,3 +190,4 @@ Sin `role_id` en el JWT, `_get_identity_from_cookie()` retorna `role_id=0` y tod
 - **2026-01** — Esquema inicial `users` / `roles` (roles `user`=1, `admin`=2).
 - **2026-03** — Se añade `role_id` al `subject` del JWT (bug detectado en M2: las páginas admin redirigían al dashboard).
 - **Posterior** — Rol `investor` (id=3) introducido por [M10](M10-BILLING.md).
+- **2026-10-07** — Defaults de `AUTH_USER_ROLE_ID`/`AUTH_ADMIN_ROLE_ID` en `settings.py` corregidos (1/2, antes invertidos). `GetMeService` lee el rol con `UserRepository.get_role_info()`. Servicios de auth sin `Session`: confirman con `repo.commit()`.

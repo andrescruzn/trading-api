@@ -101,4 +101,4 @@ El warning `Using a password on the command line interface can be insecure` es e
 - Las tablas se crean con SQL (migraciones), no con `create_all`. Si se genera DDL desde código (como `app/common/audit/audit_table_factory.py`), usar `sqlalchemy.dialects.mysql.TIMESTAMP(fsp=6)`: en el `TIMESTAMP` genérico el primer argumento es `timezone`, no la precisión.
 - Columnas `DECIMAL` llegan como `Decimal` de Python; convertir explícitamente si se opera con `float`.
 - Queries siempre parametrizadas (ORM o `text()` con `:param`), nunca f-strings con input.
-- `commit()` en el servicio, nunca en el repositorio (ver `backend-core`).
+- `session.commit()` solo dentro de la capa repositorio (base `SqlAlchemyRepository`); el servicio llama `repo.commit()` (ver `backend-core`).

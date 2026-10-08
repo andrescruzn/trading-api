@@ -20,7 +20,7 @@ type LoginResult = {
 	expires_at: string;
 };
 
-/** `POST /users/login` sin contraseña: se envió un código por correo. */
+/** `POST /users/login`: se envió un código por correo (el login es solo por OTP). */
 type OtpRequestResult = {
 	otp_required: boolean;
 	email: string;
@@ -28,10 +28,6 @@ type OtpRequestResult = {
 	/** Solo llega con `APP_ENV=development`. */
 	otp_code?: string;
 };
-
-function login(email: string, password: string) {
-	return api.post<LoginResult>('/users/login', { email, password });
-}
 
 function requestOtp(email: string) {
 	return api.post<OtpRequestResult>('/users/login', { email });
@@ -52,13 +48,5 @@ function me() {
 	return api.get<CurrentUser>('/users/me');
 }
 
-/** Cambia la contraseña. El backend revoca la sesión y borra la cookie. */
-function changePassword(currentPassword: string, newPassword: string) {
-	return api.patch<null>('/users/me/password', {
-		current_password: currentPassword,
-		new_password: newPassword,
-	});
-}
-
 export type { CurrentUser, LoginResult, OtpRequestResult };
-export { changePassword, login, logout, me, requestOtp, verifyOtp };
+export { logout, me, requestOtp, verifyOtp };

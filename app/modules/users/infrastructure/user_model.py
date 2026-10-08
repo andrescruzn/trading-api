@@ -65,9 +65,15 @@ class UserModel(Base):
     full_name = Column(String(255), nullable=True)
 
     # ------------------------------------------------------------------
-    # Credenciales
+    # Credenciales (obsoleta)
+    # - El login es solo por OTP; la columna se conserva vacía (NULL) y ya
+    #   no se lee ni se escribe desde el dominio.
     # ------------------------------------------------------------------
-    password_hash = Column(String(255), nullable=False)
+    password_hash = Column(
+        String(255),
+        nullable=True,
+        comment="Obsoleta: el login es solo por OTP",
+    )
 
     # --------------------------------------------------------------
     # Rol (FK)
@@ -83,7 +89,7 @@ class UserModel(Base):
     # ------------------------------------------------------------------
     status = Column(String(16), nullable=False, server_default=text("'active'"))
 
-    # Intentos fallidos acumulados (en verificación real: password/otp)
+    # Intentos fallidos acumulados (verificación de OTP)
     failed_attempts = Column(Integer, nullable=False, server_default=text("'0'"))
 
     # Bloqueo temporal por seguridad (ej: 1h tras 3 fallos)

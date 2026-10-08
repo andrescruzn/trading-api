@@ -41,7 +41,6 @@ def client(app):
 def make_user(
     id: int = 1,
     email: str = "test@example.com",
-    password_hash: str = "$2b$12$fixed_hash_for_tests",
     role_id: int = 1,
     status: str = "active",
     full_name: Optional[str] = "Test User",
@@ -56,7 +55,6 @@ def make_user(
     return User(
         id=id,
         email=email,
-        password_hash=password_hash,
         role_id=role_id,
         status=status,
         full_name=full_name,

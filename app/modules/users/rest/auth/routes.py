@@ -4,10 +4,15 @@
 # app/modules/users/rest/auth/routes.py
 #
 # ENDPOINTS:
-# - POST /users/login
-# - POST /users/login/otp/verify
+# - POST /users/login            (pide el código OTP por correo)
+# - POST /users/login/otp/verify (verifica el código y abre sesión)
 # - POST /users/logout
+# - GET  /users/me
 # - POST /users/token/rotate
+#
+# LOGIN SOLO POR OTP:
+# - No hay contraseñas: el único método de acceso es el código de un solo
+#   uso que llega al correo.
 #
 # BANDERA ?response=token:
 # - Sin bandera (default) → Cookie HTTP-only (React SPA)
@@ -29,10 +34,7 @@ from sqlalchemy.orm import Session
 
 from app.common.config import settings
 from app.common.errors import AUTH_ERROR_MESSAGES
-from app.modules.users.rest.auth.error_messages import (
-    CHANGE_PASSWORD_ERROR_MESSAGES,
-    OTP_REQUEST_ERROR_MESSAGES,
-)
+from app.modules.users.rest.auth.error_messages import OTP_REQUEST_ERROR_MESSAGES
 from app.common.http import (
     build_error_response,
     build_internal_error_response,
@@ -53,8 +55,6 @@ from .schemas import (
     VerifyOtpRequest,
     VerifyOtpResponse,
     UserProfileResponse,
-    ChangePasswordRequest,
-    ChangePasswordResponse,
 )
 
 # ----------------------------------------------------------------------
@@ -115,7 +115,6 @@ def _build_auth_response(
     status_code=status.HTTP_200_OK,
     responses={
         400: {"model": LoginResponse},
-        401: {"model": LoginResponse},
         403: {"model": LoginResponse},
         422: {"model": LoginResponse},
         429: {"model": LoginResponse},
@@ -124,46 +123,15 @@ def _build_auth_response(
 )
 def login(
     payload: LoginRequest,
-    response: Optional[str] = Query(
-        default=None,
-        description="Tipo de respuesta: omitir para cookie, 'token' para JSON",
-        examples=["token"],
-    ),
     factory: AuthServiceFactory = Depends(get_factory),
     _rate_limit: None = Depends(check_auth_rate_limit),
 ):
     """
-    Login unificado.
+    Paso 1 del login: envía un código OTP al correo.
 
-    **Bandera `?response=token`:**
-    - Sin bandera → Cookie HTTP-only (para React)
-    - `?response=token` → Token en body (para Postman/Swagger/móvil)
-
-    **Flujo:**
-    1. Si viene password → valida → respuesta según bandera
-    2. Si NO viene password → inicia OTP → devuelve otp_required
+    Devuelve `otp_required` con la expiración del código. La sesión se abre
+    en `POST /users/login/otp/verify`.
     """
-    # ------------------------------------------------------------------
-    # 1) Login por password
-    # ------------------------------------------------------------------
-    if payload.password is not None and payload.password.strip() != "":
-        result = factory.login_password().login(payload.email, payload.password)
-
-        if not result.success:
-            return build_error_response(result, AUTH_ERROR_MESSAGES)
-
-        if result.data is None:
-            return build_internal_error_response()
-
-        return _build_auth_response(
-            access_token=result.data.access_token,
-            expires_at=result.data.expires_at,
-            response_type=response,
-        )
-
-    # ------------------------------------------------------------------
-    # 2) Login por OTP
-    # ------------------------------------------------------------------
     result = factory.login_otp().request_login_otp(payload.email)
 
     if not result.success:
@@ -302,61 +270,6 @@ def get_me(
         },
         msg="OK",
     )
-
-
-# ======================================================================
-# PATCH /users/me/password
-# ======================================================================
-
-@router.patch(
-    "/me/password",
-    response_model=ChangePasswordResponse,
-    status_code=status.HTTP_200_OK,
-    responses={
-        401: {"model": ChangePasswordResponse},
-        422: {"model": ChangePasswordResponse},
-    },
-)
-def change_password(
-    payload: ChangePasswordRequest,
-    identity: dict = Depends(token_required_actual),
-    factory: AuthServiceFactory = Depends(get_factory),
-):
-    """
-    Cambiar la contraseña del usuario autenticado.
-
-    - Verifica la contraseña actual.
-    - Valida política de seguridad (8+ chars, mayúscula, minúscula, número).
-    - Al cambiar con éxito: revoca la sesión actual (requiere nuevo login).
-    """
-    result = factory.change_password().change(
-        user_id=int(identity["user_id"]),
-        current_password=payload.current_password,
-        new_password=payload.new_password,
-    )
-
-    if not result.success:
-        return build_error_response(result, CHANGE_PASSWORD_ERROR_MESSAGES)
-
-    # Limpiar cookie: el JTI fue revocado en DB, así que la cookie ya no
-    # sirve; se borra para que el cliente no siga enviando una sesión muerta.
-    response = JSONResponse(
-        status_code=200,
-        content={
-            "msg": "Cambiaste tu contraseña. Inicia sesión de nuevo.",
-            "errorCode": 200,
-            "data": {"password_changed": True},
-        },
-    )
-    response.delete_cookie(
-        key=settings.AUTH_COOKIE_NAME,
-        path=settings.AUTH_COOKIE_PATH,
-        domain=settings.AUTH_COOKIE_DOMAIN,
-        secure=settings.AUTH_COOKIE_SECURE,
-        httponly=True,
-        samesite=settings.AUTH_COOKIE_SAMESITE,
-    )
-    return response
 
 
 # ======================================================================

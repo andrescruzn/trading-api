@@ -11,7 +11,7 @@
 #
 # USO EN ROUTES:
 #     factory = get_auth_factory(db)
-#     result = factory.login_password().login(email, password)
+#     result = factory.login_otp().request_login_otp(email)
 #
 # BENEFICIOS:
 # - Configuración centralizada (max_attempts, lock_minutes, etc.)
@@ -29,12 +29,10 @@ from app.modules.users.domain import UserRepository
 from app.modules.users.infrastructure import SqlAlchemyUserRepository
 from app.modules.users.services.auth import (
     LoginOtpService,
-    LoginPasswordService,
     LogoutService,
     RotateTokenService,
     VerifyOtpService,
     GetMeService,
-    ChangePasswordService,
 )
 
 
@@ -49,7 +47,7 @@ class AuthServiceFactory:
 
     Ejemplo:
         factory = AuthServiceFactory(session=db)
-        result = factory.login_password().login(email, password)
+        result = factory.login_otp().request_login_otp(email)
     """
 
     # ------------------------------------------------------------------
@@ -94,28 +92,12 @@ class AuthServiceFactory:
     # Factories para cada servicio
     # ------------------------------------------------------------------
 
-    def login_password(self) -> LoginPasswordService:
-        """
-        Crea servicio para login por password.
-
-        Caso de uso:
-        - Usuario envía email + password
-        - Valida credenciales
-        - Emite token JWT
-        """
-        return LoginPasswordService(
-            repo=self._repo,
-            settings=self._config,
-            max_failed_attempts=self._max_failed_attempts,
-            lock_minutes=self._lock_minutes,
-        )
-
     def login_otp(self) -> LoginOtpService:
         """
         Crea servicio para solicitar OTP.
 
         Caso de uso:
-        - Usuario envía solo email (sin password)
+        - Usuario envía su email
         - Genera OTP
         - Envía email con código
         """
@@ -179,18 +161,6 @@ class AuthServiceFactory:
         """
         return GetMeService(repo=self._repo)
 
-    def change_password(self) -> ChangePasswordService:
-        """
-        Crea servicio para cambiar la contraseña.
-
-        Caso de uso:
-        - Usuario autenticado cambia su contraseña
-        - Verifica password actual + política + revoca sesión
-        """
-        return ChangePasswordService(
-            repo=self._repo,
-        )
-
 
 # ======================================================================
 # Dependency para FastAPI
@@ -206,6 +176,6 @@ def get_auth_factory(db: Session) -> AuthServiceFactory:
             payload: LoginRequest,
             factory: AuthServiceFactory = Depends(get_auth_factory),
         ):
-            result = factory.login_password().login(...)
+            result = factory.login_otp().request_login_otp(...)
     """
     return AuthServiceFactory(session=db)

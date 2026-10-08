@@ -77,7 +77,6 @@ class SqlAlchemyUserRepository(SqlAlchemyRepository, UserRepository):
             id=model.id,
             email=model.email,
             full_name=model.full_name,
-            password_hash=model.password_hash,
             role_id=model.role_id,
             status=model.status,
             failed_attempts=model.failed_attempts,
@@ -103,7 +102,6 @@ class SqlAlchemyUserRepository(SqlAlchemyRepository, UserRepository):
         """
         model.email = user.email
         model.full_name = user.full_name
-        model.password_hash = user.password_hash
 
         model.role_id = user.role_id
 

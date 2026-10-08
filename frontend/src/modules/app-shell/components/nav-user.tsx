@@ -1,5 +1,5 @@
-import { IconLock, IconLogout, IconSelector } from '@tabler/icons-react';
-import { Link, useNavigate } from '@tanstack/react-router';
+import { IconLogout, IconSelector } from '@tabler/icons-react';
+import { useNavigate } from '@tanstack/react-router';
 import { useAuth } from '@/modules/auth/hooks/use-auth';
 import { useLogoutMutation } from '@/modules/auth/hooks/use-auth-mutations';
 import { Avatar, AvatarFallback } from '@/modules/ui/components/avatar';
@@ -103,13 +103,6 @@ export function NavUser() {
 									/>
 								</div>
 							</DropdownMenuLabel>
-						</DropdownMenuGroup>
-						<DropdownMenuSeparator />
-						<DropdownMenuGroup>
-							<DropdownMenuItem render={<Link to="/profile" />}>
-								<IconLock />
-								Cambiar contraseña
-							</DropdownMenuItem>
 						</DropdownMenuGroup>
 						<DropdownMenuSeparator />
 						<DropdownMenuItem onClick={handleLogout}>

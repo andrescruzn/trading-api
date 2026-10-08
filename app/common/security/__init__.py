@@ -18,7 +18,6 @@ from .jwt import (
 
 from .otp import generate_numeric_otp, hash_otp, verify_otp_hash
 from .sanitization import sanitize_html
-from .password_hasher import hash_password, verify_password
 from .rate_limiter import (
     RateLimiter,
     RateLimitExceeded,
@@ -44,10 +43,6 @@ __all__ = [
 
     # Sanitization
     "sanitize_html",
-
-    # Password hashing (bcrypt)
-    "hash_password",
-    "verify_password",
 
     # Rate limiting
     "RateLimiter",

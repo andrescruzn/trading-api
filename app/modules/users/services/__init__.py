@@ -16,8 +16,6 @@
 from .auth import (
     LoginOtpPayload,
     LoginOtpService,
-    LoginPasswordPayload,
-    LoginPasswordService,
     VerifyOtpPayload,
     VerifyOtpService,
     LogoutService,
@@ -29,9 +27,6 @@ __all__ = [
     # Login OTP
     "LoginOtpService",
     "LoginOtpPayload",
-    # Login Password
-    "LoginPasswordService",
-    "LoginPasswordPayload",
     # Verify OTP
     "VerifyOtpService",
     "VerifyOtpPayload",

@@ -39,7 +39,6 @@ class User:
         self,
         id: int,
         email: str,
-        password_hash: str,
         role_id: int,
         status: str = "active",
         full_name: Optional[str] = None,
@@ -54,12 +53,11 @@ class User:
         updated_at: Optional[datetime] = None,
     ):
         # --------------------------------------------------------------
-        # Identidad y credenciales
+        # Identidad
         # --------------------------------------------------------------
         self.id = id
         self.email = email
         self.full_name = full_name
-        self.password_hash = password_hash
 
         # --------------------------------------------------------------
         # Rol (FK)
@@ -160,7 +158,7 @@ class User:
         Reinicia la seguridad de intentos fallidos.
 
         Cuándo usar:
-        - Login exitoso por password u OTP.
+        - Login exitoso por OTP.
         """
         self.failed_attempts = 0
         self.login_locked_until = None

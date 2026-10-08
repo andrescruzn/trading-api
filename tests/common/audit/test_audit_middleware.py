@@ -118,12 +118,12 @@ class TestAuditMiddlewareInsertsForNormalRequests:
 
 class TestAuditMiddlewareEventTypes:
 
-    def test_event_type_login_password_when_password_in_payload(self, client, mock_repo):
+    def test_event_type_login_otp_even_with_password_in_payload(self, client, mock_repo):
         client.post("/users/login", json={"email": "x@x.com", "password": "secret"})
         time.sleep(0.1)
         mock_repo.insert.assert_called_once()
         kwargs = mock_repo.insert.call_args.kwargs
-        assert kwargs["event_type"] == "LOGIN_PASSWORD"
+        assert kwargs["event_type"] == "LOGIN_OTP_REQUEST"
 
     def test_event_type_login_otp_when_no_password_in_payload(self, client, mock_repo):
         client.post("/users/login", json={"email": "x@x.com", "otp_code": "123456"})

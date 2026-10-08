@@ -271,7 +271,6 @@ def log_auth_event(
     Log de evento de autenticación.
 
     Eventos:
-    - login_password_success, login_password_failed
     - login_otp_requested, login_otp_success, login_otp_failed
     - logout, token_rotated
     - account_locked

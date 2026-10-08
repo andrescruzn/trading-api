@@ -6,7 +6,6 @@ import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
 import type { OtpRequestResult } from '@/modules/auth/api/auth.api';
 import {
-	useLoginMutation,
 	useRequestOtpMutation,
 	useVerifyOtpMutation,
 } from '@/modules/auth/hooks/use-auth-mutations';
@@ -26,19 +25,8 @@ import {
 	InputOTPGroup,
 	InputOTPSlot,
 } from '@/modules/ui/components/input-otp';
-import {
-	Tabs,
-	TabsContent,
-	TabsList,
-	TabsTrigger,
-} from '@/modules/ui/components/tabs';
 import { toast } from '@/modules/ui/components/toast';
 import { cn } from '@/modules/ui/lib/utils';
-
-const passwordSchema = z.object({
-	email: z.email('Ingresa un correo válido'),
-	password: z.string().min(1, 'Ingresa tu contraseña'),
-});
 
 const emailSchema = z.object({
 	email: z.email('Ingresa un correo válido'),
@@ -60,85 +48,7 @@ function formatCountdown(totalSeconds: number) {
 	return `${minutes}:${seconds.toString().padStart(2, '0')}`;
 }
 
-function PasswordLoginForm() {
-	const navigate = useNavigate();
-	const loginMutation = useLoginMutation();
-
-	const form = useForm({
-		resolver: zodResolver(passwordSchema),
-		defaultValues: { email: '', password: '' },
-	});
-
-	function handleLogin(values: z.infer<typeof passwordSchema>) {
-		loginMutation.mutate(values, {
-			onSuccess: () => navigate({ to: '/dashboard' }),
-			onError: (error) => showServerErrorToast(error, 'No pudiste ingresar'),
-		});
-	}
-
-	return (
-		<form
-			className={cn(
-				'transition-opacity',
-				loginMutation.isPending && 'pointer-events-none opacity-70',
-			)}
-			onSubmit={form.handleSubmit(handleLogin)}
-			noValidate
-		>
-			<FieldGroup>
-				<Controller
-					name="email"
-					control={form.control}
-					render={({ field, fieldState }) => (
-						<Field data-invalid={fieldState.invalid}>
-							<FieldLabel htmlFor="login-email" required>
-								Correo
-							</FieldLabel>
-							<Input
-								{...field}
-								id="login-email"
-								type="email"
-								placeholder="nombre@correo.com"
-								aria-invalid={fieldState.invalid}
-								autoComplete="email"
-							/>
-							{fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-						</Field>
-					)}
-				/>
-				<Controller
-					name="password"
-					control={form.control}
-					render={({ field, fieldState }) => (
-						<Field data-invalid={fieldState.invalid}>
-							<FieldLabel htmlFor="login-password" required>
-								Contraseña
-							</FieldLabel>
-							<Input
-								{...field}
-								id="login-password"
-								type="password"
-								aria-invalid={fieldState.invalid}
-								autoComplete="current-password"
-							/>
-							{fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-						</Field>
-					)}
-				/>
-				<Field>
-					<Button type="submit" disabled={loginMutation.isPending}>
-						{loginMutation.isPending ? (
-							<IconLoader2 className="animate-spin" />
-						) : (
-							'Ingresar'
-						)}
-					</Button>
-				</Field>
-			</FieldGroup>
-		</form>
-	);
-}
-
+// El login es solo por código: no hay contraseñas en el sistema.
 function OtpLoginForm() {
 	const navigate = useNavigate();
 	const [otpRequest, setOtpRequest] = useState<OtpRequestResult | null>(null);
@@ -342,21 +252,10 @@ export function LoginForm({ className }: { className?: string }) {
 			<div className="flex flex-col items-center gap-1 text-center">
 				<h1 className="text-2xl font-bold">Iniciar sesión</h1>
 				<p className="text-sm text-balance text-muted-foreground">
-					Entra con tu contraseña o con un código que te enviamos por correo.
+					Escribe tu correo y te enviamos un código para entrar.
 				</p>
 			</div>
-			<Tabs defaultValue="password" className="gap-6">
-				<TabsList className="w-full">
-					<TabsTrigger value="password">Contraseña</TabsTrigger>
-					<TabsTrigger value="otp">Código por correo</TabsTrigger>
-				</TabsList>
-				<TabsContent value="password">
-					<PasswordLoginForm />
-				</TabsContent>
-				<TabsContent value="otp">
-					<OtpLoginForm />
-				</TabsContent>
-			</Tabs>
+			<OtpLoginForm />
 		</div>
 	);
 }

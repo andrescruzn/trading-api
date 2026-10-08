@@ -81,7 +81,6 @@ AUTH_ERROR_MESSAGES: Dict[str, str] = {
     **COMMON_ERROR_MESSAGES,
 
     # Login
-    "INVALID_CREDENTIALS": "Correo o contraseña incorrectos.",
     "USER_NOT_ALLOWED": "Tu cuenta no está activa. Contacta al administrador.",
     "LOGIN_LOCKED": "Bloqueamos tu cuenta temporalmente por varios intentos fallidos. Inténtalo más tarde.",
 
@@ -98,10 +97,6 @@ AUTH_ERROR_MESSAGES: Dict[str, str] = {
     # Usuario
     "USER_NOT_FOUND": "No encontramos tu usuario.",
     "ROLE_NOT_FOUND": "Tu usuario no tiene un rol válido. Contacta al administrador.",
-
-    # Password
-    "PASSWORD_SAME_AS_CURRENT": "La nueva contraseña debe ser distinta de la actual.",
-    "PASSWORD_TOO_WEAK": "La contraseña debe tener mínimo 8 caracteres, con al menos una mayúscula, una minúscula y un número.",
 }
 
 

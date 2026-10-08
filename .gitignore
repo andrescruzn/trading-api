@@ -58,6 +58,7 @@ Thumbs.db
 # =========================
 node_modules/
 frontend/dist/
+frontend/src/routeTree.gen.ts
 *.tsbuildinfo
 # El patrón .env.* no cubre .env_frontend (guion bajo)
 .env_frontend

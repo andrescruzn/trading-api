@@ -57,14 +57,40 @@ uv run alembic stamp 0001_baseline
 
 BD nueva desde cero: cargar `.claude/db_schema.sql`, `migrations/m10_billing.sql` y los `seeds/*.sql` con el cliente de MySQL, y luego `uv run alembic stamp 0001_baseline`.
 
-Día a día:
+### Crear y aplicar una migración
+
+1. Crear o modificar el modelo ORM en `app/modules/<modulo>/infrastructure/` (si es nuevo, registrarlo en `app/extensions/db/models_registry.py`).
+
+2. Generar la migración comparando los modelos con la BD:
+
+   ```bash
+   uv run alembic revision --autogenerate -m "m11 crear tabla x"
+   ```
+
+   Crea un archivo en `alembic/versions/` con `upgrade()` y `downgrade()`.
+
+3. **Revisar el archivo generado antes de aplicarlo:**
+   - Autogenerate no detecta `CHECK`, comentarios ni valores por defecto (`server_default`): añadirlos a mano, p. ej. con `op.create_check_constraint(...)`.
+   - Borrar las operaciones que no deban ejecutarse.
+   - Completar el `MOTIVO:` del docstring.
+
+4. Aplicarla:
+
+   ```bash
+   uv run alembic upgrade head
+   ```
+
+### Otros comandos
 
 ```bash
-uv run alembic upgrade head                            # aplicar migraciones pendientes
-uv run alembic revision --autogenerate -m "mNN ..."    # generar una nueva desde los modelos (revisar el archivo antes de aplicarla)
-uv run alembic downgrade -1                            # deshacer la última
-uv run alembic current                                 # ver en qué revisión está la BD
+uv run alembic upgrade head --sql     # ver el SQL sin ejecutarlo
+uv run alembic current                # en qué revisión está la BD
+uv run alembic history --verbose      # lista de revisiones
+uv run alembic downgrade -1           # deshacer la última
+uv run alembic check                  # ¿los modelos coinciden con la BD? (no escribe)
 ```
+
+> **Importante:** si `alembic check` muestra diferencias que no vienen de tu cambio, la migración generada las incluirá todas (borrado de índices, cambios de tipo…) sobre tablas que ya funcionan. Antes de generar, alinea los modelos con la BD real: la BD es la fuente de verdad.
 
 ---
 

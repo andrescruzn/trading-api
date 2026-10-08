@@ -68,6 +68,22 @@ uv run alembic upgrade head                                # aplicar migraciones
 - **Comandos `uv` / `python` de alto impacto los ejecuta el usuario, no el agente.** Esto incluye: `uv sync`, `uv add`/`uv remove`, `uv lock`, levantar el servidor, scripts o seeds que escriban en la BD, cualquier comando `alembic` que toque la BD (`revision --autogenerate`, `upgrade`, `downgrade`, `stamp`, `check`), jobs que llamen a exchanges o al LLM (coste/órdenes reales), y la suite de tests completa. El agente debe darle el comando exacto (sugiriendo el prefijo `! <comando>` para que la salida llegue a la conversación) y **esperar su respuesta** antes de continuar. Ante la duda sobre si un comando es de alto impacto, tratarlo como tal.
 - MySQL (CLI, seeds) y migraciones con Alembic: ver el skill `database`. `migrations/*.sql` es legacy y está congelada: los cambios de esquema nuevos van en `alembic/versions/`.
 
+### Migraciones (Alembic)
+
+Flujo para cualquier cambio de esquema. Los comandos los ejecuta el usuario:
+
+1. El agente crea o modifica el modelo en `app/modules/<modulo>/infrastructure/` (y lo registra en `models_registry.py` si es nuevo).
+2. **Generar:** `uv run alembic revision --autogenerate -m "mNN descripcion"` → crea un archivo en `alembic/versions/` con `upgrade()` y `downgrade()`.
+3. **Revisar el archivo generado antes de aplicarlo** (lo hace el agente):
+   - autogenerate no detecta `CHECK`, comentarios ni `server_default`: añadirlos a mano (`op.create_check_constraint(...)`, `op.execute(...)`);
+   - quitar operaciones no deseadas (`drop_index`, `modify_type`… sobre tablas que no se tocaron);
+   - completar `MOTIVO:` en el docstring y dejar un `downgrade()` real.
+4. **Aplicar:** `uv run alembic upgrade head`.
+
+Útiles: `alembic upgrade head --sql` (ver el SQL sin ejecutar) · `alembic current` (revisión aplicada) · `alembic downgrade -1` (deshacer la última) · `alembic check` (¿modelos y BD coinciden?).
+
+Si `alembic check` muestra diferencias que no vienen del cambio actual, la revisión generada las incluirá todas: primero hay que alinear los modelos con la BD real (la BD manda) y después generar.
+
 ## Arquitectura en 30 segundos
 
 Screaming Architecture: un paquete por dominio en `app/modules/<modulo>/`, cada uno con las mismas capas:

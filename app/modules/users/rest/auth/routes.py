@@ -34,7 +34,7 @@ from sqlalchemy.orm import Session
 
 from app.common.config import settings
 from app.common.errors import AUTH_ERROR_MESSAGES
-from app.modules.users.rest.auth.error_messages import OTP_REQUEST_ERROR_MESSAGES
+from app.modules.users.rest.auth.error_messages import OTP_VERIFY_ERROR_MESSAGES
 from app.common.http import (
     build_error_response,
     build_internal_error_response,
@@ -45,7 +45,12 @@ from app.common.http import (
     build_success_response,
 )
 from app.common.security.jwt import token_required_actual
-from app.common.security.rate_limiter import check_auth_rate_limit
+from app.common.security.rate_limiter import (
+    check_auth_rate_limit,
+    check_email_rate_limit,
+    otp_request_rate_limiter,
+    otp_verify_rate_limiter,
+)
 from app.extensions.db import get_db
 from app.modules.users.providers import AuthServiceFactory
 
@@ -114,11 +119,8 @@ def _build_auth_response(
     response_model=LoginResponse,
     status_code=status.HTTP_200_OK,
     responses={
-        400: {"model": LoginResponse},
-        403: {"model": LoginResponse},
         422: {"model": LoginResponse},
         429: {"model": LoginResponse},
-        502: {"model": LoginResponse},
     },
 )
 def login(
@@ -129,13 +131,20 @@ def login(
     """
     Paso 1 del login: envía un código OTP al correo.
 
+    Anti-enumeración: responde igual exista o no la cuenta (solo se envía
+    el correo si existe y está activa). El correo sale en segundo plano.
+
+    Rate limit: por IP y por correo (3 códigos cada 10 min) → 429.
+
     Devuelve `otp_required` con la expiración del código. La sesión se abre
     en `POST /users/login/otp/verify`.
     """
+    check_email_rate_limit(otp_request_rate_limiter, payload.email)
+
     result = factory.login_otp().request_login_otp(payload.email)
 
     if not result.success:
-        return build_error_response(result, OTP_REQUEST_ERROR_MESSAGES)
+        return build_error_response(result, AUTH_ERROR_MESSAGES)
 
     if result.data is None:
         return build_internal_error_response()
@@ -156,7 +165,6 @@ def login(
     response_model=VerifyOtpResponse,
     status_code=status.HTTP_200_OK,
     responses={
-        400: {"model": VerifyOtpResponse},
         401: {"model": VerifyOtpResponse},
         403: {"model": VerifyOtpResponse},
         422: {"model": VerifyOtpResponse},
@@ -180,10 +188,13 @@ def verify_otp(
     - Sin bandera → Cookie HTTP-only (para React)
     - `?response=token` → Token en body (para Postman/Swagger/móvil)
     """
+    # Sin lockout de cuenta: 5 intentos por correo cada 10 min (+ por IP).
+    check_email_rate_limit(otp_verify_rate_limiter, payload.email)
+
     result = factory.verify_otp().verify(payload.email, payload.otp_code)
 
     if not result.success:
-        return build_error_response(result, AUTH_ERROR_MESSAGES)
+        return build_error_response(result, OTP_VERIFY_ERROR_MESSAGES)
 
     if result.data is None:
         return build_internal_error_response()

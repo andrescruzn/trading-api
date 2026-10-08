@@ -55,6 +55,8 @@ COMMON_ERROR_MESSAGES: Dict[str, str] = {
 
     # Rate limiting
     "RATE_LIMIT_EXCEEDED": "Demasiados intentos. Espera un momento y vuelve a intentarlo.",
+    # {wait} = "45 segundos" / "1 minuto" / "8 minutos" (ver errors.py)
+    "RATE_LIMIT_EXCEEDED_RETRY": "Demasiados intentos. Vuelve a intentarlo en {wait}.",
 
     # Recursos
     "NOT_FOUND": "No encontramos lo que buscas.",
@@ -82,13 +84,11 @@ AUTH_ERROR_MESSAGES: Dict[str, str] = {
 
     # Login
     "USER_NOT_ALLOWED": "Tu cuenta no está activa. Contacta al administrador.",
-    "LOGIN_LOCKED": "Bloqueamos tu cuenta temporalmente por varios intentos fallidos. Inténtalo más tarde.",
 
     # OTP
     "OTP_NOT_REQUESTED": "No hay un código activo. Pide uno nuevo.",
     "OTP_EXPIRED": "El código venció. Pide uno nuevo.",
     "OTP_INVALID": "El código no es correcto. Revísalo e inténtalo de nuevo.",
-    "OTP_EMAIL_SEND_FAILED": "No pudimos enviarte el correo con el código. Inténtalo más tarde.",
 
     # Sesión
     "SESSION_EXPIRED": "Tu sesión expiró. Inicia sesión de nuevo.",

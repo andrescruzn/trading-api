@@ -34,6 +34,14 @@ _HTTP_STATUS_CODES: dict[int, str] = {
 }
 
 
+def _format_wait(seconds: int) -> str:
+    """45 → "45 segundos"; 61 → "2 minutos" (redondea hacia arriba)."""
+    if seconds < 60:
+        return "1 segundo" if seconds == 1 else f"{seconds} segundos"
+    minutes = -(-seconds // 60)
+    return "1 minuto" if minutes == 1 else f"{minutes} minutos"
+
+
 def _validation_errors(exc: RequestValidationError) -> list[dict[str, str]]:
     """Normaliza los errores de Pydantic a [{field, message}] (sin el input crudo)."""
     errors: list[dict[str, str]] = []
@@ -90,7 +98,9 @@ def register_error_handlers(app) -> None:
     @app.exception_handler(RateLimitExceeded)
     async def rate_limit_exception_handler(request: Request, exc: RateLimitExceeded):
         response = send(
-            msg=COMMON_ERROR_MESSAGES["RATE_LIMIT_EXCEEDED"],
+            msg=COMMON_ERROR_MESSAGES["RATE_LIMIT_EXCEEDED_RETRY"].format(
+                wait=_format_wait(exc.retry_after_seconds)
+            ),
             status_code=429,
             data={"retry_after_seconds": exc.retry_after_seconds},
         )

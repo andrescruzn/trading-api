@@ -165,12 +165,14 @@ function OtpLoginForm() {
 					<IconArrowLeft />
 					Cambiar correo
 				</Button>
+				{/* Anti-enumeración: la API responde igual exista o no la cuenta. */}
 				<p className="text-sm text-muted-foreground">
-					Te enviamos un código de 6 dígitos a{' '}
+					Si{' '}
 					<span className="font-medium text-foreground">
 						{otpRequest.email}
-					</span>
-					.
+					</span>{' '}
+					tiene una cuenta, te enviamos un código de 6 dígitos. Revisa tu
+					bandeja de entrada y la carpeta de spam.
 				</p>
 				{otpRequest.otp_code && (
 					<Alert>

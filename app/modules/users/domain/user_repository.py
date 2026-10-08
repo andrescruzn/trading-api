@@ -7,8 +7,7 @@
 # Patrón aplicado: Repository Pattern (Puerto / Contrato de Dominio)
 #
 # CAMBIOS:
-# - No cambia la interfaz, pero la entidad User ahora incluye
-#   login_locked_until y role_id.
+# - No cambia la interfaz; la entidad User incluye role_id.
 # ======================================================================
 
 from __future__ import annotations

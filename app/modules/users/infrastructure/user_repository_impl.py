@@ -79,8 +79,6 @@ class SqlAlchemyUserRepository(SqlAlchemyRepository, UserRepository):
             full_name=model.full_name,
             role_id=model.role_id,
             status=model.status,
-            failed_attempts=model.failed_attempts,
-            login_locked_until=self._as_utc_aware(model.login_locked_until),
             last_login_at=self._as_utc_aware(model.last_login_at),
             token_current_jti=model.token_current_jti,
             otp_code=model.otp_code,
@@ -106,8 +104,6 @@ class SqlAlchemyUserRepository(SqlAlchemyRepository, UserRepository):
         model.role_id = user.role_id
 
         model.status = user.status
-        model.failed_attempts = user.failed_attempts
-        model.login_locked_until = user.login_locked_until
         model.last_login_at = user.last_login_at
 
         model.token_current_jti = user.token_current_jti

@@ -7,12 +7,17 @@
 # - Verificar OTP y finalizar login emitiendo token
 #
 # REGLAS:
-# - OTP inválido/expirado -> failed_attempts++ y lock 1h al 3er fallo
-# - OTP correcto -> reset_failed_attempts() + limpiar otp_* + token
+# - OTP inválido/expirado -> fail (sin lockout de cuenta)
+# - OTP correcto -> limpiar otp_* (single-use) + token
+# - La fuerza bruta se frena en la ruta: rate limit por correo e IP. Con
+#   el OTP de 10 min, eso basta y no deja bloquear cuentas ajenas.
 #
 # SEGURIDAD:
 # - Verificación HMAC-SHA256
 # - Comparación de tiempo constante (anti timing attacks)
+# - Anti-enumeración: correo sin cuenta, sin código activo, vencido o
+#   incorrecto responden 401 con el mismo mensaje (ver error_messages).
+#   El estado inactivo solo se revela tras un código correcto.
 #
 # FIX IMPORTANTE (MySQL + SQLAlchemy):
 # - MySQL suele devolver datetimes "naive" (sin tzinfo).
@@ -55,20 +60,12 @@ class VerifyOtpService:
         *,
         repo: UserRepository,
         settings: Settings,
-        max_failed_attempts: int = 3,
-        lock_minutes: int = 60,
     ):
         # --------------------------------------------------------------
         # Dependencias
         # --------------------------------------------------------------
         self._repo = repo
         self._settings = settings
-
-        # --------------------------------------------------------------
-        # Parámetros de seguridad / lockout
-        # --------------------------------------------------------------
-        self._max_failed_attempts = max_failed_attempts
-        self._lock_minutes = lock_minutes
 
     def verify(self, email: str, otp_code: str) -> ServiceResult[VerifyOtpPayload]:
         """
@@ -91,8 +88,8 @@ class VerifyOtpService:
         # --------------------------------------------------------------
         user = self._repo.get_by_email(email_clean)
         if user is None:
-            # Anti-enumeration: mantenemos tu decisión actual
-            return ServiceResult.fail(code="INVALID_REQUEST", http_status=400)
+            # Anti-enumeration: igual que un código incorrecto.
+            return ServiceResult.fail(code="OTP_INVALID", http_status=401)
 
         # --------------------------------------------------------------
         # 3) "Ahora" del sistema: SIEMPRE UTC-aware (consistente)
@@ -100,22 +97,33 @@ class VerifyOtpService:
         now = utc_now()
 
         # --------------------------------------------------------------
-        # 4) Lockout + estado
+        # 4) Validar que OTP exista
         # --------------------------------------------------------------
-        if user.is_login_locked(now=now):
-            # Nota:
-            # - user.login_locked_until podría ser naive desde DB
-            # - lo normalizamos para no romper isoformat()
-            locked_until = ensure_aware_utc(user.login_locked_until)
+        if user.otp_code is None or user.otp_expires_at is None:
+            return ServiceResult.fail(code="OTP_NOT_REQUESTED", http_status=401)
 
-            return ServiceResult.fail(
-                code="LOGIN_LOCKED",
-                http_status=429,
-                meta={
-                    "locked_until": locked_until.isoformat() if locked_until else None
-                },
-            )
+        # --------------------------------------------------------------
+        # 5) Validar expiración (FIX: normalizar a UTC-aware)
+        # --------------------------------------------------------------
+        expires_at = ensure_aware_utc(user.otp_expires_at)
+        if expires_at is None:
+            # Defensivo: si DB viene raro, tratamos como no solicitado
+            return ServiceResult.fail(code="OTP_NOT_REQUESTED", http_status=401)
 
+        if expires_at < now:
+            return ServiceResult.fail(code="OTP_EXPIRED", http_status=401)
+
+        # --------------------------------------------------------------
+        # 6) Validar OTP (HMAC-SHA256)
+        # --------------------------------------------------------------
+        if not verify_otp_hash(otp_clean, user.otp_code):
+            return ServiceResult.fail(code="OTP_INVALID", http_status=401)
+
+        # --------------------------------------------------------------
+        # 7) Estado de la cuenta
+        # - Se revisa después del código: solo quien demuestra que es
+        #   dueño del correo sabe que la cuenta existe y no está activa.
+        # --------------------------------------------------------------
         if not user.is_active():
             return ServiceResult.fail(
                 code="USER_NOT_ALLOWED",
@@ -124,49 +132,8 @@ class VerifyOtpService:
             )
 
         # --------------------------------------------------------------
-        # 5) Validar que OTP exista
+        # 8) Éxito: limpiar OTP y emitir token
         # --------------------------------------------------------------
-        if user.otp_code is None or user.otp_expires_at is None:
-            return ServiceResult.fail(code="OTP_NOT_REQUESTED", http_status=400)
-
-        # --------------------------------------------------------------
-        # 6) Validar expiración (FIX: normalizar a UTC-aware)
-        # --------------------------------------------------------------
-        expires_at = ensure_aware_utc(user.otp_expires_at)
-        if expires_at is None:
-            # Defensivo: si DB viene raro, tratamos como no solicitado
-            return ServiceResult.fail(code="OTP_NOT_REQUESTED", http_status=400)
-
-        if expires_at < now:
-            # Fallo real: cuenta para lockout
-            user.register_failed_attempt(
-                max_attempts=self._max_failed_attempts,
-                lock_minutes=self._lock_minutes,
-                now=now,
-            )
-            self._repo.update(user)
-            self._repo.commit()
-
-            return ServiceResult.fail(code="OTP_EXPIRED", http_status=401)
-
-        # --------------------------------------------------------------
-        # 7) Validar OTP (HMAC-SHA256)
-        # --------------------------------------------------------------
-        if not verify_otp_hash(otp_clean, user.otp_code):
-            user.register_failed_attempt(
-                max_attempts=self._max_failed_attempts,
-                lock_minutes=self._lock_minutes,
-                now=now,
-            )
-            self._repo.update(user)
-            self._repo.commit()
-
-            return ServiceResult.fail(code="OTP_INVALID", http_status=401)
-
-        # --------------------------------------------------------------
-        # 8) Éxito: limpiar OTP, reset intentos y emitir token
-        # --------------------------------------------------------------
-        user.reset_failed_attempts()
         user.last_login_at = now
 
         # OTP single-use (importantísimo)

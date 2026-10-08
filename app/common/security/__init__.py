@@ -25,6 +25,9 @@ from .rate_limiter import (
     default_rate_limiter,
     rate_limit_dependency,
     check_auth_rate_limit,
+    check_email_rate_limit,
+    otp_request_rate_limiter,
+    otp_verify_rate_limiter,
 )
 
 __all__ = [
@@ -51,4 +54,7 @@ __all__ = [
     "default_rate_limiter",
     "rate_limit_dependency",
     "check_auth_rate_limit",
+    "check_email_rate_limit",
+    "otp_request_rate_limiter",
+    "otp_verify_rate_limiter",
 ]

@@ -7,14 +7,20 @@
 # - Solicitar OTP para login (inicio de flujo OTP).
 #
 # SEGURIDAD:
-# - Si login está bloqueado -> fail LOGIN_LOCKED
-# - Pedir OTP NO incrementa failed_attempts (no es fallo de auth)
+# - Anti-enumeración: si el correo no tiene cuenta o la cuenta no está
+#   activa, respondemos igual que en el éxito (misma forma, misma
+#   expiración) pero sin generar OTP ni enviar correo. La UI avanza al
+#   paso del código en todos los casos.
+# - Sin lockout de cuenta: el abuso se frena con rate limit por correo e
+#   IP en la ruta (ver rate_limiter.py).
 # - Persistimos OTP hasheado con HMAC-SHA256 (nunca OTP plano)
 #
-# DECISIÓN DE CONSISTENCIA (anti-errores):
-# - Persistimos OTP (commit) antes de enviar email, para que el OTP
-#   "exista" realmente si el usuario lo recibe.
-# - Si el envío falla, limpiamos OTP y hacemos commit (rollback lógico).
+# ENVÍO EN SEGUNDO PLANO:
+# - Persistimos OTP (commit) y encolamos el correo: la respuesta no espera
+#   al SMTP, así que tarda lo mismo exista o no la cuenta y nunca falla
+#   por el proveedor de correo.
+# - Si el envío falla tras los reintentos, queda en el log; el OTP vence
+#   solo a los 10 min y la persona puede pedir otro.
 # ======================================================================
 
 from __future__ import annotations
@@ -90,37 +96,22 @@ class LoginOtpService:
                 meta={"field": "email"},
             )
 
-        # --------------------------------------------------------------
-        # 2) Buscar usuario (anti-enumeration)
-        # --------------------------------------------------------------
-        user = self._repo.get_by_email(email_clean)
-        if user is None:
-            # Nota:
-            # - No decimos "no existe"; devolvemos code estable.
-            return ServiceResult.fail(code="INVALID_REQUEST", http_status=400)
-
         now = utc_now()
 
         # --------------------------------------------------------------
-        # 3) Lockout + estado (reglas de dominio)
+        # 2) Buscar usuario (anti-enumeration)
+        # - Sin cuenta: misma respuesta que el éxito, sin OTP ni correo.
         # --------------------------------------------------------------
-        if user.is_login_locked(now=now):
-            return ServiceResult.fail(
-                code="LOGIN_LOCKED",
-                http_status=429,
-                meta={
-                    "locked_until": user.login_locked_until.isoformat()
-                    if user.login_locked_until
-                    else None
-                },
-            )
+        user = self._repo.get_by_email(email_clean)
+        if user is None:
+            return self._silent_ok(email_clean, now)
 
+        # --------------------------------------------------------------
+        # 3) Estado
+        # --------------------------------------------------------------
         if not user.is_active():
-            return ServiceResult.fail(
-                code="USER_NOT_ALLOWED",
-                http_status=403,
-                meta={"status": user.status},
-            )
+            # Anti-enumeration: no confirmamos que la cuenta existe.
+            return self._silent_ok(email_clean, now)
 
         # --------------------------------------------------------------
         # 4) Generar OTP y expiración
@@ -140,9 +131,9 @@ class LoginOtpService:
         self._repo.commit()
 
         # --------------------------------------------------------------
-        # 6) Enviar correo
+        # 6) Encolar correo (segundo plano, con reintentos)
         # --------------------------------------------------------------
-        mail_result = self._mailer.send_by_template(
+        self._mailer.send_by_template_in_background(
             to_email=email_clean,
             template=OTP_TEMPLATE,
             context={
@@ -152,24 +143,6 @@ class LoginOtpService:
             },
             text_body=f"Tu OTP es: {otp_plain}. Expira en {self._otp_ttl_minutes} minutos.",
         )
-
-        if not mail_result.success:
-            # ----------------------------------------------------------
-            # Rollback lógico:
-            # - Si el correo falla, NO puede quedar OTP activo.
-            # ----------------------------------------------------------
-            user.otp_code = None
-            user.otp_created_at = None
-            user.otp_expires_at = None
-
-            self._repo.update(user)
-            self._repo.commit()
-
-            return ServiceResult.fail(
-                code="OTP_EMAIL_SEND_FAILED",
-                http_status=502,
-                meta={"provider": "smtp"},
-            )
 
         # --------------------------------------------------------------
         # 7) Respuesta (solo dev devuelve otp_code)
@@ -181,5 +154,19 @@ class LoginOtpService:
                 email=email_clean,
                 otp_expires_at=expires_at,
                 otp_code=otp_for_debug,
+            )
+        )
+
+    def _silent_ok(self, email: str, now: datetime) -> ServiceResult[LoginOtpPayload]:
+        """
+        Respuesta indistinguible del éxito para correos sin cuenta activa.
+
+        - No persiste nada ni envía correo.
+        - Nunca incluye otp_code (no existe).
+        """
+        return ServiceResult.ok(
+            LoginOtpPayload(
+                email=email,
+                otp_expires_at=now + timedelta(minutes=self._otp_ttl_minutes),
             )
         )

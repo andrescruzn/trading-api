@@ -74,7 +74,8 @@ const accountSchema = z
 		path: ['api_key'],
 	});
 
-type AccountValues = z.infer<typeof accountSchema>;
+type AccountFormInput = z.input<typeof accountSchema>;
+type AccountFormOutput = z.output<typeof accountSchema>;
 
 type AccountFormDialogProps = {
 	open: boolean;
@@ -83,7 +84,7 @@ type AccountFormDialogProps = {
 	account: Account | null;
 };
 
-function valuesFor(account: Account | null): AccountValues {
+function valuesFor(account: Account | null): AccountFormInput {
 	return {
 		name: account?.name ?? '',
 		mode: account?.mode ?? null,
@@ -110,7 +111,7 @@ export function AccountFormDialog({
 	const updateMutation = useUpdateAccountMutation();
 	const isPending = createMutation.isPending || updateMutation.isPending;
 
-	const form = useForm<AccountValues>({
+	const form = useForm<AccountFormInput, unknown, AccountFormOutput>({
 		resolver: zodResolver(accountSchema),
 		defaultValues: valuesFor(null),
 	});
@@ -126,7 +127,7 @@ export function AccountFormDialog({
 		}
 	}, [open, account, form]);
 
-	function handleSubmit(values: AccountValues) {
+	function handleSubmit(values: AccountFormOutput) {
 		const exchangeId =
 			values.exchange_id && values.exchange_id !== NO_EXCHANGE
 				? Number(values.exchange_id)

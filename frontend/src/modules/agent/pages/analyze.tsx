@@ -48,9 +48,10 @@ const analyzeSchema = z.object({
 	feature_set_id: requiredSelectField('Elige el set de indicadores'),
 });
 
-type AnalyzeValues = z.infer<typeof analyzeSchema>;
+type AnalyzeFormInput = z.input<typeof analyzeSchema>;
+type AnalyzeFormOutput = z.output<typeof analyzeSchema>;
 
-type SelectFieldName = keyof AnalyzeValues;
+type SelectFieldName = keyof AnalyzeFormInput;
 
 function AnalyzingState() {
 	return (
@@ -94,7 +95,7 @@ export function AgentAnalyzePage() {
 	const featureSetsQuery = useFeatureSetsQuery();
 	const analyzeMutation = useAnalyzeMutation();
 
-	const form = useForm<AnalyzeValues>({
+	const form = useForm<AnalyzeFormInput, unknown, AnalyzeFormOutput>({
 		resolver: zodResolver(analyzeSchema),
 		defaultValues: {
 			symbol_id: null,
@@ -163,7 +164,7 @@ export function AgentAnalyzePage() {
 		},
 	];
 
-	function handleSubmit(values: AnalyzeValues) {
+	function handleSubmit(values: AnalyzeFormOutput) {
 		analyzeMutation.mutate({
 			symbol_id: Number(values.symbol_id),
 			timeframe_id: Number(values.timeframe_id),

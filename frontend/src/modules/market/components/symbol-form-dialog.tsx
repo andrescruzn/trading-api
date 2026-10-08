@@ -53,7 +53,8 @@ const symbolSchema = z.object({
 	is_active: z.boolean(),
 });
 
-type SymbolValues = z.infer<typeof symbolSchema>;
+type SymbolFormInput = z.input<typeof symbolSchema>;
+type SymbolFormOutput = z.output<typeof symbolSchema>;
 
 type SymbolFormDialogProps = {
 	open: boolean;
@@ -75,7 +76,7 @@ export function SymbolFormDialog({
 	const updateMutation = useUpdateSymbolMutation();
 	const isPending = createMutation.isPending || updateMutation.isPending;
 
-	const form = useForm<SymbolValues>({
+	const form = useForm<SymbolFormInput, unknown, SymbolFormOutput>({
 		resolver: zodResolver(symbolSchema),
 		defaultValues: {
 			exchange_id: null,
@@ -112,7 +113,7 @@ export function SymbolFormDialog({
 		}
 	}
 
-	function handleSubmit(values: SymbolValues) {
+	function handleSubmit(values: SymbolFormOutput) {
 		const shared = {
 			asset_class: values.asset_class as AssetClass,
 			base_asset: emptyToNull(values.base_asset),

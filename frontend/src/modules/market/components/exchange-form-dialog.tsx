@@ -38,7 +38,8 @@ const exchangeSchema = z.object({
 	is_active: z.boolean(),
 });
 
-type ExchangeValues = z.infer<typeof exchangeSchema>;
+type ExchangeFormInput = z.input<typeof exchangeSchema>;
+type ExchangeFormOutput = z.output<typeof exchangeSchema>;
 
 type ExchangeFormDialogProps = {
 	open: boolean;
@@ -57,7 +58,7 @@ export function ExchangeFormDialog({
 	const updateMutation = useUpdateExchangeMutation();
 	const isPending = createMutation.isPending || updateMutation.isPending;
 
-	const form = useForm<ExchangeValues>({
+	const form = useForm<ExchangeFormInput, unknown, ExchangeFormOutput>({
 		resolver: zodResolver(exchangeSchema),
 		defaultValues: { name: '', type: null, is_active: true },
 	});
@@ -73,7 +74,7 @@ export function ExchangeFormDialog({
 		});
 	}, [open, exchange, form]);
 
-	function handleSubmit(values: ExchangeValues) {
+	function handleSubmit(values: ExchangeFormOutput) {
 		const input = { name: values.name, type: values.type as ExchangeType };
 		const callbacks = {
 			onSuccess: () => {

@@ -42,9 +42,10 @@ const calculateSchema = z.object({
 	feature_set_id: requiredSelectField('Elige el feature set'),
 });
 
-type CalculateValues = z.infer<typeof calculateSchema>;
+type CalculateFormInput = z.input<typeof calculateSchema>;
+type CalculateFormOutput = z.output<typeof calculateSchema>;
 
-const EMPTY_VALUES: CalculateValues = {
+const EMPTY_VALUES: CalculateFormInput = {
 	symbol_id: null,
 	timeframe_id: null,
 	feature_set_id: null,
@@ -64,7 +65,7 @@ export function CalculateFeaturesDialog({
 	const featureSetsQuery = useFeatureSetsQuery();
 	const calculateMutation = useCalculateFeaturesMutation();
 
-	const form = useForm<CalculateValues>({
+	const form = useForm<CalculateFormInput, unknown, CalculateFormOutput>({
 		resolver: zodResolver(calculateSchema),
 		defaultValues: EMPTY_VALUES,
 	});
@@ -73,7 +74,7 @@ export function CalculateFeaturesDialog({
 		if (open) form.reset(EMPTY_VALUES);
 	}, [open, form]);
 
-	function handleSubmit(values: CalculateValues) {
+	function handleSubmit(values: CalculateFormOutput) {
 		calculateMutation.mutate(
 			{
 				symbol_id: Number(values.symbol_id),
@@ -100,7 +101,7 @@ export function CalculateFeaturesDialog({
 	}
 
 	const selects: {
-		name: keyof CalculateValues;
+		name: keyof CalculateFormInput;
 		label: string;
 		options: { value: string; label: string }[];
 	}[] = [

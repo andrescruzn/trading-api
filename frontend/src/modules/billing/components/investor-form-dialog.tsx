@@ -43,7 +43,7 @@ const investorSchema = z.object({
 		.min(1, 'Escribe el ID del usuario')
 		.pipe(
 			z.coerce
-				.number({ message: 'Escribe un número' })
+				.number<string>({ message: 'Escribe un número' })
 				.int('Debe ser un número entero')
 				.min(1, 'Debe ser mayor que 0'),
 		),
@@ -53,7 +53,7 @@ const investorSchema = z.object({
 		.min(1, 'Escribe la comisión')
 		.pipe(
 			z.coerce
-				.number({ message: 'Escribe un número' })
+				.number<string>({ message: 'Escribe un número' })
 				.min(0, 'Debe estar entre 0 y 100')
 				.max(100, 'Debe estar entre 0 y 100'),
 		),

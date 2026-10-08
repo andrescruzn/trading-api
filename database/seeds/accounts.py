@@ -8,8 +8,8 @@
 #   iniciales, para desarrollo y pruebas.
 #
 # NOTAS:
-# - Requiere que el usuario DEMO_USER_EMAIL ya exista (registrado desde la
-#   web) y que se haya corrido el seed `market_data`. Si falta, se omite.
+# - Requiere que el usuario DEMO_USER_EMAIL ya exista (seed `users` o
+#   registrado desde la web) y el seed `market_data`. Si falta, se omite.
 # - Clave natural: cuenta = (user_id, name); balance = (account_id, asset).
 #   La tabla no tiene UNIQUE para esto (en balances el UNIQUE incluye `ts`),
 #   por eso el .sql anterior con INSERT IGNORE duplicaba filas.

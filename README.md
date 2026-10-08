@@ -79,7 +79,7 @@ BD nueva desde cero:
 uv run alembic upgrade head    # crea todas las tablas
 ```
 
-Después, cargar los datos iniciales (roles, exchanges, timeframes, símbolos, estrategias de ejemplo):
+Después, cargar los datos iniciales (roles, usuarios base, exchanges, timeframes, símbolos, estrategias de ejemplo):
 
 ```bash
 uv run python -m database.seeds                      # todos (se pueden correr varias veces)
@@ -87,7 +87,7 @@ uv run python -m database.seeds roles market_data    # solo los indicados
 uv run python -m database.seeds --list               # ver los disponibles
 ```
 
-El seed `accounts` crea cuentas paper de ejemplo para el usuario demo; si ese usuario todavía no existe, se omite. Regístralo desde la web y vuelve a correr `uv run python -m database.seeds accounts`.
+El seed `users` crea los usuarios del equipo (`andrescruznovoa@gmail.com` y `dayrondaza05@gmail.com`, rol admin) con la contraseña de `SEED_USERS_PASSWORD` del `.env`; si está vacía, se omite. El seed `accounts` crea cuentas paper de ejemplo para el usuario demo; si ese usuario todavía no existe, se omite.
 
 BD que ya tenía el esquema antes de Alembic (creada con el dump; solo una vez, no ejecuta SQL):
 

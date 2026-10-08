@@ -70,14 +70,14 @@ uv run alembic upgrade head                                # aplicar migraciones
 uv run python -m database.seeds [nombre ...]                        # datos iniciales (idempotente; --list para ver)
 
 pnpm install                                               # dependencias del front (raíz del repo)
-pnpm dev                                                   # front en http://localhost:5193 (proxy /api → :8000)
+pnpm dev                                                   # front en http://localhost:5193 (llama directo a la API en :8000)
 pnpm check-types                                           # tsr generate + tsc -b (verificación del front)
 pnpm lint                                                  # biome check (formato, imports y lint); `pnpm lint --write` aplica los arreglos seguros
 pnpm build                                                 # build de producción → frontend/dist
 ```
 
 - **Gestor de paquetes del front: solo `pnpm`.** Nunca `npm`, `npx` ni `pnpx`: `package.json` fija `packageManager` y `devEngines`, y npm falla con `EBADDEVENGINES`. Para ejecutar un binario ya instalado en el proyecto, `pnpm exec <bin>` (p. ej. `pnpm exec tsr generate`); para ejecutar un paquete sin instalarlo, `pnpm dlx <paquete>` (p. ej. `pnpm dlx shadcn@latest add button`). Si un skill o una doc externa trae `npm`/`npx`, traducirlo así.
-- En desarrollo corren **dos procesos**: la API (`uvicorn`, :8000) y el front (`pnpm dev`, :5193). El front llama a `/api/*` y Vite lo reenvía a la API (mismo origen → la cookie de sesión funciona sin CORS).
+- En desarrollo corren **dos procesos**: la API (`uvicorn`, :8000) y el front (`pnpm dev`, :5193). No hay proxy: el front llama directo a `VITE_API_URL` (`http://localhost:8000/api`) con CORS y `credentials: 'include'`. La cookie de sesión `SameSite=Lax` viaja porque `localhost` con distinto puerto es el mismo sitio: usar siempre `localhost`, nunca `127.0.0.1`.
 - Variables del front en **`.env.frontend`** (copiar de `.env.frontend.example`), nunca en el `.env` del backend.
 
 - **NUNCA** correr `pytest tests/` completo salvo que el usuario lo pida.

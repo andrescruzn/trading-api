@@ -60,8 +60,9 @@ La API es headless: todas las respuestas llevan `default-src 'none'; frame-ances
 ### CORS y cookie de sesión con el frontend
 
 - La sesión es la cookie HttpOnly `AUTH_COOKIE_NAME`; el front llama con `credentials: 'include'` y nunca ve el token.
-- **Desarrollo**: el front usa el proxy `/api` de Vite → mismo origen, `SameSite=Lax` basta y CORS no interviene.
-- **Producción (recomendado)**: front y API en el mismo sitio (reverse proxy `/api` o subdominios del mismo dominio) con `SameSite=Lax`. Si el front vive en otro dominio: `AUTH_COOKIE_SAMESITE=None` + HTTPS y el origen exacto en `CORS_ORIGINS` (nunca `*` con credenciales).
+- **Sin proxy**: el front llama directo a `VITE_API_URL`, así que CORS siempre interviene y el origen del front debe estar en `CORS_ORIGINS`.
+- **Desarrollo**: `localhost:5193` → `localhost:8000` es cross-origin pero **same-site** (el puerto no cuenta), así que `SameSite=Lax` basta. No mezclar `localhost` con `127.0.0.1`.
+- **Producción (recomendado)**: front y API en subdominios del mismo dominio con `SameSite=Lax`. Si el front vive en otro dominio: `AUTH_COOKIE_SAMESITE=None` + HTTPS y el origen exacto en `CORS_ORIGINS` (nunca `*` con credenciales).
 - **CSRF**: no hay token anti-CSRF; la protección es `SameSite` + CORS con orígenes explícitos + rutas de escritura solo por `POST/PUT/PATCH/DELETE` con JSON. Con `SameSite=None` esa defensa se debilita: antes de usarlo, añadir verificación de `Origin`.
 
 ---

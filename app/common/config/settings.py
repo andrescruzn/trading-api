@@ -114,7 +114,7 @@ class Settings:
                     "Set it to a comma-separated list of allowed origins."
                 )
             # Default seguro para desarrollo
-            # (5193 = Vite del frontend; en dev normalmente va por su proxy /api)
+            # (5193 = Vite del frontend, que llama a la API directo con CORS)
             self.CORS_ORIGINS: list[str] = [
                 "http://localhost:5193",
                 "http://127.0.0.1:5193",

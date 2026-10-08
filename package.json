@@ -3,11 +3,20 @@
 	"private": true,
 	"version": "0.1.0",
 	"type": "module",
+	"packageManager": "pnpm@10.18.1",
+	"devEngines": {
+		"packageManager": {
+			"name": "pnpm",
+			"version": ">=10",
+			"onFail": "error"
+		}
+	},
 	"scripts": {
 		"dev": "vite --port 5193 --strictPort",
 		"build": "tsr generate && tsc -b && vite build",
 		"check-types": "tsr generate && tsc -b",
-		"preview": "vite preview --port 5193 --strictPort"
+		"preview": "vite preview --port 5193 --strictPort",
+		"lint": "biome check"
 	},
 	"dependencies": {
 		"@base-ui/react": "^1.6.0",
@@ -36,6 +45,7 @@
 		"zustand": "5.0.15"
 	},
 	"devDependencies": {
+		"@biomejs/biome": "2.5.12",
 		"@tanstack/router-cli": "1.167.18",
 		"@tanstack/router-plugin": "1.168.19",
 		"@types/node": "24.13.2",

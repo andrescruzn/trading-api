@@ -306,7 +306,7 @@ PARTE 3 — Módulos implementados y cómo usarlos
 La aplicación tiene dos partes que se encienden por separado:
 
   1. El servidor (la "API"): hace los cálculos y guarda los datos.
-  2. La página web: lo que ves en el navegador. En desarrollo se enciende con `npm run dev`
+  2. La página web: lo que ves en el navegador. En desarrollo se enciende con `pnpm dev`
      y queda en http://localhost:5193 (el servidor tiene que estar encendido).
 
 Las direcciones de la web llevan un "#" después del dominio. Por ejemplo:

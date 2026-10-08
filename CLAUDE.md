@@ -12,7 +12,7 @@ Aplicación de **trading asistido por IA** (nombre temporal: **trading-app**). E
 
 Stack backend: Python 3.12 · FastAPI 0.128 · SQLAlchemy 2 (**síncrono**, PyMySQL) · MySQL 8 · ccxt 4.4 · LLM multi-provider (`LLM_PROVIDER` = openai | anthropic | xai | deepseek | gemini | ollama) · uv. Jinja2 solo para las plantillas de correo.
 
-Stack frontend: React 19 · Vite 8 · TypeScript 6 · TanStack Router (hash history) + TanStack Query · shadcn (`base-vega`, sobre Base UI) · Tailwind 4 · react-hook-form + zod 4 · npm.
+Stack frontend: React 19 · Vite 8 · TypeScript 6 · TanStack Router (hash history) + TanStack Query · shadcn (`base-vega`, sobre Base UI) · Tailwind 4 · react-hook-form + zod 4 · **pnpm** (nunca npm/npx).
 
 Explicación conceptual en lenguaje simple: [`docs/MANUAL.md`](docs/MANUAL.md). Setup técnico: [`README.md`](README.md).
 
@@ -69,19 +69,21 @@ uv run alembic revision --autogenerate -m "mNN ..."        # generar migración 
 uv run alembic upgrade head                                # aplicar migraciones pendientes
 uv run python -m database.seeds [nombre ...]                        # datos iniciales (idempotente; --list para ver)
 
-npm install                                                # dependencias del front (raíz del repo)
-npm run dev                                                # front en http://localhost:5193 (proxy /api → :8000)
-npm run check-types                                        # tsr generate + tsc -b (verificación del front)
-npm run build                                              # build de producción → frontend/dist
+pnpm install                                               # dependencias del front (raíz del repo)
+pnpm dev                                                   # front en http://localhost:5193 (proxy /api → :8000)
+pnpm check-types                                           # tsr generate + tsc -b (verificación del front)
+pnpm lint                                                  # biome check (formato, imports y lint); `pnpm lint --write` aplica los arreglos seguros
+pnpm build                                                 # build de producción → frontend/dist
 ```
 
-- En desarrollo corren **dos procesos**: la API (`uvicorn`, :8000) y el front (`npm run dev`, :5193). El front llama a `/api/*` y Vite lo reenvía a la API (mismo origen → la cookie de sesión funciona sin CORS).
+- **Gestor de paquetes del front: solo `pnpm`.** Nunca `npm`, `npx` ni `pnpx`: `package.json` fija `packageManager` y `devEngines`, y npm falla con `EBADDEVENGINES`. Para ejecutar un binario ya instalado en el proyecto, `pnpm exec <bin>` (p. ej. `pnpm exec tsr generate`); para ejecutar un paquete sin instalarlo, `pnpm dlx <paquete>` (p. ej. `pnpm dlx shadcn@latest add button`). Si un skill o una doc externa trae `npm`/`npx`, traducirlo así.
+- En desarrollo corren **dos procesos**: la API (`uvicorn`, :8000) y el front (`pnpm dev`, :5193). El front llama a `/api/*` y Vite lo reenvía a la API (mismo origen → la cookie de sesión funciona sin CORS).
 - Variables del front en **`.env_frontend`** (copiar de `.env_frontend.example`), nunca en el `.env` del backend.
 
 - **NUNCA** correr `pytest tests/` completo salvo que el usuario lo pida.
 - **No crear tests por defecto** (gastan tokens): solo cuando el usuario los pida.
 - **NUNCA** hacer login con `curl` al depurar: rota `token_current_jti` e invalida la sesión del navegador.
-- **Comandos `uv` / `python` / `npm` de alto impacto los ejecuta el usuario, no el agente.** Esto incluye: `uv sync`, `uv add`/`uv remove`, `uv lock`, `npm install`/`npm add`/`npx shadcn add`, levantar el servidor o `npm run dev`, scripts o seeds que escriban en la BD, cualquier comando `alembic` que toque la BD (`revision --autogenerate`, `upgrade`, `downgrade`, `stamp`, `check`), jobs que llamen a exchanges o al LLM (coste/órdenes reales), y la suite de tests completa. El agente debe darle el comando exacto (sugiriendo el prefijo `! <comando>` para que la salida llegue a la conversación) y **esperar su respuesta** antes de continuar. Ante la duda sobre si un comando es de alto impacto, tratarlo como tal.
+- **Comandos `uv` / `python` / `pnpm` de alto impacto los ejecuta el usuario, no el agente.** Esto incluye: `uv sync`, `uv add`/`uv remove`, `uv lock`, `pnpm install`/`pnpm add`/`pnpm remove`/`pnpm dlx shadcn@latest add`, levantar el servidor o `pnpm dev`, scripts o seeds que escriban en la BD, cualquier comando `alembic` que toque la BD (`revision --autogenerate`, `upgrade`, `downgrade`, `stamp`, `check`), jobs que llamen a exchanges o al LLM (coste/órdenes reales), y la suite de tests completa. El agente debe darle el comando exacto (sugiriendo el prefijo `! <comando>` para que la salida llegue a la conversación) y **esperar su respuesta** antes de continuar. Ante la duda sobre si un comando es de alto impacto, tratarlo como tal.
 - MySQL (CLI), migraciones con Alembic y seeds en Python (`database/seeds/<dominio>.py`): ver el skill `database`. El esquema lo definen los modelos ORM; todo cambio va en una revisión de `database/migrations/versions/`.
 
 ### Migraciones (Alembic)

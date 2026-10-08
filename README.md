@@ -52,10 +52,10 @@ uv lock --upgrade-package <paquete>
 
 ## Frontend
 
-Requiere **Node.js 20.12+** (recomendado 22 o 24). Las configs (`package.json`, `vite.config.ts`, `tsconfig*.json`, `components.json`) están en la raíz del repo y el código en `frontend/`.
+Requiere **Node.js 20.12+** (recomendado 22 o 24) y **pnpm 10+** (`corepack enable` o `npm i -g pnpm`; es el único uso permitido de npm). npm y npx no funcionan en este repo: usar `pnpm`, `pnpm exec` o `pnpm dlx`. Las configs (`package.json`, `vite.config.ts`, `tsconfig*.json`, `components.json`) están en la raíz del repo y el código en `frontend/`.
 
 ```bash
-npm install                                 # dependencias
+pnpm install                                # dependencias
 cp .env_frontend.example .env_frontend      # variables del front (VITE_*)
 ```
 
@@ -152,15 +152,16 @@ La API queda en `http://localhost:8000` (Swagger en `/docs`, rutas en `/api/*`, 
 En otra terminal, el frontend:
 
 ```bash
-npm run dev            # http://localhost:5193  → abre http://localhost:5193/#/login
+pnpm dev               # http://localhost:5193  → abre http://localhost:5193/#/login
 ```
 
 Otros comandos del front:
 
 ```bash
-npm run check-types    # genera el árbol de rutas y revisa tipos
-npm run build          # build de producción en frontend/dist
-npm run preview        # sirve el build localmente
+pnpm check-types       # genera el árbol de rutas y revisa tipos
+pnpm lint              # biome check; con --write aplica formato e imports
+pnpm build             # build de producción en frontend/dist
+pnpm preview           # sirve el build localmente
 ```
 
 ### Producción

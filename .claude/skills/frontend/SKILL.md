@@ -57,7 +57,7 @@ Un módulo del front por módulo de backend (M2 → `market`, M3 → `features`,
 - Search params tipados: archivo base `x.tsx` con `validateSearch` (zod con `.catch()` para no romper la ruta) + `x.lazy.tsx` con el componente. La página los lee con `getRouteApi('/_app/x').useSearch()`. Ejemplo: `routes/_app/market/candles.tsx`.
 - **Hash history**: las URLs son `/#/bots`. Los `<Link to="/bots">` no llevan `#`.
 - Páginas de admin bajo `_app/admin/`, de inversor bajo `_app/investor/`: el guard ya está en el layout. Igual el backend valida el rol en cada endpoint; el guard es solo UX.
-- Tras crear/renombrar rutas, `npm run check-types` regenera `routeTree.gen.ts`.
+- Tras crear/renombrar rutas, `pnpm check-types` regenera `routeTree.gen.ts`.
 
 ## Datos: api → queries → mutations
 
@@ -159,11 +159,12 @@ Solo las `VITE_*` llegan al navegador: nunca secretos. Nueva variable → `.env_
 ## Comandos
 
 ```bash
-npm install            # lo ejecuta el usuario
-npm run dev            # http://localhost:5193 (lo ejecuta el usuario; requiere la API en :8000)
-npm run check-types    # tsr generate + tsc -b — correr tras cada cambio
-npm run build          # build de producción en frontend/dist
-npx shadcn@latest add <componente>   # componentes nuevos → modules/ui/components (lo ejecuta el usuario)
+pnpm install           # lo ejecuta el usuario
+pnpm dev               # http://localhost:5193 (lo ejecuta el usuario; requiere la API en :8000)
+pnpm check-types       # tsr generate + tsc -b — correr tras cada cambio
+pnpm lint              # biome check (formato, imports, lint) — correr tras cada cambio
+pnpm build             # build de producción en frontend/dist
+pnpm dlx shadcn@latest add <componente>   # componentes nuevos → modules/ui/components (lo ejecuta el usuario)
 ```
 
 ## Checklist de página nueva
@@ -174,7 +175,7 @@ npx shadcn@latest add <componente>   # componentes nuevos → modules/ui/compone
 4. Página en `pages/<pagina>.tsx` con `usePageBreadcrumb` + `PageListHeader`.
 5. Ruta fina en `routes/_app/...` (o `_app/admin/...` / `_app/investor/...`).
 6. Item en `navSections` de `modules/app-shell/components/app-sidebar.tsx` (con `role` si aplica).
-7. `npm run check-types` sin errores.
+7. `pnpm check-types` y `pnpm lint` sin errores.
 8. Actualizar la spec del módulo (skill `update-specs`).
 
 ## Prohibido
@@ -184,4 +185,5 @@ npx shadcn@latest add <componente>   # componentes nuevos → modules/ui/compone
 - ❌ Traducir códigos de error en el front (va en `error_messages.py`).
 - ❌ Decidir permisos por `role_id`/`role_label`.
 - ❌ Editar `routeTree.gen.ts` o cambiar la paleta de `index.css`.
+- ❌ Usar `npm`, `npx` o `pnpx`: solo `pnpm`, `pnpm exec <bin>` (binario del proyecto) o `pnpm dlx <paquete>` (sin instalar).
 - ❌ Importar `cn` desde el paquete npm `cn` o librerías de UI fuera de shadcn/Base UI sin acordarlo.

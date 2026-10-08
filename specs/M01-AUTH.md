@@ -160,7 +160,7 @@ Todas las rutas REST se montan bajo `settings.API_PREFIX` (`/api`) en `app/app_f
 - **Sesión expirada:** `shared/lib/api-client.ts` — un 401 fuera de `/users/login`, `/users/login/otp/verify`, `/users/logout` y `/users/me` llama `endSession(true)` → `auth/lib/session-expired-store.ts` (zustand) → `auth/components/session-expired-dialog.tsx` en `/login`. No hay refresh token.
 - **Shell:** `app-shell/layouts/app-shell.tsx` (sidebar + breadcrumb), `app-shell/components/app-sidebar.tsx` (`navSections`: General, Mercado, Trading, "Mi inversión" con `role: investor`, "Administración" con `role: admin`), `nav-user.tsx` (menú de usuario / cerrar sesión), `app-brand.tsx`, `app-not-found-page.tsx`; migas con `usePageBreadcrumb`.
 - **Compartido:** `shared/lib/api-client.ts` (`credentials: 'include'`, desempaqueta `{msg, errorCode, data}`, lanza `ApiClientError` si `errorCode >= 400`), `DataTable`, `OptionSelect`, `StatCard`, `PageListHeader`, `ErrorAlert`, `shared/lib/format.ts`.
-- **Variables de entorno:** `.env_frontend` en la raíz (copiar de `.env_frontend.example`, no se commitea): `VITE_API_URL` (dev `/api` vía proxy de Vite) y `VITE_API_PROXY_TARGET` (default `http://localhost:8000`). `npm run dev` → `http://localhost:5193`.
+- **Variables de entorno:** `.env_frontend` en la raíz (copiar de `.env_frontend.example`, no se commitea): `VITE_API_URL` (dev `/api` vía proxy de Vite) y `VITE_API_PROXY_TARGET` (default `http://localhost:8000`). `pnpm dev` → `http://localhost:5193`.
 - Convenciones: skill [`frontend`](../.claude/skills/frontend/SKILL.md).
 
 ### Middleware relevante

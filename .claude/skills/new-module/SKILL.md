@@ -52,7 +52,7 @@ Trabajo para: **$ARGUMENTS**
 
 ## 7. Frontend (si el módulo tiene pantallas)
 
-- [ ] Seguir el checklist del skill `frontend`: `modules/<x>/api` → `hooks` → `pages`, ruta fina en `frontend/src/routes/_app/...`, item en `app-sidebar.tsx`, `npm run check-types`.
+- [ ] Seguir el checklist del skill `frontend`: `modules/<x>/api` → `hooks` → `pages`, ruta fina en `frontend/src/routes/_app/...`, item en `app-sidebar.tsx`, `pnpm check-types`.
 
 ## 8. Verificar
 

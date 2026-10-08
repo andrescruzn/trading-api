@@ -22,13 +22,13 @@ from __future__ import annotations
 
 import hashlib
 import json
-from datetime import datetime, timezone
 from decimal import Decimal
 
 from app.common.contracts import ServiceResult
 from app.modules.agent.services.agent.analyze_service import AnalyzeService
 from app.modules.bots.domain.bot_repository import BotRepository
 from app.modules.bots.domain.signal_entity import Signal
+from app.common.utils import utc_now
 from app.modules.bots.domain.signal_repository import SignalRepository
 
 # TYPE_CHECKING para evitar import circular — se resuelve en runtime
@@ -132,7 +132,7 @@ class GenerateSignalService:
         signal = Signal(
             id=0,
             bot_id=bot_id,
-            ts=datetime.now(tz=timezone.utc),
+            ts=utc_now(),
             action=action,
             approved=approved,
             reasons=reasons,

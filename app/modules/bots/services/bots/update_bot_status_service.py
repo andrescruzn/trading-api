@@ -8,10 +8,10 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 
 from app.common.contracts import ServiceResult
 from app.modules.bots.domain.bot_entity import Bot
+from app.common.utils import utc_now
 from app.modules.bots.domain.bot_repository import BotRepository
 
 
@@ -50,7 +50,7 @@ class UpdateBotStatusService:
                 meta={"current": bot.status, "requested": new_status},
             )
 
-        now = datetime.now(tz=timezone.utc)
+        now = utc_now()
 
         if new_status == "running":
             bot.started_at = now

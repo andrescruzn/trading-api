@@ -21,13 +21,13 @@ from typing import Any
 from fastapi.responses import JSONResponse
 
 
-def send(*, msg: str, status_code: int, data: Any) -> JSONResponse:
+def send(*, msg: str, status_code: int, data: Any = None) -> JSONResponse:
     """
     Construye una respuesta JSON estándar.
 
     Nota:
     - status_code debe ser el HTTP status real.
-    - data nunca debe ser None (normalizamos a []).
+    - data es opcional: si se omite o es None, se normaliza a [].
     """
     return JSONResponse(
         status_code=status_code,

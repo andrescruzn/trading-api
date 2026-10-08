@@ -15,7 +15,6 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 from decimal import Decimal
 
 from app.common.contracts.service_result import ServiceResult
@@ -23,6 +22,7 @@ from app.modules.billing.domain.billing_period_entity import BillingPeriod
 from app.modules.billing.domain.billing_period_repository import BillingPeriodRepository
 from app.modules.billing.domain.fee_transaction_entity import FeeTransaction
 from app.modules.billing.domain.fee_transaction_repository import FeeTransactionRepository
+from app.common.utils import utc_now
 from app.modules.billing.domain.managed_account_repository import ManagedAccountRepository
 
 
@@ -73,7 +73,7 @@ class CloseBillingPeriodService:
                 http_status=404,
             )
 
-        now = datetime.now(tz=timezone.utc).replace(tzinfo=None)
+        now = utc_now().replace(tzinfo=None)
 
         # Aplicar cálculo HWM en la entidad (lógica de dominio pura)
         period.calculate_fee(

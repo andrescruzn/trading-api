@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 from typing import Any
 
 from app.common.contracts import ServiceResult
 from app.modules.agent.domain.model_run_entity import ModelRun
+from app.common.utils import utc_now
 from app.modules.agent.domain.model_run_repository import ModelRunRepository
 
 
@@ -44,7 +44,7 @@ class FinishModelRunService:
 
         run.status = status
         run.metrics = metrics
-        run.finished_at = datetime.now(tz=timezone.utc)
+        run.finished_at = utc_now()
         if logs_uri:
             run.logs_uri = logs_uri
 

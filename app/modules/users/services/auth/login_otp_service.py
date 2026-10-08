@@ -20,7 +20,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from typing import Optional
 
 from app.common.config.settings import Settings
@@ -30,6 +30,7 @@ from app.common.security.otp import generate_numeric_otp, hash_otp
 
 from app.modules.mailer.domain import OTP_TEMPLATE
 from app.modules.mailer.services import MailerService
+from app.common.utils import utc_now
 from app.modules.users.domain import UserRepository
 
 
@@ -98,7 +99,7 @@ class LoginOtpService:
             # - No decimos "no existe"; devolvemos code estable.
             return ServiceResult.fail(code="INVALID_REQUEST", http_status=400)
 
-        now = datetime.now(timezone.utc)
+        now = utc_now()
 
         # --------------------------------------------------------------
         # 3) Lockout + estado (reglas de dominio)

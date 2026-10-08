@@ -157,11 +157,12 @@ class Settings:
         # - Estos IDs son "infra" (DB), pero se usan como configuración
         #   para reglas simples (admin accede a todo).
         # --------------------------------------------------------------
-        admin_role_raw = os.getenv("AUTH_ADMIN_ROLE_ID", "1").strip()
-        user_role_raw = os.getenv("AUTH_USER_ROLE_ID", "2").strip()
+        # Defaults = IDs reales de la tabla `roles`: 1 user, 2 admin, 3 investor.
+        admin_role_raw = os.getenv("AUTH_ADMIN_ROLE_ID", "2").strip()
+        user_role_raw = os.getenv("AUTH_USER_ROLE_ID", "1").strip()
 
-        self.AUTH_ADMIN_ROLE_ID: int = int(admin_role_raw) if admin_role_raw.isdigit() else 1
-        self.AUTH_USER_ROLE_ID: int = int(user_role_raw) if user_role_raw.isdigit() else 2
+        self.AUTH_ADMIN_ROLE_ID: int = int(admin_role_raw) if admin_role_raw.isdigit() else 2
+        self.AUTH_USER_ROLE_ID: int = int(user_role_raw) if user_role_raw.isdigit() else 1
 
         investor_role_raw = os.getenv("AUTH_INVESTOR_ROLE_ID", "3").strip()
         self.AUTH_INVESTOR_ROLE_ID: int = int(investor_role_raw) if investor_role_raw.isdigit() else 3

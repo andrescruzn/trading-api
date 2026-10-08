@@ -1,6 +1,6 @@
 ---
 name: frontend
-description: Cómo se construye el frontend React de Trading App (frontend/). Usar antes de crear o modificar cualquier página, ruta, componente, hook, llamada a la API o item del sidebar del front. Cubre la estructura por módulos, TanStack Router (hash history, rutas finas, guards de rol), TanStack Query (api → queries → mutations), el api-client y el envelope {msg, errorCode, data}, formularios con react-hook-form + zod, DataTable, diálogos, toasts, tokens de color, variables de entorno (.env_frontend) y el checklist de página nueva.
+description: Cómo se construye el frontend React de Trading App (frontend/). Usar antes de crear o modificar cualquier página, ruta, componente, hook, llamada a la API o item del sidebar del front. Cubre la estructura por módulos, TanStack Router (hash history, rutas finas, guards de rol), TanStack Query (api → queries → mutations), el api-client y el envelope {msg, errorCode, data}, formularios con react-hook-form + zod, DataTable, diálogos, toasts, tokens de color, variables de entorno (.env.frontend) y el checklist de página nueva.
 ---
 
 # Frontend (React + shadcn)
@@ -15,7 +15,7 @@ Skills relacionados: `shadcn` (añadir/usar componentes), `tailwind-css-patterns
 
 ```
 package.json · vite.config.ts · tsr.config.json · tsconfig*.json · components.json   ← raíz del repo
-.env_frontend (.example)                                                              ← variables VITE_*
+.env.frontend (.example)                                                              ← variables VITE_*
 frontend/
   index.html · public/favicon.svg
   src/
@@ -147,14 +147,14 @@ export function AdminExchangesPage() {
 
 ## Variables de entorno
 
-`.env_frontend` en la raíz (copiar de `.env_frontend.example`; no se commitea). `vite.config.ts` lo carga a mano: Vite **no** lee el `.env` del backend.
+`.env.frontend` en la raíz (copiar de `.env.frontend.example`; no se commitea). `vite.config.ts` lo carga a mano: Vite **no** lee el `.env` del backend.
 
 | Variable | Uso |
 |---|---|
 | `VITE_API_URL` | Base de la API. Dev: `/api` (proxy de Vite → misma origen, cookie `SameSite=Lax` OK). Prod: URL pública, idealmente mismo dominio |
 | `VITE_API_PROXY_TARGET` | Solo dev: a dónde reenvía el proxy `/api` (default `http://localhost:8000`) |
 
-Solo las `VITE_*` llegan al navegador: nunca secretos. Nueva variable → `.env_frontend.example` + `frontend/src/vite-env.d.ts`.
+Solo las `VITE_*` llegan al navegador: nunca secretos. Nueva variable → `.env.frontend.example` + `frontend/src/vite-env.d.ts`.
 
 ## Comandos
 

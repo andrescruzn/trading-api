@@ -56,15 +56,15 @@ Requiere **Node.js 20.12+** (recomendado 22 o 24) y **pnpm 12+** (`corepack enab
 
 ```bash
 pnpm install                                # dependencias
-cp .env_frontend.example .env_frontend      # variables del front (VITE_*)
+cp .env.frontend.example .env.frontend      # variables del front (VITE_*)
 ```
 
-| Variable (`.env_frontend`) | Para qué |
+| Variable (`.env.frontend`) | Para qué |
 |---|---|
 | `VITE_API_URL` | Base de la API. En desarrollo `/api` (pasa por el proxy de Vite). En producción, la URL pública, idealmente en el mismo dominio que el front |
 | `VITE_API_PROXY_TARGET` | Solo desarrollo: a dónde reenvía Vite las peticiones `/api` (por defecto `http://localhost:8000`) |
 
-El front **no** lee el `.env` del backend: solo `.env_frontend`.
+El front **no** lee el `.env` del backend: solo `.env.frontend`.
 
 ---
 

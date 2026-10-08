@@ -15,6 +15,7 @@ __pycache__/
 .env
 .env.*
 !.env.example
+!.env.frontend.example
 
 # =========================
 # Logs
@@ -59,7 +60,4 @@ node_modules/
 frontend/dist/
 frontend/src/routeTree.gen.ts
 *.tsbuildinfo
-# El patrón .env.* no cubre .env_frontend (guion bajo)
-.env_frontend
-!.env_frontend.example
 .tanstack

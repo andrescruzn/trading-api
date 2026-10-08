@@ -2,9 +2,9 @@
   "permissions": {
     "deny": [
       "Read(./.env)",
-      "Read(./.env_frontend)",
+      "Read(./.env.frontend)",
       "Edit(./.env)",
-      "Edit(./.env_frontend)"
+      "Edit(./.env.frontend)"
     ]
   },
   "hooks": {

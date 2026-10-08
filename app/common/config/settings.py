@@ -127,7 +127,7 @@ class Settings:
         # --------------------------------------------------------------
         # OpenAPI / Docs
         # --------------------------------------------------------------
-        self.API_TITLE: str = os.getenv("API_TITLE", "Trading API").strip()
+        self.API_TITLE: str = os.getenv("API_TITLE", "Trading App").strip()
         self.API_VERSION: str = os.getenv("API_VERSION", "v1").strip()
 
         # --------------------------------------------------------------

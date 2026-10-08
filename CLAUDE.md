@@ -1,6 +1,6 @@
-# Trading AI API
+# Trading App
 
-Backend de **trading asistido por IA**. El objetivo es quitar el sesgo emocional del trader: el sistema solo propone (y ejecuta) operaciones que pasan reglas objetivas.
+Aplicación de **trading asistido por IA** (nombre temporal: **trading-app**). Este repo contiene la aplicación completa: API REST, páginas web, jobs y base de datos. El objetivo es quitar el sesgo emocional del trader: el sistema solo propone (y ejecuta) operaciones que pasan reglas objetivas.
 
 **Qué hace, de punta a punta:** descarga velas OHLCV de exchanges (ccxt) → calcula indicadores y régimen de mercado → un agente LLM evalúa la operación contra la estrategia → un bot emite la señal (BUY/SELL/HOLD con entry/SL/TP) → se crea la orden (paper o live) → se disparan alertas → a los inversores con cuenta administrada se les cobra un performance fee.
 

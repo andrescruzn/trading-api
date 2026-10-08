@@ -1,6 +1,6 @@
 ---
 name: code-style
-description: Estilo de código Python de Trading AI API. Usar antes de escribir o editar cualquier archivo .py. Cubre cabecera de archivo, imports absolutos, type hints modernos, nomenclatura, docstrings y comentarios en español, banners de sección, Pydantic v2 y FastAPI.
+description: Estilo de código Python de Trading App. Usar antes de escribir o editar cualquier archivo .py. Cubre cabecera de archivo, imports absolutos, type hints modernos, nomenclatura, docstrings y comentarios en español, banners de sección, Pydantic v2 y FastAPI.
 ---
 
 # Estilo de código Python

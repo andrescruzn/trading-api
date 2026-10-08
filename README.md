@@ -1,6 +1,6 @@
-# TRADING FAST API
+# Trading App
 
-Backend del proyecto **Trading AI**, construido con **FastAPI** sobre **Python 3.12**, orientado a trading algorítmico, IA y backtesting, usando **MySQL 8.x** como base de datos principal.
+Aplicación **Trading App** (nombre temporal; el repo contiene la aplicación completa), construida con **FastAPI** sobre **Python 3.12**, orientada a trading algorítmico, IA y backtesting, y usa **MySQL 8.x** como base de datos principal.
 
 ---
 

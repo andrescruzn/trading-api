@@ -1,4 +1,4 @@
-# El sistema completo — Trading AI API
+# El sistema completo — Trading App
 
 ## ¿Qué hace este sistema en una frase?
 

@@ -1,6 +1,6 @@
 ---
 name: api-standards
-description: Estándares REST de Trading AI API. Usar antes de crear o modificar endpoints, respuestas, códigos de error o mensajes de UI. Cubre el envelope {msg, errorCode, data}, los helpers build_*_response de app.common.http, el flujo ServiceResult → error_messages.py → JSON, autenticación/roles en rutas, convenciones de URL y paginación.
+description: Estándares REST de Trading App. Usar antes de crear o modificar endpoints, respuestas, códigos de error o mensajes de UI. Cubre el envelope {msg, errorCode, data}, los helpers build_*_response de app.common.http, el flujo ServiceResult → error_messages.py → JSON, autenticación/roles en rutas, convenciones de URL y paginación.
 ---
 
 # Estándares de API REST

@@ -1,6 +1,6 @@
 ---
 name: web-ui
-description: Páginas web server-side de Trading AI API (Jinja2 + JS vanilla + app.css). Usar antes de crear o modificar una página, template, archivo JS de /static/, estilos CSS o la navegación lateral. Cubre registro de la página en web/routes.py, prefijos de CSP en security_headers.py, cache-busting ?v={{ sv }}, handlers sin inline, escape de HTML, consumo del envelope de la API y componentes CSS existentes.
+description: Páginas web server-side de Trading App (Jinja2 + JS vanilla + app.css). Usar antes de crear o modificar una página, template, archivo JS de /static/, estilos CSS o la navegación lateral. Cubre registro de la página en web/routes.py, prefijos de CSP en security_headers.py, cache-busting ?v={{ sv }}, handlers sin inline, escape de HTML, consumo del envelope de la API y componentes CSS existentes.
 ---
 
 # Web UI (Jinja2 + JS vanilla)

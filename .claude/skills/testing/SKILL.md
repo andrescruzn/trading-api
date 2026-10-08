@@ -1,6 +1,6 @@
 ---
 name: testing
-description: Estándares de tests de Trading AI API. Usar SOLO cuando el usuario pida explícitamente escribir o ejecutar tests. Cubre qué tests correr (nunca la suite completa), estructura real tests/<modulo>/test_<servicio>.py, tests unitarios de servicios con MagicMock, tests de rutas web con TestClient, fixtures de conftest y anti-patrones.
+description: Estándares de tests de Trading App. Usar SOLO cuando el usuario pida explícitamente escribir o ejecutar tests. Cubre qué tests correr (nunca la suite completa), estructura real tests/<modulo>/test_<servicio>.py, tests unitarios de servicios con MagicMock, tests de rutas web con TestClient, fixtures de conftest y anti-patrones.
 ---
 
 # Testing

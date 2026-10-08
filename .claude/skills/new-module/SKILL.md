@@ -1,6 +1,6 @@
 ---
 name: new-module
-description: Checklist de punta a punta para crear un módulo nuevo (o un recurso nuevo dentro de un módulo) en Trading AI API, desde la spec y la tabla hasta la ruta REST, la página web y la documentación. Usar cuando el usuario pida un módulo o recurso nuevo, o una feature que necesite tabla + servicio + endpoint.
+description: Checklist de punta a punta para crear un módulo nuevo (o un recurso nuevo dentro de un módulo) en Trading App, desde la spec y la tabla hasta la ruta REST, la página web y la documentación. Usar cuando el usuario pida un módulo o recurso nuevo, o una feature que necesite tabla + servicio + endpoint.
 argument-hint: "[nombre del módulo o recurso]"
 ---
 

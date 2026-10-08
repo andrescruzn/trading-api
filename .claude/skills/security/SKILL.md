@@ -1,9 +1,9 @@
 ---
 name: security
-description: Seguridad de Trading AI API. Usar antes de tocar autenticación, roles, sesiones, inputs de usuario, credenciales de exchange, webhooks o cualquier código sensible. Cubre JWT en cookie HTTP-only con rotación de JTI, roles (user/admin/investor), rate limiting, lockout, CSP, XSS/CSRF/SQLi, bcrypt, OTP, cifrado Fernet de API keys y política de contraseñas.
+description: Seguridad de Trading App. Usar antes de tocar autenticación, roles, sesiones, inputs de usuario, credenciales de exchange, webhooks o cualquier código sensible. Cubre JWT en cookie HTTP-only con rotación de JTI, roles (user/admin/investor), rate limiting, lockout, CSP, XSS/CSRF/SQLi, bcrypt, OTP, cifrado Fernet de API keys y política de contraseñas.
 ---
 
-# Security Best Practices — Trading AI API
+# Security Best Practices — Trading App
 
 ## Estado actual del proyecto (ya implementado)
 

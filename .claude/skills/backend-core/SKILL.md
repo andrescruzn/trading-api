@@ -1,9 +1,9 @@
 ---
 name: backend-core
-description: Estructura real del repo y reglas de capas del backend FastAPI de Trading AI. Usar antes de crear o modificar cualquier módulo, servicio, repositorio, provider o ruta REST. Cubre el árbol de app/, la dirección de dependencias, el wiring con ServiceFactory, los archivos de infraestructura que no se pueden romper y las prohibiciones.
+description: Estructura real del repo y reglas de capas del backend FastAPI de Trading App. Usar antes de crear o modificar cualquier módulo, servicio, repositorio, provider o ruta REST. Cubre el árbol de app/, la dirección de dependencias, el wiring con ServiceFactory, los archivos de infraestructura que no se pueden romper y las prohibiciones.
 ---
 
-# Backend Core — Trading AI API
+# Backend Core — Trading App
 
 ## Rol y comportamiento
 

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # ======================================================================
-# seeds/strategies.py
+# database/seeds/strategies.py
 #
 # PROPÓSITO:
 # - 6 estrategias de ejemplo del Módulo 5 para desarrollo y pruebas.
@@ -19,7 +19,7 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from app.modules.strategies.infrastructure.strategy_model import StrategyModel
-from seeds._helpers import SeedStats, get_or_create
+from database.seeds._helpers import SeedStats, get_or_create
 
 
 def _rule(indicator: str, operator: str, value: Any) -> dict[str, Any]:

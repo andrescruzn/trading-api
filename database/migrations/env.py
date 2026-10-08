@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # ======================================================================
-# alembic/env.py
+# database/migrations/env.py
 #
 # PROPÓSITO:
 # - Entorno de ejecución de Alembic: conecta con la BD y expone el

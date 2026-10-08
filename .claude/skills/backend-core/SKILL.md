@@ -128,7 +128,7 @@ def get_factory(db: Session = Depends(get_db)) -> StrategyServiceFactory:
 
 ## Carpetas a ignorar
 
-`.venv/`, `__pycache__/`, `.git/`, `.env`, `instance/`, `uv.lock`, `.pytest_cache/`. Foco en `app/`, `tests/`, `seeds/`, `alembic/`, `specs/`.
+`.venv/`, `__pycache__/`, `.git/`, `.env`, `instance/`, `uv.lock`, `.pytest_cache/`. Foco en `app/`, `tests/`, `database/`, `specs/`.
 
 ## Relacionados
 

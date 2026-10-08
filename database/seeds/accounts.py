@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # ======================================================================
-# seeds/accounts.py
+# database/seeds/accounts.py
 #
 # PROPÓSITO:
 # - Cuentas paper de ejemplo del Módulo 4 (Binance y Bybit) con balances
@@ -26,7 +26,7 @@ from app.modules.accounts.infrastructure.account_balance_model import AccountBal
 from app.modules.accounts.infrastructure.account_model import AccountModel
 from app.modules.market.infrastructure.exchange_model import ExchangeModel
 from app.modules.users.infrastructure.user_model import UserModel
-from seeds._helpers import SeedStats, get_or_create
+from database.seeds._helpers import SeedStats, get_or_create
 
 DEMO_USER_EMAIL = "andrescruznovoa@gmail.com"
 

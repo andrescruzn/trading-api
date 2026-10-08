@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # ======================================================================
-# seeds/_helpers.py
+# database/seeds/_helpers.py
 #
 # PROPÓSITO:
 # - Utilidades comunes de los seeds: inserción idempotente por clave natural

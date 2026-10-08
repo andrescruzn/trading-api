@@ -60,23 +60,23 @@ uv run uvicorn app.main:app --reload                       # servidor de desarro
 uv run python -m pytest tests/<modulo>/test_<x>.py -v      # tests de UN archivo
 uv run alembic revision --autogenerate -m "mNN ..."        # generar migración desde los modelos
 uv run alembic upgrade head                                # aplicar migraciones pendientes
-uv run python -m seeds [nombre ...]                        # datos iniciales (idempotente; --list para ver)
+uv run python -m database.seeds [nombre ...]                        # datos iniciales (idempotente; --list para ver)
 ```
 
 - **NUNCA** correr `pytest tests/` completo salvo que el usuario lo pida.
 - **No crear tests por defecto** (gastan tokens): solo cuando el usuario los pida.
 - **NUNCA** hacer login con `curl` al depurar: rota `token_current_jti` e invalida la sesión del navegador.
 - **Comandos `uv` / `python` de alto impacto los ejecuta el usuario, no el agente.** Esto incluye: `uv sync`, `uv add`/`uv remove`, `uv lock`, levantar el servidor, scripts o seeds que escriban en la BD, cualquier comando `alembic` que toque la BD (`revision --autogenerate`, `upgrade`, `downgrade`, `stamp`, `check`), jobs que llamen a exchanges o al LLM (coste/órdenes reales), y la suite de tests completa. El agente debe darle el comando exacto (sugiriendo el prefijo `! <comando>` para que la salida llegue a la conversación) y **esperar su respuesta** antes de continuar. Ante la duda sobre si un comando es de alto impacto, tratarlo como tal.
-- MySQL (CLI), migraciones con Alembic y seeds en Python (`seeds/<dominio>.py`): ver el skill `database`. El esquema lo definen los modelos ORM; todo cambio va en una revisión de `alembic/versions/`.
+- MySQL (CLI), migraciones con Alembic y seeds en Python (`database/seeds/<dominio>.py`): ver el skill `database`. El esquema lo definen los modelos ORM; todo cambio va en una revisión de `database/migrations/versions/`.
 
 ### Migraciones (Alembic)
 
 Flujo para cualquier cambio de esquema. Los comandos los ejecuta el usuario:
 
 1. El agente crea o modifica el modelo en `app/modules/<modulo>/infrastructure/` (y lo registra en `models_registry.py` si es nuevo).
-2. **Generar:** `uv run alembic revision --autogenerate -m "mNN descripcion"` → crea un archivo en `alembic/versions/` con `upgrade()` y `downgrade()`.
+2. **Generar:** `uv run alembic revision --autogenerate -m "mNN descripcion"` → crea un archivo en `database/migrations/versions/` con `upgrade()` y `downgrade()`.
 3. **Revisar el archivo generado antes de aplicarlo** (lo hace el agente):
-   - autogenerate no detecta `CHECK`, comentarios ni `server_default`: añadirlos a mano (`op.create_check_constraint(...)`, `op.execute(...)`);
+   - en tablas nuevas incluye CHECKs, comentarios y defaults del modelo; en tablas existentes **no** detecta CHECKs añadidos/quitados ni cambios de `server_default`: añadirlos a mano (`op.create_check_constraint(...)`, `op.alter_column(...)`);
    - quitar operaciones no deseadas (`drop_index`, `modify_type`… sobre tablas que no se tocaron);
    - completar `MOTIVO:` en el docstring y dejar un `downgrade()` real.
 4. **Aplicar:** `uv run alembic upgrade head`.
@@ -124,6 +124,6 @@ Al terminar un módulo o una feature significativa, ejecutar el skill [`update-s
 | [`specs/_ROOT.md`](specs/_ROOT.md) | Índice de módulos, estado, flujo, dependencias, mapa de páginas, prioridades |
 | `specs/MNN-*.md` | Fuente de verdad de cada módulo |
 | [`.claude/skills/`](.claude/skills/) | Cómo se escribe el código en este repo (bajo demanda) |
-| [`alembic/versions/`](alembic/versions/) + modelos ORM (`app/modules/*/infrastructure/*_model.py`) | Esquema de la BD (se consulta vía skill `database`, no se carga siempre) |
+| [`database/migrations/versions/`](database/migrations/versions/) + modelos ORM (`app/modules/*/infrastructure/*_model.py`) | Esquema de la BD (se consulta vía skill `database`, no se carga siempre) |
 | [`MANUAL.md`](MANUAL.md) | Explicación para humanos, sin tecnicismos |
 | [`README.md`](README.md) | Instalación y ejecución |

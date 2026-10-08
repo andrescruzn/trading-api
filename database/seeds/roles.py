@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # ======================================================================
-# seeds/roles.py
+# database/seeds/roles.py
 #
 # PROPÓSITO:
 # - Roles base de la app: user, admin e investor (M10).
@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session
 
 from app.common.config import settings
 from app.modules.users.infrastructure.role_model import RoleModel
-from seeds._helpers import SeedStats, get_or_create
+from database.seeds._helpers import SeedStats, get_or_create
 
 
 def run(session: Session) -> SeedStats:

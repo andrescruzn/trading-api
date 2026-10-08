@@ -7,7 +7,7 @@ description: Base de datos MySQL 8 de Trading AI API (base trading_ai). Usar ant
 
 ## Dónde está el esquema
 
-El esquema lo definen los **modelos ORM** (`app/modules/*/infrastructure/*_model.py`, registrados en `app/extensions/db/models_registry.py`) y se aplica con las **revisiones de Alembic** en [`alembic/versions/`](../../../alembic/versions/). No hay dump ni `.sql` de referencia.
+El esquema lo definen los **modelos ORM** (`app/modules/*/infrastructure/*_model.py`, registrados en `app/extensions/db/models_registry.py`) y se aplica con las **revisiones de Alembic** en [`database/migrations/versions/`](../../../database/migrations/versions/). No hay dump ni `.sql` de referencia.
 
 - Una tabla concreta: leer su modelo (`grep -rn '__tablename__ = "<tabla>"' app`), que declara columnas, índices, FKs y CHECKs.
 - DDL completo sin tocar la BD: `uv run alembic upgrade head --sql` (modo offline, solo imprime el SQL).
@@ -68,9 +68,9 @@ Otras restricciones que suelen morder:
 
 ## Migraciones con Alembic
 
-Todo cambio de esquema es una **revisión de Alembic** en `alembic/versions/`; nunca SQL suelto.
+Todo cambio de esquema es una **revisión de Alembic** en `database/migrations/versions/`; nunca SQL suelto.
 
-- Config: `alembic.ini` (sin URL) + `alembic/env.py`, que reutiliza `engine` de `app.extensions.db` (URL de `.env`, sesión en UTC) y `Base.metadata` vía `models_registry`.
+- Config: `alembic.ini` (sin URL) + `database/migrations/env.py`, que reutiliza `engine` de `app.extensions.db` (URL de `.env`, sesión en UTC) y `Base.metadata` vía `models_registry`.
 - `0001_baseline` es una revisión vacía (punto de partida). El esquema completo (29 tablas) lo crea la revisión **generada con `--autogenerate` desde los modelos**, que le sigue.
 - **Los modelos son la fuente del esquema**: cada uno declara exactamente lo que hay en MySQL (tipos, defaults, comentarios, índices, FKs, CHECKs y opciones de tabla). Ver "Modelos y Alembic" abajo.
 - `env.py` ignora las tablas que existen en la BD sin modelo ORM (hoy solo `http_audit_YYYY`, que se crean en runtime), así autogenerate no propone borrarlas.
@@ -96,17 +96,17 @@ uv run alembic downgrade -1                            # deshacer la última
 uv run alembic stamp head                              # marcar una BD que ya tiene el esquema, sin ejecutar nada
 ```
 
-- **BD nueva desde cero:** `alembic upgrade head` y luego `python -m seeds`.
+- **BD nueva desde cero:** `alembic upgrade head` y luego `python -m database.seeds`.
 - **BD que ya tenía el esquema** (creada con el dump antes de Alembic): `alembic stamp head`, sin `upgrade`.
 
 ## Seeds
 
-Los seeds son módulos Python en `seeds/`, uno por dominio, y se ejecutan con el runner (los ejecuta el usuario: escriben en la BD):
+Los seeds son módulos Python en `database/seeds/`, uno por dominio, y se ejecutan con el runner (los ejecuta el usuario: escriben en la BD):
 
 ```bash
-uv run python -m seeds                      # todos, en orden de dependencias
-uv run python -m seeds roles market_data    # solo los indicados
-uv run python -m seeds --list               # ver los disponibles
+uv run python -m database.seeds                      # todos, en orden de dependencias
+uv run python -m database.seeds roles market_data    # solo los indicados
+uv run python -m database.seeds --list               # ver los disponibles
 ```
 
 | Seed | Contenido |
@@ -117,8 +117,8 @@ uv run python -m seeds --list               # ver los disponibles
 | `accounts` | 2 cuentas paper con balances para el usuario demo (se omite si el usuario no existe) |
 
 Reglas para un seed nuevo:
-- Archivo `seeds/<dominio>.py` con `def run(session: Session) -> SeedStats`, registrado en `SEEDS` de `seeds/__main__.py` respetando el orden de dependencias.
-- **Idempotente:** insertar con `get_or_create(session, Model, lookup={clave natural}, values={...}, stats=stats)` de `seeds/_helpers.py`. Busca por clave natural y nunca actualiza filas existentes. No depender de `INSERT IGNORE`: si la tabla no tiene `UNIQUE` sobre esa clave, duplica.
+- Archivo `database/seeds/<dominio>.py` con `def run(session: Session) -> SeedStats`, registrado en `SEEDS` de `database/seeds/__main__.py` respetando el orden de dependencias.
+- **Idempotente:** insertar con `get_or_create(session, Model, lookup={clave natural}, values={...}, stats=stats)` de `database/seeds/_helpers.py`. Busca por clave natural y nunca actualiza filas existentes. No depender de `INSERT IGNORE`: si la tabla no tiene `UNIQUE` sobre esa clave, duplica.
 - Usar los modelos ORM y enlazar por nombre (exchange por `name`, usuario por `email`), nunca por IDs fijos. La excepción son los roles, que salen de `settings`.
 - El seed no hace commit: el runner confirma uno por seed con `SqlAlchemyRepository.commit()` y hace rollback si falla.
 

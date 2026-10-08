@@ -73,7 +73,7 @@ Entregables:
 | Alcance original | **86 %** (6/7) | CRUD de exchanges/symbols/timeframes, ingesta manual y automática, `GET /candles` y UI completos; **no hay tests** en `tests/` para este módulo |
 | Madurez | **≈ 65 %** | Funcionalidad 100 · Tests 0 · Seguridad 80 · Operación 80 |
 
-- **Operación (80):** el scheduler automatiza fetch + features + retención; hay seed (`seeds/market_data.py`).
+- **Operación (80):** el scheduler automatiza fetch + features + retención; hay seed (`database/seeds/market_data.py`).
 - **Seguridad (80):** escritura solo admin, validación OHLCV; sin rate limit propio.
 
 ## Posibles mejoras
@@ -104,7 +104,7 @@ Entregables:
 | `candles` | Velas OHLCV | UNIQUE (symbol_id, timeframe_id, ts); bulk upsert vía ON DUPLICATE KEY UPDATE |
 
 ### Seed de datos (ya ejecutado)
-Archivo: `seeds/market_data.py` (`uv run python -m seeds market_data`)
+Archivo: `database/seeds/market_data.py` (`uv run python -m database.seeds market_data`)
 - 7 exchanges: Binance, Bybit, Kraken, Coinbase, Bitget, OKX, TradingView
 - 14 timeframes: 1m, 3m, 5m, 15m, 30m, 1h, 2h, 4h, 6h, 8h, 12h, 1d, 3d, 1w
 - 24 símbolos: 15 Binance crypto + 4 Bybit crypto + 2 TradingView metals + 3 TradingView forex

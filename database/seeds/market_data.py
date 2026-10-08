@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # ======================================================================
-# seeds/market_data.py
+# database/seeds/market_data.py
 #
 # PROPÓSITO:
 # - Catálogos del Módulo 2 (Market Data): exchanges, timeframes y símbolos.
@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session
 from app.modules.market.infrastructure.exchange_model import ExchangeModel
 from app.modules.market.infrastructure.symbol_model import SymbolModel
 from app.modules.market.infrastructure.timeframe_model import TimeframeModel
-from seeds._helpers import SeedStats, get_or_create
+from database.seeds._helpers import SeedStats, get_or_create
 
 EXCHANGES: list[tuple[str, str]] = [
     ("Binance", "crypto_exchange"),

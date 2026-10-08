@@ -1,16 +1,16 @@
 # -*- coding: utf-8 -*-
 
 # ======================================================================
-# seeds/__main__.py
+# database/seeds/__main__.py
 #
 # PROPÓSITO:
 # - Runner de seeds. Ejecuta los seeds indicados (o todos, en orden de
 #   dependencias) contra la BD del .env.
 #
 # USO:
-#   uv run python -m seeds                      # todos
-#   uv run python -m seeds roles market_data    # solo esos
-#   uv run python -m seeds --list               # ver los disponibles
+#   uv run python -m database.seeds                      # todos
+#   uv run python -m database.seeds roles market_data    # solo esos
+#   uv run python -m database.seeds --list               # ver los disponibles
 #
 # NOTAS:
 # - Cada seed es idempotente: se puede correr varias veces.
@@ -26,8 +26,8 @@ from sqlalchemy.orm import Session
 
 import app.extensions.db.models_registry  # noqa: F401  (registra los modelos y sus FKs)
 from app.extensions.db import SessionLocal, SqlAlchemyRepository
-from seeds import accounts, market_data, roles, strategies
-from seeds._helpers import SeedStats
+from database.seeds import accounts, market_data, roles, strategies
+from database.seeds._helpers import SeedStats
 
 # Orden de dependencias: accounts necesita exchanges (market_data) y usuarios.
 SEEDS: dict[str, Callable[[Session], SeedStats]] = {

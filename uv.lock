@@ -1326,7 +1326,7 @@ wheels = [
 ]
 
 [[package]]
-name = "trading-api"
+name = "trading-app"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [

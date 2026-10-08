@@ -30,37 +30,46 @@ from typing import Dict
 
 COMMON_ERROR_MESSAGES: Dict[str, str] = {
     # Validación
-    "VALIDATION_ERROR": "Invalid request data",
-    "INVALID_REQUEST": "Invalid request",
-    "MISSING_REQUIRED_FIELD": "Missing required field",
-    "INVALID_FORMAT": "Invalid format",
+    "VALIDATION_ERROR": "Revisa los datos enviados: hay campos inválidos o incompletos.",
+    "INVALID_REQUEST": "La solicitud no es válida.",
+    "MISSING_REQUIRED_FIELD": "Falta un campo obligatorio.",
+    "INVALID_FORMAT": "El formato de un campo no es válido.",
 
     # Autenticación
-    "AUTH_REQUIRED": "Authentication required",
-    "AUTH_INVALID_TOKEN": "Invalid or expired token",
-    "AUTH_MISSING_TOKEN": "Missing authentication token",
-    "AUTH_SESSION_REVOKED": "Session has been revoked",
+    "AUTH_REQUIRED": "Inicia sesión para continuar.",
+    "AUTH_INVALID_TOKEN": "Tu sesión no es válida o expiró. Inicia sesión de nuevo.",
+    "AUTH_MISSING_TOKEN": "Inicia sesión para continuar.",
+    "AUTH_SESSION_REVOKED": "Tu sesión se cerró porque iniciaste sesión en otro lugar.",
+    "AUTH_INVALID_TOKEN_TYPE": "Tu sesión no es válida. Inicia sesión de nuevo.",
+    "AUTH_INVALID_SUBJECT": "Tu sesión no es válida. Inicia sesión de nuevo.",
+    "AUTH_INVALID_IDENTITY": "Tu sesión no es válida. Inicia sesión de nuevo.",
+    "AUTH_MISSING_JTI": "Tu sesión no es válida. Inicia sesión de nuevo.",
+    "AUTH_USER_NOT_FOUND": "Tu usuario ya no existe o está inactivo.",
+    "AUTH_ROLE_NOT_FOUND": "Tu usuario no tiene un rol válido. Contacta al administrador.",
+    "AUTH_ROLE_INACTIVE": "Tu rol está desactivado. Contacta al administrador.",
+    "AUTH_FORBIDDEN_ROLE": "No tienes permiso para hacer esta acción.",
 
     # Autorización
-    "FORBIDDEN": "You don't have permission to perform this action",
-    "ACCESS_DENIED": "Access denied",
+    "FORBIDDEN": "No tienes permiso para hacer esta acción.",
+    "ACCESS_DENIED": "No tienes acceso a este recurso.",
 
     # Rate limiting
-    "RATE_LIMIT_EXCEEDED": "Too many requests. Please try again later.",
+    "RATE_LIMIT_EXCEEDED": "Demasiados intentos. Espera un momento y vuelve a intentarlo.",
 
     # Recursos
-    "NOT_FOUND": "Resource not found",
-    "ALREADY_EXISTS": "Resource already exists",
-    "CONFLICT": "Resource conflict",
+    "NOT_FOUND": "No encontramos lo que buscas.",
+    "METHOD_NOT_ALLOWED": "Este endpoint no acepta ese método HTTP.",
+    "ALREADY_EXISTS": "Ya existe un registro con esos datos.",
+    "CONFLICT": "El registro cambió o entra en conflicto con otro.",
 
     # Estado
-    "INVALID_STATE": "Invalid state for this operation",
-    "OPERATION_NOT_ALLOWED": "Operation not allowed",
+    "INVALID_STATE": "No se puede hacer esta acción en el estado actual.",
+    "OPERATION_NOT_ALLOWED": "Esta operación no está permitida.",
 
     # Servidor
-    "INTERNAL_ERROR": "Internal server error",
-    "SERVICE_UNAVAILABLE": "Service temporarily unavailable",
-    "EXTERNAL_SERVICE_ERROR": "External service error",
+    "INTERNAL_ERROR": "Algo falló en el servidor. Inténtalo de nuevo en unos minutos.",
+    "SERVICE_UNAVAILABLE": "El servicio no está disponible en este momento.",
+    "EXTERNAL_SERVICE_ERROR": "Un servicio externo no respondió. Inténtalo de nuevo más tarde.",
 }
 
 
@@ -72,26 +81,27 @@ AUTH_ERROR_MESSAGES: Dict[str, str] = {
     **COMMON_ERROR_MESSAGES,
 
     # Login
-    "INVALID_CREDENTIALS": "Invalid credentials",
-    "USER_NOT_ALLOWED": "User account is not active",
-    "LOGIN_LOCKED": "Too many failed attempts. Please try again later.",
+    "INVALID_CREDENTIALS": "Correo o contraseña incorrectos.",
+    "USER_NOT_ALLOWED": "Tu cuenta no está activa. Contacta al administrador.",
+    "LOGIN_LOCKED": "Bloqueamos tu cuenta temporalmente por varios intentos fallidos. Inténtalo más tarde.",
 
     # OTP
-    "OTP_NOT_REQUESTED": "OTP was not requested",
-    "OTP_EXPIRED": "OTP has expired",
-    "OTP_INVALID": "Invalid OTP code",
-    "OTP_EMAIL_SEND_FAILED": "Could not send OTP email",
+    "OTP_NOT_REQUESTED": "No hay un código activo. Pide uno nuevo.",
+    "OTP_EXPIRED": "El código venció. Pide uno nuevo.",
+    "OTP_INVALID": "El código no es correcto. Revísalo e inténtalo de nuevo.",
+    "OTP_EMAIL_SEND_FAILED": "No pudimos enviarte el correo con el código. Inténtalo más tarde.",
 
     # Sesión
-    "SESSION_EXPIRED": "Session has expired",
-    "SESSION_INVALID": "Invalid session",
+    "SESSION_EXPIRED": "Tu sesión expiró. Inicia sesión de nuevo.",
+    "SESSION_INVALID": "Tu sesión no es válida. Inicia sesión de nuevo.",
 
     # Usuario
-    "USER_NOT_FOUND": "User not found",
+    "USER_NOT_FOUND": "No encontramos tu usuario.",
+    "ROLE_NOT_FOUND": "Tu usuario no tiene un rol válido. Contacta al administrador.",
 
     # Password
-    "PASSWORD_SAME_AS_CURRENT": "New password must be different from current password",
-    "PASSWORD_TOO_WEAK": "Password must be at least 8 characters with uppercase, lowercase and a number",
+    "PASSWORD_SAME_AS_CURRENT": "La nueva contraseña debe ser distinta de la actual.",
+    "PASSWORD_TOO_WEAK": "La contraseña debe tener mínimo 8 caracteres, con al menos una mayúscula, una minúscula y un número.",
 }
 
 

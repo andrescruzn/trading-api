@@ -8,7 +8,7 @@
 # - Non-blocking: el insert se lanza en un hilo daemon.
 #
 # FLUJO:
-#   1. Skip rutas excluidas (/health, /static/, /favicon)
+#   1. Skip rutas excluidas (/health, /docs, /redoc, /openapi.json, /favicon)
 #   2. Leer request body (ya buffereado por BaseHTTPMiddleware)
 #   3. Ejecutar request → capturar response body
 #   4. Extraer user_id del JWT (silencioso si falla)
@@ -41,7 +41,7 @@ logger = logging.getLogger(__name__)
 # ======================================================================
 
 # Rutas excluidas de auditoría
-_SKIP_PREFIXES = ("/health", "/static/", "/favicon")
+_SKIP_PREFIXES = ("/health", "/docs", "/redoc", "/openapi.json", "/favicon")
 
 # Límite de body a auditar (10 KB) — evita memoria excesiva con uploads
 _MAX_BODY_BYTES = 10 * 1024
@@ -54,12 +54,16 @@ def _resolve_event_type(method: str, path: str, req_payload: dict | None) -> str
     """
     Resuelve el event_type semántico según el endpoint llamado.
 
-    POST /users/login distingue PASSWORD vs OTP por presencia de
+    POST {API_PREFIX}/users/login distingue PASSWORD vs OTP por presencia de
     "password" en el payload (antes de redactar — se recibe el dict
     ya sanitizado, así que chequeamos la clave, no el valor).
     """
-    # Normalizar path (quitar trailing slash)
+    # Normalizar path: quitar trailing slash y el prefijo común de la API
+    # (/api/users/login -> /users/login), así el mapa no depende del prefijo.
     norm = path.rstrip("/")
+    prefix = settings.API_PREFIX
+    if prefix and (norm == prefix or norm.startswith(f"{prefix}/")):
+        norm = norm[len(prefix):] or "/"
 
     if method == "POST" and norm == "/users/login":
         # La clave "password" existe aunque su valor sea ***REDACTED***

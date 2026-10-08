@@ -1,0 +1,8 @@
+{
+	"recommendations": [
+		"editorconfig.editorconfig",
+		"bradlc.vscode-tailwindcss",
+		"biomejs.biome",
+		"usernamehw.errorlens"
+	]
+}

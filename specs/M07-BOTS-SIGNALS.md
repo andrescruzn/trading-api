@@ -13,7 +13,8 @@
 | Depende de | [M2](M02-MARKET-DATA.md), [M3](M03-FEATURE-ENGINEERING.md), [M4](M04-ACCOUNTS-PORTFOLIO.md), [M5](M05-STRATEGIES.md), [M6](M06-AI-AGENT.md) |
 | Lo usan | [M8](M08-ORDERS-EXECUTION.md) (órdenes por bot), [M9](M09-ALERTS.md) (hooks de señal/error), [M10](M10-BILLING.md) (bot de la cuenta administrada), scheduler de [M2](M02-MARKET-DATA.md) |
 | Prefijo API | `/api/bots`, `/api/signals` (ver [corrección de rutas](#corrección-de-rutas)) |
-| Última revisión | 2026-10-07 |
+| Frontend | `frontend/src/modules/bots` |
+| Última revisión | 2026-10-08 |
 
 ## Descripción
 
@@ -30,11 +31,13 @@
 
 ## Páginas
 
+Hash routing: la URL real es `/#/<ruta>`.
+
 **Páginas — Usuario (cualquier usuario autenticado):**
-- `/bots` — Panel de bots: lista tus bots, crea nuevos, start/pause/stop, ver señales de cada bot, generar señal manualmente
+- `/#/bots` — Panel de bots: lista los bots de todas tus cuentas (con nombres de estrategia, símbolo, timeframe y cuenta), crea nuevos, iniciar/pausar/detener desde el menú de acciones, ver señales de cada bot (con detalle en panel lateral) y generar señal manualmente
 
 **Páginas — Administrador (solo admin):**
-- `/admin/bots` — Vista global de todos los bots del sistema con filtros por estado y modo
+- `/#/admin/bots` — Vista global de todos los bots del sistema con filtros por estado y modo
 
 ## Entregables
 
@@ -47,7 +50,7 @@ Entregables:
 - ✅ Señales: BUY / SELL / HOLD con entry, SL, TP, position_size, rr_ratio (migración m07a)
 - ✅ Señales rechazadas persisten con approved=False (trazabilidad completa)
 - ✅ features_hash: SHA-256 del snapshot de features para auditoría
-- ✅ Web UI: /bots (usuario) + /admin/bots (admin)
+- ✅ Web UI: `/#/bots` (usuario) + `/#/admin/bots` (admin) — en React desde 2026-10-08
 - ✅ 55 tests unitarios pasando (bot entity, status transitions, signal generation)
 
 ## Decisiones de diseño
@@ -63,9 +66,10 @@ Entregables:
 | `features_hash`: SHA-256 del contexto de mercado | Huella para auditar con qué datos se generó cada señal | Guardar el snapshot completo |
 | Dirección buy/sell inferida: `entry > stop_loss` → buy; `entry < stop_loss` → sell | La señal no necesita un campo de dirección aparte | Pedirle la dirección al LLM |
 | Migración `m07` añade `entry_price`, `stop_loss`, `take_profit`, `position_size`, `rr_ratio`, `approved` a `signals` | La señal guarda el plan completo de la operación | Dejarlo en `reasons` JSON |
-| `GenerateSignalService` invoca [M6](M06-AI-AGENT.md) vía `_build_analyze_service()` con repos propios y *prestados* | Reutiliza el agente sin duplicar su cableado | Llamar a `/agent/analyze` por HTTP |
+| `GenerateSignalService` invoca [M6](M06-AI-AGENT.md) vía `_build_analyze_service()` con repos propios y *prestados* | Reutiliza el agente sin duplicar su cableado | Llamar a `/api/agent/analyze` por HTTP |
 | Hook de alertas post-commit, siempre en `try/except` ([M9](M09-ALERTS.md)) | Una alerta nunca debe abortar el flujo de trading | Alertas dentro de la transacción |
-| Rutas bajo `/api/bots` y `/api/signals` | La página web `/bots` no debe colisionar con el router REST | Rutas sin prefijo |
+| Rutas bajo `/api/bots` y `/api/signals` | Antes evitaba colisión con la página Jinja `/bots`; desde 2026-10-08 todo el REST va bajo `settings.API_PREFIX` | Rutas sin prefijo |
+| El front une una petición `GET /api/bots?account_id=` por cada cuenta del usuario (`useBotsByAccountsQuery`) | La API exige `account_id` a los no admin; así no se cambió el contrato | Endpoint "mis bots" en el backend |
 
 ## Avance
 
@@ -86,6 +90,8 @@ Entregables:
 | Alta | **Puente señal → orden:** crear la orden de [M8](M08-ORDERS-EXECUTION.md) a partir de una señal aprobada (hoy `signal_id` es un parámetro opcional de `CreateOrderService`, no un flujo automático) | M |
 | Alta | Evitar señales duplicadas por vela (idempotencia por `bot_id` + `ts`) | S |
 | Media | *Kill switch* / límites de riesgo por bot (pérdida diaria máxima, nº de operaciones) y paso automático a `error` ante fallos repetidos (dispara las alertas `error` de [M9](M09-ALERTS.md)) | M |
+| Alta | **Control de propiedad en las rutas de bots y señales:** hoy solo exigen token; `GET /api/bots?account_id=`, `GET/PUT /api/bots/{id}`, `start/pause/stop`, `GET /api/signals` y `POST /api/signals/generate` no comprueban que el bot o la cuenta sean del usuario | S |
+| Media | Endpoint `GET /api/bots` que devuelva los bots del usuario sin `account_id` (evita N peticiones desde el front) | S |
 | Media | Tests de rutas REST y de propiedad (usuario vs admin) | S |
 | Baja | Paginación y filtros por fecha/acción en el listado de señales | S |
 
@@ -142,30 +148,35 @@ Provider: `app/modules/bots/providers/bot_provider.py` → `BotServiceFactory`
 ### Endpoints REST
 | Método | Ruta | Auth | Nota |
 |--------|------|------|------|
-| GET | `/bots` | token | Admin ve todos; user filtra por account_id |
-| POST | `/bots` | token | Crea bot (siempre inicia en stopped) |
-| GET | `/bots/{id}` | token | Detalle del bot |
-| PUT | `/bots/{id}` | token | Edita config (solo cuando stopped) |
-| POST | `/bots/{id}/start` | token | Transición → running |
-| POST | `/bots/{id}/pause` | token | Transición → paused |
-| POST | `/bots/{id}/stop` | token | Transición → stopped |
-| GET | `/signals` | token | Lista señales (requiere ?bot_id=X) |
-| POST | `/signals/generate` | token | Genera señal invocando M6 |
+| GET | `/api/bots` | token | Admin ve todos (o filtra por `account_id`); **el resto debe enviar `account_id`** o recibe 400 "Elige una cuenta para ver sus bots." |
+| POST | `/api/bots` | token | Crea bot (siempre inicia en stopped) |
+| GET | `/api/bots/{id}` | token | Detalle del bot |
+| PUT | `/api/bots/{id}` | token | Edita config (solo cuando stopped) |
+| POST | `/api/bots/{id}/start` | token | Transición → running |
+| POST | `/api/bots/{id}/pause` | token | Transición → paused |
+| POST | `/api/bots/{id}/stop` | token | Transición → stopped |
+| GET | `/api/signals` | token | Lista señales (requiere ?bot_id=X) |
+| POST | `/api/signals/generate` | token | Genera señal invocando M6 |
 
-Routers registrados en `app/app_factory.py`:
+Ninguna de estas rutas verifica hoy la propiedad del bot/cuenta (ver Posibles mejoras).
+
+Routers registrados en `app/app_factory.py` (dentro de `api_routers`, con `prefix=settings.API_PREFIX`):
 ```python
 from app.modules.bots.rest import bots_router, signals_router
 ```
 
-### Páginas web
-| URL | Template | JS |
+### Frontend (`frontend/src/modules/bots/`)
+| Ruta | Archivo de ruta | Página / componentes |
 |-----|----------|----|
-| `/bots` | `templates/bots/index.html` | `static/js/bots/index.js` |
-| `/admin/bots` | `templates/admin/bots.html` | `static/js/admin/bots.js` |
+| `/#/bots` | `routes/_app/bots.lazy.tsx` | `pages/bots.tsx` (`BotsPage`) + `components/bot-form-dialog.tsx` + `components/bot-actions-menu.tsx` + `components/bot-signals-panel.tsx` + `components/signal-detail-sheet.tsx` |
+| `/#/admin/bots` | `routes/_app/admin/bots.lazy.tsx` | `pages/admin-bots.tsx` |
+
+- API: `api/bots.api.ts` (`listBots`, `getBot`, `createBot`, transiciones `/bots/{id}/{start|pause|stop}`, `listSignals`, `generateSignal`).
+- Queries `hooks/use-bots-queries.ts`: `useBotsQuery` (sin `account_id` solo sirve a admin), `useBotsByAccountsQuery` (una petición por cuenta, unidas y ordenadas), `useMyBotsQuery` (bots de las cuentas propias; lo usa Alertas — Órdenes usa `useBotsByAccountsQuery`), `useSignalsQuery`. Mutations en `use-bots-mutations.ts`; catálogos para nombres en `use-bot-catalogs.ts`; etiquetas en `lib/bots-labels.ts`; badges en `components/bot-badges.tsx`.
 
 ### Corrección de rutas
 
-> El antiguo MODULES_MAP listaba los endpoints sin prefijo; en el código los routers declaran `prefix="/api/bots"` y `prefix="/api/signals"`. Usar siempre `/api/bots`, `/api/bots/{id}`, `/api/bots/{id}/start|pause|stop`, `/api/signals` y `/api/signals/generate`.
+> El antiguo MODULES_MAP listaba los endpoints sin prefijo. Hoy los routers declaran `prefix="/bots"` y `prefix="/signals"` y `app_factory.py` les añade `/api`. Rutas públicas: `/api/bots`, `/api/bots/{id}`, `/api/bots/{id}/start|pause|stop`, `/api/signals` y `/api/signals/generate`. En el front se escriben sin `/api`.
 
 ## Gotchas críticos
 
@@ -174,6 +185,8 @@ from app.modules.bots.rest import bots_router, signals_router
 - El bot `paused` ES activo (`is_active() = True`) — puede generar señales aunque esté pausado.
 - Señales rechazadas siempre se persisten con `approved=False` para trazabilidad.
 - Dirección buy/sell se infiere: `entry > stop_loss` → buy; `entry < stop_loss` → sell.
+- **`GET /api/bots` exige `account_id` a los no admin** (400 si falta). En el front: `useBotsQuery()` sin filtros solo en páginas admin; en páginas de usuario `useBotsByAccountsQuery` / `useMyBotsQuery` (una petición por cuenta).
+- **Decimales como `float`:** `_signal_to_dict` serializa `entry_price`, `stop_loss`, `take_profit`, `position_size`, `rr_ratio` y `confidence` con `float(...)` (`_decimal_or_none`), a diferencia de la convención `DECIMAL(30,12)` → string; el front los tipa como `number`. Puede perder precisión en valores con muchos decimales.
 
 ## Tests
 
@@ -193,3 +206,4 @@ from app.modules.bots.rest import bots_router, signals_router
 - **2026-03** — Módulo completado: CRUD de bots con máquina de estados, `GenerateSignalService`, UI `/bots` y `/admin/bots`, 55 tests.
 - **Migraciones:** `m07_add_signal_price_columns.sql`, `m07b_add_bot_feature_set_id.sql` (hoy incluidas en el esquema inicial de Alembic).
 - **Posterior** — Hook post-commit de alertas ([M9](M09-ALERTS.md)).
+- **2026-10-08** — API headless (/api), páginas migradas a React (frontend/).

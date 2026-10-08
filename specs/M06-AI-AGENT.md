@@ -12,8 +12,9 @@
 | Tablas | `models`, `model_runs` (R/W); `strategies`, `accounts`, `account_balances`, `candles`, `candle_features`, `symbols`, `timeframes` (R) |
 | Depende de | [M2](M02-MARKET-DATA.md), [M3](M03-FEATURE-ENGINEERING.md), [M4](M04-ACCOUNTS-PORTFOLIO.md), [M5](M05-STRATEGIES.md) |
 | Lo usan | [M7](M07-BOTS-SIGNALS.md) (`GenerateSignalService` instancia el `AnalyzeService`) |
-| Prefijo API | `/agent/analyze` y `/api/models`, `/api/model-runs` |
-| Última revisión | 2026-10-07 |
+| Prefijo API | `/api/agent`, `/api/models`, `/api/model-runs` |
+| Frontend | `frontend/src/modules/agent` |
+| Última revisión | 2026-10-08 |
 
 ## Descripción
 
@@ -30,8 +31,10 @@
 
 ## Páginas
 
+Hash routing: la URL real es `/#/<ruta>`.
+
 **Páginas — Usuario (cualquier usuario autenticado):**
-- `/agent` — Panel de análisis: selecciona símbolo, timeframe, estrategia y cuenta, lanza el análisis y ve el resultado (APROBADA/RECHAZADA con entry, SL, TP, tamaño de posición y resumen de indicadores)
+- `/#/agent` — "Agente de IA": panel de análisis: selecciona símbolo, timeframe, estrategia y cuenta, lanza el análisis y ve el resultado (APROBADA/RECHAZADA con entry, SL, TP, tamaño de posición y resumen de indicadores)
 
 **Páginas — Administrador (solo admin):**
 - No hay página admin específica en este módulo; la gestión de modelos ML se hace vía API
@@ -51,8 +54,8 @@ Entregables:
 - ✅ AGENT_MASTER_PROMPT configurable en settings (con default robusto)
 - ✅ CRUD modelos ML (tabla `models`): list, get, create, update
 - ✅ CRUD model_runs (tabla `model_runs`): list, create, finish
-- ✅ POST /agent/analyze — Prompt Maestro completo
-- ✅ Web UI: /agent — Página de análisis con formulario y resultado visual
+- ✅ `POST /api/agent/analyze` — Prompt Maestro completo
+- ✅ Web UI: `/#/agent` — Página de análisis con formulario y resultado visual (React desde 2026-10-08)
 - ✅ 20 tests unitarios pasando (LLM 100% mockeado, sin llamadas reales)
 
 ## Decisiones de diseño
@@ -65,7 +68,7 @@ Entregables:
 | `LLMClientFactory.create(settings)` se llama **por request** | Respeta cambios de configuración en caliente | Cliente singleton al arrancar |
 | Ratio R/R mínimo configurable (`AGENT_MIN_RR_RATIO`, 2.0 por defecto) | Cada despliegue ajusta su umbral sin tocar código | Constante en el código |
 | `AGENT_MASTER_PROMPT` configurable por variable de entorno, con un valor por defecto robusto | Iterar el prompt sin redeploy | Prompt embebido |
-| `POST /agent/analyze` devuelve **200 siempre** (APROBADA o RECHAZADA) | Un rechazo es un resultado de negocio válido, no un error HTTP | 4xx para rechazos |
+| `POST /api/agent/analyze` devuelve **200 siempre** (APROBADA o RECHAZADA) | Un rechazo es un resultado de negocio válido, no un error HTTP | 4xx para rechazos |
 | `regime_required = null` acepta cualquier régimen | Estrategias agnósticas al régimen | Régimen siempre obligatorio |
 | La respuesta del LLM se parsea tolerando que venga envuelta en un bloque de código markdown; un fallo de parseo se registra | Los modelos suelen envolver el JSON en markdown | Exigir JSON puro |
 | Tests con el LLM **100 % mockeado** | Rápidos, deterministas y sin coste ni red | Llamadas reales en CI |
@@ -80,14 +83,15 @@ Entregables:
 
 - **Funcionalidad (85):** `models` / `model_runs` son un registro (CRUD); **no hay entrenamiento ni inferencia ML** y `predictions` no se usa.
 - **Tests (75):** 20 tests de `AnalyzeService` con LLM mockeado; sin tests de `LLMClientFactory`, clientes ni REST.
-- **Seguridad (75):** `LLM_API_KEY` solo por entorno; sin límite de uso sobre un endpoint que consume LLM de pago.
+- **Seguridad (75):** `LLM_API_KEY` solo por entorno; sin límite de uso sobre un endpoint que consume LLM de pago, y `POST /api/agent/analyze` **no verifica que `account_id` pertenezca al usuario** (cualquier usuario autenticado puede analizar con el capital de otra cuenta).
 - **Operación (70):** configurable por entorno; sin reintentos, *timeouts* ni *fallback* de proveedor documentados.
 
 ## Posibles mejoras
 
 | Prioridad | Mejora | Esfuerzo |
 |---|---|---|
-| Alta | Rate limit / cuota por usuario en `/agent/analyze` (cada llamada cuesta dinero y tiempo de LLM) | S |
+| Alta | Control de propiedad en `POST /api/agent/analyze`: rechazar (403/404) si `account_id` no es del usuario y no es admin (hoy la ruta solo exige token y `AnalyzeService` no recibe `user_id`) | S |
+| Alta | Rate limit / cuota por usuario en `/api/agent/analyze` (cada llamada cuesta dinero y tiempo de LLM) | S |
 | Alta | Validar la coherencia numérica de la salida del LLM (valores positivos, SL del lado correcto de `entry`, `entry` cercano al último cierre) y cubrirlo con tests | S |
 | Alta | Persistir cada análisis (prompt, respuesta, versión del modelo) para auditoría y para medir el edge; la tabla `predictions` existe y no se usa | M |
 | Media | *Timeout*, reintentos con *backoff* y proveedor de *fallback* en `LLMClientFactory` | M |
@@ -179,7 +183,7 @@ Registrados en: `app/extensions/db/models_registry.py`
 ### Endpoints REST
 | Método | Ruta | Auth | Nota |
 |--------|------|------|------|
-| POST | `/agent/analyze` | token | Prompt Maestro — retorna 200 siempre (APPROVED o REJECTED) |
+| POST | `/api/agent/analyze` | token (sin control de propiedad de `account_id`) | Prompt Maestro — retorna 200 siempre (APPROVED o REJECTED) |
 | GET | `/api/models` | token | Lista modelos ML; filtro: `?status=active` |
 | POST | `/api/models` | admin | Crea modelo ML |
 | GET | `/api/models/{id}` | token | Detalle de modelo |
@@ -188,15 +192,19 @@ Registrados en: `app/extensions/db/models_registry.py`
 | POST | `/api/model-runs` | admin | Crea run (status=running) |
 | POST | `/api/model-runs/{id}/finish` | admin | Finaliza run (success/failed + metrics) |
 
-Routers registrados en `app/app_factory.py`:
+Routers registrados en `app/app_factory.py` (dentro de `api_routers`, con `prefix=settings.API_PREFIX`; los routers declaran `/agent`, `/models`, `/model-runs`):
 ```python
 from app.modules.agent.rest import agent_router, models_router, model_runs_router
 ```
 
-### Páginas web
-| URL | Template | JS |
+### Frontend (`frontend/src/modules/agent/`)
+| Ruta | Archivo de ruta | Página / componentes |
 |-----|----------|----|
-| `/agent` | `templates/agent/analyze.html` | `static/js/agent/analyze.js` |
+| `/#/agent` | `routes/_app/agent.lazy.tsx` | `pages/analyze.tsx` (`AgentAnalyzePage`) + `components/analysis-result-panel.tsx` |
+
+- API: `api/agent.api.ts` (`api.post('/agent/analyze')`; el `/api` lo pone `VITE_API_URL`); mutation `hooks/use-agent-mutations.ts`; etiquetas `lib/agent-labels.ts`.
+- Selects de símbolo, timeframe, estrategia y cuenta con las queries de `market`, `strategies` y `accounts` (muestran nombres, no IDs).
+- `models` / `model_runs` siguen sin UI.
 
 ### Settings LLM/Agent (en `app/common/config/settings.py`)
 ```python
@@ -213,8 +221,8 @@ AGENT_MASTER_PROMPT # prompt del sistema configurable (env var)
 ## Gotchas críticos
 
 - **Defaults del proveedor:** `LLM_PROVIDER=openai` y `LLM_MODEL=gpt-4o` si no se configuran. Para usar IA local hay que fijar `LLM_PROVIDER=ollama` y el modelo (p. ej. `gemma3:4b`, como indica `CLAUDE.md`) en `.env`.
-- **CSP:** el prefijo `/agent` ya está en `web_prefixes` de `security_headers.py`.
-- `POST /agent/analyze` responde 200 también cuando la operación es **RECHAZADA**: mirar el veredicto en `data`, no el código HTTP.
+- `POST /api/agent/analyze` responde 200 también cuando la operación es **RECHAZADA**: mirar el veredicto en `data`, no el código HTTP.
+- **Hueco de seguridad:** `POST /api/agent/analyze` no comprueba que la cuenta (`account_id`) pertenezca al usuario; el front solo ofrece las cuentas propias, pero la API acepta cualquier ID (ver Posibles mejoras).
 - `regime_required = None` acepta cualquier régimen (fase 1 no filtra).
 - El `AnalyzeService` lo reutiliza [M7](M07-BOTS-SIGNALS.md) a través de `BotServiceFactory._build_analyze_service()`; un cambio de firma aquí rompe la generación de señales.
 
@@ -235,3 +243,4 @@ AGENT_MASTER_PROMPT # prompt del sistema configurable (env var)
 
 - **2026-03** — Módulo completado por un compañero: multi-provider, Prompt Maestro 4 fases, CRUD `models` / `model_runs`, UI `/agent`, 20 tests.
 - **Posterior** — Panel de error y mejor manejo de errores en la página de análisis (commit `d8b2e43`).
+- **2026-10-08** — API headless (/api), páginas migradas a React (frontend/).

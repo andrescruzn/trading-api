@@ -12,8 +12,9 @@
 | Tablas | `candle_features`, `feature_sets` (R/W); `candles`, `symbols`, `timeframes` (R) |
 | Depende de | [M2](M02-MARKET-DATA.md) (velas) |
 | Lo usan | [M6](M06-AI-AGENT.md) (Prompt Maestro), [M7](M07-BOTS-SIGNALS.md) (feature set por bot), scheduler de [M2](M02-MARKET-DATA.md) |
-| Prefijo API | `/feature-sets`, `/candle-features` (sin `/api/`) |
-| Última revisión | 2026-10-07 |
+| Prefijo API | `/api/feature-sets`, `/api/candle-features` |
+| Frontend | `frontend/src/modules/features` |
+| Última revisión | 2026-10-08 |
 
 ## Descripción
 
@@ -34,11 +35,13 @@
 
 ## Páginas
 
+Hash routing: la URL real es `/#/<ruta>`.
+
 **Páginas — Usuario (cualquier usuario autenticado):**
-- `/features` — Ver los indicadores calculados de un símbolo: filtra por símbolo, timeframe y feature set, y muestra la tabla con todos los valores (RSI, EMAs, MACD, ATR, Bollinger, régimen)
+- `/#/features` — "Indicadores": ver los indicadores calculados de un símbolo: filtra por símbolo, timeframe y feature set, y muestra la tabla con todos los valores (RSI, EMAs, MACD, ATR, Bollinger, régimen)
 
 **Páginas — Administrador (solo admin):**
-- `/admin/feature-sets` — Gestionar feature sets (crear nuevos con su spec JSON) y lanzar el cálculo de indicadores sobre cualquier símbolo y timeframe
+- `/#/admin/feature-sets` — Gestionar feature sets (crear nuevos con su spec JSON) y lanzar el cálculo de indicadores sobre cualquier símbolo y timeframe
 
 ## Entregables
 
@@ -48,9 +51,9 @@ Entregables:
 - ✅ CRUD feature sets (nombre, versión, spec JSON)
 - ✅ Cálculo de: RSI(14), ATR(14), EMA(20/50/200), MACD(12,26,9), Bollinger Bands(20,2), volumen relativo
 - ✅ Detección de régimen de mercado: trend_up / trend_down / sideways (HH/HL swing analysis)
-- ✅ POST /candle-features/calculate (admin) — bulk upsert
-- ✅ GET /candle-features — consulta con filtros
-- ✅ Web UI: /features (viewer) + /admin/feature-sets (gestión + calcular)
+- ✅ `POST /api/candle-features/calculate` (admin) — bulk upsert
+- ✅ `GET /api/candle-features` — consulta con filtros
+- ✅ Web UI: `/#/features` (viewer) + `/#/admin/feature-sets` (gestión + calcular) — en React desde 2026-10-08
 - ✅ TA library: pandas-ta 0.4.71b0
 - ✅ Test unitarios (18 tests)
 
@@ -137,21 +140,23 @@ Provider: `app/modules/features/providers/feature_provider.py` → `FeatureServi
 ### Endpoints REST
 | Método | Ruta | Auth | Nota |
 |--------|------|------|------|
-| GET | `/feature-sets` | token | Lista todos los feature sets |
-| POST | `/feature-sets` | admin | Crea feature set (spec JSON) |
-| GET | `/candle-features` | token | Params: symbol_id, timeframe_id, feature_set_id, from_ts, to_ts, limit |
-| POST | `/candle-features/calculate` | admin | Calcula indicadores bulk (RSI/EMA/MACD/ATR/BB/vol_rel/regime) |
+| GET | `/api/feature-sets` | token | Lista todos los feature sets |
+| POST | `/api/feature-sets` | admin | Crea feature set (spec JSON) |
+| GET | `/api/candle-features` | token | Params: symbol_id, timeframe_id, feature_set_id, from_ts, to_ts, limit |
+| POST | `/api/candle-features/calculate` | admin | Calcula indicadores bulk (RSI/EMA/MACD/ATR/BB/vol_rel/regime) |
 
-Routers registrados en `app/app_factory.py`:
+Routers registrados en `app/app_factory.py` (dentro de `api_routers`, con `prefix=settings.API_PREFIX`):
 ```python
 from app.modules.features.rest import feature_sets_router, candle_features_router
 ```
 
-### Páginas web
-| URL | Template | JS |
+### Frontend (`frontend/src/modules/features/`)
+| Ruta | Archivo de ruta | Página / componentes |
 |-----|----------|----|
-| `/features` | `templates/features/index.html` | `static/js/features/index.js` |
-| `/admin/feature-sets` | `templates/admin/feature_sets.html` | `static/js/admin/feature_sets.js` |
+| `/#/features` | `routes/_app/features.lazy.tsx` | `pages/indicators.tsx` (`IndicatorsPage`) + `components/regime-badge.tsx` |
+| `/#/admin/feature-sets` | `routes/_app/admin/feature-sets.lazy.tsx` | `pages/admin-feature-sets.tsx` + `components/feature-set-form-dialog.tsx` + `components/calculate-features-dialog.tsx` |
+
+- API: `api/features.api.ts`; hooks `use-features-queries.ts` (`useCandleFeaturesQuery`, también lo usa el dashboard de [M1](M01-AUTH.md)) y `use-features-mutations.ts`; etiquetas y régimen en `lib/features-labels.ts` y `lib/regime.ts` (`regimeLabel`, `REGIME_BADGE_VARIANT`).
 
 ### Campos del JSON features (candle_features.features)
 ```json
@@ -207,3 +212,4 @@ from app.modules.features.rest import feature_sets_router, candle_features_route
 
 - **2026-03** — Módulo completado: CRUD feature sets, cálculo bulk, régimen, UI `/features` y `/admin/feature-sets`.
 - **Posterior** — `feature_set_id` opcional en `candle_features` (commit `ddc4336`).
+- **2026-10-08** — API headless (/api), páginas migradas a React (frontend/).

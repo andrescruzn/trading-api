@@ -1,6 +1,6 @@
 ---
 name: architecture
-description: Patrones de diseño y principios usados en Trading AI API. Usar antes de decidir un patrón, aplicar SOLID, sub-modularizar o diseñar el dominio de un módulo. Cubre Screaming Architecture, Repository (ABC/Protocol), ServiceResult real del proyecto, ServiceFactory, Strategy (clientes LLM, canales de alerta, ejecución paper/live) y cómo evitar dependencias cíclicas.
+description: Patrones de diseño y principios usados en Trading App. Usar antes de decidir un patrón, aplicar SOLID, sub-modularizar o diseñar el dominio de un módulo. Cubre Screaming Architecture, Repository (ABC/Protocol), ServiceResult real del proyecto, ServiceFactory, Strategy (clientes LLM, canales de alerta, ejecución paper/live) y cómo evitar dependencias cíclicas.
 ---
 
 # Arquitectura y patrones

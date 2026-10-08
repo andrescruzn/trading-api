@@ -32,7 +32,7 @@ from app.modules.strategies.providers import StrategyServiceFactory
 from .error_messages import DATASET_ERROR_MESSAGES
 from .schemas import CreateDatasetRequest
 
-router = APIRouter(prefix="/api/datasets", tags=["Datasets"])
+router = APIRouter(prefix="/datasets", tags=["Datasets"])
 
 
 # ======================================================================

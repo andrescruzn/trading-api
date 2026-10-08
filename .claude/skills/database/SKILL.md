@@ -1,6 +1,6 @@
 ---
 name: database
-description: Base de datos MySQL 8 de Trading AI API (base trading_ai). Usar antes de escribir SQL, seeds, migraciones o modelos ORM, o cuando haga falta consultar el esquema, una tabla, una columna o un ENUM. Cubre dónde está el esquema, resumen de tablas por dominio, valores permitidos de los CHECK, convenciones de columnas, comandos de MySQL (MAMP en macOS / Windows) y gotchas de SQLAlchemy.
+description: Base de datos MySQL 8 de Trading App (base trading_ai). Usar antes de escribir SQL, seeds, migraciones o modelos ORM, o cuando haga falta consultar el esquema, una tabla, una columna o un ENUM. Cubre dónde está el esquema, resumen de tablas por dominio, valores permitidos de los CHECK, convenciones de columnas, comandos de MySQL (MAMP en macOS / Windows) y gotchas de SQLAlchemy.
 ---
 
 # Base de datos — MySQL 8 (`trading_ai`)

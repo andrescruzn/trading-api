@@ -1,6 +1,6 @@
 ---
 name: update-specs
-description: Actualiza la documentación al cerrar un módulo o una feature significativa de Trading AI API — la spec specs/MNN-*.md, la tabla de estado de specs/_ROOT.md y la sección correspondiente de MANUAL.md. Usar al terminar un módulo, una feature, un fix relevante o al cerrar la sesión de trabajo, o cuando el usuario pida "actualiza la documentación/specs".
+description: Actualiza la documentación al cerrar un módulo o una feature significativa de Trading App — la spec specs/MNN-*.md, la tabla de estado de specs/_ROOT.md y la sección correspondiente de MANUAL.md. Usar al terminar un módulo, una feature, un fix relevante o al cerrar la sesión de trabajo, o cuando el usuario pida "actualiza la documentación/specs".
 argument-hint: "[módulo, p. ej. M07]"
 ---
 
@@ -31,7 +31,7 @@ Mantener el orden de secciones de la plantilla (ver `specs/_ROOT.md` → "Planti
 ## 2. Índice — `specs/_ROOT.md`
 
 - [ ] Fila del módulo en "Estado del proyecto": estado, alcance %, madurez %, descripción. Recalcular la fila **Promedio**.
-- [ ] "Mapa de páginas web" si hay páginas nuevas.
+- [ ] "Mapa de páginas" (rutas del frontend React) si hay pantallas nuevas.
 - [ ] "Estado real del flujo" si cambió qué está automatizado.
 - [ ] "Prioridades transversales" si se resolvió o apareció una prioridad.
 

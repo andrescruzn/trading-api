@@ -33,7 +33,7 @@ from app.modules.agent.providers import AgentServiceFactory
 from .error_messages import MODEL_ERROR_MESSAGES
 from .schemas import CreateModelRequest, UpdateModelRequest
 
-router = APIRouter(prefix="/api/models", tags=["ML Models"])
+router = APIRouter(prefix="/models", tags=["ML Models"])
 
 
 def get_factory(db: Session = Depends(get_db)) -> AgentServiceFactory:

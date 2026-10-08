@@ -6,7 +6,7 @@ Una explicación simple de los 10 módulos del sistema, sin tecnicismos. Cada m�
 
 | Módulo | Estado | Alcance | Madurez | Descripción |
 |--------|--------|--------:|--------:|-------------|
-| [M1 — Auth & Web UI](M01-AUTH.md) | ✅ Completo | 100 % | 88 % | Login password/OTP, sesiones JWT, roles, dashboard |
+| [M1 — Auth & Frontend](M01-AUTH.md) | ✅ Completo | 100 % | 88 % | Login password/OTP, sesiones JWT, roles, frontend React (shell, dashboard) |
 | [M2 — Market Data](M02-MARKET-DATA.md) | ✅ Completo | 86 % | 65 % | Exchanges, símbolos, timeframes, velas OHLCV via ccxt + scheduler de ingesta |
 | [M3 — Feature Engineering](M03-FEATURE-ENGINEERING.md) | ✅ Completo | 100 % | 79 % | RSI, ATR, EMA, MACD, Bollinger Bands, régimen de mercado |
 | [M4 — Accounts & Portfolio](M04-ACCOUNTS-PORTFOLIO.md) | ✅ Completo | 100 % | 79 % | Cuentas de exchange (credenciales cifradas), balances, equity curve |
@@ -24,7 +24,7 @@ Una explicación simple de los 10 módulos del sistema, sin tecnicismos. Cada m�
 Más detalle:
 - Cada spec `MNN-*.md` es la **fuente de verdad de su módulo**: descripción, páginas, entregables, decisiones, avance, mejoras, detalle técnico (tablas, archivos, endpoints), gotchas y tests. (Reemplaza a los antiguos `ROADMAP.md` y `MODULES_MAP.md`.)
 - Orden de dependencias y mapa de páginas: [más abajo](#orden-de-dependencias).
-- Manual en lenguaje simple: [`MANUAL.md`](../MANUAL.md)
+- Manual en lenguaje simple: [`MANUAL.md`](../docs/MANUAL.md)
 - Esquema de base de datos: modelos ORM + `database/migrations/versions/` (ver skill [`database`](../.claude/skills/database/SKILL.md))
 
 ### Cómo usar estas specs
@@ -117,19 +117,22 @@ Módulo 10 (Billing) ← necesita historial de orders + fills de M8
 
 ---
 
-## Cache-busting JS (global)
+## Arquitectura de presentación (global)
 
-Todo `<script>` (y el CSS) lleva `?v={{ sv }}`; `sv` cambia en cada reinicio del servidor. Reglas completas en el skill [`web-ui`](../.claude/skills/web-ui/SKILL.md).
+Desde el 2026-10-08 la API es **headless**: FastAPI no renderiza vistas (se eliminaron `app/modules/web`, `app/templates` y `app/static`). Todas las rutas REST viven bajo `/api` (salvo `/health`) y todo error sale con el envelope `{msg, errorCode, data}`. La UI es un frontend React en [`frontend/`](../frontend/) (Vite + TanStack Router/Query + shadcn); convenciones en el skill [`frontend`](../.claude/skills/frontend/SKILL.md).
 
 ---
 
-## Mapa de páginas web
+## Mapa de páginas (frontend React)
+
+Hash routing: la URL real es `/#/<ruta>`. Cada ruta vive en `frontend/src/routes/` y su página en `frontend/src/modules/<modulo>/pages/`.
 
 | Rol | Páginas |
 |---|---|
-| Usuario | `/login`, `/dashboard`, `/profile`, `/market/symbols`, `/market/candles`, `/features`, `/portfolio`, `/strategies`, `/agent`, `/bots`, `/orders`, `/alerts` |
-| Admin | `/admin/exchanges`, `/admin/symbols`, `/admin/timeframes`, `/admin/candles/ingest`, `/admin/feature-sets`, `/admin/accounts`, `/admin/strategies`, `/admin/bots`, `/admin/orders`, `/admin/alerts`, `/admin/telegram`, `/admin/investors`, `/admin/managed-accounts`, `/admin/billing` |
-| Inversor | `/investor/dashboard` |
+| Público | `/login` |
+| Usuario (y demás roles) | `/dashboard`, `/profile`, `/market/symbols`, `/market/candles`, `/features`, `/portfolio`, `/strategies`, `/agent`, `/bots`, `/orders`, `/alerts` |
+| Admin (`_app/admin/*`) | `/admin/exchanges`, `/admin/symbols`, `/admin/timeframes`, `/admin/candles/ingest`, `/admin/feature-sets`, `/admin/accounts`, `/admin/strategies`, `/admin/bots`, `/admin/orders`, `/admin/alerts`, `/admin/telegram`, `/admin/investors`, `/admin/managed-accounts`, `/admin/billing` |
+| Inversor (`_app/investor/*`) | `/investor/dashboard` |
 
 Comprar/Vender vive en el [Módulo 8 — Orders & Execution](M08-ORDERS-EXECUTION.md).
 
@@ -143,7 +146,7 @@ Listado y cuándo tocar cada uno: skill [`backend-core`](../.claude/skills/backe
 
 ## Checklist al crear un módulo nuevo
 
-Checklist completo (BD → domain → infra → services → providers → REST → web → docs): skill [`new-module`](../.claude/skills/new-module/SKILL.md). Al cerrar: skill [`update-specs`](../.claude/skills/update-specs/SKILL.md).
+Checklist completo (BD → domain → infra → services → providers → REST → frontend → docs): skill [`new-module`](../.claude/skills/new-module/SKILL.md). Al cerrar: skill [`update-specs`](../.claude/skills/update-specs/SKILL.md).
 
 ---
 
@@ -192,4 +195,4 @@ Una estrategia tiene edge cuando el historial de operaciones muestra que las gan
 - $10,000 → razonable para demostrar resultados
 - $50,000+ → donde empieza a ser negocio real
 
-Ver [`MANUAL.md`](../MANUAL.md) Parte 4 para explicación completa de edge, capital y rutas de negocio.
+Ver [`MANUAL.md`](../docs/MANUAL.md) Parte 4 para explicación completa de edge, capital y rutas de negocio.

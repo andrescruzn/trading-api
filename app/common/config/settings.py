@@ -114,21 +114,23 @@ class Settings:
                     "Set it to a comma-separated list of allowed origins."
                 )
             # Default seguro para desarrollo
+            # (5193 = Vite del frontend; en dev normalmente va por su proxy /api)
             self.CORS_ORIGINS: list[str] = [
-                "http://localhost:3000",
-                "http://localhost:4321",
+                "http://localhost:5193",
+                "http://127.0.0.1:5193",
                 "http://localhost:5173",
-                "http://127.0.0.1:3000",
-                "http://127.0.0.1:4321",
                 "http://127.0.0.1:5173",
-                "http://127.0.0.1:8000",
             ]
 
         # --------------------------------------------------------------
         # OpenAPI / Docs
         # --------------------------------------------------------------
-        self.API_TITLE: str = os.getenv("API_TITLE", "Trading API").strip()
+        self.API_TITLE: str = os.getenv("API_TITLE", "Trading App").strip()
         self.API_VERSION: str = os.getenv("API_VERSION", "v1").strip()
+
+        # Prefijo común de todas las rutas REST (la API es headless: el
+        # frontend React vive aparte y consume /api/*). /health queda en raíz.
+        self.API_PREFIX: str = os.getenv("API_PREFIX", "/api").strip().rstrip("/")
 
         # --------------------------------------------------------------
         # SMTP / Mailer
@@ -143,7 +145,7 @@ class Settings:
         self.SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", "").strip()
 
         self.SMTP_FROM_EMAIL: str = os.getenv("SMTP_FROM_EMAIL", self.SMTP_USERNAME).strip()
-        self.SMTP_FROM_NAME: str = os.getenv("SMTP_FROM_NAME", "Trading AI").strip()
+        self.SMTP_FROM_NAME: str = os.getenv("SMTP_FROM_NAME", "Trading App").strip()
 
 
         # --------------------------------------------------------------

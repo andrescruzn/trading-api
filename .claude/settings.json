@@ -2,35 +2,24 @@
   "permissions": {
     "deny": [
       "Read(./.env)",
-      "Read(./.env.production)",
-      "Read(./.env.development)",
+      "Read(./.env_frontend)",
       "Edit(./.env)",
-      "Edit(./.env.production)",
-      "Edit(./.env.development)"
+      "Edit(./.env_frontend)"
     ]
   },
   "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Read|Edit|Write|MultiEdit|NotebookEdit|Grep|Glob|Bash|PowerShell",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/protect_env_files.py\"",
-            "timeout": 10
-          }
-        ]
-      },
-      {
-        "matcher": "Bash|PowerShell",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/auto_allow_uv_git.py\"",
-            "timeout": 10
-          }
-        ]
-      }
-    ]
+    "PostToolUse": [
+			{
+				"matcher": "Write|Edit",
+				"hooks": [
+					{
+						"type": "command",
+						"command": "pnpm run lint --write",
+						"timeout": 60,
+						"statusMessage": "Running pnpm run lint --write..."
+					}
+				]
+			}
+		]
   }
 }

@@ -31,7 +31,15 @@ from collections import defaultdict
 from threading import Lock
 from typing import Callable, Dict, List, Optional
 
-from fastapi import HTTPException, Request
+from fastapi import Request
+
+
+class RateLimitExceeded(Exception):
+    """Se superó el límite de peticiones; `register_error_handlers` la responde como 429."""
+
+    def __init__(self, retry_after_seconds: int) -> None:
+        super().__init__("RATE_LIMIT_EXCEEDED")
+        self.retry_after_seconds = retry_after_seconds
 
 
 class RateLimiter:
@@ -89,7 +97,7 @@ class RateLimiter:
         """
         Verifica rate limit.
 
-        Lanza HTTPException 429 si excede el límite.
+        Lanza RateLimitExceeded (429 con envelope, ver errors.py) si excede el límite.
         """
         key = self._get_key(request)
         now = time.time()
@@ -102,16 +110,7 @@ class RateLimiter:
                 oldest = self._requests[key][0] if self._requests[key] else now
                 retry_after = int(self._window - (now - oldest)) + 1
 
-                raise HTTPException(
-                    status_code=429,
-                    detail={
-                        "msg": "Too many requests. Please try again later.",
-                        "errorCode": 429,
-                        "data": [],
-                        "retry_after_seconds": retry_after,
-                    },
-                    headers={"Retry-After": str(retry_after)},
-                )
+                raise RateLimitExceeded(retry_after_seconds=retry_after)
 
             self._requests[key].append(now)
 

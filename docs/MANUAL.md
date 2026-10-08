@@ -1,4 +1,4 @@
-# El sistema completo — Trading AI API
+# El sistema completo — Trading App
 
 ## ¿Qué hace este sistema en una frase?
 
@@ -301,6 +301,32 @@ Ahora conectemos todo en una secuencia lógica:
 ---
 PARTE 3 — Módulos implementados y cómo usarlos
 
+3.0 Cómo entrar a la aplicación
+───────────────────────────────
+La aplicación tiene dos partes que se encienden por separado:
+
+  1. El servidor (la "API"): hace los cálculos y guarda los datos.
+  2. La página web: lo que ves en el navegador. En desarrollo se enciende con `pnpm dev`
+     y queda en http://localhost:5193 (el servidor tiene que estar encendido).
+
+Las direcciones de la web llevan un "#" después del dominio. Por ejemplo:
+  http://localhost:5193/#/login       → pantalla de inicio de sesión
+  http://localhost:5193/#/dashboard   → panel principal
+  http://localhost:5193/#/bots        → tus bots
+
+Para iniciar sesión hay dos opciones (pestañas en la pantalla de login):
+  · Contraseña: escribes tu correo y tu contraseña.
+  · Código por correo: escribes tu correo, te llega un código de 6 dígitos y lo escribes
+    antes de que venza (puedes pedir uno nuevo).
+
+Por seguridad solo hay una sesión abierta por persona: si entras desde otro navegador, la
+sesión anterior se cierra y la web te muestra "Tu sesión expiró" y te lleva al login.
+Para cambiar tu contraseña entra a /#/profile; al cambiarla tendrás que iniciar sesión de nuevo.
+
+Todo se navega desde el menú lateral: Inicio, Mercado (símbolos, velas, indicadores),
+Trading (cuentas, estrategias, agente de IA, bots, órdenes, alertas) y, según tu rol,
+"Mi inversión" (inversores) o "Administración" (administradores).
+
 3.1 Módulo 5 — Strategies (Estrategias)
 
 Una estrategia es el conjunto de reglas que define cuándo el sistema debe considerar una operación.
@@ -483,8 +509,9 @@ features_hash:
   Esto permite auditar exactamente qué datos vio el agente cuando tomó la decisión.
 
 Páginas de la UI:
-  /bots       → Panel de usuario: lista de bots, crear nuevo, start/pause/stop, ver señales
-  /admin/bots → Vista admin: todos los bots del sistema con filtros de estado y modo
+  /#/bots       → Panel de usuario: los bots de todas tus cuentas, crear nuevo, iniciar/pausar/detener
+                  desde el menú de cada bot, ver sus señales y generar una señal a mano
+  /#/admin/bots → Vista admin: todos los bots del sistema con filtros de estado y modo
 
 ---
 3.5 Módulo 8 — Orders & Execution (Órdenes y Ejecución)
@@ -554,9 +581,9 @@ Regla de oro: siempre correr al menos 3 meses en paper mode antes de pasar a liv
 Esto permite acumular 50-100+ operaciones y calcular métricas reales de la estrategia.
 
 Páginas de la UI:
-  /orders       → Panel de usuario: selector de bot, tabs de Órdenes/Posiciones/Ejecuciones,
-                  crear nueva orden manual con modal
-  /admin/orders → Vista admin: todas las órdenes del sistema con filtros de lado, estado y tipo
+  /#/orders       → Panel de usuario: elige un bot y verás las pestañas Órdenes/Posiciones/Ejecuciones;
+                    el botón de nueva orden abre un formulario para crear una orden manual
+  /#/admin/orders → Vista admin: todas las órdenes del sistema con filtros de lado, estado y tipo
 
 ---
 PARTE 4 — Viabilidad del negocio: Edge y Capital
@@ -768,7 +795,7 @@ El Módulo 10 automatiza todo esto:
 ─────────────────────────────────
   role_id=1 → Usuario      (trader, accede a sus cuentas y bots)
   role_id=2 → Administrador (gestiona todo: inversores, fees, estrategias)
-  role_id=3 → Inversor      (solo ve su propio dashboard de rendimiento)
+  role_id=3 → Inversor      (además ve "Mi inversión": su propio dashboard de rendimiento en /#/investor/dashboard)
 
 5.5 ¿Qué necesitas para lanzar esto?
 ──────────────────────────────────────

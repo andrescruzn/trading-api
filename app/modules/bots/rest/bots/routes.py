@@ -36,7 +36,7 @@ from app.modules.bots.providers import BotServiceFactory, get_bot_factory
 from .error_messages import BOT_ERROR_MESSAGES
 from .schemas import CreateBotRequest, UpdateBotRequest
 
-router = APIRouter(prefix="/api/bots", tags=["Bots"])
+router = APIRouter(prefix="/bots", tags=["Bots"])
 
 
 # ======================================================================
@@ -86,7 +86,7 @@ def list_bots(
     is_admin = int(identity.get("role_id", 0)) == int(settings.AUTH_ADMIN_ROLE_ID)
 
     if not is_admin and account_id is None:
-        return send(msg="Debes indicar account_id para listar tus bots.", status_code=400)
+        return send(msg="Elige una cuenta para ver sus bots.", status_code=400)
 
     result = factory.list_bots().list(account_id=account_id if not is_admin else account_id)
     return build_list_response(

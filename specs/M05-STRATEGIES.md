@@ -12,8 +12,9 @@
 | Tablas | `strategies`, `datasets` (R/W) |
 | Depende de | [M1](M01-AUTH.md); conceptualmente de [M3](M03-FEATURE-ENGINEERING.md) (los indicadores que usan las reglas) |
 | Lo usan | [M6](M06-AI-AGENT.md) (Prompt Maestro), [M7](M07-BOTS-SIGNALS.md) (cada bot referencia una estrategia) |
-| Prefijo API | `/api/strategies`, `/api/datasets` (el `/api/` es obligatorio) |
-| Última revisión | 2026-10-07 |
+| Prefijo API | `/api/strategies`, `/api/datasets` |
+| Frontend | `frontend/src/modules/strategies` |
+| Última revisión | 2026-10-08 |
 
 ## Descripción
 
@@ -29,11 +30,13 @@
 
 ## Páginas
 
+Hash routing: la URL real es `/#/<ruta>`.
+
 **Páginas — Usuario (cualquier usuario autenticado):**
-- `/strategies` — Lista de estrategias con tipo, régimen, timeframe y cantidad de reglas. Click para ver detalles completos.
+- `/#/strategies` — Lista de estrategias con tipo, régimen, timeframe y cantidad de reglas. Click en la fila abre un panel lateral con el detalle completo.
 
 **Páginas — Administrador (solo admin):**
-- `/admin/strategies` — Crear y editar estrategias con editor de reglas JSON y validación de coherencia en vivo
+- `/#/admin/strategies` — Crear y editar estrategias (diálogo) con editor de reglas JSON y validación de coherencia en vivo
 
 ## Entregables
 
@@ -43,7 +46,7 @@ Entregables:
 - ✅ CRUD estrategias con config JSON (reglas, régimen requerido, timeframe, risk_pct)
 - ✅ Tipos soportados: trend_following, mean_reversion
 - ✅ Validación coherencia tipo/régimen (hint en vivo en UI + validación backend)
-- ✅ Web UI: /strategies (viewer) + /admin/strategies (CRUD admin)
+- ✅ Web UI: `/#/strategies` (viewer) + `/#/admin/strategies` (CRUD admin) — en React desde 2026-10-08
 - ✅ API: GET/POST `/api/strategies`, GET/PUT `/api/strategies/{id}`
 - ✅ Seed: 6 estrategias de ejemplo (`database/seeds/strategies.py`)
 - Tests unitarios: pendientes (no solicitados)
@@ -58,7 +61,7 @@ Entregables:
 | Reglas como `{indicator, operator, value}`; `value` puede ser un número **o el nombre de otro indicador** (`ema_20 > ema_50`); operadores `lt`, `gt`, `lte`, `gte`, `eq` | Lenguaje de reglas declarativo y evaluable de forma determinista por [M6](M06-AI-AGENT.md); una regla inválida o sin dato **falla** (fail-closed) | Código Python por estrategia |
 | `risk_pct` vive en la estrategia | El tamaño de posición de [M6](M06-AI-AGENT.md) (`Capital × risk_pct / \|entry − SL\|`) queda versionado con la estrategia | Riesgo global fijo |
 | `(name, version)` único (`STRATEGY_DUPLICATE_NAME_VERSION`) | Versionar estrategias sin pisar las anteriores | Editar en sitio sin versión |
-| Prefijo API `/api/strategies` (no `/strategies`) | La página web `/strategies` colisionaba con el router REST (devolvía JSON en vez de HTML) | Cambiar la ruta de la página |
+| Prefijo API `/api/strategies` | Originalmente para no colisionar con la página Jinja `/strategies`; desde 2026-10-08 todas las rutas REST viven bajo `/api` (`settings.API_PREFIX`) y la UI usa hash routing (`/#/strategies`), así que la colisión ya no existe | Cambiar la ruta de la página |
 | Lectura para cualquier usuario autenticado, escritura solo admin | El trader ve las estrategias disponibles pero no las altera | Estrategias por usuario |
 | Seed de 6 estrategias de ejemplo con `INSERT IGNORE` | Arranque rápido e idempotente | Crearlas a mano |
 
@@ -128,18 +131,21 @@ Provider: `app/modules/strategies/providers/strategy_provider.py` → `StrategyS
 | GET | `/api/datasets` | token | Lista datasets |
 | POST | `/api/datasets` | admin | Crea dataset |
 
-**⚠️ IMPORTANTE:** El prefijo API es `/api/strategies` (NO `/strategies`) para evitar conflicto con la página web `/strategies`.
+El router declara `prefix="/strategies"` / `"/datasets"` (sin `/api`); el `/api` lo añade `app_factory.py` con `settings.API_PREFIX`.
 
-Routers registrados en `app/app_factory.py`:
+Routers registrados en `app/app_factory.py` (dentro de `api_routers`):
 ```python
 from app.modules.strategies.rest import strategies_router, datasets_router
 ```
 
-### Páginas web
-| URL | Template | JS |
+### Frontend (`frontend/src/modules/strategies/`)
+| Ruta | Archivo de ruta | Página / componentes |
 |-----|----------|----|
-| `/strategies` | `templates/strategies/index.html` | `static/js/strategies/index.js` |
-| `/admin/strategies` | `templates/admin/strategies.html` | `static/js/admin/strategies.js` |
+| `/#/strategies` | `routes/_app/strategies.lazy.tsx` | `pages/strategies.tsx` (`StrategiesPage`) + `components/strategies-table.tsx` + `components/strategy-detail-sheet.tsx` |
+| `/#/admin/strategies` | `routes/_app/admin/strategies.lazy.tsx` | `pages/admin-strategies.tsx` + `components/strategy-form-dialog.tsx` (reglas en `Textarea` JSON validado con zod; aviso de incoherencia tipo↔régimen en vivo) |
+
+- API: `api/strategies.api.ts`; hooks `use-strategies-queries.ts` (`useStrategiesQuery`, también en dashboard, agent y bots) y `use-strategies-mutations.ts`; etiquetas `lib/strategies-labels.ts`; `components/strategy-regime-badge.tsx`.
+- `datasets` sigue sin UI.
 
 ### Estructura del JSON parameters (strategies.parameters)
 ```json
@@ -160,14 +166,11 @@ from app.modules.strategies.rest import strategies_router, datasets_router
 ### Seed
 - `database/seeds/strategies.py` — 6 estrategias de ejemplo, idempotente por (name, version)
 
-### Cache-busting JS (global)
-- El mecanismo `templates.env.globals["sv"]` aplica a **todos** los módulos; se documenta en [`_ROOT.md`](_ROOT.md#cache-busting-js-global).
-
 ## Gotchas críticos
 
-- **Prefijo `/api/` obligatorio:** el API de strategies es `/api/strategies` (no `/strategies`); si el router REST se registra antes que el web router, `GET /strategies` devuelve JSON en vez de HTML.
-- `build_list_response` retorna `{"data": [...array...]}`, no `{"data": {"items": [...]}}`. En el JS usar: `Array.isArray(json.data) ? json.data : (json.data?.items || [])`.
-- `errorCode` en una respuesta exitosa es 200/201, **nunca 0**: detectar errores con `if (json.errorCode >= 400)`.
+- ~~Prefijo `/api/` obligatorio por colisión con la página web~~ — resuelto el 2026-10-08: ya no hay router web; todas las rutas REST van bajo `/api`.
+- `build_list_response` retorna `{"data": [...array...]}`, no `{"data": {"items": [...]}}`. El front tipa `api.get<Strategy[]>('/strategies')` directamente sobre el array.
+- `errorCode` en una respuesta exitosa es 200/201, **nunca 0**: el api-client del front detecta errores con `errorCode >= 400`.
 - El texto original hablaba de "warning" para la incoherencia tipo↔régimen; el código actual **rechaza** con `STRATEGY_INCOHERENT_REGIME` (HTTP 422).
 
 ## Tests
@@ -184,3 +187,4 @@ from app.modules.strategies.rest import strategies_router, datasets_router
 
 - **2026-03** — Módulo completado: CRUD estrategias/datasets, validación de coherencia, UI `/strategies` y `/admin/strategies`, seed de 6 estrategias.
 - **2026-03** — Fix de colisión de rutas: el API pasa a `/api/strategies`.
+- **2026-10-08** — API headless (/api), páginas migradas a React (frontend/).

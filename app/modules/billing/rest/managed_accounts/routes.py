@@ -27,7 +27,7 @@ from app.modules.billing.providers.billing_provider import BillingServiceFactory
 from .error_messages import MANAGED_ACCOUNT_ERROR_MESSAGES
 from .schemas import CreateManagedAccountRequest, UpdateManagedAccountRequest
 
-router = APIRouter(prefix="/api/managed-accounts", tags=["Billing — Managed Accounts"])
+router = APIRouter(prefix="/managed-accounts", tags=["Billing — Managed Accounts"])
 
 
 def get_factory(db: Session = Depends(get_db)) -> BillingServiceFactory:
@@ -72,7 +72,7 @@ def list_managed_accounts(
             return build_list_response(items=[], msg="OK")
         investor_id = inv.id
     elif not is_admin:
-        return send(msg="No autorizado.", status_code=403, data={})
+        return send(msg="No tienes permiso para hacer esta acción.", status_code=403, data={})
 
     result = factory.list_managed_accounts().execute(
         investor_id=investor_id,
@@ -95,7 +95,7 @@ def create_managed_account(
     factory: BillingServiceFactory = Depends(get_factory),
 ):
     if int(identity.get("role_id", 0)) != int(settings.AUTH_ADMIN_ROLE_ID):
-        return send(msg="No autorizado.", status_code=403, data={})
+        return send(msg="No tienes permiso para hacer esta acción.", status_code=403, data={})
 
     result = factory.create_managed_account().execute(
         investor_id=payload.investor_id,
@@ -132,7 +132,7 @@ def get_managed_account(
     if is_investor:
         inv = factory._investor_repo.find_by_user_id(identity.get("user_id"))
         if not inv:
-            return send(msg="No autorizado.", status_code=403, data={})
+            return send(msg="No tienes permiso para hacer esta acción.", status_code=403, data={})
         investor_id = inv.id
 
     result = factory.get_managed_account().execute(
@@ -157,7 +157,7 @@ def update_managed_account(
     factory: BillingServiceFactory = Depends(get_factory),
 ):
     if int(identity.get("role_id", 0)) != int(settings.AUTH_ADMIN_ROLE_ID):
-        return send(msg="No autorizado.", status_code=403, data={})
+        return send(msg="No tienes permiso para hacer esta acción.", status_code=403, data={})
 
     result = factory.update_managed_account().execute(
         managed_account_id=managed_account_id,

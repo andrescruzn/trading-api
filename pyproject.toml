@@ -1,7 +1,7 @@
 [project]
-name = "trading-api"
+name = "trading-app"
 version = "0.1.0"
-description = "Trading AI API: FastAPI + SQLAlchemy + MySQL"
+description = "Trading App: FastAPI + SQLAlchemy + MySQL"
 readme = "README.md"
 # numba==0.61.2 / llvmlite==0.44.0 (via pandas-ta) no soportan Python 3.14
 requires-python = ">=3.12,<3.14"

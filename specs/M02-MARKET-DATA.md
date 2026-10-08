@@ -12,8 +12,9 @@
 | Tablas | `exchanges`, `symbols`, `timeframes`, `candles` (R/W) |
 | Depende de | [M1](M01-AUTH.md) (auth y roles) |
 | Lo usan | [M3](M03-FEATURE-ENGINEERING.md), [M5](M05-STRATEGIES.md), [M6](M06-AI-AGENT.md), [M7](M07-BOTS-SIGNALS.md), [M8](M08-ORDERS-EXECUTION.md) y el scheduler |
-| Prefijo API | `/exchanges`, `/symbols`, `/timeframes`, `/candles` (sin `/api/`) |
-| Última revisión | 2026-10-07 |
+| Prefijo API | `/api/exchanges`, `/api/symbols`, `/api/timeframes`, `/api/candles` |
+| Frontend | `frontend/src/modules/market` |
+| Última revisión | 2026-10-08 |
 
 ## Descripción
 
@@ -29,13 +30,17 @@
 
 ## Páginas
 
-**Páginas:**
-- `/market/symbols` — Lista de todos los símbolos disponibles (para todos los usuarios)
-- `/market/candles` — Ver las velas/precios de un símbolo (para todos los usuarios)
-- `/admin/exchanges` — Gestionar exchanges (solo Administrador)
-- `/admin/symbols` — Gestionar símbolos (solo Administrador)
-- `/admin/timeframes` — Gestionar timeframes (solo Administrador)
-- `/admin/candles/ingest` — Cargar velas/precios históricos (solo Administrador)
+Hash routing: la URL real es `/#/<ruta>`.
+
+**Usuario (todos los roles):**
+- `/#/market/symbols` — Lista de todos los símbolos disponibles, con filtros y acceso "Ver velas"
+- `/#/market/candles` — Ver las velas/precios de un símbolo (acepta `?symbol_id=&timeframe_id=`)
+
+**Admin:**
+- `/#/admin/exchanges` — Gestionar exchanges
+- `/#/admin/symbols` — Gestionar símbolos
+- `/#/admin/timeframes` — Gestionar timeframes
+- `/#/admin/candles/ingest` — "Descargar velas": trae velas del exchange real con ccxt (`POST /api/candles/fetch`)
 
 ## Entregables
 
@@ -46,8 +51,8 @@ Entregables:
 - CRUD symbols (BTC/USDT, ETH/USDT, etc.) asociados a un exchange
 - CRUD timeframes (1m, 5m, 15m, 1h, 4h, 1d)
 - Ingestión de velas OHLCV: manual (endpoint) y/o automática (scheduler)
-- Endpoint: GET /candles?symbol=BTC/USDT&timeframe=1h&from=...&to=...
-- Web UI: lista de símbolos, últimas velas en tabla
+- Endpoint: `GET /api/candles?symbol_id=…&timeframe_id=…&from_ts=…&to_ts=…`
+- Web UI: lista de símbolos, últimas velas en tabla (desde 2026-10-08 en React, `frontend/src/modules/market`)
 - Tests unitarios de los services
 
 ## Decisiones de diseño
@@ -61,16 +66,16 @@ Entregables:
 | `exchanges` admite `crypto_exchange` / `broker` / `data_vendor` (p. ej. TradingView para metales y forex) | Mismo modelo para cripto, metales y forex | Una tabla por tipo de activo |
 | `timeframes` guarda `seconds` y usa PK `SMALLINT` | El scheduler decide si una vela "venció" comparando segundos | Calcular segundos desde el código del timeframe |
 | Datetimes de MySQL se normalizan a UTC con `_as_utc_aware()` | MySQL devuelve datetimes naive | Trabajar con naive y asumir UTC |
-| Ingesta manual (`/candles/ingest`, máx. 5000 filas) + descarga ccxt (`/candles/fetch`) + scheduler | Cubre cargas históricas, uso puntual y mantenimiento automático | Solo scheduler |
+| Ingesta manual (`/api/candles/ingest`, máx. 5000 filas) + descarga ccxt (`/api/candles/fetch`) + scheduler | Cubre cargas históricas, uso puntual y mantenimiento automático | Solo scheduler |
 | Scheduler deriva el trabajo de los bots activos, **sin tabla nueva** ("Opción B") | Menos esquema; solo se actualizan pares que alguien usa | Tabla de suscripciones por símbolo |
-| Rutas REST sin prefijo `/api/` (a diferencia de M5, M8, M9, M10) | Las páginas web viven bajo `/market/` y `/admin/`, no hay colisión (inferido del código) | — |
-| Paginación en el cliente (20 ítems por página) en las tablas de exchanges, symbols, timeframes y market/symbols | Simplicidad; los catálogos son pequeños | Paginación en servidor |
+| Rutas REST bajo `/api` (`settings.API_PREFIX`), como el resto de módulos | La API es headless desde el 2026-10-08; antes iban sin prefijo porque las páginas Jinja vivían en `/market/` y `/admin/` | Prefijo distinto por módulo |
+| Paginación en el cliente (`DataTable`) en las tablas de exchanges, symbols, timeframes y market/symbols | Simplicidad; los catálogos son pequeños | Paginación en servidor |
 
 ## Avance
 
 | Métrica | Valor | Evidencia |
 |---|---|---|
-| Alcance original | **86 %** (6/7) | CRUD de exchanges/symbols/timeframes, ingesta manual y automática, `GET /candles` y UI completos; **no hay tests** en `tests/` para este módulo |
+| Alcance original | **86 %** (6/7) | CRUD de exchanges/symbols/timeframes, ingesta manual y automática, `GET /api/candles` y UI completos; **no hay tests** en `tests/` para este módulo |
 | Madurez | **≈ 65 %** | Funcionalidad 100 · Tests 0 · Seguridad 80 · Operación 80 |
 
 - **Operación (80):** el scheduler automatiza fetch + features + retención; hay seed (`database/seeds/market_data.py`).
@@ -81,6 +86,7 @@ Entregables:
 | Prioridad | Mejora | Esfuerzo |
 |---|---|---|
 | Alta | Tests de `ingest_candles`, `fetch_candles` (ccxt mockeado) y del scheduler (`_should_fetch`, `_cleanup_candles`) | M |
+| Baja | UI para la carga manual `POST /api/candles/ingest` (hoy solo por API; la página "Descargar velas" usa `/api/candles/fetch`) | S |
 | Alta | Ejecutar el scheduler en un proceso/worker dedicado o con *lock*: hoy es un hilo daemon dentro de la app, y con varios workers de uvicorn se ejecutaría varias veces | M |
 | Media | Detección y relleno de huecos: el ciclo incremental pide solo 3 velas, así que una caída del servidor de más de 3 timeframes deja velas faltantes | M |
 | Media | La retención por defecto (500 velas) limita el histórico disponible para datasets/backtesting de [M5](M05-STRATEGIES.md); separar retención operativa de histórico | M |
@@ -140,38 +146,38 @@ Provider: `app/modules/market/providers/market_provider.py` → `MarketServiceFa
 ### Endpoints REST
 | Método | Ruta | Auth | Nota |
 |--------|------|------|------|
-| GET | `/exchanges` | token (cualquier user) | Filtros: is_active |
-| POST | `/exchanges` | admin | Crea exchange |
-| PUT | `/exchanges/{id}` | admin | Actualiza exchange |
-| GET | `/symbols` | token | Filtros: exchange_id, asset_class, is_active |
-| POST | `/symbols` | admin | Crea símbolo |
-| PUT | `/symbols/{id}` | admin | Actualiza símbolo |
-| GET | `/timeframes` | token | Lista todos |
-| POST | `/timeframes` | admin | Crea timeframe |
-| GET | `/candles` | token | Params: symbol_id, timeframe_id, from_ts, to_ts, limit (max 1000) |
-| POST | `/candles/ingest` | admin | Bulk upsert de velas (max 5000 rows por request) |
+| GET | `/api/exchanges` | token (cualquier user) | Filtros: is_active |
+| POST | `/api/exchanges` | admin | Crea exchange |
+| PUT | `/api/exchanges/{id}` | admin | Actualiza exchange |
+| GET | `/api/symbols` | token | Filtros: exchange_id, asset_class, is_active |
+| POST | `/api/symbols` | admin | Crea símbolo |
+| PUT | `/api/symbols/{id}` | admin | Actualiza símbolo |
+| GET | `/api/timeframes` | token | Lista todos |
+| POST | `/api/timeframes` | admin | Crea timeframe |
+| GET | `/api/candles` | token | Params: symbol_id, timeframe_id, from_ts, to_ts, limit (max 1000) |
+| POST | `/api/candles/ingest` | admin | Bulk upsert de velas (max 5000 rows por request) |
+| POST | `/api/candles/fetch` | admin | Descarga OHLCV del exchange con ccxt |
 
-Routers registrados en `app/app_factory.py`:
+Routers registrados en `app/app_factory.py` (dentro de `api_routers`, montados con `prefix=settings.API_PREFIX`):
 ```python
 from app.modules.market.rest import exchanges_router, symbols_router, timeframes_router, candles_router
 ```
 
-### Páginas web
-| URL | Template | JS |
+### Frontend (`frontend/src/modules/market/`)
+| Ruta | Archivo de ruta | Página |
 |-----|----------|----|
-| `/market/symbols` | `templates/market/symbols.html` | `static/js/market/symbols.js` |
-| `/market/candles` | `templates/market/candles.html` | `static/js/market/candles.js` |
-| `/admin/exchanges` | `templates/admin/exchanges.html` | `static/js/admin/exchanges.js` |
-| `/admin/symbols` | `templates/admin/symbols.html` | `static/js/admin/symbols.js` |
-| `/admin/timeframes` | `templates/admin/timeframes.html` | `static/js/admin/timeframes.js` |
-| `/admin/candles/ingest` | `templates/admin/candles_ingest.html` | `static/js/admin/candles_ingest.js` |
+| `/#/market/symbols` | `routes/_app/market/symbols.lazy.tsx` | `pages/symbols.tsx` |
+| `/#/market/candles` | `routes/_app/market/candles.tsx` (`validateSearch`: `symbol_id`, `timeframe_id`) + `candles.lazy.tsx` | `pages/candles.tsx` |
+| `/#/admin/exchanges` | `routes/_app/admin/exchanges.lazy.tsx` | `pages/admin-exchanges.tsx` + `components/exchange-form-dialog.tsx` |
+| `/#/admin/symbols` | `routes/_app/admin/symbols.lazy.tsx` | `pages/admin-symbols.tsx` + `components/symbol-form-dialog.tsx` |
+| `/#/admin/timeframes` | `routes/_app/admin/timeframes.lazy.tsx` | `pages/admin-timeframes.tsx` |
+| `/#/admin/candles/ingest` | `routes/_app/admin/candles/ingest.lazy.tsx` | `pages/admin-candles-ingest.tsx` (usa `useFetchCandlesMutation` → `/api/candles/fetch`) |
 
-Rutas web en: `app/modules/web/routes.py`
-- Admin pages verifican `role_id == AUTH_ADMIN_ROLE_ID` desde la cookie JWT
-- Si no es admin → redirect a `/dashboard` (NO 403)
+- API: `api/market.api.ts`; queries `hooks/use-market-queries.ts` (`useExchangesQuery`, `useSymbolsQuery`, `useTimeframesQuery`, `useCandlesQuery`, reutilizadas por dashboard, features, bots, orders…); mutations `hooks/use-market-mutations.ts`; etiquetas `lib/market-labels.ts`.
+- Las páginas admin están bajo `_app/admin.tsx` (`AdminGuardLayout`: sin rol admin → `/dashboard`); la API responde 403 a quien no es admin.
 
-### Nuevo endpoint M2
-- `POST /candles/fetch` → `FetchCandlesService` → usa ccxt para descargar OHLCV del exchange real
+### Endpoint de descarga ccxt
+- `POST /api/candles/fetch` → `FetchCandlesService` → usa ccxt para descargar OHLCV del exchange real
 - Exchange se resuelve desde `symbol.exchange_id` → busca en DB → mapea a ccxt id (lowercase)
 - Schema: `FetchCandlesRequest(symbol_id, timeframe_id, limit)`
 - Soporta: binance, bybit, kraken, coinbase, bitget, okx (mapa en `_CCXT_EXCHANGE_MAP`)
@@ -202,12 +208,9 @@ El scheduler **no genera señales ni órdenes**: solo mantiene velas y features 
 
 ## Gotchas críticos
 
-- **JWT sin `role_id` ⇒ todas las páginas admin redirigen al dashboard.** Detalle y servicios afectados en [M1 — Gotchas](M01-AUTH.md#gotchas-críticos).
-- **CSP:** al crear rutas web con prefijo nuevo (`/market/`, `/admin/`, …) hay que añadirlo a `web_prefixes` en `_is_web_route()` o el navegador bloquea CSS y JS.
-- **Botón "Nuevo" encimaba el texto en móvil:** usar la clase `.page-header` (`align-items: flex-start`) en vez de `.flex.items-center`.
-- **Estilos de las tablas con paginación (cliente, 20 ítems/página):** clases `.page-header`, `.pagination`, `.pagination__info`, `.pagination__btns` en `app.css`.
 - **ccxt:** versión fijada en `pyproject.toml` (`ccxt==4.4.96`).
-- **Dropdowns de símbolos duplicados** (BTC/USDT ×2 en Binance y Bybit): la entidad `Symbol` incluye `exchange_name` vía JOIN → se muestra `BTC/USDT (Binance)`.
+- **Dropdowns de símbolos duplicados** (BTC/USDT ×2 en Binance y Bybit): la entidad `Symbol` incluye `exchange_name` vía JOIN → el front muestra `BTC/USDT (Binance)`.
+- Resueltos con la migración a React (2026-10-08): CSP por prefijo web (`_is_web_route`), clases `.page-header`/`.pagination` de `app.css` y el redirect admin por `role_id` de la cookie ya no aplican (ver [M1](M01-AUTH.md)).
 
 ### Patrones clave M2
 - `Decimal(str(model.tick_size))` — para convertir NUMERIC a Decimal sin errores float
@@ -232,3 +235,4 @@ El scheduler **no genera señales ni órdenes**: solo mantiene velas y features 
 - **2026-03** — `POST /candles/fetch` con ccxt; paginación cliente en tablas; fix de CSP para `/market/` y `/admin/`.
 - **Posterior** — Scheduler de ingesta automática con retención de velas.
 - **2026-10-07** — El scheduler deja de usar SQL crudo y modelos ORM: usa `BotRepository.list_by_statuses`, `CandleRepository.get_latest_ts` / `delete_beyond_retention` y `CandleFeatureRepository.delete_beyond_retention`; el commit lo hace el repositorio.
+- **2026-10-08** — API headless (/api), páginas migradas a React (frontend/).

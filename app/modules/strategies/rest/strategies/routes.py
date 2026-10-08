@@ -32,7 +32,7 @@ from app.modules.strategies.providers import StrategyServiceFactory
 from .error_messages import STRATEGY_ERROR_MESSAGES
 from .schemas import CreateStrategyRequest, UpdateStrategyRequest
 
-router = APIRouter(prefix="/api/strategies", tags=["Strategies"])
+router = APIRouter(prefix="/strategies", tags=["Strategies"])
 
 
 # ======================================================================

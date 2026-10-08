@@ -1,6 +1,11 @@
-# TRADING FAST API
+# Trading App
 
-Backend del proyecto **Trading AI**, construido con **FastAPI** sobre **Python 3.12**, orientado a trading algorítmico, IA y backtesting, usando **MySQL 8.x** como base de datos principal.
+Aplicación **Trading App** (nombre temporal; el repo contiene la aplicación completa), construida con **FastAPI** sobre **Python 3.12**, orientada a trading algorítmico, IA y backtesting, y usa **MySQL 8.x** como base de datos principal.
+
+El repo tiene dos partes que corren por separado:
+
+- **API REST headless** (`app/`): FastAPI, todas las rutas bajo `/api` (Swagger en `/docs`). No sirve páginas.
+- **Frontend** (`frontend/`): React + Vite + shadcn. Consume la API con la cookie de sesión.
 
 ---
 
@@ -42,6 +47,24 @@ uv add <paquete>
 uv add --dev <paquete>
 uv lock --upgrade-package <paquete>
 ```
+
+---
+
+## Frontend
+
+Requiere **Node.js 20.12+** (recomendado 22 o 24) y **pnpm 12+** (`corepack enable` o `npm i -g pnpm`; es el único uso permitido de npm). npm y npx no funcionan en este repo: usar `pnpm`, `pnpm exec` o `pnpm dlx`. Las configs (`package.json`, `vite.config.ts`, `tsconfig*.json`, `components.json`) están en la raíz del repo y el código en `frontend/`.
+
+```bash
+pnpm install                                # dependencias
+cp .env_frontend.example .env_frontend      # variables del front (VITE_*)
+```
+
+| Variable (`.env_frontend`) | Para qué |
+|---|---|
+| `VITE_API_URL` | Base de la API. En desarrollo `/api` (pasa por el proxy de Vite). En producción, la URL pública, idealmente en el mismo dominio que el front |
+| `VITE_API_PROXY_TARGET` | Solo desarrollo: a dónde reenvía Vite las peticiones `/api` (por defecto `http://localhost:8000`) |
+
+El front **no** lee el `.env` del backend: solo `.env_frontend`.
 
 ---
 
@@ -123,3 +146,26 @@ O sin activarlo, usando uv:
 ```bash
 uv run uvicorn app.main:app --reload
 ```
+
+La API queda en `http://localhost:8000` (Swagger en `/docs`, rutas en `/api/*`, salud en `/health`).
+
+En otra terminal, el frontend:
+
+```bash
+pnpm dev               # http://localhost:5193  → abre http://localhost:5193/#/login
+```
+
+Otros comandos del front:
+
+```bash
+pnpm check-types       # genera el árbol de rutas y revisa tipos
+pnpm lint              # biome check; con --write aplica formato e imports
+pnpm build             # build de producción en frontend/dist
+pnpm preview           # sirve el build localmente
+```
+
+### Producción
+
+- Sirve `frontend/dist` como sitio estático (usa hash routing: `/#/bots`, no necesita reescrituras).
+- Publica la API en el **mismo dominio** detrás de un reverse proxy en `/api` (así la cookie `SameSite=Lax` funciona) y define `CORS_ORIGINS` con el origen del front.
+- Si el front y la API viven en dominios distintos: `AUTH_COOKIE_SAMESITE=None`, HTTPS obligatorio y `VITE_API_URL` con la URL completa de la API.

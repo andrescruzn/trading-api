@@ -110,7 +110,7 @@ Es la fuente de verdad del proyecto — describe en lenguaje simple qué hace ca
 ## Convenciones clave
 - `utc_now()` de `app.common.utils` — no usar `datetime.now(timezone.utc)` directo
 - Jinja2 templates: `TemplateResponse(request, "template.html", {context})` (nuevo formato Starlette)
-- Los skills están en `.claude/skills/` — leer antes de codear (ver MAIN_INSTRUCTIONS.md)
+- Los skills están en `.claude/skills/` — leer antes de codear (ver CLAUDE.md)
 - CSP bloquea onclick inline → siempre usar addEventListener en archivos .js servidos desde /static/
 - NUNCA usar `curl` para hacer login durante debugging — cambia `token_current_jti` e invalida la sesión activa del browser
 - Cache-busting: sin `?v={{ sv }}` el browser sirve el JS viejo → agregar a TODOS los `<script>` nuevos
@@ -132,8 +132,8 @@ Al completar un módulo (o cualquier feature significativa) SIEMPRE actualizar A
 
 ## Hoja de ruta y mapa de módulos
 - `specs/_ROOT.md` (raíz del proyecto) ← LEER AL INICIAR SESIÓN
-- Ver `.claude/memory/ROADMAP.md` — detalle técnico de los 10 módulos
-- Ver `.claude/memory/MODULES_MAP.md` — mapa detallado de tablas, archivos, endpoints y páginas por módulo ← LEER ANTES DE CODEAR
+- Cada `specs/MNN-*.md` contiene la hoja de ruta, decisiones, avance (alcance + madurez), mejoras y el mapa detallado de tablas, archivos, endpoints y páginas de su módulo ← LEER ANTES DE CODEAR (reemplaza a los antiguos ROADMAP.md y MODULES_MAP.md)
+- Scheduler de ingesta automática (velas + features de bots activos): ver `specs/M02-MARKET-DATA.md`
 - Comprar/Vender está en el **Módulo 8 — Orders & Execution**
 - ✅ M1 → ✅ M2 → ✅ M3 → ✅ M4 → ✅ M5 → ✅ M6 → ✅ M7 → ✅ M8 → ✅ M9 → ✅ M10 — todos completos
 

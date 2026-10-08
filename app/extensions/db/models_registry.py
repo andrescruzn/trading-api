@@ -81,3 +81,11 @@ from app.modules.billing.infrastructure.investor_model import InvestorModel  # n
 from app.modules.billing.infrastructure.managed_account_model import ManagedAccountModel  # noqa: F401
 from app.modules.billing.infrastructure.billing_period_model import BillingPeriodModel  # noqa: F401
 from app.modules.billing.infrastructure.fee_transaction_model import FeeTransactionModel  # noqa: F401
+
+# --------------------------------------------------------------
+# Tablas sin servicios todavía (el esquema las incluye; Alembic las gestiona)
+# --------------------------------------------------------------
+from app.modules.agent.infrastructure.prediction_model import PredictionModel  # noqa: F401
+from app.modules.accounts.infrastructure.portfolio_snapshot_model import PortfolioSnapshotModel  # noqa: F401
+from app.modules.scheduler.system_event_model import SystemEventModel  # noqa: F401
+from app.common.audit.audit_log_model import AuditLogModel  # noqa: F401

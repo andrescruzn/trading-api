@@ -49,13 +49,21 @@ uv lock --upgrade-package <paquete>
 
 El esquema se gestiona con **Alembic** (`alembic.ini` + carpeta `alembic/`). La conexión se toma del `.env` (`DB_*`).
 
-BD que ya existía antes de Alembic (solo una vez, no ejecuta SQL):
+El esquema completo sale de los modelos ORM: las migraciones de `alembic/versions/` crean todas las tablas.
+
+BD nueva desde cero:
 
 ```bash
-uv run alembic stamp 0001_baseline
+uv run alembic upgrade head    # crea todas las tablas
 ```
 
-BD nueva desde cero: cargar `.claude/db_schema.sql`, `migrations/m10_billing.sql` y los `seeds/*.sql` con el cliente de MySQL, y luego `uv run alembic stamp 0001_baseline`.
+Después, cargar los `seeds/*.sql` con el cliente de MySQL.
+
+BD que ya tenía el esquema antes de Alembic (creada con el dump; solo una vez, no ejecuta SQL):
+
+```bash
+uv run alembic stamp head
+```
 
 ### Crear y aplicar una migración
 

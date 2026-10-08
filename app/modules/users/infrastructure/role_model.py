@@ -15,8 +15,10 @@
 # - No estás obligado a crear un repositorio de roles todavía.
 # ======================================================================
 
-from sqlalchemy import BigInteger, Column, String, TIMESTAMP, text
-from app.extensions.db import Base
+from sqlalchemy import BigInteger, CheckConstraint, Column, String, UniqueConstraint, text
+from sqlalchemy.dialects.mysql import TIMESTAMP, TINYINT
+
+from app.extensions.db import Base, MYSQL_TABLE_OPTIONS
 
 
 class RoleModel(Base):
@@ -25,6 +27,11 @@ class RoleModel(Base):
     """
 
     __tablename__ = "roles"
+    __table_args__ = (
+        UniqueConstraint("code", name="uq_roles_code"),
+        CheckConstraint("`code` <> ''", name="chk_roles_code"),
+        MYSQL_TABLE_OPTIONS,
+    )
 
     # --------------------------------------------------------------
     # PK
@@ -34,22 +41,22 @@ class RoleModel(Base):
     # --------------------------------------------------------------
     # Campos de negocio mínimos (según tu DDL)
     # --------------------------------------------------------------
-    code = Column(String(32), nullable=False, unique=True)
+    code = Column(String(32), nullable=False)
     name = Column(String(120), nullable=False)
 
-    # tinyint(1) en MySQL -> lo dejamos como int simple para no complicar
-    # (puedes cambiarlo a Boolean si quieres)
+    # tinyint(1) en MySQL; se expone como int (no Boolean) para no cambiar
+    # el tipo Python que ya consume el código.
     is_active = Column(
-        BigInteger,  # si prefieres, cámbialo a Integer
+        TINYINT(1),
         nullable=False,
-        server_default=text("1"),
+        server_default=text("'1'"),
     )
 
     # --------------------------------------------------------------
     # Auditoría
     # --------------------------------------------------------------
     created_at = Column(
-        TIMESTAMP(6),
+        TIMESTAMP(fsp=6),
         nullable=False,
         server_default=text("CURRENT_TIMESTAMP(6)"),
     )

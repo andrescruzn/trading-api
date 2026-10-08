@@ -1,186 +1,99 @@
 ---
 name: api-standards
-description: REST API standards for this project. Use before creating endpoints, responses, or error codes. Covers ApiResponse envelope format, ServiceResult pattern, error code catalog, HTTP status codes, URL conventions, and pagination structure.
+description: Estándares REST de Trading AI API. Usar antes de crear o modificar endpoints, respuestas, códigos de error o mensajes de UI. Cubre el envelope {msg, errorCode, data}, los helpers build_*_response de app.common.http, el flujo ServiceResult → error_messages.py → JSON, autenticación/roles en rutas, convenciones de URL y paginación.
 ---
 
-# REST API Standards & Response Structures
+# Estándares de API REST
 
-## 🎯 Response Structure (Obligatorio)
+## Envelope (obligatorio)
 
-Todas las respuestas de la API deben seguir este formato estándar:
-
-### Respuesta Exitosa Simple
+Toda respuesta pasa por `app.common.http.send()` (directo o vía `build_*_response`):
 
 ```json
-{
-  "msg": "Usuario creado exitosamente",
-  "errorCode": 0,
-  "data": {
-    "id": 123,
-    "email": "user@example.com",
-    "name": "John Doe"
-  }
-}
+{ "msg": "texto para la UI", "errorCode": 201, "data": { } }
 ```
 
-### Respuesta Exitosa con Paginación
+- `errorCode` **es el HTTP status real** (200, 201, 400, 404, 409, 422, 500…). Nunca 0.
+- El frontend detecta error con `errorCode >= 400`.
+- `data` nunca es `null`: si no hay datos, `[]`.
+- `send()` exige `data` como argumento: `send(msg=..., status_code=403, data=[])`. Omitirlo lanza `TypeError` (→ 500).
 
-```json
-{
-  "msg": "Usuarios obtenidos exitosamente",
-  "errorCode": 0,
-  "data": {
-    "items": [
-      { "id": 1, "name": "User 1" },
-      { "id": 2, "name": "User 2" }
-    ],
-    "paginate": {
-      "page": 1,
-      "limit": 20,
-      "total": 100,
-      "totalPages": 5
-    }
-  }
-}
-```
+## Helpers (`from app.common.http import ...`)
 
-### Respuesta de Error
+| Helper | Uso | `data` resultante |
+|---|---|---|
+| `build_success_response(data, msg="OK", status_code=200)` | GET / PUT / PATCH | el objeto |
+| `build_created_response(data, msg)` | POST que crea | el objeto (201) |
+| `build_list_response(items, msg="OK")` | Listado simple | **la lista directamente** (`data: [...]`) |
+| `build_paginated_response(items, total, page, page_size)` | Listado paginado | `{items, pagination: {total, page, page_size, total_pages}}` |
+| `build_data_response(data, datetime_fields=[...])` | Convierte fechas UTC → Bogotá | el objeto |
+| `build_error_response(result, ERROR_MESSAGES)` | `ServiceResult` fallido | `[]`, status = `error.http_status` |
+| `build_from_service_result(result, ERROR_MESSAGES, transform=...)` | Éxito o error en una llamada | — |
+| `build_cookie_auth_response` / `build_logout_response` | Auth con cookie HTTP-only | — |
 
-```json
-{
-  "msg": "El email ya está registrado",
-  "errorCode": 1001,
-  "data": null
-}
-```
-
----
-
-## 🔢 Error Code Catalog
+## Flujo Service → Route
 
 ```python
-# app/common/error_codes.py
-class ErrorCode:
-    SUCCESS = 0
-    # Errores generales (1000-1099)
-    GENERAL_ERROR = 1000
-    VALIDATION_ERROR = 1001
-    NOT_FOUND = 1002
-    UNAUTHORIZED = 1003
-    FORBIDDEN = 1004
-    # Errores de usuario (1100-1199)
-    USER_EMAIL_EXISTS = 1100
-    USER_NOT_FOUND = 1101
-    USER_INACTIVE = 1102
-    USER_INVALID_CREDENTIALS = 1103
-    # Errores de autenticación (1200-1299)
-    TOKEN_EXPIRED = 1200
-    TOKEN_INVALID = 1201
-    REFRESH_TOKEN_INVALID = 1202
-    # Errores de negocio específicos (1300+)
-    INSUFFICIENT_BALANCE = 1300
-    ORDER_ALREADY_PROCESSED = 1301
-    PRODUCT_OUT_OF_STOCK = 1302
-```
+# services/strategies/create_strategy_service.py
+return ServiceResult.fail(code="STRATEGY_DUPLICATE_NAME_VERSION", http_status=409)
 
----
+# rest/strategies/error_messages.py
+STRATEGY_ERROR_MESSAGES: dict[str, str] = {
+    "STRATEGY_DUPLICATE_NAME_VERSION": "Ya existe una estrategia con ese nombre y versión.",
+}
 
-## 🔄 Flujo Service → Endpoint
-
-### En el Service
-
-```python
-from app.common.error_codes import ErrorCode
-
-class UserService:
-    def create_user(self, email: str, name: str) -> ServiceResult[User]:
-        if existing := self.repo.find_by_email(email):
-            return ServiceResult.fail(
-                message="El email ya está registrado",
-                error_code=ErrorCode.USER_EMAIL_EXISTS
-            )
-        saved_user = self.repo.save(User(email=email, name=name))
-        return ServiceResult.ok(data=saved_user, message="Usuario creado exitosamente")
-```
-
-### En el Endpoint REST
-
-```python
-@router.post("", response_model=ApiResponse[UserResponse], status_code=201)
-async def create_user(
-    request: CreateUserRequest,
-    service: Annotated[UserService, Depends(get_user_service)]
-) -> ApiResponse[UserResponse]:
-    result = await service.create_user(email=request.email, name=request.name)
+# rest/strategies/routes.py
+@router.post("", status_code=201)
+def create_strategy(
+    payload: CreateStrategyRequest,
+    identity: dict = Depends(admin_required),
+    factory: StrategyServiceFactory = Depends(get_factory),
+):
+    result = factory.create_strategy().create(name=payload.name, ...)
     if not result.success:
-        return ApiResponse(msg=result.message, error_code=result.error_code, data=None)
-    return ApiResponse(
-        msg=result.message,
-        error_code=ErrorCode.SUCCESS,
-        data=UserResponse.from_entity(result.data)
-    )
+        return build_error_response(result, STRATEGY_ERROR_MESSAGES)
+    return build_created_response(data=_strategy_to_dict(result.data), msg="Estrategia creada exitosamente.")
 ```
 
----
+Reglas:
+- Un `error_messages.py` por recurso en `rest/<recurso>/`, con **todos** los códigos que puede devolver su servicio. Si falta, el usuario ve el código crudo.
+- Mensajes de UI en español, claros y sin detalles internos.
+- Serializar entidades con una función `_x_to_dict()` en la ruta o un schema Pydantic; nunca devolver modelos ORM.
 
-## 🌐 REST URL Conventions
+## Autenticación y roles en rutas
 
-```
-# Colecciones
-GET    /users              # Listar usuarios
-POST   /users              # Crear usuario
+- Usuario autenticado: `identity: dict = Depends(token_required_actual)` → `identity["user_id"]`, `identity["role_id"]`.
+- Solo admin: `Depends(admin_required)` (de `app.common.security.jwt`). Preferirlo a comparar `role_id` a mano dentro de la ruta.
+- Recursos de usuario: filtrar siempre por `identity["user_id"]` (ownership) en el servicio.
+- Endpoints de auth: `Depends(check_auth_rate_limit)`.
 
-# Recursos individuales
-GET    /users/{id}         # Obtener usuario específico
-PUT    /users/{id}         # Actualizar usuario completo
-PATCH  /users/{id}         # Actualizar usuario parcial
-DELETE /users/{id}         # Eliminar usuario
+## Códigos HTTP
 
-# Sub-recursos (máximo 2 niveles)
-GET    /users/{id}/orders  # Órdenes de un usuario
+| Status | Cuándo |
+|---|---|
+| 200 | GET, PUT, PATCH, acciones OK |
+| 201 | POST que crea |
+| 400 | Petición mal formada / regla simple |
+| 401 | No autenticado (lo gestiona `jwt_guard`) |
+| 403 | Autenticado sin permiso / recurso de otro usuario |
+| 404 | Recurso no existe |
+| 409 | Conflicto (duplicado, estado incompatible) |
+| 422 | Validación de negocio fallida (Pydantic también usa 422) |
+| 429 | Rate limit |
+| 500 | Inesperado (`build_internal_error_response`) |
 
-# Acciones no-CRUD (excepciones justificadas)
-POST   /users/{id}/activate
-POST   /auth/login
-POST   /auth/logout
-```
+## URLs
 
-- Sustantivos en plural: `/users`, `/products`
-- kebab-case para URLs multi-palabra: `/user-profiles`
-- ❌ NUNCA verbos: `/getUsers`, `/createProduct`
+- Prefijo `/api/<recurso>` para toda ruta REST nueva (evita colisión con páginas web homónimas: `/bots` es la página, `/api/bots` la API). Los módulos antiguos (`/users`, `/exchanges`, `/symbols`, `/timeframes`, `/candles`, `/feature-sets`, `/candle-features`, `/accounts`, `/agent`) no lo llevan: no renombrarlos sin que el usuario lo pida (rompe el JS).
+- Sustantivos en plural y kebab-case: `/api/managed-accounts`, `/api/model-runs`.
+- Sin verbos, salvo acciones no-CRUD justificadas: `POST /api/signals/generate`, `POST /api/bots/{id}/start`.
+- Sub-recursos máximo 2 niveles: `/api/accounts/{id}/balances`.
+- `tags=[...]` en el `APIRouter` para agrupar en Swagger (`/docs`).
 
----
+## Prohibido
 
-## 📊 HTTP Status Codes
-
-```python
-# Éxito
-200 OK                 # GET, PUT, PATCH exitosos
-201 Created            # POST exitoso (creación)
-204 No Content         # DELETE exitoso
-
-# Error del cliente
-400 Bad Request        # Validación fallida
-401 Unauthorized       # No autenticado
-403 Forbidden          # Autenticado pero sin permisos
-404 Not Found          # Recurso no existe
-409 Conflict           # Conflicto (ej: email duplicado)
-422 Unprocessable Entity # Validación de negocio fallida
-
-# Error del servidor
-500 Internal Server Error  # Error inesperado
-```
-
----
-
-## ⚠️ Reglas Críticas
-
-❌ **NUNCA** retornar `ServiceResult` directamente desde endpoints
-❌ **NUNCA** lanzar `HTTPException` desde services o dominio
-❌ **NUNCA** retornar modelos ORM (SQLAlchemy) desde endpoints
-❌ **NUNCA** usar `errorCode` diferente de 0 para éxito
-
----
-
-**Última actualización:** Febrero 2026
-**Tokens aproximados:** ~1,000
+- ❌ Devolver `ServiceResult` o modelos ORM desde una ruta.
+- ❌ `HTTPException` desde services o domain.
+- ❌ `errorCode` 0 en éxito.
+- ❌ Textos de UI en services.
+- ❌ Devolver tokens JWT en el body cuando la sesión va por cookie.

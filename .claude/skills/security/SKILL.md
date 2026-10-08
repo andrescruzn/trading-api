@@ -1,6 +1,6 @@
 ---
 name: security
-description: Security best practices for this project. Use before implementing authentication, authorization, input handling, or any security-sensitive code. Covers JWT cookies, rate limiting, lockout, CSP headers, XSS/CSRF/SQLi prevention, bcrypt, OTP, and password policy.
+description: Seguridad de Trading AI API. Usar antes de tocar autenticación, roles, sesiones, inputs de usuario, credenciales de exchange, webhooks o cualquier código sensible. Cubre JWT en cookie HTTP-only con rotación de JTI, roles (user/admin/investor), rate limiting, lockout, CSP, XSS/CSRF/SQLi, bcrypt, OTP, cifrado Fernet de API keys y política de contraseñas.
 ---
 
 # Security Best Practices — Trading AI API
@@ -20,6 +20,29 @@ description: Security best practices for this project. Use before implementing a
 | CORS configurado | ✅ | `app_factory.py` |
 | SameSite=Lax (CSRF básico) | ✅ | `settings.py` |
 | Security headers middleware | ✅ | `common/security/security_headers.py` |
+| Credenciales de exchange cifradas (Fernet) | ✅ | `common/security/credentials_cipher.py` |
+| Rate limit fuera de auth | ❌ | pendiente (ver `specs/_ROOT.md`, prioridad 3) |
+| Validación de URL de webhook (SSRF) | ❌ | pendiente (M9) |
+
+---
+
+## Roles y autorización
+
+| Rol | ID (en BD) | Setting |
+|---|---|---|
+| user | 1 | `settings.AUTH_USER_ROLE_ID` |
+| admin | 2 | `settings.AUTH_ADMIN_ROLE_ID` |
+| investor | 3 | `settings.AUTH_INVESTOR_ROLE_ID` |
+
+- **Gotcha:** los *defaults* de `settings.py` están invertidos respecto a la BD (admin=1, user=2). Funciona solo porque `.env` define `AUTH_USER_ROLE_ID=1` y `AUTH_ADMIN_ROLE_ID=2`. Un `.env` nuevo sin esas variables convierte a todos los usuarios en admin.
+- Nunca hardcodear IDs; usar siempre los settings.
+- Rutas solo admin: `Depends(admin_required)`. Recursos de usuario: verificar ownership (`user_id` del token) en el servicio.
+
+## Credenciales de exchange
+
+- API key/secret se cifran juntas con `CredentialsCipher(settings.CREDENTIALS_SECRET_KEY)` y se guardan en `accounts.credentials_ref`.
+- Nunca devolverlas en respuestas ni escribirlas en logs o `audit_logs`.
+- En producción `CREDENTIALS_SECRET_KEY` es obligatoria (la clave de desarrollo es fija y pública).
 
 ---
 
@@ -45,6 +68,8 @@ form-action 'self';
 ```
 
 **Regla:** NUNCA usar `'unsafe-inline'` ni `'unsafe-eval'` en producción.
+
+> Estado real: `_CSP_WEB` en `security_headers.py` todavía incluye `'unsafe-inline'` en `script-src`/`style-src` (más `unpkg.com` y Google Fonts). Es deuda: no añadir código que dependa de ello (ver skill `web-ui`).
 
 ---
 

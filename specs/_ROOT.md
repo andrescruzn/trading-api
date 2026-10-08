@@ -23,14 +23,14 @@ Una explicación simple de los 10 módulos del sistema, sin tecnicismos. Cada m�
 
 Más detalle:
 - Cada spec `MNN-*.md` es la **fuente de verdad de su módulo**: descripción, páginas, entregables, decisiones, avance, mejoras, detalle técnico (tablas, archivos, endpoints), gotchas y tests. (Reemplaza a los antiguos `ROADMAP.md` y `MODULES_MAP.md`.)
-- Orden de dependencias, archivos de infraestructura críticos y checklist de módulo nuevo: [más abajo](#orden-de-dependencias).
+- Orden de dependencias y mapa de páginas: [más abajo](#orden-de-dependencias).
 - Manual en lenguaje simple: [`MANUAL.md`](../MANUAL.md)
-- Esquema de base de datos: `.claude/db_schema.sql`
+- Esquema de base de datos: `.claude/db_schema.sql` + `migrations/` (ver skill [`database`](../.claude/skills/database/SKILL.md))
 
 ### Cómo usar estas specs
 - Al iniciar cada sesión: leer este archivo para saber en qué módulo estamos y luego la spec del módulo (se leen bajo demanda, no se importan en `CLAUDE.md`).
 - **Leer la spec del módulo ANTES de codear** para no pisar lo anterior (tablas, archivos y endpoints están en su sección "Detalle técnico").
-- Al terminar un módulo o una feature significativa: actualizar su spec (estado, entregables, avance, decisiones, mejoras), la tabla de arriba y `MANUAL.md`. (Ya no existe `.claude/memory/MEMORY.md`: sus convenciones están en `CLAUDE.md` y sus bugs/notas en la spec de cada módulo.)
+- Al terminar un módulo o una feature significativa: skill [`update-specs`](../.claude/skills/update-specs/SKILL.md) (spec, tabla de arriba y `MANUAL.md`). Las convenciones de código viven en `CLAUDE.md` y `.claude/skills/`; los bugs y notas de cada módulo, en su spec.
 
 ---
 
@@ -119,10 +119,7 @@ Módulo 10 (Billing) ← necesita historial de orders + fills de M8
 
 ## Cache-busting JS (global)
 
-- `templates.env.globals["sv"] = str(int(time.time()))` en `app/modules/web/routes.py`
-- Todos los `<script src="...">` usan `?v={{ sv }}` — fuerza recarga tras reinicio del servidor
-- Aplica a TODOS los templates (`base_app.html` incluido); el CSS también se versiona (`<link rel="stylesheet" href="/static/css/app.css?v={{ sv }}">` en `base.html`)
-- **Bug que lo motivó:** `app.css` no tenía cache-busting y el navegador servía la versión vieja tras los cambios; ahora CSS y JS se versionan en cada reinicio del servidor. Sin `?v={{ sv }}` el navegador sirve el JS viejo: agregarlo a TODOS los `<script>` nuevos.
+Todo `<script>` (y el CSS) lleva `?v={{ sv }}`; `sv` cambia en cada reinicio del servidor. Reglas completas en el skill [`web-ui`](../.claude/skills/web-ui/SKILL.md).
 
 ---
 
@@ -140,31 +137,13 @@ Comprar/Vender vive en el [Módulo 8 — Orders & Execution](M08-ORDERS-EXECUTIO
 
 ## Archivos de infraestructura críticos (nunca romper)
 
-| Archivo | Qué hace |
-|---------|---------|
-| `app/extensions/db/models_registry.py` | Importa TODOS los modelos ORM (side-effect). Al crear modelo nuevo → agregar aquí |
-| `app/app_factory.py` | Registra middlewares + routers. Al crear router nuevo → agregar aquí |
-| `app/modules/web/routes.py` | Páginas HTML. Al crear página nueva → agregar ruta aquí |
-| `app/common/security/security_headers.py` | CSP. Al crear rutas web nuevas (`/market/`, `/admin/`, etc.) → agregar prefijo a `web_prefixes` |
-| `app/extensions/db/session.py` | `get_db()` dependency de FastAPI |
-| `app/common/contracts/service_result.py` | `ServiceResult[T]` — contrato de todos los servicios |
-| `app/common/http/response_builder.py` | `build_list_response`, `build_created_response`, etc. |
+Listado y cuándo tocar cada uno: skill [`backend-core`](../.claude/skills/backend-core/SKILL.md) → "Archivos de infraestructura críticos".
 
 ---
 
 ## Checklist al crear un módulo nuevo
 
-1. [ ] Crear `domain/` — entidades + interfaces repositorio
-2. [ ] Crear `infrastructure/` — modelos ORM + impl repositorios
-3. [ ] Registrar modelos ORM en `models_registry.py`
-4. [ ] Crear `services/` — lógica, retorna ServiceResult
-5. [ ] Crear `providers/` — Factory + `get_<modulo>_factory()`
-6. [ ] Crear `rest/` — routes, schemas, error_messages por recurso
-7. [ ] Registrar router(es) en `app_factory.py`
-8. [ ] Si hay páginas web: agregar en `web/routes.py`
-9. [ ] Si las páginas son nuevos prefijos (ej: `/features/`): agregar a `_is_web_route()` en `security_headers.py`
-10. [ ] Crear templates HTML + JS en `static/js/<modulo>/`
-11. [ ] Si hay seed: `seeds/seed_<modulo>.sql` (idempotente)
+Checklist completo (BD → domain → infra → services → providers → REST → web → docs): skill [`new-module`](../.claude/skills/new-module/SKILL.md). Al cerrar: skill [`update-specs`](../.claude/skills/update-specs/SKILL.md).
 
 ---
 

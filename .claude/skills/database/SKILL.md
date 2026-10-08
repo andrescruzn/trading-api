@@ -1,77 +1,104 @@
 ---
 name: database
-description: Database conventions for this project (MySQL 8 via MAMP). Use before writing migrations, seeds, or raw SQL queries. Covers MySQL CLI commands, connection credentials, seed conventions, table naming rules, and SQLAlchemy-specific gotchas.
+description: Base de datos MySQL 8 de Trading AI API (base trading_ai). Usar antes de escribir SQL, seeds, migraciones o modelos ORM, o cuando haga falta consultar el esquema, una tabla, una columna o un ENUM. Cubre dónde está el esquema, resumen de tablas por dominio, valores permitidos de los CHECK, convenciones de columnas, comandos de MySQL (MAMP en macOS / Windows) y gotchas de SQLAlchemy.
 ---
 
-# Skill: Database — MySQL con MAMP
+# Base de datos — MySQL 8 (`trading_ai`)
 
-## Motor MySQL en este proyecto
+## Dónde está el esquema
 
-El proyecto usa **MAMP** como servidor MySQL local.
-El binario `mysql` NO está en el PATH del sistema — hay que usar la ruta completa.
+El esquema real = **[`.claude/db_schema.sql`](../../db_schema.sql)** (dump del 2026-02-24, 25 tablas) **+ las migraciones posteriores en [`migrations/`](../../../migrations/)**:
 
----
+| Migración | Estado en el dump |
+|---|---|
+| `m07_add_signal_price_columns.sql` (entry/SL/TP/size/rr/approved en `signals`) | ✅ incluida |
+| `m07b_add_bot_feature_set_id.sql` (`bots.feature_set_id`) | ✅ incluida |
+| `m10_billing.sql` (`investors`, `managed_accounts`, `billing_periods`, `fee_transactions`) | ❌ **no** está en el dump: leer la migración |
+
+Para ver una tabla concreta, buscar `CREATE TABLE \`<tabla>\`` en esos archivos con Grep en vez de leer el dump entero (~38 KB). La fuente última de verdad es la BD local: `SHOW CREATE TABLE <tabla>;`.
+
+## Tablas por dominio
+
+| Dominio | Tablas |
+|---|---|
+| Catálogos | `roles` (1 user, 2 admin, 3 investor), `exchanges`, `symbols`, `timeframes`, `feature_sets`, `strategies` |
+| Usuarios y cuentas | `users`, `accounts`, `account_balances` |
+| Market data / ML | `candles`, `candle_features`, `datasets`, `models`, `model_runs` |
+| Ejecución de bots | `bots`, `signals`, `orders`, `fills`, `positions`, `predictions`, `portfolio_snapshots` |
+| Alertas y auditoría | `alert_rules`, `alert_events`, `audit_logs`, `system_events` |
+| Billing (M10) | `investors`, `managed_accounts`, `billing_periods`, `fee_transactions` |
+
+## Valores permitidos (CHECK constraints)
+
+```
+accounts.mode              : paper | live
+accounts.status            : active | suspended
+bots.mode                  : paper | live
+bots.status                : running | stopped | paused | error
+orders.side                : buy | sell
+orders.type                : market | limit | stop | stop_limit
+orders.status              : new | sent | partially_filled | filled | canceled | rejected
+signals.action             : buy | sell | hold
+models.model_type          : xgboost | lightgbm | sklearn | nn
+models.status              : active | deprecated | archived
+model_runs.status          : running | success | failed
+symbols.asset_class        : crypto | metal | etf | stock | forex
+exchanges.type             : crypto_exchange | broker | data_vendor
+users.status               : active | blocked | disabled
+alert_rules.rule_type      : pnl | drawdown | signal | error | price
+alert_events.severity      : info | warning | critical
+alert_events.delivery_status: pending | sent | failed
+system_events.level        : info | warning | error
+system_events.component    : market_data | execution | scheduler | api
+managed_accounts.period_type: daily | weekly | monthly
+billing_periods.status     : open | closed
+fee_transactions.status    : pending | charged | waived
+```
+
+Otras restricciones que suelen morder:
+- `orders`: `market` → `price` y `stop_price` NULL; `limit` → `price` NOT NULL, `stop_price` NULL; `stop`/`stop_limit` → `stop_price` NOT NULL. `qty > 0`.
+- `positions.qty >= 0` (solo largos), único por `(bot_id, symbol_id)`.
+- `candles`: único por `(symbol_id, timeframe_id, ts)`, `high >= low`.
+- `signals.confidence` entre 0 y 1.
+
+## Convenciones para tablas nuevas
+
+- Motor `InnoDB`, charset `utf8mb4`, collation `utf8mb4_0900_ai_ci`.
+- IDs `BIGINT AUTO_INCREMENT` (excepción histórica: `timeframes.id` es `SMALLINT`).
+- Fechas `TIMESTAMP(6)`; `created_at DEFAULT CURRENT_TIMESTAMP(6)`, `updated_at ... ON UPDATE CURRENT_TIMESTAMP(6)`. La sesión MySQL trabaja en UTC.
+- Precios, cantidades, balances: `DECIMAL(30,12)`. Porcentajes: `DECIMAL(5,4)`.
+- Datos flexibles en columnas `JSON` (`meta`, `spec`, `params`, `payload`, `reasons`) con `CHECK (json_valid(col))`.
+- ENUMs como `VARCHAR` + `CHECK (col IN (...))`, nombrado `chk_<tabla>_<col>`; índices `idx_<tabla>_<cols>`, FKs `fk_<tabla>_<ref>`, únicos `uq_<tabla>_<cols>`.
+
+## Migraciones y seeds
+
+- **Migración:** `migrations/mNN_<descripcion>.sql` (NN = número de módulo, sufijo `b`, `c`… si hay varias). Cabecera con motivo, `ALTER/CREATE ... IF NOT EXISTS` cuando se pueda, y `SELECT` de verificación al final.
+- **Seed:** `seeds/seed_<modulo>.sql`, **idempotente** (`INSERT IGNORE` o `ON DUPLICATE KEY UPDATE`), referencias por nombre con subqueries (`SELECT id FROM exchanges WHERE name = 'Binance'`), nunca IDs hardcodeados salvo `roles`.
+- Seeds existentes: `seed_market_data.sql` (exchanges, timeframes, symbols), `seed_accounts.sql`, `seed_strategies.sql`, `seed_billing.sql` (rol investor).
+- Tras crear una migración, recordar al usuario que el dump `.claude/db_schema.sql` queda desactualizado (regenerarlo con `mysqldump --no-data`).
 
 ## Comandos MySQL
 
-### Ejecutar un archivo SQL (seed, migración, etc.)
+Credenciales locales en `.env` (`DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`). El binario no suele estar en el PATH:
 
 ```bash
-/Applications/MAMP/Library/bin/mysql80/bin/mysql -u root -proot trading_ai < ruta/al/archivo.sql
+# macOS (MAMP)
+MYSQL=/Applications/MAMP/Library/bin/mysql80/bin/mysql
+# Windows (Git Bash) — ajustar a la instalación local
+MYSQL="/c/Program Files/MySQL/MySQL Server 8.0/bin/mysql.exe"
+
+"$MYSQL" -u root -p trading_ai < migrations/m10_billing.sql      # ejecutar archivo
+"$MYSQL" -u root -p trading_ai -e "SELECT COUNT(*) FROM candles;" # query directa
+"$MYSQL" -u root -p trading_ai                                    # shell interactivo
 ```
 
-### Conectarse al shell interactivo
+El warning `Using a password on the command line interface can be insecure` es esperado.
 
-```bash
-/Applications/MAMP/Library/bin/mysql80/bin/mysql -u root -proot trading_ai
-```
+## ORM (SQLAlchemy 2, síncrono)
 
-### Ejecutar una query directa
-
-```bash
-/Applications/MAMP/Library/bin/mysql80/bin/mysql -u root -proot trading_ai -e "SELECT COUNT(*) FROM candles;"
-```
-
----
-
-## Credenciales locales
-
-| Campo    | Valor       |
-|----------|-------------|
-| Usuario  | `root`      |
-| Password | `root`      |
-| Base de datos | `trading_ai` |
-| Host     | `127.0.0.1` |
-| Puerto   | `3306` (MAMP default) |
-
-> ⚠️ El warning `Using a password on the command line interface can be insecure` es normal y esperado — no es un error.
-
----
-
-## Seeds disponibles
-
-| Archivo | Qué inserta |
-|---------|------------|
-| `seeds/seed_market_data.sql` | exchanges, timeframes, symbols (M2) |
-
-### Crear un nuevo seed
-
-- Poner el archivo en `seeds/seed_<modulo>.sql`
-- Siempre usar `INSERT IGNORE` o `INSERT ... ON DUPLICATE KEY UPDATE` para que sea **idempotente**
-- Usar subqueries para referencias por nombre en vez de hardcodear IDs:
-  ```sql
-  SELECT id FROM exchanges WHERE name = 'Binance'
-  ```
-- Terminar con un `SELECT COUNT(*)` de verificación
-
----
-
-## Convenciones de tablas (resumen)
-
-- IDs: `BIGINT AUTO_INCREMENT` (excepto `timeframes.id` que es `SMALLINT`)
-- Timestamps: `TIMESTAMP(6)` siempre
-- Precios/cantidades financieras: `DECIMAL(30,12)`
-- Datos flexibles: columnas `JSON` con CHECK `json_valid()`
-- Charset: `utf8mb4`, collation: `utf8mb4_0900_ai_ci`
-- Motor: `InnoDB`
-- En SQLAlchemy Core usar `sqlalchemy.dialects.mysql.TIMESTAMP(fsp=6)` — NO el genérico `TIMESTAMP(6)`
+- Modelos solo en `infrastructure/<x>_model.py`, heredan de `app.extensions.db.base.Base`, y se registran en `app/extensions/db/models_registry.py` (si no, las relaciones/FK fallan al arrancar).
+- Estilo de los modelos existentes: `Column(...)` clásico (no `Mapped`/`mapped_column`); seguirlo por consistencia.
+- Las tablas se crean con SQL (migraciones), no con `create_all`. Si se genera DDL desde código (como `app/common/audit/audit_table_factory.py`), usar `sqlalchemy.dialects.mysql.TIMESTAMP(fsp=6)`: en el `TIMESTAMP` genérico el primer argumento es `timezone`, no la precisión.
+- Columnas `DECIMAL` llegan como `Decimal` de Python; convertir explícitamente si se opera con `float`.
+- Queries siempre parametrizadas (ORM o `text()` con `:param`), nunca f-strings con input.
+- `commit()` en el servicio, nunca en el repositorio (ver `backend-core`).

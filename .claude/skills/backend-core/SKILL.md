@@ -1,198 +1,134 @@
 ---
 name: backend-core
-description: Python/FastAPI backend standards for this project. Use before creating any module, service, repository, or REST endpoint. Covers project structure (Screaming Architecture), layer rules (domain→infra→service→rest), dependency direction, and prohibitions.
+description: Estructura real del repo y reglas de capas del backend FastAPI de Trading AI. Usar antes de crear o modificar cualquier módulo, servicio, repositorio, provider o ruta REST. Cubre el árbol de app/, la dirección de dependencias, el wiring con ServiceFactory, los archivos de infraestructura que no se pueden romper y las prohibiciones.
 ---
 
-# Backend Core Standards (Python/FastAPI)
+# Backend Core — Trading AI API
 
-## 🎯 Role & Behavior
+## Rol y comportamiento
 
-Asistente técnico **crítico y disciplinado** para backend Python (FastAPI).
+- Explicar qué se va a crear o modificar **antes** de hacerlo y esperar confirmación del usuario.
+- Priorizar análisis y propuesta sobre velocidad; proponer mejoras aunque impliquen refactor.
+- Antes de crear algo reutilizable, buscar si ya existe en `app/common/` o en otro módulo.
 
-**Reglas de Interacción:**
-
-- ❌ **NUNCA** modificar ni borrar archivos sin explicar primero qué va a cambiar
-- ❌ **NUNCA** aplicar cambios sin confirmación explícita del usuario
-- ✅ Priorizar **análisis, propuesta y control** sobre velocidad
-- ✅ Proponer mejoras sin filtro, incluso si implican refactorizaciones
-
----
-
-## 🏗️ Project Structure (Screaming Architecture)
-
-La estructura debe "gritar" **qué hace el sistema**, no qué tecnología usa.
+## Estructura real del repo
 
 ```
 app/
-├── main.py                          # FastAPI app
-├── core/
-│   ├── __init__.py
-│   └── config.py                    # Settings (Pydantic v2)
-├── common/
-│   ├── __init__.py
-│   ├── utils/                       # ✅ Funciones reutilizables
-│   ├── error_codes.py               # Catálogo de códigos de error
-│   └── responses.py                 # ApiResponse, ServiceResult
-└── modules/
-    └── <module_name>/               # Ej: users, products, orders
-        ├── __init__.py
-        ├── domain/                  # Entidades, Protocols (contratos)
-        ├── infrastructure/          # Repositorios, DB, externos
-        ├── services/                # Lógica de negocio
-        └── rest/                    # Endpoints, schemas (Pydantic)
+  main.py                    # Entrypoint Uvicorn (app = create_app())
+  app_factory.py             # Middlewares, routers, error handlers   ← registrar routers nuevos
+  common/
+    config/settings.py       # Settings singleton (lee .env, fail-fast fuera de development)
+    contracts/service_result.py   # ServiceResult[T], ServiceError
+    http/                    # send() + build_*_response()
+    errors/                  # register_error_handlers, mensajes globales
+    security/                # jwt/ (token_required_actual, admin_required), otp/, rate_limiter,
+                             # password_hasher, credentials_cipher, sanitization/, security_headers
+    audit/                   # audit middleware + repositorio (audit_logs)
+    logging/                 # configure_logging(), LoggingMiddleware
+    utils/                   # utc_now(), utc_to_bogota(), clean_email(), clean_str()
+  extensions/db/
+    base.py                  # class Base(DeclarativeBase)
+    session.py               # engine síncrono (UTC) + get_db()
+    models_registry.py       # importa TODOS los modelos ORM          ← registrar modelos nuevos
+  modules/<modulo>/          # accounts, agent, alerts, billing, bots, features, market,
+                             # orders, strategies, users, mailer, health, scheduler, web
+  templates/ static/         # Páginas Jinja2 + JS/CSS (ver skill web-ui)
 ```
 
----
-
-## 🧭 Dependency Direction (Estricta)
+### Anatomía de un módulo (ejemplo real: `app/modules/strategies/`)
 
 ```
-rest → services → domain ← infrastructure
-       ↓              ↑
-   (orchestration)  (contracts via Protocol)
+domain/
+  strategy_entity.py              # clase Strategy: pura, sin ORM ni FastAPI, con reglas de negocio
+  strategy_repository.py          # contrato StrategyRepository (ABC/Protocol)
+infrastructure/
+  strategy_model.py               # StrategyModel(Base)
+  strategy_repository_impl.py     # SqlAlchemyStrategyRepository: mapea Model ↔ Entity, add/flush
+providers/
+  strategy_provider.py            # StrategyServiceFactory(session) → un método por servicio
+services/
+  strategies/                     # un sub-paquete por recurso
+    create_strategy_service.py    # CreateStrategyService.create(...) → ServiceResult[Strategy]
+    __init__.py                   # barrel export
+rest/
+  strategies/                     # un sub-paquete por recurso
+    routes.py                     # APIRouter(prefix="/api/strategies")
+    schemas.py                    # Pydantic request/response
+    error_messages.py             # STRATEGY_ERROR_MESSAGES = {code: texto UI}
 ```
 
-**Reglas:**
+Módulos con piezas extra: `agent/llm/` (clientes LLM por provider), `alerts/channels/` (email, Telegram, webhook, desktop), `orders/execution/` (paper vs live con ccxt).
 
-- `rest` depende de `services` e `infrastructure` (solo para inyección)
-- `services` depende de `domain` e `infrastructure` (vía contratos Protocol)
-- `infrastructure` implementa contratos y depende de `domain`
-- `domain` **NO depende de ninguna otra capa** (núcleo puro)
-
----
-
-## 🚫 Prohibiciones Críticas
-
-### Dependencias Cíclicas
-
-- ❌ Imports cíclicos entre módulos
-- ❌ Usar ABCs para contratos (usar `Protocol` de `typing`)
-- ❌ Importar desde `rest` hacia capas internas
-
-### Código Innecesario
-
-- ❌ Código muerto, duplicado o sin propósito claro
-- ❌ Utils/helpers definidos dentro de `services`
-- ❌ Modelos ORM (SQLAlchemy) como respuesta directa en REST
-- ❌ Formato/presentación (labels, strings UI) dentro de services
-
-### Separación de Responsabilidades
-
-- ❌ Services conociendo schemas de Pydantic de la capa REST
-- ❌ Helpers locales (funciones anidadas) en services sin justificación
-- ❌ Lógica de negocio en endpoints REST
-
----
-
-## ✅ Reglas Obligatorias
-
-### 1. Reutilización Centralizada
-
-Toda lógica reutilizable debe ir en:
+## Dirección de dependencias
 
 ```
-app/common/utils/
+rest → providers → services → domain ← infrastructure
 ```
 
-**Servicios** solo orquestan lógica de negocio.
+- `domain` no importa de ninguna otra capa.
+- `services` depende de los **contratos** de `domain`, nunca de `infrastructure` ni de `rest`.
+- `infrastructure` implementa los contratos de `domain`.
+- `providers` es el único sitio que instancia repositorios concretos y servicios.
+- `rest` usa la factory vía `Depends` y convierte `ServiceResult` en respuesta HTTP.
 
-### 2. Sub-modularización Automática
-
-- **≤ 3 archivos:** Mantener en un solo nivel
-- **> 3 archivos:** Sub-modularizar por contexto funcional
-
-```
-# ❌ ANTES - Difícil de navegar
-auth/services/
-├── login_service.py
-├── logout_service.py
-├── register_service.py
-├── reset_password_service.py
-└── (más archivos...)
-
-# ✅ DESPUÉS - Sub-contextos claros
-auth/
-├── login/
-│   ├── __init__.py
-│   ├── login_service.py
-│   └── login_schemas.py
-├── register/
-│   ├── __init__.py
-│   ├── register_service.py
-│   └── register_schemas.py
-└── session/
-    ├── __init__.py
-    └── session_service.py
-```
-
-### 3. Barrel Exports (`__init__.py`)
-
-Cada paquete expone una API clara mediante `__init__.py`:
+## Patrón de wiring (cómo se conecta todo)
 
 ```python
-# app/modules/users/services/__init__.py
-from .user_service import UserService
-from .auth_service import AuthService
+# providers/strategy_provider.py
+class StrategyServiceFactory:
+    def __init__(self, session: Session):
+        self._session = session
+        self._strategy_repo = SqlAlchemyStrategyRepository(session)
 
-__all__ = ["UserService", "AuthService"]
+    def create_strategy(self) -> CreateStrategyService:
+        return CreateStrategyService(repo=self._strategy_repo, session=self._session)
+
+# rest/strategies/routes.py
+def get_factory(db: Session = Depends(get_db)) -> StrategyServiceFactory:
+    return StrategyServiceFactory(session=db)
 ```
 
-**Preferir:**
+## Transacciones
 
-```python
-from app.modules.users.services import UserService
-```
+- El **servicio** es la frontera transaccional: hace `self._session.commit()` cuando el caso de uso termina bien.
+- Los repositorios solo hacen `add` / `flush` / queries. **Nunca** `commit`.
+- Así un caso de uso que toca varios repositorios es atómico.
 
-**Evitar:**
+## Prohibiciones
 
-```python
-from app.modules.users.services.user_service import UserService
-```
+- ❌ Imports cíclicos entre módulos; ❌ importar desde `rest` hacia capas internas.
+- ❌ Modelos ORM como respuesta REST: serializar la entidad (`_x_to_dict` o schema Pydantic).
+- ❌ Textos de UI, labels o formato en services.
+- ❌ Services que conozcan schemas Pydantic de `rest`.
+- ❌ Lógica de negocio en endpoints.
+- ❌ Helpers reutilizables dentro de `services/`: van a `app/common/utils/`.
+- ❌ Código muerto o duplicado.
 
----
+## Sub-modularización
 
-## 🔍 Before Creating Code (Checklist)
+- ≤ 3 archivos en una carpeta → un solo nivel.
+- > 3 archivos → sub-paquetes por recurso o capacidad de negocio (como `services/strategies/`, `services/datasets/`).
+- Cada paquete expone su API en `__init__.py` (barrel export con `__all__`).
 
-Antes de crear código reutilizable, Claude debe:
+## Archivos de infraestructura críticos (nunca romper)
 
-1. **Revisar estructura existente:**
-   - `app/common/utils/` - Utils transversales
-   - `app/modules/<modulo>/services/` - Servicios de dominio
-   - `app/modules/<modulo>/rest/` - Presenters/Schemas
+| Archivo | Cuándo tocarlo |
+|---|---|
+| `app/extensions/db/models_registry.py` | Modelo ORM nuevo |
+| `app/app_factory.py` | Router nuevo |
+| `app/modules/web/routes.py` | Página web nueva |
+| `app/common/security/security_headers.py` | Prefijo web nuevo → `_is_web_route()` |
+| `app/extensions/db/session.py` | `get_db()`; no cambiar sin motivo |
+| `app/common/contracts/service_result.py` | Contrato de todos los servicios |
+| `app/common/http/response_builder.py` | Helpers de respuesta |
 
-2. **Evaluar sub-modularización:**
-   - Si una carpeta tiene >3 archivos, proponer sub-división
+## Carpetas a ignorar
 
-3. **Confirmar con usuario:**
-   - Explicar qué va a crear/modificar
-   - Esperar aprobación explícita
+`.venv/`, `__pycache__/`, `.git/`, `.env`, `instance/`, `uv.lock`, `.pytest_cache/`. Foco en `app/`, `tests/`, `seeds/`, `migrations/`, `specs/`.
 
----
+## Relacionados
 
-## 🛠️ Tech Stack
-
-- **Python:** ≥ 3.10
-- **FastAPI:** ≥ 0.110
-- **Pydantic:** v2.6+ (Settings, BaseModel)
-- **Linter/Formatter:** `ruff` (reemplaza black, isort, flake8)
-- **Type Checker:** `mypy --strict`
-- **Testing:** `pytest` + `pytest-asyncio`
-
----
-
-## 🗂️ Carpetas a Ignorar
-
-Claude debe ignorar completamente (salvo indicación explícita):
-
-```
-venv/, .venv/, __pycache__/, *.pyc, .git/, .idea/, .vscode/
-node_modules/, dist/, build/, *.egg-info/, migrations/, alembic/
-logs/, *.log, .env, .coverage, .pytest_cache/, .mypy_cache/
-```
-
-**Enfoque exclusivo:** Código fuente en `app/` y `tests/`.
-
----
-
-**Última actualización:** Febrero 2026
-**Tokens aproximados:** ~1,500
+- Crear un módulo completo: skill `new-module`.
+- Patrones y ServiceResult a fondo: skill `architecture`.
+- Respuestas y códigos de error: skill `api-standards`.

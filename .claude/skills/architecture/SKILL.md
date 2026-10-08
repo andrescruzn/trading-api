@@ -1,286 +1,88 @@
 ---
 name: architecture
-description: Architecture patterns and design principles for this project. Use before deciding on patterns, SOLID principles, sub-modularization, or domain structure. Covers Repository, ServiceResult, Factory, Strategy patterns with Python examples.
+description: Patrones de diseño y principios usados en Trading AI API. Usar antes de decidir un patrón, aplicar SOLID, sub-modularizar o diseñar el dominio de un módulo. Cubre Screaming Architecture, Repository (ABC/Protocol), ServiceResult real del proyecto, ServiceFactory, Strategy (clientes LLM, canales de alerta, ejecución paper/live) y cómo evitar dependencias cíclicas.
 ---
 
-# Architecture Patterns & Design Principles
+# Arquitectura y patrones
 
-## 🎯 Core Principles
+## Principios
 
-### SOLID
+- **SOLID**, con especial peso en *Single Responsibility* (un servicio = un caso de uso) y *Dependency Inversion* (los servicios dependen de contratos de `domain`).
+- **DRY**: lógica reutilizable en `app/common/utils/`, no repetida entre módulos.
+- Todo patrón se aplica **solo si resuelve un problema concreto**, y se nombra y justifica al proponerlo.
 
-- **S**ingle Responsibility - Un componente = una responsabilidad
-- **O**pen/Closed - Abierto para extensión, cerrado para modificación
-- **L**iskov Substitution - Subtipos deben ser sustituibles
-- **I**nterface Segregation - Interfaces específicas > genéricas
-- **D**ependency Inversion - Depender de abstracciones, no concreciones
+## Screaming Architecture
 
-### DRY (Don't Repeat Yourself)
+La estructura grita *qué hace el sistema*: `app/modules/market`, `bots`, `orders`, `billing`… no `models/`, `views/`, `controllers/`. Las sub-carpetas representan capacidades de negocio (p. ej. `services/strategies/` y `services/datasets/`), no detalles técnicos.
 
-- Minimizar duplicación de código
-- Centralizar lógica reutilizable en `app/common/utils/`
-- Evitar lógica repetida o implícita
+## Repository
 
----
+**Problema:** desacoplar la lógica de negocio de SQLAlchemy.
 
-## 🏛️ Screaming Architecture
-
-La arquitectura debe comunicar el **propósito del sistema**, no la tecnología.
-
-**❌ Arquitectura centrada en frameworks:**
-
-```
-app/
-├── models/
-├── views/
-├── controllers/
-└── utils/
-```
-
-**✅ Arquitectura centrada en dominio:**
-
-```
-app/
-├── modules/
-│   ├── users/        # "El sistema gestiona usuarios"
-│   ├── products/     # "El sistema gestiona productos"
-│   └── orders/       # "El sistema gestiona órdenes"
-└── common/
-```
-
----
-
-## 📦 Sub-modularización (Estrategia)
-
-### Regla Práctica
-
-- **≤ 3 archivos:** Mantener en un solo nivel
-- **> 3 archivos:** Sub-modularizar por sub-contexto funcional
-
-### Ejemplo de Evolución
-
-**Fase 1 - Inicio (2 archivos):**
-
-```
-auth/services/
-├── __init__.py
-└── auth_service.py
-```
-
-✅ **OK - Mantener así**
-
-**Fase 2 - Crecimiento (5 archivos):**
-
-```
-auth/services/
-├── __init__.py
-├── login_service.py
-├── register_service.py
-├── password_service.py
-└── session_service.py
-```
-
-⚠️ **ALERTA - Considerar sub-modularización**
-
-**Fase 3 - Refactorización:**
-
-```
-auth/
-├── login/
-│   ├── __init__.py
-│   ├── login_service.py
-│   └── login_schemas.py
-├── register/
-│   ├── __init__.py
-│   ├── register_service.py
-│   └── register_schemas.py
-└── password/
-    ├── __init__.py
-    ├── reset_service.py
-    └── change_service.py
-```
-
-✅ **EXCELENTE - Sub-contextos claros**
-
-### Principios de Sub-contextos
-
-- Representan **capacidades de negocio**, no detalles técnicos
-- Cada sub-contexto tiene cohesión interna
-- Mínima dependencia entre sub-contextos
-
----
-
-## 🎨 Design Patterns (Solo con Valor Real)
-
-Todo patrón aplicado debe:
-
-1. Ser explícitamente mencionado
-2. Explicar **por qué** se usa y **qué problema** resuelve
-
-### Repository Pattern (con Protocol)
-
-**Problema:** Desacoplar lógica de negocio de detalles de persistencia.
-
-**Solución:**
+- Contrato en `domain/<x>_repository.py`; implementación `SqlAlchemy<X>Repository` en `infrastructure/<x>_repository_impl.py`.
+- El repositorio recibe y devuelve **entidades de dominio**, nunca modelos ORM.
+- No hace `commit` (lo hace el servicio).
+- Contratos: el código existente usa `ABC` (la mayoría) y `Protocol` (alerts, billing). **En código nuevo preferir `typing.Protocol`**; no migrar los ABC existentes salvo que el usuario lo pida.
 
 ```python
-# domain/repositories/user_repository.py
-from typing import Protocol
-
-class UserRepository(Protocol):
-    """Contrato para repositorio de usuarios."""
-
-    def find_by_id(self, user_id: int) -> User | None:
-        """Buscar usuario por ID."""
-        ...
-
-    def find_by_email(self, email: str) -> User | None:
-        """Buscar usuario por email."""
-        ...
-
-    def save(self, user: User) -> User:
-        """Persistir usuario."""
-        ...
-
-    def delete(self, user_id: int) -> bool:
-        """Eliminar usuario."""
-        ...
+# domain/strategy_repository.py
+class StrategyRepository(Protocol):
+    def get_by_id(self, strategy_id: int) -> Strategy | None: ...
+    def create(self, strategy: Strategy) -> Strategy: ...
 ```
 
-**Ventajas:**
+## ServiceResult (contrato real: `app/common/contracts/service_result.py`)
 
-- ✅ Services no conocen SQLAlchemy (desacoplamiento)
-- ✅ Fácil testing (mock del Protocol)
-- ✅ Cambiar BD sin tocar services
-
----
-
-### Service Result Pattern
-
-**Problema:** Evitar excepciones para flujos de negocio esperados.
-
-**Solución:**
+**Problema:** los flujos de negocio esperados (duplicado, no encontrado, validación) no deben ser excepciones, y los servicios no deben conocer textos de UI.
 
 ```python
-# common/responses.py
-from typing import Generic, TypeVar
+from app.common.contracts import ServiceResult
 
-T = TypeVar('T')
-
-class ServiceResult(Generic[T]):
-    def __init__(
-        self,
-        success: bool,
-        data: T | None = None,
-        message: str = "",
-        error_code: int = 0
-    ):
-        self.success = success
-        self.data = data
-        self.message = message
-        self.error_code = error_code
-
-    @staticmethod
-    def ok(data: T, message: str = "Operación exitosa") -> "ServiceResult[T]":
-        return ServiceResult(success=True, data=data, message=message, error_code=0)
-
-    @staticmethod
-    def fail(message: str, error_code: int = 1000) -> "ServiceResult[T]":
-        return ServiceResult(success=False, message=message, error_code=error_code)
+def create(self, ...) -> ServiceResult[Strategy]:
+    if self._repo.get_by_name_version(name, version):
+        return ServiceResult.fail(code="STRATEGY_DUPLICATE_NAME_VERSION", http_status=409)
+    created = self._repo.create(strategy)
+    self._session.commit()
+    return ServiceResult.ok(data=created)
 ```
 
-**Ventajas:**
+- `ServiceResult.ok(data)` → `success=True`.
+- `ServiceResult.fail(code=..., http_status=..., meta=...)` → `success=False`, `error=ServiceError(...)`.
+- `code`: string estable en `SCREAMING_SNAKE_CASE`, prefijado por recurso (`STRATEGY_`, `BOT_`, `ORDER_`…).
+- `meta`: datos internos (p. ej. `attempts_left`), **nunca** texto para el usuario.
+- El texto lo pone la capa REST con `error_messages.py` (ver skill `api-standards`).
 
-- ✅ Sin excepciones para flujos esperados (email duplicado, validación)
-- ✅ Códigos de error consistentes
-- ✅ Fácil testing de casos de error
+## Factory (ServiceFactory por módulo)
 
----
+**Problema:** cada servicio necesita varios repositorios, la sesión y a veces clientes externos (cipher, LLM, ccxt).
 
-### Factory Pattern
+- Una `<Modulo>ServiceFactory(session)` en `providers/` crea los repositorios una vez y expone un método por servicio.
+- Las rutas obtienen la factory con `Depends(get_factory)`.
+- En tests se instancia el servicio directamente con mocks; no hace falta la factory.
 
-**Problema:** Creación compleja de objetos con múltiples dependencias.
+## Strategy (algoritmos intercambiables)
 
-```python
-# domain/factories/user_factory.py
-class UserFactory:
-    @staticmethod
-    def create_from_registration(email: str, name: str, password: str) -> User:
-        return User(
-            email=email.lower().strip(),
-            name=name.strip(),
-            password_hash=hash_password(password),
-            is_active=False,
-            role=UserRole.USER,
-        )
-```
+Ya se usa en tres sitios; seguir el mismo enfoque si aparece otro caso:
 
----
+| Dónde | Contrato | Implementaciones |
+|---|---|---|
+| `agent/llm/` | `llm_client.py` | `anthropic_client.py`, `openai_compatible_client.py` (OpenAI, xAI, DeepSeek, Gemini, Ollama); elegido por `llm_factory.py` según `LLM_PROVIDER` |
+| `alerts/channels/` | `channel_interface.py` | email, Telegram, webhook, desktop |
+| `orders/execution/` | ejecutor | paper (simulado) vs live (ccxt) |
 
-### Strategy Pattern
+## Evitar dependencias cíclicas
 
-**Problema:** Múltiples algoritmos intercambiables para la misma operación.
+1. `domain` no importa de ninguna capa.
+2. `services` importa entidades y contratos de `domain`.
+3. `infrastructure` importa de `domain` (implementa contratos).
+4. `rest` importa de `providers`/`services` y de `app.common`.
+5. Si un módulo necesita datos de otro (p. ej. `bots` usa `strategies` y `features`), depende de su **contrato de dominio**, y el wiring se hace en el provider.
 
-```python
-from typing import Protocol
+## Separación de responsabilidades
 
-class PricingStrategy(Protocol):
-    def calculate_price(self, base_price: float, quantity: int) -> float: ...
-
-class RegularPricing:
-    def calculate_price(self, base_price: float, quantity: int) -> float:
-        return base_price * quantity
-
-class BulkDiscountPricing:
-    def calculate_price(self, base_price: float, quantity: int) -> float:
-        if quantity >= 100:
-            return base_price * quantity * 0.8
-        return base_price * quantity
-```
-
----
-
-## 🔒 Prevención de Dependencias Cíclicas
-
-### Usar Protocol en lugar de ABC
-
-```python
-# ❌ Incorrecto (ABC)
-from abc import ABC, abstractmethod
-class UserRepository(ABC):
-    @abstractmethod
-    def save(self, user: User) -> User: pass
-
-# ✅ Correcto (Protocol)
-from typing import Protocol
-class UserRepository(Protocol):
-    def save(self, user: User) -> User: ...
-```
-
-### Reglas de Importación
-
-1. **Domain** no importa de ninguna capa
-2. **Services** importa de domain (entidades, protocols)
-3. **Infrastructure** importa de domain (implementa protocols)
-4. **REST** importa de services e infrastructure (solo para DI)
-
----
-
-## 📊 Separation of Concerns
-
-### Services
-
-- Retornan **entidades de dominio** o **ServiceResult[T]**
-- **NO** conocen schemas de Pydantic de REST
-- **NO** formatean strings para UI
-
-### Presenters / Serializers (en REST)
-
-- Convierten entidades de dominio a DTOs de respuesta
-- Aplicar formato, labels, traducciones
-- Ubicación: `app/modules/<module>/rest/presenters.py`
-
----
-
-**Última actualización:** Febrero 2026
-**Tokens aproximados:** ~1,200
+| Capa | Hace | No hace |
+|---|---|---|
+| Service | Reglas de negocio, orquesta repos, commit | Textos UI, HTTP, schemas Pydantic |
+| REST | Valida input (Pydantic), autentica, serializa, mensajes UI | Reglas de negocio |
+| Repository | Persistencia y mapeo Model ↔ Entity | Commit, reglas de negocio |
+| Entity | Estado + invariantes del dominio (`is_valid_type()`, `is_coherent()`…) | I/O |

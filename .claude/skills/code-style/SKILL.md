@@ -1,237 +1,88 @@
 ---
 name: code-style
-description: Python code style for this project. Use before writing any Python code. Covers PEP 8, type hints (Python 3.10+ syntax), FastAPI with Annotated, Pydantic v2 best practices, documentation standards, and ruff/mypy configuration.
+description: Estilo de código Python de Trading AI API. Usar antes de escribir o editar cualquier archivo .py. Cubre cabecera de archivo, imports absolutos, type hints modernos, nomenclatura, docstrings y comentarios en español, banners de sección, Pydantic v2 y FastAPI.
 ---
 
-# Code Style & Type Hints (Python 3.10+)
+# Estilo de código Python
 
-## 📋 PEP 8 Standards
-
-### Nomenclatura
+## Cabecera de cada archivo
 
 ```python
-# Clases: PascalCase
-class UserService: pass
-class OrderRepository: pass
+# -*- coding: utf-8 -*-
 
-# Funciones, métodos, variables: snake_case
-def create_user(email: str, name: str) -> User:
-    user_data = {"email": email, "name": name}
-    return User(**user_data)
+# ======================================================================
+# app/modules/strategies/services/strategies/create_strategy_service.py
+#
+# PROPÓSITO / ENDPOINTS / NOTAS: (lo que un lector necesita saber)
+# ======================================================================
 
-# Constantes: UPPER_SNAKE_CASE
-MAX_RETRY_ATTEMPTS = 3
-DEFAULT_TIMEOUT_SECONDS = 30
-
-# Variables privadas: _prefijo
-class UserService:
-    def __init__(self):
-        self._cache = {}
+from __future__ import annotations
 ```
 
----
+- `# -*- coding: utf-8 -*-` siempre en la primera línea.
+- Bloque de cabecera con la ruta del archivo y su propósito.
+- `from __future__ import annotations` en archivos con type hints.
 
-## 🔤 Type Hints (Obligatorio - Python 3.10+)
+## Imports
 
-### Sintaxis Moderna
+- **Siempre absolutos desde `app.*`** (`from app.common.http import send`). Relativos solo dentro del mismo paquete REST (`from .schemas import ...`).
+- Orden: stdlib → terceros → `app.*`, separados por línea en blanco.
+- Importar desde el barrel del paquete cuando exista (`from app.modules.strategies.providers import StrategyServiceFactory`).
 
-**❌ ANTIGUO (typing module):**
+## Type hints
 
-```python
-from typing import Optional, List, Dict, Union
+- Sintaxis moderna en código nuevo: `int | None`, `list[str]`, `dict[str, Any]`.
+- El código existente usa a veces `Optional[...]`/`Dict[...]`; no reescribirlo solo por estilo.
+- Todo método público lleva tipos de entrada y salida; los servicios devuelven `ServiceResult[T]`.
 
-def process_user(
-    user_id: Optional[int],
-    tags: List[str],
-    metadata: Dict[str, Any]
-) -> Union[User, None]:
-    pass
-```
+## Nomenclatura
 
-**✅ MODERNO (built-in types):**
+| Elemento | Convención | Ejemplo |
+|---|---|---|
+| Clases | PascalCase | `CreateStrategyService`, `SqlAlchemyBotRepository` |
+| Funciones, variables | snake_case | `list_strategies`, `risk_pct` |
+| Constantes | UPPER_SNAKE | `STRATEGY_ERROR_MESSAGES`, `VALID_TYPES` |
+| Privados | `_prefijo` | `self._repo`, `_strategy_to_dict()` |
+| Archivos de servicio | `<verbo>_<recurso>_service.py` | `update_bot_status_service.py` |
+| Códigos de error | `<RECURSO>_<MOTIVO>` | `BOT_NOT_FOUND` |
 
-```python
-def process_user(
-    user_id: int | None,
-    tags: list[str],
-    metadata: dict[str, Any]
-) -> User | None:
-    pass
-```
+## Comentarios y docstrings (en español)
 
-### Tipos Comunes
-
-```python
-def get_name() -> str: ...
-def get_age() -> int: ...
-def find_user(user_id: int) -> User | None: ...
-def get_tags() -> list[str]: ...
-def get_metadata() -> dict[str, Any]: ...
-def process(value: str | int) -> bool: ...
-```
-
-### Tipos Avanzados
-
-```python
-from typing import TypeVar, Generic, Protocol
-from collections.abc import Sequence, Iterable
-
-T = TypeVar('T')
-
-class Repository(Generic[T]):
-    def save(self, entity: T) -> T: ...
-    def find_all(self) -> list[T]: ...
-
-class Serializable(Protocol):
-    def to_dict(self) -> dict[str, Any]: ...
-```
-
----
-
-## 🚀 FastAPI con Annotated
-
-**✅ MODERNO (Python 3.10+):**
-
-```python
-from typing import Annotated
-from fastapi import Query, Depends
-
-@router.get("/users")
-async def list_users(
-    page: Annotated[int, Query(ge=1)] = 1,
-    limit: Annotated[int, Query(ge=1, le=100)] = 20,
-    service: Annotated[UserService, Depends(get_user_service)]
-):
-    pass
-```
-
-### Aliases Reutilizables
-
-```python
-SearchQuery = Annotated[str, Query(min_length=3, max_length=50)]
-PageNumber = Annotated[int, Query(ge=1)]
-PageSize = Annotated[int, Query(ge=1, le=100)]
-UserId = Annotated[int, Path(ge=1)]
-CurrentUser = Annotated[User, Depends(get_current_user)]
-```
-
----
-
-## 📝 Code Documentation
+- Docstring de clase con propósito y **reglas de negocio** que aplica.
+- Comentar el **porqué** (decisión, regla de trading, gotcha), no el qué.
+- Banners para separar secciones largas:
 
 ```python
 # ======================================================================
-# Sección Principal
+# GET /api/strategies
 # ======================================================================
-
-class UserService:
-    """
-    Servicio de aplicación para gestión de usuarios.
-
-    Responsabilidades:
-    - Validar reglas de negocio
-    - Orquestar operaciones de dominio
-    - Coordinar con repositorios
-    """
-
-    def create_user(self, email: str, name: str) -> ServiceResult[User]:
-        """
-        Crear un nuevo usuario.
-
-        Args:
-            email: Email del usuario (debe ser único)
-            name: Nombre completo del usuario
-
-        Returns:
-            ServiceResult con el usuario creado o error
-
-        Business Rules:
-            - Email debe ser único en el sistema
-        """
-        ...
 ```
 
-### Principios de Comentarios
+## Utilidades obligatorias
 
-✅ **Comentar:** Por qué (intención, decisión de negocio), reglas complejas, validaciones no obvias
-❌ **No comentar:** Qué hace el código (debe ser auto-descriptivo), código obvio
+- Fechas: `utc_now()` de `app.common.utils`; para mostrar en hora local, `utc_to_bogota()`.
+- Inputs de texto: `clean_str()` / `clean_email()` de `app.common.utils`.
+- Configuración: `from app.common.config import settings`; nunca `os.getenv` fuera de `settings.py`.
 
----
-
-## 🎨 Formatting Standards
-
-### Orden de Imports
+## Pydantic v2 (schemas en `rest/<recurso>/schemas.py`)
 
 ```python
-# 1. Standard library
-import os
-from datetime import datetime
-from typing import Annotated
-
-# 2. Third-party
-from fastapi import APIRouter, Depends
-from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session
-
-# 3. Local
-from app.common.responses import ApiResponse
-from app.modules.users.domain import User
-from app.modules.users.services import UserService
+class CreateStrategyRequest(BaseModel):
+    name: str = Field(..., min_length=1, max_length=120)
+    version: str = Field(default="1.0.0", max_length=32)
+    description: str | None = Field(default=None)
+    parameters: dict[str, Any] = Field(..., description="JSON de la estrategia…")
 ```
 
-### Line Length
+- Validar longitudes y rangos con `Field` (coinciden con las columnas de la BD).
+- `model_config = ConfigDict(from_attributes=True)` solo si se construye desde objetos.
 
-- **Máximo:** 100 caracteres (configurado en ruff)
+## FastAPI
 
----
+- Rutas síncronas (`def`, no `async def`): la sesión de SQLAlchemy es síncrona.
+- Dependencias con `Depends(...)` (estilo actual del repo). `Annotated[...]` es aceptable en código nuevo si se usa en todo el archivo.
 
-## 🛠️ Tools Configuration
+## Formato
 
-### Ruff (`pyproject.toml`)
-
-```toml
-[tool.ruff]
-line-length = 100
-target-version = "py310"
-
-[tool.ruff.lint]
-select = ["E", "W", "F", "I", "N", "UP", "B", "C4", "SIM"]
-ignore = ["E501"]
-
-[tool.ruff.format]
-quote-style = "double"
-indent-style = "space"
-```
-
-```bash
-ruff check --fix .
-ruff format .
-```
-
----
-
-## 📦 Pydantic v2 Best Practices
-
-```python
-from pydantic import BaseModel, Field, ConfigDict
-
-class UserResponse(BaseModel):
-    id: int = Field(description="ID único del usuario")
-    email: str = Field(description="Email del usuario")
-    is_active: bool = Field(default=True, alias="isActive")
-
-    model_config = ConfigDict(
-        populate_by_name=True,
-        validate_assignment=True,
-        from_attributes=True,
-    )
-
-    @classmethod
-    def from_entity(cls, user: User) -> "UserResponse":
-        return cls(id=user.id, email=user.email, is_active=user.is_active)
-```
-
----
-
-**Última actualización:** Febrero 2026
-**Tokens aproximados:** ~800
+- 4 espacios, comillas dobles, ~100 caracteres por línea.
+- No hay ruff ni mypy configurados en `pyproject.toml`; no ejecutar formateadores masivos sobre archivos existentes (genera diffs enormes).

@@ -1,334 +1,109 @@
 # Trading AI API
 
-API backend de trading asistido por IA: conecta exchanges (Binance, Bybit, Kraken, Coinbase, Bitget, OKX), almacena velas OHLCV, calcula indicadores técnicos, analiza operaciones con un agente LLM, ejecuta bots y órdenes (paper/live), envía alertas y gestiona cuentas de inversores con cobro de performance fee. Construida con FastAPI, SQLAlchemy y MySQL bajo Screaming Architecture (módulos por dominio).
+Backend de **trading asistido por IA**. El objetivo es quitar el sesgo emocional del trader: el sistema solo propone (y ejecuta) operaciones que pasan reglas objetivas.
 
-@.claude/db_schema.sql
+**Qué hace, de punta a punta:** descarga velas OHLCV de exchanges (ccxt) → calcula indicadores y régimen de mercado → un agente LLM evalúa la operación contra la estrategia → un bot emite la señal (BUY/SELL/HOLD con entry/SL/TP) → se crea la orden (paper o live) → se disparan alertas → a los inversores con cuenta administrada se les cobra un performance fee.
 
-## Concepto del proyecto
+**Reglas de negocio que el código debe respetar siempre:**
+1. **Filtro de régimen:** tendencia (HH/HL) vs. rango lateral; cada estrategia declara en qué régimen opera.
+2. **Regla del 1 %:** nunca arriesgar más del 1 % del capital por operación.
+3. **Tamaño de posición:** `capital × %riesgo / |entrada − stop_loss|`.
+4. **Riesgo/beneficio mínimo 2:1**; si no se cumple, la señal se rechaza (`approved = 0`).
 
-Agente de Trading con IA que elimina el sesgo emocional. Toma decisiones basadas en:
-1. Filtro de Régimen: tendencia (HH/HL) vs rango lateral
-2. Validación de reglas de la estrategia
-3. Matemática de posición: Capital × %Riesgo / (Entrada − StopLoss)
-4. Ratio Riesgo/Beneficio mínimo 2:1
+Stack: Python 3.12 · FastAPI 0.128 · SQLAlchemy 2 (**síncrono**, PyMySQL) · MySQL 8 · Jinja2 (páginas web server-side) · ccxt 4.4 · LLM multi-provider (`LLM_PROVIDER` = openai | anthropic | xai | deepseek | gemini | ollama) · uv.
 
-Regla del 1%: nunca arriesgar más del 1% del capital por operación.
-LLM multi-provider (openai/anthropic/xai/deepseek/gemini/ollama) genera entry/SL/TP.
+Explicación conceptual en lenguaje simple: [`MANUAL.md`](MANUAL.md). Setup técnico: [`README.md`](README.md).
 
-## Inicio de sesión (OBLIGATORIO)
+## Specs: la fuente de verdad
 
-Solo di: **"comenzamos Módulo X"** o **"continuamos donde quedamos"**.
+**Antes de tocar código de un módulo, lee [`specs/_ROOT.md`](specs/_ROOT.md) y luego la spec del módulo.** Cada spec trae descripción, páginas (usuario vs admin), decisiones, avance, mejoras, mapa técnico (tablas, archivos, endpoints) y gotchas. No codear sin leerla.
 
-**Leer primero:** `specs/_ROOT.md` y luego la spec del módulo (`specs/MNN-*.md`). Son la fuente de verdad del proyecto: describen qué hace cada módulo, sus páginas (usuario vs admin), decisiones, estado, avance y el mapa técnico (tablas, archivos, endpoints). Sin leerlas no se debe codear nada. Si hay algo nuevo (ej: "instalé ccxt para exchanges"), se dice directamente.
-
-## Comandos de desarrollo
-
-- Correr servidor: `source .venv/bin/activate && uvicorn app.main:app --reload`
-- Correr tests: `source .venv/bin/activate && python -m pytest tests/<archivo_específico> -v`
-- Ejecutar SQL en BD: `/Applications/MAMP/Library/bin/mysql80/bin/mysql -u root -proot trading_ai < archivo.sql`
-- Shell MySQL: `/Applications/MAMP/Library/bin/mysql80/bin/mysql -u root -proot trading_ai`
-- NUNCA correr `pytest tests/` completo salvo que el usuario lo pida explícitamente
-- ⚠️ TESTS GASTAN TOKENS: crear tests solo cuando el usuario lo pida explícitamente. No crearlos por defecto al terminar un módulo.
-
----
-
-## Trading AI API — Instrucciones para Claude
-
-## Stack
-- **Lenguaje:** Python 3.12
-- **Framework:** FastAPI 0.128 + Uvicorn (ASGI)
-- **ORM:** SQLAlchemy 2.x (async-ready, DeclarativeBase)
-- **Driver:** PyMySQL 1.1
-- **DB:** MySQL 8.x — base de datos `trading_ai`
-- **Auth:** JWT HS256 en HTTP-only cookies
-- **Validación:** Pydantic v2
-- **Templates mail:** Jinja2
-- **Arquitectura:** Screaming Architecture (módulos por dominio)
-
----
-
-## Estructura del proyecto
-
-```
-app/
-  app_factory.py          # Crea la app FastAPI (middlewares, routers, handlers)
-  main.py                 # Entrypoint Uvicorn
-  common/
-    config/settings.py    # Settings singleton (lee .env, fail-fast en prod)
-    contracts/
-      service_result.py   # ServiceResult[T], ServiceError
-    errors/
-      errors.py           # register_error_handlers (AuthException, JwtCodecError)
-      error_messages.py   # Mensajes globales (si aplica)
-    http/
-      http_responder.py   # send(msg, status_code, data) -> JSONResponse
-      response_builder.py
-    security/
-      jwt/                # jwt_guard, role_guard, jwt_utils, auth_exceptions
-      otp/                # otp_generator, otp_hasher
-      password_hasher.py
-      rate_limiter.py
-      sanitization/       # html_sanitizer, input_cleaner
-    logging/              # configure_logging(), LoggingMiddleware
-    utils/                # datetime_utils, input_cleaner
-  extensions/
-    db/
-      base.py             # class Base(DeclarativeBase)
-      config.py           # Engine + sessionmaker
-      session.py          # get_db() -> dependency FastAPI
-      models_registry.py  # Importa todos los modelos ORM (side-effect)
-  modules/
-    health/               # GET /health
-    mailer/               # SMTP service, templates Jinja2
-    users/
-      domain/             # UserEntity, UserRepository (interfaz)
-      infrastructure/     # UserModel, RoleModel, UserRepositoryImpl
-      providers/          # auth_provider (DI / wiring)
-      rest/auth/          # routes.py, schemas.py, error_messages.py
-      services/auth/      # login_password, login_otp, verify_otp, logout, rotate_token
-```
-
----
-
-## Patrón de capas (OBLIGATORIO)
-
-```
-REST (routes.py)
-  └── llama Service
-        └── usa Repository (interfaz)
-              └── implementado por RepositoryImpl (ORM)
-```
-
-### Reglas estrictas de capas
-1. **Domain** — entidades puras + interfaces de repositorio. Sin ORM, sin FastAPI.
-2. **Infrastructure** — modelos SQLAlchemy + implementación de repositorios.
-3. **Services** — lógica de negocio. Siempre retornan `ServiceResult[T]`. Nunca lanzan excepciones de negocio.
-4. **REST** — routes FastAPI + schemas Pydantic. Convierte `ServiceResult` a `JSONResponse`. Aquí van los mensajes UI.
-
----
-
-## Contrato estándar de respuesta HTTP
-
-Toda respuesta usa `http_responder.send()`:
-
-```python
-from app.common.http import send
-
-return send(msg="OK", status_code=200, data={"user_id": 1})
-```
-
-Envelope JSON:
-```json
-{
-  "msg": "string",
-  "errorCode": 200,
-  "data": {} | []
-}
-```
-
----
-
-## ServiceResult
-
-```python
-# Éxito
-return ServiceResult.ok(data={"token": "..."})
-
-# Error
-return ServiceResult.fail(
-    code="AUTH_INVALID_CREDENTIALS",
-    http_status=401,
-    meta={"attempts_left": 2}   # solo para control interno, no para UI
-)
-```
-
-- `code` es un string estable en SCREAMING_SNAKE_CASE.
-- Los mensajes de UI que corresponden a cada código se definen en `rest/<módulo>/error_messages.py`.
-- El servicio **nunca** define mensajes de usuario final.
-
----
-
-## Añadir un nuevo módulo
-
-1. Crear `app/modules/<nombre>/domain/` → entidad + interfaz repositorio
-2. Crear `app/modules/<nombre>/infrastructure/` → modelo ORM + impl repositorio
-3. Crear `app/modules/<nombre>/services/` → lógica, retorna `ServiceResult`
-4. Crear `app/modules/<nombre>/rest/` → `routes.py`, `schemas.py`, `error_messages.py`
-5. Crear `app/modules/<nombre>/providers/` → wiring DI si aplica
-6. Registrar modelo ORM en `app/extensions/db/models_registry.py`
-7. Registrar router en `app/app_factory.py`
-
----
-
-## Convenciones de código
-
-- `# -*- coding: utf-8 -*-` al inicio de cada archivo `.py`
-- Imports absolutos: siempre desde `app.*`
-- Modelos ORM solo en `infrastructure/`, heredan de `Base`
-- `session.commit()` solo dentro de repositorios
-- Schemas Pydantic en `rest/<módulo>/schemas.py`
-- Passwords: siempre bcrypt via `password_hasher.py`
-- OTP: generar con `otp_generator.py`, hashear con `otp_hasher.py` antes de guardar en DB
-- JWT: HS256, cookie HTTP-only, rotación de JTI en cada sesión activa
-- `utc_now()` de `app.common.utils` — no usar `datetime.now(timezone.utc)` directo
-- Jinja2: `TemplateResponse(request, "template.html", {context})` (nuevo formato Starlette)
-- El middleware de security headers aplica CSP: NUNCA usar `onclick`/`onchange` inline en HTML; todos los handlers van en JS vía `addEventListener` en archivos servidos desde `/static/`
-- Cache-busting: todo `<script>` nuevo lleva `?v={{ sv }}` o el navegador sirve el JS viejo (ver `specs/_ROOT.md`)
-- Respuestas REST: `errorCode` en éxito es 200/201, nunca 0 (detectar errores con `>= 400`); `build_list_response` retorna `{"data": [...]}`
-- Rutas REST nuevas con página web homónima: prefijo `/api/<recurso>` para no colisionar con la página
-- NUNCA usar `curl` para hacer login durante el debugging: cambia `token_current_jti` e invalida la sesión activa del navegador
-
----
-
-## Seguridad
-
-- **Autenticación:** `jwt_guard` como dependency FastAPI
-- **Autorización por rol:** `role_guard`
-- **Rate limiting:** `rate_limiter.py`
-- **Sanitización:** `html_sanitizer.py` + `input_cleaner.py` en entradas de usuario
-- **Cookies:** `HttpOnly=True`, `Secure=True` (producción), `SameSite=Lax`
-- **Lockout:** 3 intentos fallidos → bloqueo temporal en `login_locked_until`
-
----
-
-## Base de datos — Resumen de tablas
-
-DB: `trading_ai` | Motor: InnoDB | Charset: utf8mb4 | Timestamps: TIMESTAMP(6)
-IDs: BIGINT AUTO_INCREMENT | Precios/cantidades: DECIMAL(30,12)
-Schema completo en `.claude/db_schema.sql`
-
-### Catálogos / Referencias
-| Tabla | Propósito |
-|---|---|
-| `roles` | Roles de usuario. id=1: `user`, id=2: `admin` |
-| `exchanges` | Exchanges/brokers/data vendors disponibles |
-| `symbols` | Pares y activos por exchange (crypto/metal/etf/stock/forex) |
-| `timeframes` | Marcos temporales (code: `1m`, `5m`... + seconds) |
-| `feature_sets` | Definición de conjuntos de features ML (spec JSON) |
-| `strategies` | Estrategias de trading con parameters JSON |
-
-### Usuarios y cuentas
-| Tabla | Propósito |
-|---|---|
-| `users` | Usuarios con auth (OTP + password), lockout, JTI de sesión |
-| `accounts` | Cuentas de trading por usuario (paper/live, ligada a exchange) |
-| `account_balances` | Saldo por activo en cada cuenta (snapshots) |
-
-### Market Data / ML
-| Tabla | Propósito |
-|---|---|
-| `candles` | OHLCV por símbolo y timeframe |
-| `candle_features` | Features calculadas por vela y feature_set |
-| `datasets` | Datasets para entrenamiento (query_spec JSON) |
-| `models` | Modelos ML registrados (xgboost/lightgbm/sklearn/nn) |
-| `model_runs` | Ejecuciones de entrenamiento con métricas y params |
-
-### Ejecución de Bots
-| Tabla | Propósito |
-|---|---|
-| `bots` | Bots de trading (strategy + symbol + timeframe + account) |
-| `signals` | Señales generadas por bot (buy/sell/hold + confidence) |
-| `orders` | Órdenes emitidas (market/limit/stop/stop_limit) |
-| `fills` | Ejecuciones (parciales o totales) de órdenes |
-| `positions` | Posición abierta actual por bot y símbolo |
-| `predictions` | Predicciones de modelos ML por bot |
-| `portfolio_snapshots` | Snapshot periódico de equity, cash y PnL por bot |
-
-### Alertas y Auditoría
-| Tabla | Propósito |
-|---|---|
-| `alert_rules` | Reglas de alertas (pnl/drawdown/signal/error/price) |
-| `alert_events` | Eventos disparados por reglas con delivery_status |
-| `audit_logs` | Log de auditoría de acciones de usuario y bots |
-| `system_events` | Eventos internos del sistema (market_data/execution/scheduler/api) |
-
----
-
-## ENUMs importantes (CHECK constraints MySQL)
-
-```
-accounts.mode          : paper | live
-accounts.status        : active | suspended
-bots.status            : running | stopped | paused | error
-bots.mode              : paper | live
-orders.side            : buy | sell
-orders.type            : market | limit | stop | stop_limit
-orders.status          : new | sent | partially_filled | filled | canceled | rejected
-signals.action         : buy | sell | hold
-models.model_type      : xgboost | lightgbm | sklearn | nn
-models.status          : active | deprecated | archived
-symbols.asset_class    : crypto | metal | etf | stock | forex
-exchanges.type         : crypto_exchange | broker | data_vendor
-users.status           : active | blocked | disabled
-alert_rules.rule_type  : pnl | drawdown | signal | error | price
-alert_events.severity  : info | warning | critical
-alert_events.delivery  : pending | sent | failed
-system_events.level    : info | warning | error
-system_events.component: market_data | execution | scheduler | api
-model_runs.status      : running | success | failed
-```
-
----
-
-## Skills disponibles
-
-Los skills viven en `.claude/skills/`. Claude debe leerlos con la herramienta Read **antes** de generar código, según la tarea:
-
-| Skill | Ruta | Cuándo leerlo |
+| Módulo | Spec | Código |
 |---|---|---|
-| Backend Core | `.claude/skills/backend-core/SKILL.md` | Antes de crear cualquier módulo o estructura |
-| Architecture | `.claude/skills/architecture/SKILL.md` | Antes de decidir patrones, SOLID, sub-modularización |
-| API Standards | `.claude/skills/api-standards/SKILL.md` | Antes de crear endpoints, responses, error codes |
-| Code Style | `.claude/skills/code-style/SKILL.md` | Antes de escribir código Python (PEP8, type hints) |
-| Testing | `.claude/skills/testing/SKILL.md` | Antes de escribir tests (pytest, mocking, coverage) |
-| Security | `.claude/skills/security/SKILL.md` | Antes de implementar auth, input handling, o código sensible |
-| Database | `.claude/skills/database/SKILL.md` | Antes de escribir SQL, seeds o migraciones |
-| Maquetación, frontend, diseño, CSS | `.claude/skills/frontend-design/SKILL.md` | Antes de maquetar algo nuevo, mejorar maquetación, cambiar CSS y/o añadir CSS |
+| M1 — Auth & Web UI | [M01-AUTH.md](specs/M01-AUTH.md) | `app/modules/users`, `web`, `mailer` |
+| M2 — Market Data | [M02-MARKET-DATA.md](specs/M02-MARKET-DATA.md) | `app/modules/market`, `scheduler` |
+| M3 — Feature Engineering | [M03-FEATURE-ENGINEERING.md](specs/M03-FEATURE-ENGINEERING.md) | `app/modules/features` |
+| M4 — Accounts & Portfolio | [M04-ACCOUNTS-PORTFOLIO.md](specs/M04-ACCOUNTS-PORTFOLIO.md) | `app/modules/accounts` |
+| M5 — Strategies | [M05-STRATEGIES.md](specs/M05-STRATEGIES.md) | `app/modules/strategies` |
+| M6 — AI Agent / Models | [M06-AI-AGENT.md](specs/M06-AI-AGENT.md) | `app/modules/agent` |
+| M7 — Bots & Signals | [M07-BOTS-SIGNALS.md](specs/M07-BOTS-SIGNALS.md) | `app/modules/bots` |
+| M8 — Orders & Execution | [M08-ORDERS-EXECUTION.md](specs/M08-ORDERS-EXECUTION.md) | `app/modules/orders` |
+| M9 — Alerts | [M09-ALERTS.md](specs/M09-ALERTS.md) | `app/modules/alerts` |
+| M10 — Billing & Managed Accounts | [M10-BILLING.md](specs/M10-BILLING.md) | `app/modules/billing` |
 
----
+Inicio de sesión: el usuario dirá **"comenzamos Módulo X"** o **"continuamos donde quedamos"** → leer `_ROOT.md` + la spec correspondiente antes de proponer nada. Si hay algo nuevo en el entorno (p. ej. "instalé X"), lo dirá directamente.
 
-## Reglas para Claude
+## Skills: léelos antes de generar código
 
-1. Respetar siempre la arquitectura de capas: domain → infra → service → rest.
-2. Los servicios nunca definen mensajes de UI; solo códigos de error estables.
-3. Usar siempre `ServiceResult` en services y `http_responder.send()` en routes.
-4. Al crear un nuevo modelo ORM, registrarlo en `models_registry.py`.
-5. Respetar los ENUMs de MySQL al generar código o queries.
-6. Usar `TIMESTAMP(6)` y `BIGINT` para nuevas tablas.
-7. Usar `DECIMAL(30,12)` para precios, cantidades y balances financieros.
-8. Columnas JSON (`meta`, `spec`, `params`, `payload`, `reasons`) para datos flexibles.
-9. No hacer `session.commit()` fuera de la capa repositorio.
-10. No hardcodear IDs de roles; usar `settings.AUTH_ADMIN_ROLE_ID` / `settings.AUTH_USER_ROLE_ID`.
-11. Leer el skill correspondiente **antes** de generar código, nunca después.
-12. Al terminar cualquier módulo (o feature significativa), actualizar OBLIGATORIAMENTE los 2 archivos de documentación:
-    - `specs/MNN-*.md` (spec del módulo: estado, entregables, decisiones, avance, mejoras, detalle técnico, bugs/gotchas nuevos) + tabla de `specs/_ROOT.md` → cambiar 📌 PENDIENTE a ✅ COMPLETO + páginas implementadas + % de avance
-    - `MANUAL.md` → agregar sección en lenguaje simple del nuevo módulo
-    Si no se han actualizado todos, pedirlo al usuario antes de cerrar la sesión.
+Viven en [`.claude/skills/`](.claude/skills/). Se cargan bajo demanda; carga el que corresponda **antes** de escribir, nunca después.
 
----
+| Skill | Cuándo |
+|---|---|
+| [`backend-core`](.claude/skills/backend-core/SKILL.md) | Crear o modificar módulos, servicios, repositorios, providers. Estructura real del repo y reglas de capas |
+| [`architecture`](.claude/skills/architecture/SKILL.md) | Decidir patrones (Repository, ServiceResult, Factory), SOLID, sub-modularización |
+| [`api-standards`](.claude/skills/api-standards/SKILL.md) | Crear endpoints, respuestas, códigos de error, `error_messages.py` |
+| [`code-style`](.claude/skills/code-style/SKILL.md) | Escribir cualquier archivo Python |
+| [`database`](.claude/skills/database/SKILL.md) | SQL, seeds, migraciones, modelos ORM, consultar el esquema y los ENUMs |
+| [`security`](.claude/skills/security/SKILL.md) | Auth, roles, inputs de usuario, credenciales, cookies, CSP |
+| [`web-ui`](.claude/skills/web-ui/SKILL.md) | Páginas Jinja2, JS en `/static/`, CSS, CSP y cache-busting |
+| [`testing`](.claude/skills/testing/SKILL.md) | Solo cuando el usuario pida tests |
+| [`new-module`](.claude/skills/new-module/SKILL.md) | Checklist para crear un módulo o recurso nuevo de punta a punta |
+| [`update-specs`](.claude/skills/update-specs/SKILL.md) | Al cerrar un módulo o feature significativa: actualizar spec, `_ROOT.md` y `MANUAL.md` |
 
-## Stack tecnológico
+## Comandos
 
-- **Lenguaje:** Python 3.12
-- **Framework API:** FastAPI 0.128
-- **ASGI Server:** Uvicorn (standard)
-- **ORM:** SQLAlchemy 2.x (async-ready)
-- **Driver MySQL:** PyMySQL
-- **Base de datos:** MySQL 8.x — `trading_ai`
-- **Auth:** JWT HS256 en cookies HTTP-only
-- **IA:** Ollama local (`gemma3:4b`) — sin API externa
-- **Exchanges:** ccxt 4.4.96 (Binance, Bybit, Kraken, Coinbase, Bitget, OKX)
-- **Arquitectura:** Screaming Architecture (módulos por dominio)
+Funcionan en macOS, Linux y Windows (Git Bash) gracias a `uv`:
 
----
+```bash
+uv sync                                                    # instalar dependencias
+uv run uvicorn app.main:app --reload                       # servidor de desarrollo (http://localhost:8000, Swagger en /docs)
+uv run python -m pytest tests/<modulo>/test_<x>.py -v      # tests de UN archivo
+```
 
-## Contexto para Claude Code (colaboradores)
+- **NUNCA** correr `pytest tests/` completo salvo que el usuario lo pida.
+- **No crear tests por defecto** (gastan tokens): solo cuando el usuario los pida.
+- **NUNCA** hacer login con `curl` al depurar: rota `token_current_jti` e invalida la sesión del navegador.
+- MySQL (CLI, seeds, migraciones): ver el skill `database`.
 
-El proyecto usa **Claude Code** con todo el contexto versionado en el repo: no hay que copiar nada a carpetas locales. `CLAUDE.md` y `.claude/db_schema.sql` se cargan automáticamente; el resto se lee bajo demanda:
+## Arquitectura en 30 segundos
 
-- `CLAUDE.md` — arquitectura, convenciones, reglas y comandos (antes en `.claude/MAIN_INSTRUCTIONS.md` y `.claude/memory/MEMORY.md`)
-- [`specs/_ROOT.md`](specs/_ROOT.md) — índice de módulos, orden de dependencias, mapa de páginas y checklist de módulo nuevo
-- `specs/MNN-*.md` — hoja de ruta, decisiones, avance, mejoras, mapa técnico (tablas, archivos, endpoints) y bugs conocidos de cada módulo; reemplazan a los antiguos `ROADMAP.md`, `MODULES_MAP.md` y `MEMORY.md`. **Leer la spec del módulo antes de codear en él.**
-- `.claude/skills/` — guías de código para Claude
-- `MANUAL.md` — explicación conceptual en lenguaje simple (actualizar cuando se agreguen conceptos nuevos)
-- `README.md` — setup técnico del proyecto
+Screaming Architecture: un paquete por dominio en `app/modules/<modulo>/`, cada uno con las mismas capas:
+
+```
+rest/<recurso>/      routes.py · schemas.py · error_messages.py   ← mensajes de UI, HTTP
+providers/           <Modulo>ServiceFactory(session)              ← wiring / DI
+services/<recurso>/  un servicio por caso de uso → ServiceResult[T]
+domain/              entidades puras + contratos de repositorio
+infrastructure/      modelos SQLAlchemy + SqlAlchemy<X>Repository
+```
+
+Transversal en `app/common/` (config, contracts, http, security, utils, audit, logging) y `app/extensions/db/` (engine, `get_db`, `models_registry`). Detalle completo en el skill `backend-core`.
+
+## Reglas no negociables
+
+1. Capas: `rest → services → domain ← infrastructure`. Domain no importa nada de FastAPI ni de SQLAlchemy.
+2. Los servicios devuelven siempre `ServiceResult` (`ok(data)` / `fail(code="SCREAMING_SNAKE", http_status=...)`). **Nunca** lanzan excepciones de negocio ni definen textos de UI; los textos van en `rest/<recurso>/error_messages.py`.
+3. Las rutas responden siempre con los helpers de `app.common.http` (`send`, `build_*_response`). En éxito `errorCode` = 200/201, nunca 0; los errores se detectan con `errorCode >= 400`.
+4. Transacciones: el **servicio** es la frontera transaccional (`self._session.commit()`); los repositorios hacen `add`/`flush`, nunca `commit`.
+5. Todo modelo ORM nuevo se registra en `app/extensions/db/models_registry.py`; todo router nuevo en `app/app_factory.py`.
+6. No hardcodear IDs de rol: `settings.AUTH_USER_ROLE_ID`, `AUTH_ADMIN_ROLE_ID`, `AUTH_INVESTOR_ROLE_ID`.
+7. Fechas con `utc_now()` de `app.common.utils`, nunca `datetime.now(...)` directo.
+8. Precios, cantidades y balances: `DECIMAL(30,12)` en MySQL, `TIMESTAMP(6)` para fechas, `BIGINT` para IDs.
+9. Páginas web: sin handlers inline (`onclick`…) por la CSP, y todo `<script>` nuevo lleva `?v={{ sv }}`. Detalle en `web-ui`.
+10. Rutas REST que comparten nombre con una página web llevan prefijo `/api/<recurso>`.
+
+## Cierre de sesión (obligatorio)
+
+Al terminar un módulo o una feature significativa, ejecutar el skill [`update-specs`](.claude/skills/update-specs/SKILL.md): spec del módulo + tabla de `specs/_ROOT.md` + sección en `MANUAL.md`. Si quedó algo sin actualizar, avisar al usuario antes de cerrar.
+
+## Mapa de la documentación
+
+| Archivo | Para qué |
+|---|---|
+| `CLAUDE.md` | Este archivo: qué es el proyecto, reglas y dónde está cada cosa |
+| [`specs/_ROOT.md`](specs/_ROOT.md) | Índice de módulos, estado, flujo, dependencias, mapa de páginas, prioridades |
+| `specs/MNN-*.md` | Fuente de verdad de cada módulo |
+| [`.claude/skills/`](.claude/skills/) | Cómo se escribe el código en este repo (bajo demanda) |
+| [`.claude/db_schema.sql`](.claude/db_schema.sql) + [`migrations/`](migrations/) | Esquema de la BD (se consulta vía skill `database`, no se carga siempre) |
+| [`MANUAL.md`](MANUAL.md) | Explicación para humanos, sin tecnicismos |
+| [`README.md`](README.md) | Instalación y ejecución |

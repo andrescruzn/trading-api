@@ -10,6 +10,11 @@
 # - Welcome, OTP, recuperación, alertas, etc.
 # - Unifica rendering + envío en un solo servicio reutilizable.
 #
+# ENVÍO EN SEGUNDO PLANO:
+# - send_by_template_in_background() encola el envío y retorna de una vez:
+#   el request no espera al SMTP. Reintenta y, si igual falla, lo deja en
+#   el log (sin el contenido del correo ni la dirección completa).
+#
 # PATRONES:
 # - Application Service Pattern (orquesta puertos + dominio)
 # - Ports & Adapters (depende de contratos, no de infraestructura)
@@ -17,14 +22,29 @@
 
 from __future__ import annotations
 
+import logging
+import time
 from typing import Dict, Any, Optional
 
 from app.common.contracts.service_result import ServiceResult
+from app.common.utils import run_in_background
 from app.common.utils.input_cleaner import clean_email, clean_str
 from app.common.config.settings import Settings
 
 from app.modules.mailer.domain.mail_contracts import MailClient, TemplateRenderer, MailMessage
 from app.modules.mailer.domain.mail_template import MailTemplate
+
+logger = logging.getLogger(__name__)
+
+# Esperas entre reintentos del envío en segundo plano (segundos):
+# 3 intentos en total.
+_BACKGROUND_RETRY_DELAYS: tuple[int, ...] = (2, 10)
+
+
+def _mask_email(email: str) -> str:
+    """`ana@correo.com` → `a***@correo.com` (para logs)."""
+    local, _, domain = email.partition("@")
+    return f"{local[:1]}***@{domain}" if domain else "***"
 
 
 class MailerService:
@@ -106,9 +126,53 @@ class MailerService:
             # 5) No aborts, no HTTP aquí. Solo fallo de servicio.
             # ----------------------------------------------------------
             return ServiceResult.fail(
-                {
-                    "error": "MAIL_SEND_FAILED",
-                    "detail": str(exc),
-                    "template": template.code,
-                }
+                code="MAIL_SEND_FAILED",
+                http_status=502,
+                meta={"detail": str(exc), "template": template.code},
             )
+
+    def send_by_template_in_background(
+        self,
+        *,
+        to_email: str,
+        template: MailTemplate,
+        context: Dict[str, Any],
+        subject_override: Optional[str] = None,
+        text_body: Optional[str] = None,
+    ) -> None:
+        """
+        Encola el envío (mismos parámetros que send_by_template) y retorna.
+
+        - No informa el resultado: quien llama no puede depender de él.
+        - Reintenta según _BACKGROUND_RETRY_DELAYS; el fallo final va al log.
+        """
+        run_in_background(
+            self._send_with_retries,
+            to_email=to_email,
+            template=template,
+            context=context,
+            subject_override=subject_override,
+            text_body=text_body,
+        )
+
+    def _send_with_retries(self, *, to_email: str, template: MailTemplate, **kwargs: Any) -> None:
+        """Envía con reintentos; corre en el pool de segundo plano."""
+        attempts = len(_BACKGROUND_RETRY_DELAYS) + 1
+
+        for attempt in range(1, attempts + 1):
+            result = self.send_by_template(to_email=to_email, template=template, **kwargs)
+            if result.success:
+                return
+
+            detail = result.error.meta.get("detail") if result.error and result.error.meta else None
+            if attempt < attempts:
+                logger.warning(
+                    "Mail send failed (attempt %s/%s, template=%s, to=%s): %s",
+                    attempt, attempts, template.code, _mask_email(to_email), detail,
+                )
+                time.sleep(_BACKGROUND_RETRY_DELAYS[attempt - 1])
+            else:
+                logger.error(
+                    "Mail send failed after %s attempts (template=%s, to=%s): %s",
+                    attempts, template.code, _mask_email(to_email), detail,
+                )

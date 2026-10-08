@@ -23,7 +23,7 @@ app/
     http/                    # send() + build_*_response()
     errors/                  # register_error_handlers, mensajes globales
     security/                # jwt/ (token_required_actual, admin_required), otp/, rate_limiter,
-                             # password_hasher, credentials_cipher, sanitization/, security_headers
+                             # credentials_cipher, sanitization/, security_headers
     audit/                   # audit middleware + repositorio (audit_logs)
     logging/                 # configure_logging(), LoggingMiddleware
     utils/                   # utc_now(), utc_to_bogota(), clean_email(), clean_str()

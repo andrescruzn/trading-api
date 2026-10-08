@@ -6,7 +6,7 @@ Una explicación simple de los 10 módulos del sistema, sin tecnicismos. Cada m�
 
 | Módulo | Estado | Alcance | Madurez | Descripción |
 |--------|--------|--------:|--------:|-------------|
-| [M1 — Auth & Frontend](M01-AUTH.md) | ✅ Completo | 100 % | 88 % | Login password/OTP, sesiones JWT, roles, frontend React (shell, dashboard) |
+| [M1 — Auth & Frontend](M01-AUTH.md) | ✅ Completo | 100 % | 81 % | Login solo por código OTP, sesiones JWT, roles, frontend React (shell, dashboard) |
 | [M2 — Market Data](M02-MARKET-DATA.md) | ✅ Completo | 86 % | 65 % | Exchanges, símbolos, timeframes, velas OHLCV via ccxt + scheduler de ingesta |
 | [M3 — Feature Engineering](M03-FEATURE-ENGINEERING.md) | ✅ Completo | 100 % | 79 % | RSI, ATR, EMA, MACD, Bollinger Bands, régimen de mercado |
 | [M4 — Accounts & Portfolio](M04-ACCOUNTS-PORTFOLIO.md) | ✅ Completo | 100 % | 79 % | Cuentas de exchange (credenciales cifradas), balances, equity curve |
@@ -16,7 +16,7 @@ Una explicación simple de los 10 módulos del sistema, sin tecnicismos. Cada m�
 | [M8 — Orders & Execution](M08-ORDERS-EXECUTION.md) | ✅ Completo | 100 % | 50 % | Órdenes paper/live (ccxt), fills, posiciones |
 | [M9 — Alerts](M09-ALERTS.md) | ✅ Completo | 100 % | 50 % | Reglas de alerta, notificaciones email/Telegram/webhook/desktop |
 | [M10 — Billing & Managed Accounts](M10-BILLING.md) | ✅ Completo | 100 % | 75 % | Inversores, cuentas administradas, performance fee con HWM |
-| **Promedio** | | **97 %** | **69 %** | |
+| **Promedio** | | **97 %** | **68 %** | |
 
 - **Alcance** = entregables del plan original hechos / planificados. Las dos filas por debajo del 100 % (M2 y M5) son por los tests de services que el plan original listaba y nunca se escribieron.
 - **Madurez** = estimación de qué tan lista para producción está cada pieza (rúbrica abajo). Es una opinión fundamentada en el repo, no una medición.
@@ -130,7 +130,7 @@ Hash routing: la URL real es `/#/<ruta>`. Cada ruta vive en `frontend/src/routes
 | Rol | Páginas |
 |---|---|
 | Público | `/login` |
-| Usuario (y demás roles) | `/dashboard`, `/profile`, `/market/symbols`, `/market/candles`, `/features`, `/portfolio`, `/strategies`, `/agent`, `/bots`, `/orders`, `/alerts` |
+| Usuario (y demás roles) | `/dashboard`, `/market/symbols`, `/market/candles`, `/features`, `/portfolio`, `/strategies`, `/agent`, `/bots`, `/orders`, `/alerts` |
 | Admin (`_app/admin/*`) | `/admin/exchanges`, `/admin/symbols`, `/admin/timeframes`, `/admin/candles/ingest`, `/admin/feature-sets`, `/admin/accounts`, `/admin/strategies`, `/admin/bots`, `/admin/orders`, `/admin/alerts`, `/admin/telegram`, `/admin/investors`, `/admin/managed-accounts`, `/admin/billing` |
 | Inversor (`_app/investor/*`) | `/investor/dashboard` |
 

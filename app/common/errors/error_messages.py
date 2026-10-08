@@ -55,6 +55,8 @@ COMMON_ERROR_MESSAGES: Dict[str, str] = {
 
     # Rate limiting
     "RATE_LIMIT_EXCEEDED": "Demasiados intentos. Espera un momento y vuelve a intentarlo.",
+    # {wait} = "45 segundos" / "1 minuto" / "8 minutos" (ver errors.py)
+    "RATE_LIMIT_EXCEEDED_RETRY": "Demasiados intentos. Vuelve a intentarlo en {wait}.",
 
     # Recursos
     "NOT_FOUND": "No encontramos lo que buscas.",
@@ -81,15 +83,12 @@ AUTH_ERROR_MESSAGES: Dict[str, str] = {
     **COMMON_ERROR_MESSAGES,
 
     # Login
-    "INVALID_CREDENTIALS": "Correo o contraseña incorrectos.",
     "USER_NOT_ALLOWED": "Tu cuenta no está activa. Contacta al administrador.",
-    "LOGIN_LOCKED": "Bloqueamos tu cuenta temporalmente por varios intentos fallidos. Inténtalo más tarde.",
 
     # OTP
     "OTP_NOT_REQUESTED": "No hay un código activo. Pide uno nuevo.",
     "OTP_EXPIRED": "El código venció. Pide uno nuevo.",
     "OTP_INVALID": "El código no es correcto. Revísalo e inténtalo de nuevo.",
-    "OTP_EMAIL_SEND_FAILED": "No pudimos enviarte el correo con el código. Inténtalo más tarde.",
 
     # Sesión
     "SESSION_EXPIRED": "Tu sesión expiró. Inicia sesión de nuevo.",
@@ -98,10 +97,6 @@ AUTH_ERROR_MESSAGES: Dict[str, str] = {
     # Usuario
     "USER_NOT_FOUND": "No encontramos tu usuario.",
     "ROLE_NOT_FOUND": "Tu usuario no tiene un rol válido. Contacta al administrador.",
-
-    # Password
-    "PASSWORD_SAME_AS_CURRENT": "La nueva contraseña debe ser distinta de la actual.",
-    "PASSWORD_TOO_WEAK": "La contraseña debe tener mínimo 8 caracteres, con al menos una mayúscula, una minúscula y un número.",
 }
 
 

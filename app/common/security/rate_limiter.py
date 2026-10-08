@@ -9,6 +9,12 @@
 #
 # PATRÓN: Sliding Window Counter
 #
+# DOS FORMAS DE LLAVE:
+# - Por IP + path (dependency `check_auth_rate_limit`).
+# - Por correo (`check_email_rate_limit`): frena la fuerza bruta sobre el
+#   login por OTP aunque el atacante rote IPs. Cuenta igual exista o no la
+#   cuenta, así que no revela qué correos están registrados.
+#
 # LIMITACIONES:
 # - En memoria: no persiste entre reinicios.
 # - No distribuido: no comparte estado entre instancias.
@@ -54,6 +60,10 @@ class RateLimiter:
     Thread-safe mediante Lock.
     """
 
+    # Con más llaves que esto en memoria, se barren las vencidas para que
+    # muchos correos/IP distintos no hagan crecer el dict sin límite.
+    _SWEEP_THRESHOLD = 10_000
+
     def __init__(
         self,
         requests_per_minute: int = 60,
@@ -89,20 +99,39 @@ class RateLimiter:
         return f"{client_ip}:{request.url.path}"
 
     def _cleanup(self, key: str, now: float) -> None:
-        """Elimina requests fuera de la ventana."""
+        """Elimina requests fuera de la ventana (y la llave si queda vacía)."""
         cutoff = now - self._window
-        self._requests[key] = [t for t in self._requests[key] if t > cutoff]
+        recent = [t for t in self._requests.get(key, ()) if t > cutoff]
+        if recent:
+            self._requests[key] = recent
+        else:
+            self._requests.pop(key, None)
+
+    def _sweep(self, now: float) -> None:
+        """Barre todas las llaves vencidas cuando el dict crece demasiado."""
+        if len(self._requests) < self._SWEEP_THRESHOLD:
+            return
+        for key in list(self._requests):
+            self._cleanup(key, now)
 
     def check(self, request: Request) -> None:
         """
-        Verifica rate limit.
+        Verifica rate limit por IP + path.
 
         Lanza RateLimitExceeded (429 con envelope, ver errors.py) si excede el límite.
         """
-        key = self._get_key(request)
+        self.check_key(self._get_key(request))
+
+    def check_key(self, key: str) -> None:
+        """
+        Verifica rate limit para una llave arbitraria (p. ej. un correo).
+
+        Lanza RateLimitExceeded (429 con envelope, ver errors.py) si excede el límite.
+        """
         now = time.time()
 
         with self._lock:
+            self._sweep(now)
             self._cleanup(key, now)
 
             if len(self._requests[key]) >= self._limit:
@@ -143,6 +172,13 @@ class RateLimiter:
 
 # Rate limiter estricto para endpoints de autenticación
 auth_rate_limiter = RateLimiter(requests_per_minute=10, window_seconds=60)
+
+# Rate limiters por correo para el login por OTP (ventana = vigencia del OTP).
+# - Pedir código: 3 por correo cada 10 min.
+# - Verificar código: 5 intentos por correo cada 10 min → con 6 dígitos,
+#   adivinar un código vigente es ~1 en 200.000.
+otp_request_rate_limiter = RateLimiter(requests_per_minute=3, window_seconds=600)
+otp_verify_rate_limiter = RateLimiter(requests_per_minute=5, window_seconds=600)
 
 # Rate limiter moderado para endpoints generales
 default_rate_limiter = RateLimiter(requests_per_minute=60, window_seconds=60)
@@ -199,3 +235,13 @@ def check_auth_rate_limit(request: Request) -> None:
             ...
     """
     auth_rate_limiter.check(request)
+
+
+def check_email_rate_limit(limiter: RateLimiter, email: str) -> None:
+    """
+    Rate limit por correo (normalizado a minúsculas y sin espacios).
+
+    Uso (en la ruta, con el email ya validado por Pydantic):
+        check_email_rate_limit(otp_request_rate_limiter, payload.email)
+    """
+    limiter.check_key(f"email:{email.strip().lower()}")

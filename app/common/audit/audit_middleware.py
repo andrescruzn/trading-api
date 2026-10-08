@@ -54,9 +54,8 @@ def _resolve_event_type(method: str, path: str, req_payload: dict | None) -> str
     """
     Resuelve el event_type semántico según el endpoint llamado.
 
-    POST {API_PREFIX}/users/login distingue PASSWORD vs OTP por presencia de
-    "password" en el payload (antes de redactar — se recibe el dict
-    ya sanitizado, así que chequeamos la clave, no el valor).
+    El login es solo por OTP: POST {API_PREFIX}/users/login siempre es una
+    solicitud de código (LOGIN_OTP_REQUEST).
     """
     # Normalizar path: quitar trailing slash y el prefijo común de la API
     # (/api/users/login -> /users/login), así el mapa no depende del prefijo.
@@ -65,17 +64,11 @@ def _resolve_event_type(method: str, path: str, req_payload: dict | None) -> str
     if prefix and (norm == prefix or norm.startswith(f"{prefix}/")):
         norm = norm[len(prefix):] or "/"
 
-    if method == "POST" and norm == "/users/login":
-        # La clave "password" existe aunque su valor sea ***REDACTED***
-        if req_payload and "password" in req_payload:
-            return "LOGIN_PASSWORD"
-        return "LOGIN_OTP_REQUEST"
-
     _EVENT_MAP: dict[tuple[str, str], str] = {
+        ("POST",  "/users/login"):             "LOGIN_OTP_REQUEST",
         ("POST",  "/users/login/otp/verify"): "VERIFY_OTP",
         ("POST",  "/users/logout"):            "LOGOUT",
         ("GET",   "/users/me"):                "GET_PROFILE",
-        ("PATCH", "/users/me/password"):       "CHANGE_PASSWORD",
         ("POST",  "/users/token/rotate"):      "ROTATE_TOKEN",
     }
 

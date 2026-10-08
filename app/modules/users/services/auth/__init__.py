@@ -7,19 +7,15 @@
 # ======================================================================
 
 from .login_otp_service import LoginOtpService, LoginOtpPayload
-from .login_password_service import LoginPasswordService, LoginPasswordPayload
 from .verify_otp_service import VerifyOtpService, VerifyOtpPayload
 from .logout_service import LogoutService
 from .rotate_token_service import RotateTokenService, RotateTokenPayload
 from .get_me_service import GetMeService, UserProfilePayload
-from .change_password_service import ChangePasswordService
 
 __all__ = [
     "LoginOtpService", "LoginOtpPayload",
-    "LoginPasswordService", "LoginPasswordPayload",
     "VerifyOtpService", "VerifyOtpPayload",
     "LogoutService",
     "RotateTokenService", "RotateTokenPayload",
     "GetMeService", "UserProfilePayload",
-    "ChangePasswordService",
 ]

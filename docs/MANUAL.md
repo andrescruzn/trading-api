@@ -314,14 +314,18 @@ Las direcciones de la web llevan un "#" después del dominio. Por ejemplo:
   http://localhost:5193/#/dashboard   → panel principal
   http://localhost:5193/#/bots        → tus bots
 
-Para iniciar sesión hay dos opciones (pestañas en la pantalla de login):
-  · Contraseña: escribes tu correo y tu contraseña.
-  · Código por correo: escribes tu correo, te llega un código de 6 dígitos y lo escribes
-    antes de que venza (puedes pedir uno nuevo).
+Para iniciar sesión no hay contraseña: escribes tu correo, te llega un código de 6 dígitos
+y lo escribes antes de que venza (10 minutos). Si no te llegó o se venció, pide uno nuevo;
+el código anterior deja de servir. Para frenar a quien intente adivinar códigos, cada correo
+puede pedir 3 códigos y probar 5 cada 10 minutos; si se pasa, la pantalla dice cuánto esperar.
+Tu cuenta nunca se bloquea por esto.
+
+Por seguridad, la pantalla nunca dice si un correo está registrado: siempre pasa al paso del
+código y te avisa que, si el correo tiene una cuenta, te llegó un código. Así nadie puede
+averiguar quién usa la app probando correos.
 
 Por seguridad solo hay una sesión abierta por persona: si entras desde otro navegador, la
 sesión anterior se cierra y la web te muestra "Tu sesión expiró" y te lleva al login.
-Para cambiar tu contraseña entra a /#/profile; al cambiarla tendrás que iniciar sesión de nuevo.
 
 Todo se navega desde el menú lateral: Inicio, Mercado (símbolos, velas, indicadores),
 Trading (cuentas, estrategias, agente de IA, bots, órdenes, alertas) y, según tu rol,

@@ -87,7 +87,7 @@ uv run python -m database.seeds roles market_data    # solo los indicados
 uv run python -m database.seeds --list               # ver los disponibles
 ```
 
-El seed `users` crea los usuarios del equipo (`andrescruznovoa@gmail.com` y `dayrondaza05@gmail.com`, rol admin) con la contraseña de `SEED_USERS_PASSWORD` del `.env`; si está vacía, se omite. El seed `accounts` crea cuentas paper de ejemplo para el usuario demo; si ese usuario todavía no existe, se omite.
+El seed `users` crea los usuarios del equipo (`andrescruznovoa@gmail.com` y `dayrondaza05@gmail.com`, rol admin) sin contraseña: el login es solo con el código que llega al correo. El seed `accounts` crea cuentas paper de ejemplo para el usuario demo; si ese usuario todavía no existe, se omite.
 
 BD que ya tenía el esquema antes de Alembic (creada con el dump; solo una vez, no ejecuta SQL):
 

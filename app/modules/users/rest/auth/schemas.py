@@ -16,9 +16,8 @@
 #   }
 #
 # NOTA:
-# - Login puede devolver:
-#   A) token (si password ok)
-#   B) otp_required=true (si inicio OTP)
+# - El login es solo por OTP: /users/login devuelve otp_required=true y el
+#   token se emite en /users/login/otp/verify.
 # ======================================================================
 
 from __future__ import annotations
@@ -35,14 +34,9 @@ from pydantic import BaseModel, EmailStr, Field
 
 class LoginRequest(BaseModel):
     """
-    Request para iniciar login.
-
-    Lógica:
-    - Si password viene -> login por password
-    - Si password NO viene -> login por OTP (envía código)
+    Request para iniciar login: envía un código OTP al correo.
     """
     email: EmailStr = Field(..., description="User email")
-    password: Optional[str] = Field(default=None, description="Optional password for password login")
 
 
 class VerifyOtpRequest(BaseModel):
@@ -98,13 +92,13 @@ class LoginResponse(BaseModel):
     Response envelope para /users/login.
 
     - En éxito:
-      - data puede ser TokenData o OtpRequiredData
+      - data es OtpRequiredData
     - En error:
       - data es []
     """
     msg: str
     errorCode: int
-    data: Union[TokenData, OtpRequiredData, List[Any]]
+    data: Union[OtpRequiredData, List[Any]]
 
 
 class VerifyOtpResponse(BaseModel):
@@ -144,25 +138,3 @@ class UserProfileResponse(BaseModel):
     msg: str
     errorCode: int
     data: Union[UserProfileData, List[Any]]
-
-
-# ======================================================================
-# PATCH /users/me/password
-# ======================================================================
-
-class ChangePasswordRequest(BaseModel):
-    """Request para cambiar contraseña."""
-    current_password: str = Field(..., min_length=1, max_length=255)
-    new_password: str = Field(
-        ...,
-        min_length=8,
-        max_length=255,
-        description="Mínimo 8 caracteres, 1 mayúscula, 1 minúscula, 1 número",
-    )
-
-
-class ChangePasswordResponse(BaseModel):
-    """Response envelope para PATCH /users/me/password."""
-    msg: str
-    errorCode: int
-    data: Union[dict, List[Any]]

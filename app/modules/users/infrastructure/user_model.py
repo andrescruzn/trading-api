@@ -8,7 +8,8 @@
 #
 # CAMBIOS CLAVE:
 # - role_id (FK a roles.id)
-# - login_locked_until (TIMESTAMP(6) NULL) para lockout de 1h tras 3 fallos
+# - Sin columnas de lockout (failed_attempts / login_locked_until): se
+#   eliminaron en m01; la fuerza bruta se frena con rate limit.
 # ======================================================================
 
 from sqlalchemy import (
@@ -17,7 +18,6 @@ from sqlalchemy import (
     Column,
     ForeignKey,
     Index,
-    Integer,
     String,
     UniqueConstraint,
     text,
@@ -39,8 +39,6 @@ class UserModel(Base):
         Index("idx_users_token_jti", "token_current_jti"),
         Index("idx_users_otp_expires", "otp_expires_at"),
         Index("idx_users_role_id", "role_id"),
-        Index("idx_users_login_locked_until", "login_locked_until"),
-        CheckConstraint("`failed_attempts` >= 0", name="chk_users_failed_attempts"),
         CheckConstraint(
             "`otp_created_at` IS NULL OR `otp_expires_at` IS NULL "
             "OR `otp_expires_at` >= `otp_created_at`",
@@ -64,10 +62,7 @@ class UserModel(Base):
     email = Column(String(255), nullable=False)
     full_name = Column(String(255), nullable=True)
 
-    # ------------------------------------------------------------------
-    # Credenciales
-    # ------------------------------------------------------------------
-    password_hash = Column(String(255), nullable=False)
+    # Sin credenciales propias: el login es solo por OTP (otp_* más abajo).
 
     # --------------------------------------------------------------
     # Rol (FK)
@@ -82,12 +77,6 @@ class UserModel(Base):
     # Estado / seguridad
     # ------------------------------------------------------------------
     status = Column(String(16), nullable=False, server_default=text("'active'"))
-
-    # Intentos fallidos acumulados (en verificación real: password/otp)
-    failed_attempts = Column(Integer, nullable=False, server_default=text("'0'"))
-
-    # Bloqueo temporal por seguridad (ej: 1h tras 3 fallos)
-    login_locked_until = Column(TIMESTAMP(fsp=6), nullable=True)
 
     # Auditoría de acceso
     last_login_at = Column(TIMESTAMP(fsp=6), nullable=True)

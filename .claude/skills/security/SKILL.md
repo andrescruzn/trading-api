@@ -1,6 +1,6 @@
 ---
 name: security
-description: Seguridad de Trading App. Usar antes de tocar autenticación, roles, sesiones, inputs de usuario, credenciales de exchange, webhooks o cualquier código sensible. Cubre JWT en cookie HTTP-only con rotación de JTI, roles (user/admin/investor), rate limiting, lockout, CSP, XSS/CSRF/SQLi, bcrypt, OTP, cifrado Fernet de API keys y política de contraseñas.
+description: Seguridad de Trading App. Usar antes de tocar autenticación, roles, sesiones, inputs de usuario, credenciales de exchange, webhooks o cualquier código sensible. Cubre JWT en cookie HTTP-only con rotación de JTI, roles (user/admin/investor), rate limiting, lockout, CSP, XSS/CSRF/SQLi, login solo por OTP y cifrado Fernet de API keys.
 ---
 
 # Security Best Practices — Trading App
@@ -10,8 +10,9 @@ description: Seguridad de Trading App. Usar antes de tocar autenticación, roles
 | Protección | Estado | Dónde |
 |---|---|---|
 | Rate limiting (sliding window) | ✅ | `common/security/rate_limiter.py` |
-| Account lockout (3 intentos → 1h) | ✅ | `user_entity.py` + services |
-| bcrypt passwords (cost 12) | ✅ | `common/security/password_hasher.py` |
+| Rate limit por correo en el login OTP (sin lockout de cuenta) | ✅ | `rate_limiter.py` + `users/rest/auth/routes.py` |
+| Correo del OTP en segundo plano (respuesta en tiempo constante) | ✅ | `common/utils/background.py` + `MailerService` |
+| Login solo por OTP (sin contraseñas) | ✅ | `users/services/auth/login_otp_service.py` |
 | JWT HS256 + HTTP-only cookies | ✅ | `common/security/jwt/` |
 | JTI rotation (revocación fuerte) | ✅ | `users/services/auth/` |
 | OTP HMAC-SHA256, single-use | ✅ | `common/security/otp/` |
@@ -103,15 +104,20 @@ El token JWT NUNCA se almacena en `localStorage` ni `sessionStorage`. Siempre en
 
 ```
 1. Rate limiter (IP + path)     → 10 req/min → HTTP 429
-2. Account lockout (por email)  → 3 intentos → 1h bloqueado en DB
-3. JWT JTI rotation             → sesión única activa por usuario
+2. Rate limiter (por correo)    → 3 códigos pedidos / 5 verificaciones cada 10 min → HTTP 429
+3. OTP de 6 dígitos, 10 min, single-use
+4. JWT JTI rotation             → sesión única activa por usuario
+
+No hay lockout de cuenta: delataba qué correos existen y dejaba bloquear cuentas ajenas.
 ```
 
 ### Configuración actual
 
 ```python
 auth_rate_limiter = RateLimiter(requests_per_minute=10, window_seconds=60)
-AuthServiceFactory(max_failed_attempts=3, lock_minutes=60)
+otp_request_rate_limiter = RateLimiter(requests_per_minute=3, window_seconds=600)
+otp_verify_rate_limiter = RateLimiter(requests_per_minute=5, window_seconds=600)
+# en la ruta: check_email_rate_limit(otp_request_rate_limiter, payload.email)
 ```
 
 ---
@@ -131,33 +137,18 @@ db.execute(f"SELECT * FROM users WHERE email = '{email}'")
 
 ---
 
-## Password Policy
+## Login solo por OTP
 
-```python
-import re
+No hay contraseñas en el sistema (la tabla `users` no tiene columna de contraseña).
+El único acceso es el código de un solo uso al correo:
 
-def validate_password_strength(password: str) -> bool:
-    """
-    Política mínima:
-    - 8+ caracteres
-    - Al menos 1 mayúscula
-    - Al menos 1 minúscula
-    - Al menos 1 número
-    """
-    if len(password) < 8: return False
-    if not re.search(r"[A-Z]", password): return False
-    if not re.search(r"[a-z]", password): return False
-    if not re.search(r"\d", password): return False
-    return True
-```
-
-### Al cambiar contraseña
-
-1. Verificar password actual con bcrypt
-2. Validar nueva password con política
-3. Nueva password ≠ password actual
-4. Hashear con bcrypt (cost factor 12)
-5. **Revocar sesión actual** (`token_current_jti = None`) → fuerza re-login
+1. `POST /api/users/login` con `{email}` → genera un OTP de 6 dígitos (TTL 10 min), lo guarda
+   hasheado (HMAC-SHA256) y encola el correo en segundo plano. Pedir otro código reemplaza al
+   anterior. Correo sin cuenta o inactivo → misma respuesta, sin OTP ni correo (anti-enumeración).
+2. `POST /api/users/login/otp/verify` con `{email, otp_code}` → compara en tiempo constante;
+   sin cuenta / sin código / vencido / incorrecto → 401 con el mismo mensaje. En éxito el OTP se borra
+   (single-use), se rota `token_current_jti` y se pone la cookie.
+3. No reintroducir contraseñas ni endpoints de cambio/reset sin acordarlo (decisión de M1).
 
 ---
 
@@ -192,8 +183,8 @@ def validate_password_strength(password: str) -> bool:
 3. NUNCA concatenar strings en queries SQL — usar parámetros named.
 4. NUNCA usar `'unsafe-inline'` en CSP.
 5. SIEMPRE agregar rate limit en endpoints de auth con `Depends(check_auth_rate_limit)`.
-6. SIEMPRE revocar `token_current_jti` al cambiar password o logout.
-7. SIEMPRE hashear passwords y OTPs antes de persistir.
+6. SIEMPRE revocar `token_current_jti` en logout.
+7. SIEMPRE hashear los OTP antes de persistir (nunca en claro).
 8. SIEMPRE usar `clean_email()` / `clean_str()` antes de procesar inputs.
 9. Nuevas tablas con datos sensibles → nunca loguear valores, solo IDs.
 10. Endpoints que aceptan HTML rico → pasar por `sanitize_html()`.

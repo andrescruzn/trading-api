@@ -22,7 +22,7 @@ Explicación conceptual en lenguaje simple: [`docs/MANUAL.md`](docs/MANUAL.md). 
 
 | Módulo | Spec | Código |
 |---|---|---|
-| M1 — Auth & Frontend | [M01-AUTH.md](specs/M01-AUTH.md) | `app/modules/users`, `mailer` · `frontend/` (`auth`, `app-shell`, `profile`, `dashboard`) |
+| M1 — Auth & Frontend | [M01-AUTH.md](specs/M01-AUTH.md) | `app/modules/users`, `mailer` · `frontend/` (`auth`, `app-shell`, `dashboard`) |
 | M2 — Market Data | [M02-MARKET-DATA.md](specs/M02-MARKET-DATA.md) | `app/modules/market`, `scheduler` |
 | M3 — Feature Engineering | [M03-FEATURE-ENGINEERING.md](specs/M03-FEATURE-ENGINEERING.md) | `app/modules/features` |
 | M4 — Accounts & Portfolio | [M04-ACCOUNTS-PORTFOLIO.md](specs/M04-ACCOUNTS-PORTFOLIO.md) | `app/modules/accounts` |
@@ -134,7 +134,7 @@ frontend/
       ui/                     primitivas shadcn (Base UI)
       shared/                 api-client, envelope, DataTable, OptionSelect, StatCard, format, layouts
       app-shell/              sidebar (navSections), nav-user, breadcrumb
-      auth/ · profile/ · dashboard/
+      auth/ · dashboard/
       market/ · features/ · accounts/ · strategies/ · agent/ · bots/ · orders/ · alerts/ · billing/   (uno por módulo M2–M10)
         api/<x>.api.ts · hooks/use-<x>-queries.ts · hooks/use-<x>-mutations.ts · lib/ · components/ · pages/
 ```

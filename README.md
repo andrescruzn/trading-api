@@ -52,7 +52,7 @@ uv lock --upgrade-package <paquete>
 
 ## Frontend
 
-Requiere **Node.js 20.12+** (recomendado 22 o 24) y **pnpm 10+** (`corepack enable` o `npm i -g pnpm`; es el único uso permitido de npm). npm y npx no funcionan en este repo: usar `pnpm`, `pnpm exec` o `pnpm dlx`. Las configs (`package.json`, `vite.config.ts`, `tsconfig*.json`, `components.json`) están en la raíz del repo y el código en `frontend/`.
+Requiere **Node.js 20.12+** (recomendado 22 o 24) y **pnpm 12+** (`corepack enable` o `npm i -g pnpm`; es el único uso permitido de npm). npm y npx no funcionan en este repo: usar `pnpm`, `pnpm exec` o `pnpm dlx`. Las configs (`package.json`, `vite.config.ts`, `tsconfig*.json`, `components.json`) están en la raíz del repo y el código en `frontend/`.
 
 ```bash
 pnpm install                                # dependencias

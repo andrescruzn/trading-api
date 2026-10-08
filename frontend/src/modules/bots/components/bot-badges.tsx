@@ -38,6 +38,8 @@ export function SignalActionBadge({ action }: { action: SignalAction }) {
 		);
 	}
 	return (
-		<Badge variant={action === 'sell' ? 'destructive' : 'secondary'}>{label}</Badge>
+		<Badge variant={action === 'sell' ? 'destructive' : 'secondary'}>
+			{label}
+		</Badge>
 	);
 }

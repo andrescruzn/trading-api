@@ -1,13 +1,20 @@
 import { IconReceipt } from '@tabler/icons-react';
 import type { ReactNode } from 'react';
 import type { Order } from '@/modules/orders/api/orders.api';
-import { OrderSideBadge, OrderStatusBadge } from '@/modules/orders/components/order-badges';
+import {
+	OrderSideBadge,
+	OrderStatusBadge,
+} from '@/modules/orders/components/order-badges';
 import { ORDER_TYPE_LABELS } from '@/modules/orders/lib/orders-labels';
 import {
 	DataTable,
 	type DataTableColumn,
 } from '@/modules/shared/components/data-table';
-import { formatDateTime, formatNumber, formatPrice } from '@/modules/shared/lib/format';
+import {
+	formatDateTime,
+	formatNumber,
+	formatPrice,
+} from '@/modules/shared/lib/format';
 import { Button } from '@/modules/ui/components/button';
 
 const NUMERIC = 'text-right font-mono tabular-nums';
@@ -31,7 +38,12 @@ export function OrdersTable({
 	botNames,
 }: OrdersTableProps) {
 	const columns: DataTableColumn<Order>[] = [
-		{ id: 'id', header: 'ID', className: 'w-16 font-mono', cell: (row) => `#${row.id}` },
+		{
+			id: 'id',
+			header: 'ID',
+			className: 'w-16 font-mono',
+			cell: (row) => `#${row.id}`,
+		},
 		...(botNames
 			? [
 					{
@@ -41,11 +53,33 @@ export function OrdersTable({
 					},
 				]
 			: []),
-		{ id: 'side', header: 'Lado', cell: (row) => <OrderSideBadge side={row.side} /> },
-		{ id: 'type', header: 'Tipo', cell: (row) => ORDER_TYPE_LABELS[row.type] ?? row.type },
-		{ id: 'status', header: 'Estado', cell: (row) => <OrderStatusBadge status={row.status} /> },
-		{ id: 'qty', header: 'Cantidad', className: NUMERIC, cell: (row) => formatNumber(row.qty) },
-		{ id: 'price', header: 'Precio', className: NUMERIC, cell: (row) => formatPrice(row.price) },
+		{
+			id: 'side',
+			header: 'Lado',
+			cell: (row) => <OrderSideBadge side={row.side} />,
+		},
+		{
+			id: 'type',
+			header: 'Tipo',
+			cell: (row) => ORDER_TYPE_LABELS[row.type] ?? row.type,
+		},
+		{
+			id: 'status',
+			header: 'Estado',
+			cell: (row) => <OrderStatusBadge status={row.status} />,
+		},
+		{
+			id: 'qty',
+			header: 'Cantidad',
+			className: NUMERIC,
+			cell: (row) => formatNumber(row.qty),
+		},
+		{
+			id: 'price',
+			header: 'Precio',
+			className: NUMERIC,
+			cell: (row) => formatPrice(row.price),
+		},
 		{
 			id: 'stop',
 			header: 'Precio stop',

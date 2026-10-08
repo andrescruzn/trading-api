@@ -1,6 +1,5 @@
 import { IconDots } from '@tabler/icons-react';
 import type { VariantProps } from 'class-variance-authority';
-import { cn } from '@/modules/ui/lib/utils';
 import { type ReactElement, type ReactNode, useEffect, useState } from 'react';
 import { Button, type buttonVariants } from '@/modules/ui/components/button';
 import {
@@ -9,10 +8,11 @@ import {
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from '@/modules/ui/components/dropdown-menu';
+import { cn } from '@/modules/ui/lib/utils';
 
 type PageListHeaderBreakpoint = 'sm' | 'md' | 'lg' | 'xl';
 
-type PageListHeaderAction = {
+export type PageListHeaderAction = {
 	label: string;
 	icon?: ReactNode;
 	variant?: VariantProps<typeof buttonVariants>['variant'];
@@ -24,7 +24,7 @@ type PageListHeaderAction = {
 	hidden?: boolean;
 };
 
-type PageListHeaderProps = {
+export type PageListHeaderProps = {
 	title: ReactNode;
 	description?: ReactNode;
 	/** En orden de jerarquía: la primera es la principal (arriba en el menú, a la derecha en desktop). */
@@ -157,5 +157,4 @@ function PageListHeader({
 	);
 }
 
-export type { PageListHeaderAction, PageListHeaderProps };
 export { PageListHeader };

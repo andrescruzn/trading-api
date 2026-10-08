@@ -95,7 +95,11 @@ export function ManagedAccountFormDialog({
 	const updateMutation = useUpdateManagedAccountMutation();
 	const isPending = createMutation.isPending || updateMutation.isPending;
 
-	const form = useForm<ManagedAccountFormInput, unknown, ManagedAccountFormOutput>({
+	const form = useForm<
+		ManagedAccountFormInput,
+		unknown,
+		ManagedAccountFormOutput
+	>({
 		resolver: zodResolver(managedAccountSchema),
 		defaultValues: {
 			name: '',
@@ -107,7 +111,10 @@ export function ManagedAccountFormDialog({
 			is_active: true,
 		},
 	});
-	const selectedAccountId = useWatch({ control: form.control, name: 'account_id' });
+	const selectedAccountId = useWatch({
+		control: form.control,
+		name: 'account_id',
+	});
 
 	useEffect(() => {
 		if (!open) return;
@@ -141,7 +148,9 @@ export function ManagedAccountFormDialog({
 		const callbacks = {
 			onSuccess: () => {
 				toast.add({
-					title: isEdit ? 'Cuenta gestionada actualizada' : 'Cuenta gestionada creada',
+					title: isEdit
+						? 'Cuenta gestionada actualizada'
+						: 'Cuenta gestionada creada',
 					type: 'success',
 				});
 				onOpenChange(false);
@@ -187,8 +196,8 @@ export function ManagedAccountFormDialog({
 						{isEdit ? 'Editar cuenta gestionada' : 'Nueva cuenta gestionada'}
 					</DialogTitle>
 					<DialogDescription>
-						Cuenta de trading que se opera en nombre de un inversor y sobre la que se cobra la
-						comisión de desempeño.
+						Cuenta de trading que se opera en nombre de un inversor y sobre la
+						que se cobra la comisión de desempeño.
 					</DialogDescription>
 				</DialogHeader>
 				<form
@@ -228,7 +237,10 @@ export function ManagedAccountFormDialog({
 											control={form.control}
 											render={({ field, fieldState }) => (
 												<Field data-invalid={fieldState.invalid}>
-													<FieldLabel htmlFor="managed-account-investor" required>
+													<FieldLabel
+														htmlFor="managed-account-investor"
+														required
+													>
 														Inversor
 													</FieldLabel>
 													<OptionSelect
@@ -249,7 +261,10 @@ export function ManagedAccountFormDialog({
 											control={form.control}
 											render={({ field, fieldState }) => (
 												<Field data-invalid={fieldState.invalid}>
-													<FieldLabel htmlFor="managed-account-account" required>
+													<FieldLabel
+														htmlFor="managed-account-account"
+														required
+													>
 														Cuenta
 													</FieldLabel>
 													<OptionSelect
@@ -314,7 +329,9 @@ export function ManagedAccountFormDialog({
 												placeholder="Sin bot"
 											/>
 											{!canRemoveBot && (
-												<FieldDescription>Puedes cambiarlo, pero no quitarlo.</FieldDescription>
+												<FieldDescription>
+													Puedes cambiarlo, pero no quitarlo.
+												</FieldDescription>
 											)}
 										</Field>
 									)}
@@ -352,7 +369,9 @@ export function ManagedAccountFormDialog({
 												checked={field.value}
 												onCheckedChange={(checked) => field.onChange(checked)}
 											/>
-											<FieldLabel htmlFor="managed-account-active">Activa</FieldLabel>
+											<FieldLabel htmlFor="managed-account-active">
+												Activa
+											</FieldLabel>
 										</Field>
 									)}
 								/>
@@ -364,7 +383,11 @@ export function ManagedAccountFormDialog({
 					<Button variant="outline" onClick={() => onOpenChange(false)}>
 						Cancelar
 					</Button>
-					<Button type="submit" form="managed-account-form" disabled={isPending}>
+					<Button
+						type="submit"
+						form="managed-account-form"
+						disabled={isPending}
+					>
 						{isPending && <IconLoader2 className="animate-spin" />}
 						{isEdit ? 'Guardar cambios' : 'Crear cuenta gestionada'}
 					</Button>

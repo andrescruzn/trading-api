@@ -82,7 +82,11 @@ export function ProfilePage() {
 
 	const form = useForm<PasswordValues>({
 		resolver: zodResolver(passwordSchema),
-		defaultValues: { currentPassword: '', newPassword: '', confirmPassword: '' },
+		defaultValues: {
+			currentPassword: '',
+			newPassword: '',
+			confirmPassword: '',
+		},
 	});
 
 	function handleSubmit(values: PasswordValues) {
@@ -95,7 +99,8 @@ export function ProfilePage() {
 				onSuccess: () => {
 					toast.add({
 						title: 'Cambiaste tu contraseña',
-						description: 'Por seguridad cerramos tu sesión. Ingresa con la nueva.',
+						description:
+							'Por seguridad cerramos tu sesión. Ingresa con la nueva.',
 						type: 'success',
 					});
 					navigate({ to: '/login' });
@@ -154,7 +159,10 @@ export function ProfilePage() {
 								/>
 							))}
 							<Field orientation="horizontal" className="justify-end">
-								<Button type="submit" disabled={changePasswordMutation.isPending}>
+								<Button
+									type="submit"
+									disabled={changePasswordMutation.isPending}
+								>
 									{changePasswordMutation.isPending && (
 										<IconLoader2 className="animate-spin" />
 									)}

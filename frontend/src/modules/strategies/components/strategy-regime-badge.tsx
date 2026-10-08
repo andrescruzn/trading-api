@@ -6,7 +6,11 @@ import {
 import { Badge } from '@/modules/ui/components/badge';
 
 /** Régimen requerido por la estrategia; sin régimen = opera en cualquiera. */
-export function StrategyRegimeBadge({ regime }: { regime: string | null | undefined }) {
+export function StrategyRegimeBadge({
+	regime,
+}: {
+	regime: string | null | undefined;
+}) {
 	if (!regime) {
 		return <span className="text-muted-foreground">Cualquiera</span>;
 	}

@@ -44,7 +44,9 @@ export function PositionsGrid({
 	symbolNames,
 }: PositionsGridProps) {
 	if (error) {
-		return <ErrorAlert title="No pudimos cargar las posiciones" error={error} />;
+		return (
+			<ErrorAlert title="No pudimos cargar las posiciones" error={error} />
+		);
 	}
 
 	if (isLoading) {
@@ -70,9 +72,18 @@ export function PositionsGrid({
 			{positions.map((position) => (
 				<StatCard
 					key={position.id}
-					label={symbolNames.get(position.symbol_id) ?? `Símbolo #${position.symbol_id}`}
-					icon={position.is_flat ? <Badge variant="outline">Sin exposición</Badge> : undefined}
-					value={<span className="font-mono">{formatNumber(position.qty)}</span>}
+					label={
+						symbolNames.get(position.symbol_id) ??
+						`Símbolo #${position.symbol_id}`
+					}
+					icon={
+						position.is_flat ? (
+							<Badge variant="outline">Sin exposición</Badge>
+						) : undefined
+					}
+					value={
+						<span className="font-mono">{formatNumber(position.qty)}</span>
+					}
 					hint={
 						<div className="flex w-full flex-col gap-1">
 							<span>

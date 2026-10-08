@@ -30,9 +30,9 @@ const BOT_MODE_LABELS: Record<BotMode, string> = {
 	live: 'Live',
 };
 
-const BOT_STATUS_OPTIONS: SelectOption[] = Object.entries(BOT_STATUS_LABELS).map(
-	([value, label]) => ({ value, label }),
-);
+const BOT_STATUS_OPTIONS: SelectOption[] = Object.entries(
+	BOT_STATUS_LABELS,
+).map(([value, label]) => ({ value, label }));
 
 const BOT_MODE_OPTIONS: SelectOption[] = Object.entries(BOT_MODE_LABELS).map(
 	([value, label]) => ({ value, label }),

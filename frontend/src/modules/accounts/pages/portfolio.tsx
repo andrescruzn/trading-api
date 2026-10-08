@@ -1,12 +1,17 @@
-import { IconChartBar, IconDots, IconPencil, IconPlus } from '@tabler/icons-react';
+import {
+	IconChartBar,
+	IconDots,
+	IconPencil,
+	IconPlus,
+} from '@tabler/icons-react';
 import { useState } from 'react';
 import type { Account } from '@/modules/accounts/api/accounts.api';
-import { AccountBalancesSheet } from '@/modules/accounts/components/account-balances-sheet';
 import {
 	AccountModeBadge,
 	AccountStatusBadge,
 	CredentialsIndicator,
 } from '@/modules/accounts/components/account-badges';
+import { AccountBalancesSheet } from '@/modules/accounts/components/account-balances-sheet';
 import { AccountFormDialog } from '@/modules/accounts/components/account-form-dialog';
 import { useAccountsQuery } from '@/modules/accounts/hooks/use-accounts-queries';
 import { usePageBreadcrumb } from '@/modules/app-shell/hooks/use-page-breadcrumb';
@@ -44,7 +49,8 @@ export function PortfolioPage() {
 	const exchangeName = (id: number | null) =>
 		id === null
 			? '—'
-			: (exchangesQuery.data?.find((exchange) => exchange.id === id)?.name ?? '—');
+			: (exchangesQuery.data?.find((exchange) => exchange.id === id)?.name ??
+				'—');
 
 	const columns: DataTableColumn<Account>[] = [
 		{
@@ -52,8 +58,16 @@ export function PortfolioPage() {
 			header: 'Nombre',
 			cell: (row) => <span className="font-medium">{row.name}</span>,
 		},
-		{ id: 'exchange', header: 'Exchange', cell: (row) => exchangeName(row.exchange_id) },
-		{ id: 'mode', header: 'Modo', cell: (row) => <AccountModeBadge mode={row.mode} /> },
+		{
+			id: 'exchange',
+			header: 'Exchange',
+			cell: (row) => exchangeName(row.exchange_id),
+		},
+		{
+			id: 'mode',
+			header: 'Modo',
+			cell: (row) => <AccountModeBadge mode={row.mode} />,
+		},
 		{
 			id: 'currency',
 			header: 'Moneda base',
@@ -70,14 +84,20 @@ export function PortfolioPage() {
 			className: 'text-center',
 			cell: (row) => <CredentialsIndicator account={row} />,
 		},
-		{ id: 'created', header: 'Creada', cell: (row) => formatDate(row.created_at) },
+		{
+			id: 'created',
+			header: 'Creada',
+			cell: (row) => formatDate(row.created_at),
+		},
 		{
 			id: 'actions',
 			header: <span className="sr-only">Acciones</span>,
 			className: 'text-right',
 			cell: (row) => (
 				<DropdownMenu>
-					<DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" />}>
+					<DropdownMenuTrigger
+						render={<Button variant="ghost" size="icon-sm" />}
+					>
 						<IconDots />
 						<span className="sr-only">Acciones de {row.name}</span>
 					</DropdownMenuTrigger>
@@ -102,7 +122,11 @@ export function PortfolioPage() {
 				title="Mis cuentas"
 				description="Cuentas de exchange en modo paper (simulado) o live (dinero real), con sus balances."
 				actions={[
-					{ label: 'Nueva cuenta', icon: <IconPlus />, onClick: () => setEditing(null) },
+					{
+						label: 'Nueva cuenta',
+						icon: <IconPlus />,
+						onClick: () => setEditing(null),
+					},
 				]}
 			/>
 			<DataTable

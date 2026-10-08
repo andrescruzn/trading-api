@@ -84,7 +84,10 @@ export function OpenPeriodDialog({
 	function handleSubmit(values: OpenValues) {
 		if (!managedAccount) return;
 		openMutation.mutate(
-			{ managed_account_id: managedAccount.id, opening_equity: values.opening_equity },
+			{
+				managed_account_id: managedAccount.id,
+				opening_equity: values.opening_equity,
+			},
 			{
 				onSuccess: () => {
 					toast.add({ title: 'Período abierto', type: 'success' });
@@ -106,8 +109,8 @@ export function OpenPeriodDialog({
 				<DialogHeader>
 					<DialogTitle>Abrir período de facturación</DialogTitle>
 					<DialogDescription>
-						{managedAccount?.name}. Solo puede haber un período abierto por cuenta: cierra el
-						anterior antes de abrir uno nuevo.
+						{managedAccount?.name}. Solo puede haber un período abierto por
+						cuenta: cierra el anterior antes de abrir uno nuevo.
 					</DialogDescription>
 				</DialogHeader>
 				<form
@@ -137,8 +140,8 @@ export function OpenPeriodDialog({
 											aria-invalid={fieldState.invalid}
 										/>
 										<FieldDescription>
-											Valor actual de la cuenta. La comisión de desempeño del inversor queda
-											fijada para este período.
+											Valor actual de la cuenta. La comisión de desempeño del
+											inversor queda fijada para este período.
 										</FieldDescription>
 										{fieldState.invalid && (
 											<FieldError errors={[fieldState.error]} />
@@ -153,7 +156,11 @@ export function OpenPeriodDialog({
 					<Button variant="outline" onClick={() => onOpenChange(false)}>
 						Cancelar
 					</Button>
-					<Button type="submit" form="open-period-form" disabled={openMutation.isPending}>
+					<Button
+						type="submit"
+						form="open-period-form"
+						disabled={openMutation.isPending}
+					>
 						{openMutation.isPending && <IconLoader2 className="animate-spin" />}
 						Abrir período
 					</Button>
@@ -177,7 +184,11 @@ type CloseValues = z.infer<typeof closeSchema>;
  * Misma fórmula que el backend (`BillingPeriod.calculate_fee`), solo para
  * mostrar una estimación: el valor final lo calcula el servidor al cerrar.
  */
-function estimateFee(period: BillingPeriod, highWaterMark: string, closing: number) {
+function estimateFee(
+	period: BillingPeriod,
+	highWaterMark: string,
+	closing: number,
+) {
 	const opening = toNumber(period.opening_equity) ?? 0;
 	const hwm = toNumber(highWaterMark) ?? 0;
 	const feePct = toNumber(period.fee_pct) ?? 0;
@@ -206,7 +217,10 @@ export function ClosePeriodDialog({
 		resolver: zodResolver(closeSchema),
 		defaultValues: { closing_equity: '' },
 	});
-	const closingText = useWatch({ control: form.control, name: 'closing_equity' });
+	const closingText = useWatch({
+		control: form.control,
+		name: 'closing_equity',
+	});
 
 	useEffect(() => {
 		if (period) form.reset({ closing_equity: '' });
@@ -252,8 +266,8 @@ export function ClosePeriodDialog({
 				<DialogHeader>
 					<DialogTitle>¿Cerrar el período #{period?.id}?</DialogTitle>
 					<DialogDescription>
-						Se calcula la comisión de desempeño sobre la ganancia por encima de la marca de
-						agua. Un período cerrado no se puede reabrir.
+						Se calcula la comisión de desempeño sobre la ganancia por encima de
+						la marca de agua. Un período cerrado no se puede reabrir.
 					</DialogDescription>
 				</DialogHeader>
 				<form
@@ -298,7 +312,9 @@ export function ClosePeriodDialog({
 							/>
 							{estimate && (
 								<div className="flex flex-col gap-1 text-sm">
-									<p className="text-muted-foreground">Estimación antes de cerrar:</p>
+									<p className="text-muted-foreground">
+										Estimación antes de cerrar:
+									</p>
 									<p className="font-mono tabular-nums">
 										PnL bruto{' '}
 										<span className={pnlClassName(estimate.gross)}>
@@ -318,8 +334,14 @@ export function ClosePeriodDialog({
 					<Button variant="outline" onClick={() => onOpenChange(false)}>
 						Cancelar
 					</Button>
-					<Button type="submit" form="close-period-form" disabled={closeMutation.isPending}>
-						{closeMutation.isPending && <IconLoader2 className="animate-spin" />}
+					<Button
+						type="submit"
+						form="close-period-form"
+						disabled={closeMutation.isPending}
+					>
+						{closeMutation.isPending && (
+							<IconLoader2 className="animate-spin" />
+						)}
 						Cerrar período
 					</Button>
 				</DialogFooter>

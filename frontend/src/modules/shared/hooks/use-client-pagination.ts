@@ -1,8 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import {
-	DEFAULT_PAGE_LIMIT,
-	type PageLimit,
-} from '@/modules/shared/types/api';
+import { DEFAULT_PAGE_LIMIT, type PageLimit } from '@/modules/shared/types/api';
 
 /**
  * Paginación en el navegador para listas que el backend devuelve completas

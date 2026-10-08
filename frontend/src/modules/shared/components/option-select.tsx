@@ -7,7 +7,7 @@ import {
 } from '@/modules/ui/components/select';
 import { cn } from '@/modules/ui/lib/utils';
 
-type SelectOption = { value: string; label: string };
+export type SelectOption = { value: string; label: string };
 
 type OptionSelectProps = {
 	id?: string;
@@ -67,5 +67,3 @@ export function OptionSelect({
 		</Select>
 	);
 }
-
-export type { SelectOption };

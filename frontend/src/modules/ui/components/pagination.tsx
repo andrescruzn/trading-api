@@ -3,9 +3,9 @@ import {
 	IconChevronRight,
 	IconDots,
 } from '@tabler/icons-react';
-import { cn } from '@/modules/ui/lib/utils';
 import type * as React from 'react';
 import { Button } from '@/modules/ui/components/button';
+import { cn } from '@/modules/ui/lib/utils';
 
 function Pagination({ className, ...props }: React.ComponentProps<'nav'>) {
 	return (

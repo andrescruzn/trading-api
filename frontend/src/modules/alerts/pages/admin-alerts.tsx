@@ -34,14 +34,23 @@ export function AdminAlertsPage() {
 	const symbolsQuery = useSymbolsQuery();
 
 	const columns: DataTableColumn<AlertRule>[] = [
-		{ id: 'id', header: 'ID', className: 'w-16 font-mono', cell: (row) => row.id },
+		{
+			id: 'id',
+			header: 'ID',
+			className: 'w-16 font-mono',
+			cell: (row) => row.id,
+		},
 		{
 			id: 'name',
 			header: 'Nombre',
 			cell: (row) => <span className="font-medium">{row.name}</span>,
 			skeletonClassName: 'w-36',
 		},
-		{ id: 'type', header: 'Tipo', cell: (row) => <RuleTypeBadge type={row.rule_type} /> },
+		{
+			id: 'type',
+			header: 'Tipo',
+			cell: (row) => <RuleTypeBadge type={row.rule_type} />,
+		},
 		{
 			id: 'user',
 			header: 'Usuario',
@@ -57,9 +66,21 @@ export function AdminAlertsPage() {
 					<span className="text-muted-foreground">Cualquier bot</span>
 				),
 		},
-		{ id: 'channels', header: 'Canales', cell: (row) => <ChannelsList channels={row.channels} /> },
-		{ id: 'status', header: 'Estado', cell: (row) => <RuleStatusBadge isActive={row.is_active} /> },
-		{ id: 'created', header: 'Creada', cell: (row) => formatDate(row.created_at) },
+		{
+			id: 'channels',
+			header: 'Canales',
+			cell: (row) => <ChannelsList channels={row.channels} />,
+		},
+		{
+			id: 'status',
+			header: 'Estado',
+			cell: (row) => <RuleStatusBadge isActive={row.is_active} />,
+		},
+		{
+			id: 'created',
+			header: 'Creada',
+			cell: (row) => formatDate(row.created_at),
+		},
 	];
 
 	return (

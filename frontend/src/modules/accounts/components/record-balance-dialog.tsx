@@ -204,7 +204,9 @@ export function RecordBalanceDialog({
 						form="record-balance-form"
 						disabled={recordMutation.isPending || !account}
 					>
-						{recordMutation.isPending && <IconLoader2 className="animate-spin" />}
+						{recordMutation.isPending && (
+							<IconLoader2 className="animate-spin" />
+						)}
 						Registrar balance
 					</Button>
 				</DialogFooter>

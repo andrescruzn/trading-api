@@ -48,7 +48,9 @@ export function InvestorDashboardPage() {
 	const [selectedId, setSelectedId] = useState<string | null>(null);
 
 	// El backend ya devuelve solo el perfil propio; se cruza por usuario por si acaso.
-	const investor = investorsQuery.data?.find((item) => item.user_id === user?.id);
+	const investor = investorsQuery.data?.find(
+		(item) => item.user_id === user?.id,
+	);
 	const accounts = accountsQuery.data ?? [];
 	// Con una sola cuenta se muestra directamente, sin obligar a elegirla.
 	const effectiveId =
@@ -66,7 +68,9 @@ export function InvestorDashboardPage() {
 
 	function renderContent() {
 		if (loadError) {
-			return <ErrorAlert title="No pudimos cargar tu inversión" error={loadError} />;
+			return (
+				<ErrorAlert title="No pudimos cargar tu inversión" error={loadError} />
+			);
 		}
 		if (isLoadingProfile) {
 			return (
@@ -80,16 +84,16 @@ export function InvestorDashboardPage() {
 		if (!investor) {
 			return (
 				<EmptyState>
-					Aún no tienes un perfil de inversor. Pide a un administrador que lo cree para ver tu
-					inversión aquí.
+					Aún no tienes un perfil de inversor. Pide a un administrador que lo
+					cree para ver tu inversión aquí.
 				</EmptyState>
 			);
 		}
 		if (accounts.length === 0) {
 			return (
 				<EmptyState>
-					Aún no tienes cuentas gestionadas. Cuando un administrador te asigne una, verás aquí
-					su rendimiento y tus comisiones.
+					Aún no tienes cuentas gestionadas. Cuando un administrador te asigne
+					una, verás aquí su rendimiento y tus comisiones.
 				</EmptyState>
 			);
 		}
@@ -144,7 +148,9 @@ export function InvestorDashboardPage() {
 						</div>
 
 						<section className="flex flex-col gap-3">
-							<h2 className="text-base font-semibold">Períodos de facturación</h2>
+							<h2 className="text-base font-semibold">
+								Períodos de facturación
+							</h2>
 							<BillingPeriodsTable
 								rows={periodsQuery.data}
 								isLoading={periodsQuery.isLoading}
@@ -154,7 +160,9 @@ export function InvestorDashboardPage() {
 						</section>
 
 						<section className="flex flex-col gap-3">
-							<h2 className="text-base font-semibold">Comisiones de desempeño</h2>
+							<h2 className="text-base font-semibold">
+								Comisiones de desempeño
+							</h2>
 							<FeeTransactionsTable
 								rows={feesQuery.data}
 								isLoading={feesQuery.isLoading}
@@ -164,7 +172,9 @@ export function InvestorDashboardPage() {
 						</section>
 					</>
 				) : (
-					<EmptyState>Elige una cuenta gestionada para ver su rendimiento.</EmptyState>
+					<EmptyState>
+						Elige una cuenta gestionada para ver su rendimiento.
+					</EmptyState>
 				)}
 			</>
 		);

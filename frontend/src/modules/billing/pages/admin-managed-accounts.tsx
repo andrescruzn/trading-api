@@ -24,17 +24,24 @@ import { Button } from '@/modules/ui/components/button';
 const MONEY = 'text-right font-mono tabular-nums';
 
 export function AdminManagedAccountsPage() {
-	usePageBreadcrumb([{ label: 'Administración' }, { label: 'Cuentas gestionadas' }]);
+	usePageBreadcrumb([
+		{ label: 'Administración' },
+		{ label: 'Cuentas gestionadas' },
+	]);
 	const managedAccountsQuery = useManagedAccountsQuery();
 	const investorsQuery = useInvestorsQuery();
 	const accountsQuery = useAccountsQuery();
 	const botsQuery = useBotsQuery();
 	const symbolsQuery = useSymbolsQuery();
 	// `undefined` = diálogo cerrado; `null` = crear; una cuenta = editar.
-	const [editing, setEditing] = useState<ManagedAccount | null | undefined>(undefined);
+	const [editing, setEditing] = useState<ManagedAccount | null | undefined>(
+		undefined,
+	);
 
 	function investorName(investorId: number) {
-		const investor = investorsQuery.data?.find((item) => item.id === investorId);
+		const investor = investorsQuery.data?.find(
+			(item) => item.id === investorId,
+		);
 		return investor
 			? `#${investor.id} · usuario #${investor.user_id}`
 			: `#${investorId}`;
@@ -42,7 +49,8 @@ export function AdminManagedAccountsPage() {
 
 	function accountName(accountId: number) {
 		return (
-			accountsQuery.data?.find((item) => item.id === accountId)?.name ?? `#${accountId}`
+			accountsQuery.data?.find((item) => item.id === accountId)?.name ??
+			`#${accountId}`
 		);
 	}
 
@@ -53,8 +61,16 @@ export function AdminManagedAccountsPage() {
 			cell: (row) => <span className="font-medium">{row.name}</span>,
 			skeletonClassName: 'w-36',
 		},
-		{ id: 'investor', header: 'Inversor', cell: (row) => investorName(row.investor_id) },
-		{ id: 'account', header: 'Cuenta', cell: (row) => accountName(row.account_id) },
+		{
+			id: 'investor',
+			header: 'Inversor',
+			cell: (row) => investorName(row.investor_id),
+		},
+		{
+			id: 'account',
+			header: 'Cuenta',
+			cell: (row) => accountName(row.account_id),
+		},
 		{
 			id: 'bot',
 			header: 'Bot',

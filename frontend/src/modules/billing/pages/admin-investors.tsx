@@ -17,14 +17,23 @@ export function AdminInvestorsPage() {
 	usePageBreadcrumb([{ label: 'Administración' }, { label: 'Inversores' }]);
 	const investorsQuery = useInvestorsQuery();
 	// `undefined` = diálogo cerrado; `null` = crear; un inversor = editar.
-	const [editing, setEditing] = useState<Investor | null | undefined>(undefined);
+	const [editing, setEditing] = useState<Investor | null | undefined>(
+		undefined,
+	);
 
 	const columns: DataTableColumn<Investor>[] = [
-		{ id: 'id', header: 'ID', className: 'w-16 font-mono', cell: (row) => row.id },
+		{
+			id: 'id',
+			header: 'ID',
+			className: 'w-16 font-mono',
+			cell: (row) => row.id,
+		},
 		{
 			id: 'user',
 			header: 'Usuario',
-			cell: (row) => <span className="font-medium">Usuario #{row.user_id}</span>,
+			cell: (row) => (
+				<span className="font-medium">Usuario #{row.user_id}</span>
+			),
 		},
 		{
 			id: 'fee',
@@ -41,7 +50,11 @@ export function AdminInvestorsPage() {
 				</Badge>
 			),
 		},
-		{ id: 'created', header: 'Creado', cell: (row) => formatDate(row.created_at) },
+		{
+			id: 'created',
+			header: 'Creado',
+			cell: (row) => formatDate(row.created_at),
+		},
 		{
 			id: 'actions',
 			header: <span className="sr-only">Acciones</span>,
@@ -61,7 +74,11 @@ export function AdminInvestorsPage() {
 				title="Inversores"
 				description="Perfiles de inversor y su comisión de desempeño."
 				actions={[
-					{ label: 'Nuevo inversor', icon: <IconPlus />, onClick: () => setEditing(null) },
+					{
+						label: 'Nuevo inversor',
+						icon: <IconPlus />,
+						onClick: () => setEditing(null),
+					},
 				]}
 			/>
 			<DataTable

@@ -1,6 +1,9 @@
 import { IconPlus, IconSearch } from '@tabler/icons-react';
 import { useState } from 'react';
-import type { Account, AccountBalance } from '@/modules/accounts/api/accounts.api';
+import type {
+	Account,
+	AccountBalance,
+} from '@/modules/accounts/api/accounts.api';
 import { AccountModeBadge } from '@/modules/accounts/components/account-badges';
 import { RecordBalanceDialog } from '@/modules/accounts/components/record-balance-dialog';
 import { useAccountBalancesQuery } from '@/modules/accounts/hooks/use-accounts-queries';

@@ -19,7 +19,9 @@ export function AdminStrategiesPage() {
 	usePageBreadcrumb([{ label: 'Administración' }, { label: 'Estrategias' }]);
 	const strategiesQuery = useStrategiesQuery();
 	// `undefined` = diálogo cerrado; `null` = crear; una estrategia = editar.
-	const [editing, setEditing] = useState<Strategy | null | undefined>(undefined);
+	const [editing, setEditing] = useState<Strategy | null | undefined>(
+		undefined,
+	);
 	const [selected, setSelected] = useState<Strategy | null>(null);
 	const [detailOpen, setDetailOpen] = useState(false);
 

@@ -21,7 +21,10 @@ type OrderFillsDialogProps = {
 };
 
 /** Ejecuciones (fills) de una orden. */
-export function OrderFillsDialog({ order, onOpenChange }: OrderFillsDialogProps) {
+export function OrderFillsDialog({
+	order,
+	onOpenChange,
+}: OrderFillsDialogProps) {
 	const fillsQuery = useOrderFillsQuery(order?.id ?? null);
 
 	return (

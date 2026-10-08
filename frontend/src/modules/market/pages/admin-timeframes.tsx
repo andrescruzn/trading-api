@@ -35,7 +35,12 @@ import { Input } from '@/modules/ui/components/input';
 import { toast } from '@/modules/ui/components/toast';
 
 const columns: DataTableColumn<Timeframe>[] = [
-	{ id: 'id', header: 'ID', className: 'w-16 font-mono', cell: (row) => row.id },
+	{
+		id: 'id',
+		header: 'ID',
+		className: 'w-16 font-mono',
+		cell: (row) => row.id,
+	},
 	{
 		id: 'code',
 		header: 'Código',
@@ -47,7 +52,11 @@ const columns: DataTableColumn<Timeframe>[] = [
 		className: 'text-right font-mono tabular-nums',
 		cell: (row) => row.seconds.toLocaleString('es-CO'),
 	},
-	{ id: 'equals', header: 'Equivale a', cell: (row) => describeSeconds(row.seconds) },
+	{
+		id: 'equals',
+		header: 'Equivale a',
+		cell: (row) => describeSeconds(row.seconds),
+	},
 ];
 
 const timeframeSchema = z.object({
@@ -72,7 +81,11 @@ function CreateTimeframeDialog({
 	onOpenChange: (open: boolean) => void;
 }) {
 	const createMutation = useCreateTimeframeMutation();
-	const form = useForm<TimeframeValues, unknown, z.output<typeof timeframeSchema>>({
+	const form = useForm<
+		TimeframeValues,
+		unknown,
+		z.output<typeof timeframeSchema>
+	>({
 		resolver: zodResolver(timeframeSchema),
 		defaultValues: { code: '', seconds: '' },
 	});
@@ -127,7 +140,9 @@ function CreateTimeframeDialog({
 											placeholder="4h"
 											aria-invalid={fieldState.invalid}
 										/>
-										<FieldDescription>Ej.: 1m, 5m, 15m, 1h, 4h, 1d.</FieldDescription>
+										<FieldDescription>
+											Ej.: 1m, 5m, 15m, 1h, 4h, 1d.
+										</FieldDescription>
 										{fieldState.invalid && (
 											<FieldError errors={[fieldState.error]} />
 										)}
@@ -164,8 +179,14 @@ function CreateTimeframeDialog({
 					<Button variant="outline" onClick={() => onOpenChange(false)}>
 						Cancelar
 					</Button>
-					<Button type="submit" form="timeframe-form" disabled={createMutation.isPending}>
-						{createMutation.isPending && <IconLoader2 className="animate-spin" />}
+					<Button
+						type="submit"
+						form="timeframe-form"
+						disabled={createMutation.isPending}
+					>
+						{createMutation.isPending && (
+							<IconLoader2 className="animate-spin" />
+						)}
 						Crear timeframe
 					</Button>
 				</DialogFooter>
@@ -185,7 +206,11 @@ export function AdminTimeframesPage() {
 				title="Timeframes"
 				description="Intervalos de vela disponibles para descargar y analizar."
 				actions={[
-					{ label: 'Nuevo timeframe', icon: <IconPlus />, onClick: () => setCreating(true) },
+					{
+						label: 'Nuevo timeframe',
+						icon: <IconPlus />,
+						onClick: () => setCreating(true),
+					},
 				]}
 			/>
 			<DataTable

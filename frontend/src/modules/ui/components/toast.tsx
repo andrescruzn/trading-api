@@ -7,9 +7,9 @@ import {
 	IconLoader,
 	IconX,
 } from '@tabler/icons-react';
-import { cn } from '@/modules/ui/lib/utils';
 import type * as React from 'react';
 import { Button } from '@/modules/ui/components/button';
+import { cn } from '@/modules/ui/lib/utils';
 
 const toast = ToastPrimitive.createToastManager();
 

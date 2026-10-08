@@ -45,7 +45,10 @@ function rejectionReasonLabel(result: AnalysisResult): string | null {
 	if (reason === 'RR_RATIO_TOO_LOW' && result.rr_ratio !== null) {
 		return `Riesgo/beneficio ${formatRiskReward(result.rr_ratio)}: por debajo del mínimo de ${MIN_RR_RATIO}:1.`;
 	}
-	return REJECTION_REASON_LABELS[reason] ?? 'La operación no pasó una de las fases del análisis.';
+	return (
+		REJECTION_REASON_LABELS[reason] ??
+		'La operación no pasó una de las fases del análisis.'
+	);
 }
 
 /**

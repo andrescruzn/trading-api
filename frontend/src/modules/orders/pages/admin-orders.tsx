@@ -32,7 +32,8 @@ export function AdminOrdersPage() {
 	const [fillsOrder, setFillsOrder] = useState<Order | null>(null);
 
 	const botNames = new Map<number, string>();
-	for (const bot of botsQuery.data ?? []) botNames.set(bot.id, describeBot(bot, catalogs));
+	for (const bot of botsQuery.data ?? [])
+		botNames.set(bot.id, describeBot(bot, catalogs));
 
 	const allOrders = ordersQuery.data ?? [];
 	const filteredOrders = allOrders.filter(
@@ -58,21 +59,30 @@ export function AdminOrdersPage() {
 					size="sm"
 					value={side}
 					onChange={(value) => setSide(value ?? ALL)}
-					options={[{ value: ALL, label: 'Todos los lados' }, ...ORDER_SIDE_OPTIONS]}
+					options={[
+						{ value: ALL, label: 'Todos los lados' },
+						...ORDER_SIDE_OPTIONS,
+					]}
 				/>
 				<OptionSelect
 					aria-label="Estado"
 					size="sm"
 					value={status}
 					onChange={(value) => setStatus(value ?? ALL)}
-					options={[{ value: ALL, label: 'Todos los estados' }, ...ORDER_STATUS_OPTIONS]}
+					options={[
+						{ value: ALL, label: 'Todos los estados' },
+						...ORDER_STATUS_OPTIONS,
+					]}
 				/>
 				<OptionSelect
 					aria-label="Tipo"
 					size="sm"
 					value={type}
 					onChange={(value) => setType(value ?? ALL)}
-					options={[{ value: ALL, label: 'Todos los tipos' }, ...ORDER_TYPE_OPTIONS]}
+					options={[
+						{ value: ALL, label: 'Todos los tipos' },
+						...ORDER_TYPE_OPTIONS,
+					]}
 				/>
 			</div>
 			<OrdersTable

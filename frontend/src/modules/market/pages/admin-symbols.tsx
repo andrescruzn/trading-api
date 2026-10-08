@@ -33,7 +33,9 @@ export function AdminSymbolsPage() {
 	const [exchangeId, setExchangeId] = useState(ALL);
 	const [assetClass, setAssetClass] = useState(ALL);
 	const [status, setStatus] = useState(ALL);
-	const [editing, setEditing] = useState<MarketSymbol | null | undefined>(undefined);
+	const [editing, setEditing] = useState<MarketSymbol | null | undefined>(
+		undefined,
+	);
 
 	const exchangesQuery = useExchangesQuery();
 	const symbolsQuery = useSymbolsQuery({
@@ -43,13 +45,24 @@ export function AdminSymbolsPage() {
 	});
 
 	const columns: DataTableColumn<MarketSymbol>[] = [
-		{ id: 'id', header: 'ID', className: 'w-16 font-mono', cell: (row) => row.id },
+		{
+			id: 'id',
+			header: 'ID',
+			className: 'w-16 font-mono',
+			cell: (row) => row.id,
+		},
 		{
 			id: 'symbol',
 			header: 'Símbolo',
-			cell: (row) => <span className="font-mono font-medium">{row.symbol}</span>,
+			cell: (row) => (
+				<span className="font-mono font-medium">{row.symbol}</span>
+			),
 		},
-		{ id: 'exchange', header: 'Exchange', cell: (row) => row.exchange_name ?? '—' },
+		{
+			id: 'exchange',
+			header: 'Exchange',
+			cell: (row) => row.exchange_name ?? '—',
+		},
 		{
 			id: 'class',
 			header: 'Clase',
@@ -88,7 +101,11 @@ export function AdminSymbolsPage() {
 				title="Símbolos"
 				description="Activos que el sistema descarga y puede operar."
 				actions={[
-					{ label: 'Nuevo símbolo', icon: <IconPlus />, onClick: () => setEditing(null) },
+					{
+						label: 'Nuevo símbolo',
+						icon: <IconPlus />,
+						onClick: () => setEditing(null),
+					},
 				]}
 			/>
 			<div className="grid gap-3 sm:grid-cols-3 lg:max-w-3xl">
@@ -110,7 +127,10 @@ export function AdminSymbolsPage() {
 					size="sm"
 					value={assetClass}
 					onChange={(value) => setAssetClass(value ?? ALL)}
-					options={[{ value: ALL, label: 'Todas las clases' }, ...ASSET_CLASS_OPTIONS]}
+					options={[
+						{ value: ALL, label: 'Todas las clases' },
+						...ASSET_CLASS_OPTIONS,
+					]}
 				/>
 				<OptionSelect
 					aria-label="Estado"

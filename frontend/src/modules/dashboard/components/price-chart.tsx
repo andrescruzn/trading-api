@@ -30,16 +30,24 @@ export function PriceChart({ candles, className }: PriceChartProps) {
 	const plotWidth = WIDTH - PAD.left - PAD.right;
 	const plotHeight = HEIGHT - PAD.top - PAD.bottom;
 
-	const x = (index: number) => PAD.left + (index / (closes.length - 1)) * plotWidth;
-	const y = (price: number) => PAD.top + (1 - (price - min) / range) * plotHeight;
+	const x = (index: number) =>
+		PAD.left + (index / (closes.length - 1)) * plotWidth;
+	const y = (price: number) =>
+		PAD.top + (1 - (price - min) / range) * plotHeight;
 
-	const line = closes.map((price, index) => `${x(index)},${y(price)}`).join(' ');
+	const line = closes
+		.map((price, index) => `${x(index)},${y(price)}`)
+		.join(' ');
 	const area = `${PAD.left},${HEIGHT - PAD.bottom} ${line} ${x(closes.length - 1)},${HEIGHT - PAD.bottom}`;
 
 	const isUp = closes[closes.length - 1] >= closes[0];
 	const color = isUp ? 'var(--chart-1)' : 'var(--destructive)';
 	const gridPrices = [0, 1, 2, 3].map((step) => min + (range * step) / 3);
-	const timeIndexes = [0, Math.floor((candles.length - 1) / 2), candles.length - 1];
+	const timeIndexes = [
+		0,
+		Math.floor((candles.length - 1) / 2),
+		candles.length - 1,
+	];
 	const lastX = x(closes.length - 1);
 	const lastY = y(closes[closes.length - 1]);
 
@@ -81,7 +89,9 @@ export function PriceChart({ candles, className }: PriceChartProps) {
 					key={index}
 					x={x(index)}
 					y={HEIGHT - 6}
-					textAnchor={position === 0 ? 'start' : position === 2 ? 'end' : 'middle'}
+					textAnchor={
+						position === 0 ? 'start' : position === 2 ? 'end' : 'middle'
+					}
 					className="fill-muted-foreground text-[10px]"
 				>
 					{formatDateTime(candles[index].ts)}

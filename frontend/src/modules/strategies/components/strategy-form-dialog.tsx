@@ -48,7 +48,8 @@ import { Input } from '@/modules/ui/components/input';
 import { Textarea } from '@/modules/ui/components/textarea';
 import { toast } from '@/modules/ui/components/toast';
 
-const RULES_PLACEHOLDER = '[{"indicator": "rsi_14", "operator": "lt", "value": 30}]';
+const RULES_PLACEHOLDER =
+	'[{"indicator": "rsi_14", "operator": "lt", "value": 30}]';
 
 /** Texto del textarea → lista de reglas. Vacío = sin reglas. */
 const rulesField = z
@@ -67,14 +68,21 @@ const rulesField = z
 			return z.NEVER;
 		}
 		if (!Array.isArray(parsed)) {
-			ctx.addIssue({ code: 'custom', message: 'Debe ser una lista JSON, entre corchetes [ ]' });
+			ctx.addIssue({
+				code: 'custom',
+				message: 'Debe ser una lista JSON, entre corchetes [ ]',
+			});
 			return z.NEVER;
 		}
 		const allObjects = parsed.every(
-			(rule) => typeof rule === 'object' && rule !== null && !Array.isArray(rule),
+			(rule) =>
+				typeof rule === 'object' && rule !== null && !Array.isArray(rule),
 		);
 		if (!allObjects) {
-			ctx.addIssue({ code: 'custom', message: 'Cada regla debe ser un objeto JSON { }' });
+			ctx.addIssue({
+				code: 'custom',
+				message: 'Cada regla debe ser un objeto JSON { }',
+			});
 			return z.NEVER;
 		}
 		return parsed as Record<string, unknown>[];
@@ -82,7 +90,11 @@ const rulesField = z
 
 const strategySchema = z
 	.object({
-		name: z.string().trim().min(1, 'Escribe el nombre').max(120, 'Máximo 120 caracteres'),
+		name: z
+			.string()
+			.trim()
+			.min(1, 'Escribe el nombre')
+			.max(120, 'Máximo 120 caracteres'),
 		version: z
 			.string()
 			.trim()
@@ -130,13 +142,17 @@ function initialValues(strategy: Strategy | null): StrategyFormInput {
 		strategy_type: parameters.strategy_type ?? null,
 		// Al editar, `null` en el backend significa "sin restricción"; al crear
 		// se obliga a elegir el régimen de forma explícita.
-		regime_required: strategy ? (parameters.regime_required ?? ANY_REGIME) : null,
+		regime_required: strategy
+			? (parameters.regime_required ?? ANY_REGIME)
+			: null,
 		timeframe_code: parameters.timeframe_code ?? null,
 		risk_percent:
 			typeof parameters.risk_pct === 'number'
 				? fractionToPercent(parameters.risk_pct)
 				: MAX_RISK_PERCENT,
-		rules: parameters.rules?.length ? JSON.stringify(parameters.rules, null, 2) : '',
+		rules: parameters.rules?.length
+			? JSON.stringify(parameters.rules, null, 2)
+			: '',
 	};
 }
 
@@ -161,8 +177,14 @@ export function StrategyFormDialog({
 	}, [open, strategy, form]);
 
 	// Aviso en vivo del filtro de régimen, antes de enviar.
-	const strategyType = useWatch({ control: form.control, name: 'strategy_type' });
-	const regimeRequired = useWatch({ control: form.control, name: 'regime_required' });
+	const strategyType = useWatch({
+		control: form.control,
+		name: 'strategy_type',
+	});
+	const regimeRequired = useWatch({
+		control: form.control,
+		name: 'regime_required',
+	});
 	const isIncoherent = !isRegimeCoherent(strategyType, regimeRequired);
 
 	const timeframeOptions = (timeframesQuery.data ?? []).map((timeframe) => ({
@@ -232,7 +254,9 @@ export function StrategyFormDialog({
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent className="sm:max-w-xl">
 				<DialogHeader>
-					<DialogTitle>{isEdit ? 'Editar estrategia' : 'Nueva estrategia'}</DialogTitle>
+					<DialogTitle>
+						{isEdit ? 'Editar estrategia' : 'Nueva estrategia'}
+					</DialogTitle>
 					<DialogDescription>
 						{strategy
 							? `${strategy.name} · v${strategy.version}`
@@ -294,7 +318,9 @@ export function StrategyFormDialog({
 								control={form.control}
 								render={({ field, fieldState }) => (
 									<Field data-invalid={fieldState.invalid}>
-										<FieldLabel htmlFor="strategy-description">Descripción</FieldLabel>
+										<FieldLabel htmlFor="strategy-description">
+											Descripción
+										</FieldLabel>
 										<Input
 											{...field}
 											id="strategy-description"
@@ -345,7 +371,9 @@ export function StrategyFormDialog({
 												aria-invalid={fieldState.invalid || isIncoherent}
 											/>
 											{isIncoherent ? (
-												<FieldError>{regimeCoherenceHint(strategyType)}</FieldError>
+												<FieldError>
+													{regimeCoherenceHint(strategyType)}
+												</FieldError>
 											) : (
 												fieldState.invalid && (
 													<FieldError errors={[fieldState.error]} />
@@ -410,7 +438,9 @@ export function StrategyFormDialog({
 								control={form.control}
 								render={({ field, fieldState }) => (
 									<Field data-invalid={fieldState.invalid}>
-										<FieldLabel htmlFor="strategy-rules">Reglas (JSON)</FieldLabel>
+										<FieldLabel htmlFor="strategy-rules">
+											Reglas (JSON)
+										</FieldLabel>
 										<Textarea
 											{...field}
 											id="strategy-rules"
@@ -420,8 +450,8 @@ export function StrategyFormDialog({
 											aria-invalid={fieldState.invalid}
 										/>
 										<FieldDescription>
-											Lista de condiciones con indicador, operador (lt, lte, gt, gte,
-											eq) y valor.
+											Lista de condiciones con indicador, operador (lt, lte, gt,
+											gte, eq) y valor.
 										</FieldDescription>
 										{fieldState.invalid && (
 											<FieldError errors={[fieldState.error]} />

@@ -60,7 +60,9 @@ export function AlertsPage() {
 	const symbolsQuery = useSymbolsQuery();
 	const updateMutation = useUpdateAlertRuleMutation();
 	// `undefined` = diálogo cerrado; `null` = crear; una regla = editar.
-	const [editing, setEditing] = useState<AlertRule | null | undefined>(undefined);
+	const [editing, setEditing] = useState<AlertRule | null | undefined>(
+		undefined,
+	);
 	const [deactivating, setDeactivating] = useState<AlertRule | null>(null);
 
 	function setRuleActive(rule: AlertRule, isActive: boolean) {
@@ -93,7 +95,11 @@ export function AlertsPage() {
 			cell: (row) => <span className="font-medium">{row.name}</span>,
 			skeletonClassName: 'w-36',
 		},
-		{ id: 'type', header: 'Tipo', cell: (row) => <RuleTypeBadge type={row.rule_type} /> },
+		{
+			id: 'type',
+			header: 'Tipo',
+			cell: (row) => <RuleTypeBadge type={row.rule_type} />,
+		},
 		{
 			id: 'bot',
 			header: 'Bot',
@@ -104,16 +110,30 @@ export function AlertsPage() {
 					<span className="text-muted-foreground">Cualquier bot</span>
 				),
 		},
-		{ id: 'channels', header: 'Canales', cell: (row) => <ChannelsList channels={row.channels} /> },
-		{ id: 'status', header: 'Estado', cell: (row) => <RuleStatusBadge isActive={row.is_active} /> },
-		{ id: 'created', header: 'Creada', cell: (row) => formatDate(row.created_at) },
+		{
+			id: 'channels',
+			header: 'Canales',
+			cell: (row) => <ChannelsList channels={row.channels} />,
+		},
+		{
+			id: 'status',
+			header: 'Estado',
+			cell: (row) => <RuleStatusBadge isActive={row.is_active} />,
+		},
+		{
+			id: 'created',
+			header: 'Creada',
+			cell: (row) => formatDate(row.created_at),
+		},
 		{
 			id: 'actions',
 			header: <span className="sr-only">Acciones</span>,
 			className: 'text-right',
 			cell: (row) => (
 				<DropdownMenu>
-					<DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" />}>
+					<DropdownMenuTrigger
+						render={<Button variant="ghost" size="icon-sm" />}
+					>
 						<IconDots />
 						<span className="sr-only">Acciones de {row.name}</span>
 					</DropdownMenuTrigger>
@@ -151,7 +171,11 @@ export function AlertsPage() {
 				title="Alertas"
 				description="Elige qué eventos te avisan y por qué canal, y revisa las alertas que recibiste."
 				actions={[
-					{ label: 'Nueva regla', icon: <IconPlus />, onClick: () => setEditing(null) },
+					{
+						label: 'Nueva regla',
+						icon: <IconPlus />,
+						onClick: () => setEditing(null),
+					},
 				]}
 			/>
 			<Tabs defaultValue="rules">
@@ -187,9 +211,12 @@ export function AlertsPage() {
 			>
 				<AlertDialogContent>
 					<AlertDialogHeader>
-						<AlertDialogTitle>¿Desactivar la regla «{deactivating?.name}»?</AlertDialogTitle>
+						<AlertDialogTitle>
+							¿Desactivar la regla «{deactivating?.name}»?
+						</AlertDialogTitle>
 						<AlertDialogDescription>
-							Dejarás de recibir sus avisos. Puedes activarla de nuevo cuando quieras.
+							Dejarás de recibir sus avisos. Puedes activarla de nuevo cuando
+							quieras.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
@@ -199,7 +226,9 @@ export function AlertsPage() {
 							disabled={updateMutation.isPending}
 							onClick={() => deactivating && setRuleActive(deactivating, false)}
 						>
-							{updateMutation.isPending && <IconLoader2 className="animate-spin" />}
+							{updateMutation.isPending && (
+								<IconLoader2 className="animate-spin" />
+							)}
 							Desactivar regla
 						</AlertDialogAction>
 					</AlertDialogFooter>

@@ -42,7 +42,9 @@ const SNAPSHOT_TIMEFRAME = '1h';
 
 function RegimeBadge({ regime }: { regime: Regime | null }) {
 	if (!regime) return null;
-	return <Badge variant={REGIME_BADGE_VARIANT[regime]}>{regimeLabel(regime)}</Badge>;
+	return (
+		<Badge variant={REGIME_BADGE_VARIANT[regime]}>{regimeLabel(regime)}</Badge>
+	);
 }
 
 function ChangeText({ value }: { value: number | null }) {
@@ -108,7 +110,9 @@ export function DashboardPage() {
 	const mainSnapshot = useSymbolSnapshot(mainSymbolId, timeframeId);
 
 	const accounts = accountsQuery.data ?? [];
-	const paperCount = accounts.filter((account) => account.mode === 'paper').length;
+	const paperCount = accounts.filter(
+		(account) => account.mode === 'paper',
+	).length;
 	const liveCount = accounts.length - paperCount;
 
 	const strategies = strategiesQuery.data ?? [];
@@ -133,7 +137,11 @@ export function DashboardPage() {
 			</div>
 
 			<div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-				<SymbolCard label={MAIN_SYMBOL} symbolId={mainSymbolId} timeframeId={timeframeId} />
+				<SymbolCard
+					label={MAIN_SYMBOL}
+					symbolId={mainSymbolId}
+					timeframeId={timeframeId}
+				/>
 				<SymbolCard
 					label={SECONDARY_SYMBOL}
 					symbolId={secondarySymbolId}
@@ -175,7 +183,11 @@ export function DashboardPage() {
 							<p>
 								Aún no hay velas de {MAIN_SYMBOL} en {SNAPSHOT_TIMEFRAME}.
 							</p>
-							<Button variant="outline" size="sm" render={<Link to="/market/symbols" />}>
+							<Button
+								variant="outline"
+								size="sm"
+								render={<Link to="/market/symbols" />}
+							>
 								Ver símbolos
 							</Button>
 						</div>

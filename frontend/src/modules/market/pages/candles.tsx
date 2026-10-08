@@ -33,9 +33,12 @@ const columns: DataTableColumn<Candle>[] = [
 	...(['open', 'high', 'low', 'close'] as const).map(
 		(key): DataTableColumn<Candle> => ({
 			id: key,
-			header: { open: 'Apertura', high: 'Máximo', low: 'Mínimo', close: 'Cierre' }[
-				key
-			],
+			header: {
+				open: 'Apertura',
+				high: 'Máximo',
+				low: 'Mínimo',
+				close: 'Cierre',
+			}[key],
 			className: 'text-right font-mono tabular-nums',
 			cell: (row) => formatNumber(row[key]),
 		}),

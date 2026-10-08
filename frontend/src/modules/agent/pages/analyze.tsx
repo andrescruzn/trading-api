@@ -14,7 +14,10 @@ import {
 	useSymbolsQuery,
 	useTimeframesQuery,
 } from '@/modules/market/hooks/use-market-queries';
-import { symbolOptions, timeframeOptions } from '@/modules/market/lib/market-labels';
+import {
+	symbolOptions,
+	timeframeOptions,
+} from '@/modules/market/lib/market-labels';
 import { ErrorAlert } from '@/modules/shared/components/error-alert';
 import { OptionSelect } from '@/modules/shared/components/option-select';
 import { PageListHeader } from '@/modules/shared/components/page-list-header';
@@ -205,7 +208,9 @@ export function AgentAnalyzePage() {
 													aria-invalid={fieldState.invalid}
 												/>
 												{item.description && (
-													<FieldDescription>{item.description}</FieldDescription>
+													<FieldDescription>
+														{item.description}
+													</FieldDescription>
 												)}
 												{fieldState.invalid && (
 													<FieldError errors={[fieldState.error]} />
@@ -224,7 +229,9 @@ export function AgentAnalyzePage() {
 									) : (
 										<IconSparkles />
 									)}
-									{analyzeMutation.isPending ? 'Analizando…' : 'Ejecutar análisis'}
+									{analyzeMutation.isPending
+										? 'Analizando…'
+										: 'Ejecutar análisis'}
 								</Button>
 							</FieldGroup>
 						</form>

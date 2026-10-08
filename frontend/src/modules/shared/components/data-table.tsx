@@ -13,7 +13,7 @@ import {
 } from '@/modules/ui/components/table';
 import { cn } from '@/modules/ui/lib/utils';
 
-type DataTableColumn<T> = {
+export type DataTableColumn<T> = {
 	/** Clave única de la columna (también sirve de `key` de React). */
 	id: string;
 	header: ReactNode;
@@ -137,5 +137,3 @@ export function DataTable<T>({
 		</div>
 	);
 }
-
-export type { DataTableColumn };

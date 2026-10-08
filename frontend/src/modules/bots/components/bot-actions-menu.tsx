@@ -31,7 +31,10 @@ import {
 } from '@/modules/ui/components/dropdown-menu';
 import { toast } from '@/modules/ui/components/toast';
 
-const TRANSITION_COPY: Record<BotTransition, { success: string; error: string }> = {
+const TRANSITION_COPY: Record<
+	BotTransition,
+	{ success: string; error: string }
+> = {
 	start: { success: 'Bot iniciado', error: 'No pudimos iniciar el bot' },
 	pause: { success: 'Bot pausado', error: 'No pudimos pausar el bot' },
 	stop: { success: 'Bot detenido', error: 'No pudimos detener el bot' },
@@ -58,7 +61,10 @@ export function BotActionsMenu({ bot, onViewSignals }: BotActionsMenuProps) {
 			{ id: bot.id, transition },
 			{
 				onSuccess: () => {
-					toast.add({ title: TRANSITION_COPY[transition].success, type: 'success' });
+					toast.add({
+						title: TRANSITION_COPY[transition].success,
+						type: 'success',
+					});
 					onDone?.();
 				},
 				onError: (error) =>
@@ -74,7 +80,10 @@ export function BotActionsMenu({ bot, onViewSignals }: BotActionsMenuProps) {
 	return (
 		// La fila de la tabla es clicable y los eventos del menú y del diálogo
 		// suben por el árbol de React aunque se rendericen en un portal.
-		<div className="flex justify-end" onClick={(event) => event.stopPropagation()}>
+		<div
+			className="flex justify-end"
+			onClick={(event) => event.stopPropagation()}
+		>
 			<DropdownMenu>
 				<DropdownMenuTrigger
 					disabled={isPending}
@@ -123,7 +132,8 @@ export function BotActionsMenu({ bot, onViewSignals }: BotActionsMenuProps) {
 					<AlertDialogHeader>
 						<AlertDialogTitle>¿Detener el bot #{bot.id}?</AlertDialogTitle>
 						<AlertDialogDescription>
-							El bot deja de generar señales. Las posiciones abiertas no se cierran.
+							El bot deja de generar señales. Las posiciones abiertas no se
+							cierran.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>

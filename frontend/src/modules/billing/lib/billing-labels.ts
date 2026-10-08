@@ -18,16 +18,19 @@ const PERIOD_TYPE_LABELS: Record<PeriodType, string> = {
 	daily: 'Diario',
 };
 
-const PERIOD_TYPE_OPTIONS: SelectOption[] = Object.entries(PERIOD_TYPE_LABELS).map(
-	([value, label]) => ({ value, label }),
-);
+const PERIOD_TYPE_OPTIONS: SelectOption[] = Object.entries(
+	PERIOD_TYPE_LABELS,
+).map(([value, label]) => ({ value, label }));
 
 const BILLING_PERIOD_STATUS_LABELS: Record<BillingPeriodStatus, string> = {
 	open: 'Abierto',
 	closed: 'Cerrado',
 };
 
-const BILLING_PERIOD_STATUS_VARIANTS: Record<BillingPeriodStatus, BadgeVariant> = {
+const BILLING_PERIOD_STATUS_VARIANTS: Record<
+	BillingPeriodStatus,
+	BadgeVariant
+> = {
 	open: 'default',
 	closed: 'outline',
 };
@@ -56,7 +59,9 @@ function fractionToPercentText(fraction: string | null | undefined): string {
 }
 
 /** Verde si hay ganancia, rojo si hay pérdida. */
-function pnlClassName(value: string | number | null | undefined): string | undefined {
+function pnlClassName(
+	value: string | number | null | undefined,
+): string | undefined {
 	const number = toNumber(value);
 	if (number === null || number === 0) return undefined;
 	return number > 0 ? 'text-chart-1' : 'text-destructive';

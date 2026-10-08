@@ -66,7 +66,10 @@ function formatDateTime(iso: string | null | undefined): string {
 	if (!iso) return EMPTY;
 	const date = new Date(iso);
 	if (Number.isNaN(date.getTime())) return EMPTY;
-	return date.toLocaleString(LOCALE, { dateStyle: 'medium', timeStyle: 'short' });
+	return date.toLocaleString(LOCALE, {
+		dateStyle: 'medium',
+		timeStyle: 'short',
+	});
 }
 
 function formatDate(iso: string | null | undefined): string {

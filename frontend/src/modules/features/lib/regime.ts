@@ -13,7 +13,10 @@ const REGIME_LABELS: Record<Regime, string> = {
  * Variante de `Badge` por régimen (solo tokens del tema): alcista con el
  * color primario, bajista en rojo, lateral neutro.
  */
-const REGIME_BADGE_VARIANT: Record<Regime, 'default' | 'destructive' | 'secondary'> = {
+const REGIME_BADGE_VARIANT: Record<
+	Regime,
+	'default' | 'destructive' | 'secondary'
+> = {
 	trend_up: 'default',
 	trend_down: 'destructive',
 	sideways: 'secondary',

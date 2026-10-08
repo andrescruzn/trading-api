@@ -1,8 +1,8 @@
 import { Dialog as DialogPrimitive } from '@base-ui/react/dialog';
 import { IconX } from '@tabler/icons-react';
-import { cn } from '@/modules/ui/lib/utils';
 import * as React from 'react';
 import { Button } from '@/modules/ui/components/button';
+import { cn } from '@/modules/ui/lib/utils';
 
 type DialogContextProps = {
 	showCloseButton: boolean;

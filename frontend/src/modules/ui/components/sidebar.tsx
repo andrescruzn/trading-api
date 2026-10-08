@@ -4,7 +4,6 @@ import { mergeProps } from '@base-ui/react/merge-props';
 import { useRender } from '@base-ui/react/use-render';
 import { IconLayoutSidebar } from '@tabler/icons-react';
 import { cva, type VariantProps } from 'class-variance-authority';
-import { cn } from '@/modules/ui/lib/utils';
 import * as React from 'react';
 import { Button } from '@/modules/ui/components/button';
 import { Input } from '@/modules/ui/components/input';
@@ -23,6 +22,7 @@ import {
 	TooltipTrigger,
 } from '@/modules/ui/components/tooltip';
 import { useIsMobile } from '@/modules/ui/hooks/use-mobile';
+import { cn } from '@/modules/ui/lib/utils';
 
 const SIDEBAR_COOKIE_NAME = 'sidebar_state';
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;

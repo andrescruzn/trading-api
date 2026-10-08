@@ -71,7 +71,9 @@ const orderSchema = z
 	.object({
 		side: requiredSelectField('Elige el lado'),
 		type: requiredSelectField('Elige el tipo de orden'),
-		qty: z.string().refine(isPositiveDecimal, 'Escribe una cantidad mayor que 0'),
+		qty: z
+			.string()
+			.refine(isPositiveDecimal, 'Escribe una cantidad mayor que 0'),
 		price: z.string(),
 		stop_price: z.string(),
 	})
@@ -83,7 +85,10 @@ const orderSchema = z
 				message: 'Escribe un precio límite mayor que 0',
 			});
 		}
-		if (orderNeedsStopPrice(values.type) && !isPositiveDecimal(values.stop_price)) {
+		if (
+			orderNeedsStopPrice(values.type) &&
+			!isPositiveDecimal(values.stop_price)
+		) {
 			ctx.addIssue({
 				code: 'custom',
 				path: ['stop_price'],
@@ -111,7 +116,12 @@ type OrderFormDialogProps = {
 	botLabel: string;
 };
 
-export function OrderFormDialog({ open, onOpenChange, bot, botLabel }: OrderFormDialogProps) {
+export function OrderFormDialog({
+	open,
+	onOpenChange,
+	bot,
+	botLabel,
+}: OrderFormDialogProps) {
 	const createMutation = useCreateOrderMutation();
 	// Orden live a la espera de confirmación explícita.
 	const [pendingLive, setPendingLive] = useState<OrderInput | null>(null);
@@ -155,7 +165,9 @@ export function OrderFormDialog({ open, onOpenChange, bot, botLabel }: OrderForm
 			qty: normalizeDecimal(values.qty),
 			// Solo se envían los precios que pide el tipo: el backend rechaza
 			// un precio límite en una orden de mercado.
-			...(orderNeedsPrice(values.type) && { price: normalizeDecimal(values.price) }),
+			...(orderNeedsPrice(values.type) && {
+				price: normalizeDecimal(values.price),
+			}),
 			...(orderNeedsStopPrice(values.type) && {
 				stop_price: normalizeDecimal(values.stop_price),
 			}),
@@ -167,12 +179,28 @@ export function OrderFormDialog({ open, onOpenChange, bot, botLabel }: OrderForm
 		sendOrder(input);
 	}
 
-	const priceFields: { name: 'price' | 'stop_price'; label: string; placeholder: string }[] = [
+	const priceFields: {
+		name: 'price' | 'stop_price';
+		label: string;
+		placeholder: string;
+	}[] = [
 		...(orderNeedsPrice(type)
-			? [{ name: 'price' as const, label: 'Precio límite', placeholder: '65000' }]
+			? [
+					{
+						name: 'price' as const,
+						label: 'Precio límite',
+						placeholder: '65000',
+					},
+				]
 			: []),
 		...(orderNeedsStopPrice(type)
-			? [{ name: 'stop_price' as const, label: 'Precio stop', placeholder: '64000' }]
+			? [
+					{
+						name: 'stop_price' as const,
+						label: 'Precio stop',
+						placeholder: '64000',
+					},
+				]
 			: []),
 	];
 
@@ -198,7 +226,8 @@ export function OrderFormDialog({ open, onOpenChange, bot, botLabel }: OrderForm
 									<IconAlertTriangle />
 									<AlertTitle>Modo live: dinero real</AlertTitle>
 									<AlertDescription>
-										Esta orden se envía al exchange con tu dinero. Te pediremos confirmarla.
+										Esta orden se envía al exchange con tu dinero. Te pediremos
+										confirmarla.
 									</AlertDescription>
 								</Alert>
 							)}
@@ -322,7 +351,9 @@ export function OrderFormDialog({ open, onOpenChange, bot, botLabel }: OrderForm
 						variant={isLive ? 'destructive' : 'default'}
 						disabled={!bot || !isRunning || createMutation.isPending}
 					>
-						{createMutation.isPending && <IconLoader2 className="animate-spin" />}
+						{createMutation.isPending && (
+							<IconLoader2 className="animate-spin" />
+						)}
 						Ejecutar orden
 					</Button>
 				</DialogFooter>
@@ -334,25 +365,33 @@ export function OrderFormDialog({ open, onOpenChange, bot, botLabel }: OrderForm
 				>
 					<AlertDialogContent>
 						<AlertDialogHeader>
-							<AlertDialogTitle>¿Ejecutar la orden con dinero real?</AlertDialogTitle>
+							<AlertDialogTitle>
+								¿Ejecutar la orden con dinero real?
+							</AlertDialogTitle>
 							<AlertDialogDescription>
-								El bot {botLabel} está en modo live: la orden se envía al exchange y
-								no se puede deshacer.
+								El bot {botLabel} está en modo live: la orden se envía al
+								exchange y no se puede deshacer.
 							</AlertDialogDescription>
 						</AlertDialogHeader>
 						{pendingLive && (
 							<dl className="grid grid-cols-2 gap-3 text-sm">
 								<div>
 									<dt className="text-muted-foreground">Lado</dt>
-									<dd className="font-medium">{ORDER_SIDE_LABELS[pendingLive.side]}</dd>
+									<dd className="font-medium">
+										{ORDER_SIDE_LABELS[pendingLive.side]}
+									</dd>
 								</div>
 								<div>
 									<dt className="text-muted-foreground">Tipo</dt>
-									<dd className="font-medium">{ORDER_TYPE_LABELS[pendingLive.type]}</dd>
+									<dd className="font-medium">
+										{ORDER_TYPE_LABELS[pendingLive.type]}
+									</dd>
 								</div>
 								<div>
 									<dt className="text-muted-foreground">Cantidad</dt>
-									<dd className="font-mono font-medium">{formatNumber(pendingLive.qty)}</dd>
+									<dd className="font-mono font-medium">
+										{formatNumber(pendingLive.qty)}
+									</dd>
 								</div>
 								<div>
 									<dt className="text-muted-foreground">Precio</dt>
@@ -373,7 +412,9 @@ export function OrderFormDialog({ open, onOpenChange, bot, botLabel }: OrderForm
 								disabled={createMutation.isPending}
 								onClick={() => pendingLive && sendOrder(pendingLive)}
 							>
-								{createMutation.isPending && <IconLoader2 className="animate-spin" />}
+								{createMutation.isPending && (
+									<IconLoader2 className="animate-spin" />
+								)}
 								Ejecutar orden
 							</AlertDialogAction>
 						</AlertDialogFooter>

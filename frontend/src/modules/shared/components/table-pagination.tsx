@@ -1,5 +1,4 @@
 import { PAGE_LIMIT_OPTIONS, type PageLimit } from '@/modules/shared/types/api';
-import { cn } from '@/modules/ui/lib/utils';
 import {
 	Pagination,
 	PaginationContent,
@@ -16,6 +15,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from '@/modules/ui/components/select';
+import { cn } from '@/modules/ui/lib/utils';
 
 type TablePaginationProps = {
 	page: number;

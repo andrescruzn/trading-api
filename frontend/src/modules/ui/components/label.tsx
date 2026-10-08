@@ -1,5 +1,5 @@
-import { cn } from '@/modules/ui/lib/utils';
 import type * as React from 'react';
+import { cn } from '@/modules/ui/lib/utils';
 
 function Label({ className, ...props }: React.ComponentProps<'label'>) {
 	return (

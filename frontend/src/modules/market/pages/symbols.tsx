@@ -28,7 +28,11 @@ const columns: DataTableColumn<MarketSymbol>[] = [
 		header: 'Símbolo',
 		cell: (row) => <span className="font-mono font-medium">{row.symbol}</span>,
 	},
-	{ id: 'exchange', header: 'Exchange', cell: (row) => row.exchange_name ?? '—' },
+	{
+		id: 'exchange',
+		header: 'Exchange',
+		cell: (row) => row.exchange_name ?? '—',
+	},
 	{ id: 'base', header: 'Base', cell: (row) => row.base_asset ?? '—' },
 	{ id: 'quote', header: 'Cotización', cell: (row) => row.quote_asset ?? '—' },
 	{
@@ -46,9 +50,7 @@ const columns: DataTableColumn<MarketSymbol>[] = [
 			<Button
 				variant="ghost"
 				size="sm"
-				render={
-					<Link to="/market/candles" search={{ symbol_id: row.id }} />
-				}
+				render={<Link to="/market/candles" search={{ symbol_id: row.id }} />}
 			>
 				<IconChartCandle />
 				Ver velas
@@ -76,7 +78,10 @@ export function SymbolsPage() {
 			label: exchange.name,
 		})),
 	];
-	const classOptions = [{ value: ALL, label: 'Todas las clases' }, ...ASSET_CLASS_OPTIONS];
+	const classOptions = [
+		{ value: ALL, label: 'Todas las clases' },
+		...ASSET_CLASS_OPTIONS,
+	];
 
 	return (
 		<div className="flex flex-col gap-6">

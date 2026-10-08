@@ -37,7 +37,9 @@ const baseColumns: DataTableColumn<Strategy>[] = [
 		header: 'Tipo',
 		cell: (row) =>
 			row.parameters?.strategy_type ? (
-				<Badge variant="outline">{strategyTypeLabel(row.parameters.strategy_type)}</Badge>
+				<Badge variant="outline">
+					{strategyTypeLabel(row.parameters.strategy_type)}
+				</Badge>
 			) : (
 				'—'
 			),
@@ -46,7 +48,9 @@ const baseColumns: DataTableColumn<Strategy>[] = [
 	{
 		id: 'regime',
 		header: 'Régimen',
-		cell: (row) => <StrategyRegimeBadge regime={row.parameters?.regime_required} />,
+		cell: (row) => (
+			<StrategyRegimeBadge regime={row.parameters?.regime_required} />
+		),
 	},
 	{
 		id: 'timeframe',
@@ -60,7 +64,11 @@ const baseColumns: DataTableColumn<Strategy>[] = [
 		className: 'text-right tabular-nums',
 		cell: (row) => row.parameters?.rules?.length ?? 0,
 	},
-	{ id: 'created', header: 'Creada', cell: (row) => formatDate(row.created_at) },
+	{
+		id: 'created',
+		header: 'Creada',
+		cell: (row) => formatDate(row.created_at),
+	},
 ];
 
 /** Listado de estrategias compartido por la vista de usuario y la de admin. */

@@ -63,7 +63,9 @@ export function NavSection({
 	const pathname = useRouterState({
 		select: (state) => state.location.pathname,
 	});
-	const visibleItems = isVisible(user, role) ? getVisibleItems(user, items) : [];
+	const visibleItems = isVisible(user, role)
+		? getVisibleItems(user, items)
+		: [];
 
 	if (visibleItems.length === 0) return null;
 

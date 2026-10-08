@@ -1,7 +1,10 @@
 import { IconPlus } from '@tabler/icons-react';
 import { useState } from 'react';
 import { usePageBreadcrumb } from '@/modules/app-shell/hooks/use-page-breadcrumb';
-import { BotModeBadge, BotStatusBadge } from '@/modules/bots/components/bot-badges';
+import {
+	BotModeBadge,
+	BotStatusBadge,
+} from '@/modules/bots/components/bot-badges';
 import { useBotCatalogs } from '@/modules/bots/hooks/use-bot-catalogs';
 import { useBotsByAccountsQuery } from '@/modules/bots/hooks/use-bots-queries';
 import { BOT_MODE_LABELS, describeBot } from '@/modules/bots/lib/bots-labels';
@@ -92,7 +95,8 @@ export function OrdersPage() {
 	const bots = botsQuery.data ?? [];
 	// Sin elección explícita se muestra el bot más reciente.
 	const selectedBot =
-		bots.find((bot) => bot.id === pickedBotId) ?? (pickedBotId ? null : bots[0] ?? null);
+		bots.find((bot) => bot.id === pickedBotId) ??
+		(pickedBotId ? null : (bots[0] ?? null));
 	const selectedLabel = selectedBot ? describeBot(selectedBot, catalogs) : '';
 
 	const botOptions = bots.map((bot) => ({
@@ -154,7 +158,10 @@ export function OrdersPage() {
 						<OrdersTab botId={selectedBot.id} />
 					</TabsContent>
 					<TabsContent value="positions" className="pt-2">
-						<PositionsTab botId={selectedBot.id} symbolNames={catalogs.symbols} />
+						<PositionsTab
+							botId={selectedBot.id}
+							symbolNames={catalogs.symbols}
+						/>
 					</TabsContent>
 					<TabsContent value="fills" className="pt-2">
 						<FillsTab botId={selectedBot.id} />

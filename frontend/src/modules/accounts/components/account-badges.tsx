@@ -35,7 +35,10 @@ export function CredentialsIndicator({ account }: { account: Account }) {
 			{account.has_credentials ? (
 				<IconLock className="size-4 text-chart-1" aria-hidden="true" />
 			) : (
-				<IconLockOpen className="size-4 text-muted-foreground" aria-hidden="true" />
+				<IconLockOpen
+					className="size-4 text-muted-foreground"
+					aria-hidden="true"
+				/>
 			)}
 			<span className="sr-only">{label}</span>
 		</span>

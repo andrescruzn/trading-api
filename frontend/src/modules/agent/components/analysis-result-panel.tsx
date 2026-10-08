@@ -67,7 +67,11 @@ function PhaseBadge({ phase }: { phase: AnalysisPhase }) {
 	}
 	if (phase.status === 'fail') {
 		return (
-			<Badge variant="destructive" className="h-7 px-2.5 text-sm" title={statusText}>
+			<Badge
+				variant="destructive"
+				className="h-7 px-2.5 text-sm"
+				title={statusText}
+			>
 				<IconCircleX aria-hidden="true" />
 				{phase.label}
 				<span className="sr-only">: {PHASE_STATUS_LABELS[phase.status]}</span>
@@ -88,7 +92,9 @@ function PhaseBadge({ phase }: { phase: AnalysisPhase }) {
 }
 
 function SectionTitle({ children }: { children: string }) {
-	return <h2 className="text-sm font-medium text-muted-foreground">{children}</h2>;
+	return (
+		<h2 className="text-sm font-medium text-muted-foreground">{children}</h2>
+	);
 }
 
 export function AnalysisResultPanel({ result }: { result: AnalysisResult }) {
@@ -96,7 +102,9 @@ export function AnalysisResultPanel({ result }: { result: AnalysisResult }) {
 	const { meta } = result;
 	const phases = analysisPhases(result);
 	const hasLevels =
-		result.entry !== null || result.stop_loss !== null || result.take_profit !== null;
+		result.entry !== null ||
+		result.stop_loss !== null ||
+		result.take_profit !== null;
 	// `BTC/USDT` → `BTC` / `USDT`: el tamaño de posición está en unidades del
 	// activo base y el `$` solo aplica si la cotización es en dólares.
 	const [baseAsset = '', quoteAsset = ''] = meta.symbol?.split('/') ?? [];
@@ -126,8 +134,12 @@ export function AnalysisResultPanel({ result }: { result: AnalysisResult }) {
 
 			{meta.symbol && (
 				<div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-muted-foreground">
-					<span className="font-mono font-medium text-foreground">{meta.symbol}</span>
-					{meta.timeframe && <span className="font-mono">{meta.timeframe}</span>}
+					<span className="font-mono font-medium text-foreground">
+						{meta.symbol}
+					</span>
+					{meta.timeframe && (
+						<span className="font-mono">{meta.timeframe}</span>
+					)}
 					{meta.strategy && (
 						<span>
 							{meta.strategy}
@@ -167,12 +179,18 @@ export function AnalysisResultPanel({ result }: { result: AnalysisResult }) {
 						<StatCard
 							label="Stop loss"
 							value={
-								<span className="text-destructive">{price(result.stop_loss)}</span>
+								<span className="text-destructive">
+									{price(result.stop_loss)}
+								</span>
 							}
 						/>
 						<StatCard
 							label="Take profit"
-							value={<span className="text-chart-1">{price(result.take_profit)}</span>}
+							value={
+								<span className="text-chart-1">
+									{price(result.take_profit)}
+								</span>
+							}
 						/>
 						<StatCard
 							label="Tamaño de posición"

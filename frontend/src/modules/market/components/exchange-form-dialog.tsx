@@ -107,7 +107,9 @@ export function ExchangeFormDialog({
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent>
 				<DialogHeader>
-					<DialogTitle>{isEdit ? 'Editar exchange' : 'Nuevo exchange'}</DialogTitle>
+					<DialogTitle>
+						{isEdit ? 'Editar exchange' : 'Nuevo exchange'}
+					</DialogTitle>
 					<DialogDescription>
 						Fuente de datos de mercado o lugar donde se ejecutan las órdenes.
 					</DialogDescription>

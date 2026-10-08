@@ -14,7 +14,11 @@ import {
 	DataTable,
 	type DataTableColumn,
 } from '@/modules/shared/components/data-table';
-import { formatDate, formatPercent, formatPrice } from '@/modules/shared/lib/format';
+import {
+	formatDate,
+	formatPercent,
+	formatPrice,
+} from '@/modules/shared/lib/format';
 import { Badge } from '@/modules/ui/components/badge';
 import { cn } from '@/modules/ui/lib/utils';
 
@@ -40,7 +44,12 @@ export function BillingPeriodsTable({
 	renderActions,
 }: BillingPeriodsTableProps) {
 	const columns: DataTableColumn<BillingPeriod>[] = [
-		{ id: 'id', header: 'Período', className: 'w-20 font-mono', cell: (row) => `#${row.id}` },
+		{
+			id: 'id',
+			header: 'Período',
+			className: 'w-20 font-mono',
+			cell: (row) => `#${row.id}`,
+		},
 		{ id: 'start', header: 'Inicio', cell: (row) => formatDate(row.start_ts) },
 		{ id: 'end', header: 'Cierre', cell: (row) => formatDate(row.end_ts) },
 		{
@@ -60,7 +69,9 @@ export function BillingPeriodsTable({
 			header: 'PnL bruto',
 			className: MONEY,
 			cell: (row) => (
-				<span className={pnlClassName(row.gross_pnl)}>{formatPrice(row.gross_pnl)}</span>
+				<span className={pnlClassName(row.gross_pnl)}>
+					{formatPrice(row.gross_pnl)}
+				</span>
 			),
 		},
 		{
@@ -80,14 +91,18 @@ export function BillingPeriodsTable({
 			header: 'PnL neto',
 			className: MONEY,
 			cell: (row) => (
-				<span className={pnlClassName(row.net_pnl)}>{formatPrice(row.net_pnl)}</span>
+				<span className={pnlClassName(row.net_pnl)}>
+					{formatPrice(row.net_pnl)}
+				</span>
 			),
 		},
 		{
 			id: 'status',
 			header: 'Estado',
 			cell: (row) => (
-				<Badge variant={BILLING_PERIOD_STATUS_VARIANTS[row.status] ?? 'outline'}>
+				<Badge
+					variant={BILLING_PERIOD_STATUS_VARIANTS[row.status] ?? 'outline'}
+				>
 					{BILLING_PERIOD_STATUS_LABELS[row.status] ?? row.status}
 				</Badge>
 			),
@@ -150,8 +165,16 @@ export function FeeTransactionsTable({
 				</Badge>
 			),
 		},
-		{ id: 'charged', header: 'Cobrada', cell: (row) => formatDate(row.charged_at) },
-		{ id: 'created', header: 'Registrada', cell: (row) => formatDate(row.created_at) },
+		{
+			id: 'charged',
+			header: 'Cobrada',
+			cell: (row) => formatDate(row.charged_at),
+		},
+		{
+			id: 'created',
+			header: 'Registrada',
+			cell: (row) => formatDate(row.created_at),
+		},
 	];
 
 	if (showNotes) {
@@ -160,7 +183,9 @@ export function FeeTransactionsTable({
 			header: 'Notas',
 			cell: (row) =>
 				row.notes ? (
-					<span className="whitespace-normal text-muted-foreground">{row.notes}</span>
+					<span className="whitespace-normal text-muted-foreground">
+						{row.notes}
+					</span>
 				) : (
 					<span className="text-muted-foreground">—</span>
 				),

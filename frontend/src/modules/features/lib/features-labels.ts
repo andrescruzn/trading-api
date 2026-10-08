@@ -2,11 +2,15 @@ import type { FeatureSet } from '@/modules/features/api/features.api';
 import type { SelectOption } from '@/modules/shared/components/option-select';
 
 /** `default · v1.0.0`. */
-function featureSetLabel(featureSet: Pick<FeatureSet, 'name' | 'version'>): string {
+function featureSetLabel(
+	featureSet: Pick<FeatureSet, 'name' | 'version'>,
+): string {
 	return `${featureSet.name} · v${featureSet.version}`;
 }
 
-function featureSetOptions(featureSets: FeatureSet[] | undefined): SelectOption[] {
+function featureSetOptions(
+	featureSets: FeatureSet[] | undefined,
+): SelectOption[] {
 	return (featureSets ?? []).map((featureSet) => ({
 		value: String(featureSet.id),
 		label: featureSetLabel(featureSet),
@@ -20,7 +24,11 @@ function featureSetOptions(featureSets: FeatureSet[] | undefined): SelectOption[
 function jsonObjectError(value: string): string | null {
 	try {
 		const parsed: unknown = JSON.parse(value);
-		if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+		if (
+			typeof parsed !== 'object' ||
+			parsed === null ||
+			Array.isArray(parsed)
+		) {
 			return 'Debe ser un objeto JSON, entre llaves { }';
 		}
 		return null;

@@ -1,12 +1,12 @@
 import { IconChartBar } from '@tabler/icons-react';
 import { useState } from 'react';
 import type { Account } from '@/modules/accounts/api/accounts.api';
-import { AccountBalancesSheet } from '@/modules/accounts/components/account-balances-sheet';
 import {
 	AccountModeBadge,
 	AccountStatusBadge,
 	CredentialsIndicator,
 } from '@/modules/accounts/components/account-badges';
+import { AccountBalancesSheet } from '@/modules/accounts/components/account-balances-sheet';
 import { useAccountsQuery } from '@/modules/accounts/hooks/use-accounts-queries';
 import {
 	ACCOUNT_MODE_LABELS,
@@ -27,7 +27,10 @@ const ALL = 'all';
 
 const MODE_FILTER_OPTIONS = [
 	{ value: ALL, label: 'Todos los modos' },
-	...Object.entries(ACCOUNT_MODE_LABELS).map(([value, label]) => ({ value, label })),
+	...Object.entries(ACCOUNT_MODE_LABELS).map(([value, label]) => ({
+		value,
+		label,
+	})),
 ];
 
 const STATUS_FILTER_OPTIONS = [
@@ -54,10 +57,16 @@ export function AdminAccountsPage() {
 	const exchangeName = (id: number | null) =>
 		id === null
 			? '—'
-			: (exchangesQuery.data?.find((exchange) => exchange.id === id)?.name ?? '—');
+			: (exchangesQuery.data?.find((exchange) => exchange.id === id)?.name ??
+				'—');
 
 	const columns: DataTableColumn<Account>[] = [
-		{ id: 'id', header: 'ID', className: 'w-16 font-mono', cell: (row) => row.id },
+		{
+			id: 'id',
+			header: 'ID',
+			className: 'w-16 font-mono',
+			cell: (row) => row.id,
+		},
 		{
 			id: 'user',
 			header: 'Usuario',
@@ -69,8 +78,16 @@ export function AdminAccountsPage() {
 			header: 'Nombre',
 			cell: (row) => <span className="font-medium">{row.name}</span>,
 		},
-		{ id: 'exchange', header: 'Exchange', cell: (row) => exchangeName(row.exchange_id) },
-		{ id: 'mode', header: 'Modo', cell: (row) => <AccountModeBadge mode={row.mode} /> },
+		{
+			id: 'exchange',
+			header: 'Exchange',
+			cell: (row) => exchangeName(row.exchange_id),
+		},
+		{
+			id: 'mode',
+			header: 'Modo',
+			cell: (row) => <AccountModeBadge mode={row.mode} />,
+		},
 		{
 			id: 'currency',
 			header: 'Moneda base',
@@ -87,13 +104,21 @@ export function AdminAccountsPage() {
 			className: 'text-center',
 			cell: (row) => <CredentialsIndicator account={row} />,
 		},
-		{ id: 'created', header: 'Creada', cell: (row) => formatDate(row.created_at) },
+		{
+			id: 'created',
+			header: 'Creada',
+			cell: (row) => formatDate(row.created_at),
+		},
 		{
 			id: 'actions',
 			header: <span className="sr-only">Acciones</span>,
 			className: 'text-right',
 			cell: (row) => (
-				<Button variant="ghost" size="sm" onClick={() => setViewingBalances(row)}>
+				<Button
+					variant="ghost"
+					size="sm"
+					onClick={() => setViewingBalances(row)}
+				>
 					<IconChartBar />
 					Ver balances
 				</Button>

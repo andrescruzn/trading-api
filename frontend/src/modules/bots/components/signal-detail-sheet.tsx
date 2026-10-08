@@ -2,7 +2,10 @@ import { IconCircleCheck, IconCircleX } from '@tabler/icons-react';
 import type { ReactNode } from 'react';
 import type { Signal, SignalReasons } from '@/modules/bots/api/bots.api';
 import { SignalActionBadge } from '@/modules/bots/components/bot-badges';
-import { formatRiskReward, rejectionLabel } from '@/modules/bots/lib/bots-labels';
+import {
+	formatRiskReward,
+	rejectionLabel,
+} from '@/modules/bots/lib/bots-labels';
 import {
 	formatDateTime,
 	formatNumber,
@@ -42,7 +45,13 @@ function DetailItem({
 	);
 }
 
-function CheckRow({ label, passed }: { label: string; passed: boolean | undefined }) {
+function CheckRow({
+	label,
+	passed,
+}: {
+	label: string;
+	passed: boolean | undefined;
+}) {
 	if (passed === undefined) return null;
 	return (
 		<li className="flex items-center gap-2">
@@ -64,7 +73,10 @@ function formatRuleValue(value: unknown): string {
 }
 
 /** Detalle de solo lectura de una señal: niveles, filtros y razonamiento del agente. */
-export function SignalDetailSheet({ signal, onOpenChange }: SignalDetailSheetProps) {
+export function SignalDetailSheet({
+	signal,
+	onOpenChange,
+}: SignalDetailSheetProps) {
 	const reasons: SignalReasons = signal?.reasons ?? {};
 	const rejection = rejectionLabel(reasons.rejection_reason);
 	const rules = Array.isArray(reasons.rules_detail) ? reasons.rules_detail : [];
@@ -87,7 +99,9 @@ export function SignalDetailSheet({ signal, onOpenChange }: SignalDetailSheetPro
 							</div>
 
 							<dl className="grid grid-cols-2 gap-4">
-								<DetailItem label="Entrada">{formatPrice(signal.entry_price)}</DetailItem>
+								<DetailItem label="Entrada">
+									{formatPrice(signal.entry_price)}
+								</DetailItem>
 								<DetailItem label="Stop loss" className="text-destructive">
 									{formatPrice(signal.stop_loss)}
 								</DetailItem>
@@ -115,8 +129,14 @@ export function SignalDetailSheet({ signal, onOpenChange }: SignalDetailSheetPro
 							<section className="flex flex-col gap-2">
 								<h3 className="text-sm font-medium">Filtros</h3>
 								<ul className="flex flex-col gap-1.5 text-sm">
-									<CheckRow label="Régimen de mercado" passed={reasons.regime_check_passed} />
-									<CheckRow label="Reglas de la estrategia" passed={reasons.rules_check_passed} />
+									<CheckRow
+										label="Régimen de mercado"
+										passed={reasons.regime_check_passed}
+									/>
+									<CheckRow
+										label="Reglas de la estrategia"
+										passed={reasons.rules_check_passed}
+									/>
 									<CheckRow
 										label="Riesgo/beneficio mínimo de 2:1"
 										passed={reasons.rr_check_passed}
@@ -129,14 +149,18 @@ export function SignalDetailSheet({ signal, onOpenChange }: SignalDetailSheetPro
 									<h3 className="text-sm font-medium">Reglas evaluadas</h3>
 									<ul className="flex flex-col gap-1.5 text-sm">
 										{rules.map((rule, index) => (
-											<li key={`${rule.indicator}-${index}`} className="flex items-start gap-2">
+											<li
+												key={`${rule.indicator}-${index}`}
+												className="flex items-start gap-2"
+											>
 												{rule.passed ? (
 													<IconCircleCheck className="mt-0.5 size-4 shrink-0 text-chart-1" />
 												) : (
 													<IconCircleX className="mt-0.5 size-4 shrink-0 text-destructive" />
 												)}
 												<span className="font-mono text-xs leading-5">
-													{rule.indicator} {rule.operator} {formatRuleValue(rule.threshold)}
+													{rule.indicator} {rule.operator}{' '}
+													{formatRuleValue(rule.threshold)}
 													<span className="text-muted-foreground">
 														{' '}
 														(actual: {formatRuleValue(rule.actual_value)})
@@ -150,7 +174,9 @@ export function SignalDetailSheet({ signal, onOpenChange }: SignalDetailSheetPro
 
 							{reasons.reasoning && (
 								<section className="flex flex-col gap-1">
-									<h3 className="text-sm font-medium">Razonamiento del agente de IA</h3>
+									<h3 className="text-sm font-medium">
+										Razonamiento del agente de IA
+									</h3>
 									<p className="text-sm leading-relaxed whitespace-pre-line text-muted-foreground">
 										{reasons.reasoning}
 									</p>

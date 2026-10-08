@@ -53,8 +53,9 @@ export function AdminTelegramPage() {
 				<CardHeader>
 					<CardTitle>Configuración del servidor</CardTitle>
 					<CardDescription>
-						Estas variables van en el archivo <code className="font-mono">.env</code> del
-						servidor. Después de cambiarlas, reinicia la API.
+						Estas variables van en el archivo{' '}
+						<code className="font-mono">.env</code> del servidor. Después de
+						cambiarlas, reinicia la API.
 					</CardDescription>
 				</CardHeader>
 				<CardContent className="flex flex-col gap-4">
@@ -63,12 +64,12 @@ export function AdminTelegramPage() {
 					</pre>
 					<ul className="ml-4 flex list-disc flex-col gap-1 text-sm text-muted-foreground">
 						<li>
-							El token se obtiene al crear un bot con <strong>@BotFather</strong> en
-							Telegram.
+							El token se obtiene al crear un bot con{' '}
+							<strong>@BotFather</strong> en Telegram.
 						</li>
 						<li>
-							El ID del chat aparece al enviarle un mensaje al bot y consultar sus
-							actualizaciones en la API de Telegram.
+							El ID del chat aparece al enviarle un mensaje al bot y consultar
+							sus actualizaciones en la API de Telegram.
 						</li>
 					</ul>
 

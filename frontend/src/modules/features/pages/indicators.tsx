@@ -39,7 +39,11 @@ type NumericFeatureKey =
 
 // RSI y volumen relativo son índices pequeños: con 2 decimales basta. El resto
 // está en unidades de precio y usa los decimales según la magnitud.
-const NUMERIC_COLUMNS: { key: NumericFeatureKey; header: string; digits?: number }[] = [
+const NUMERIC_COLUMNS: {
+	key: NumericFeatureKey;
+	header: string;
+	digits?: number;
+}[] = [
 	{ key: 'rsi_14', header: 'RSI 14', digits: 2 },
 	{ key: 'ema_20', header: 'EMA 20' },
 	{ key: 'ema_50', header: 'EMA 50' },

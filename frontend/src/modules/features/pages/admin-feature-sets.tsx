@@ -13,7 +13,12 @@ import { PageListHeader } from '@/modules/shared/components/page-list-header';
 import { formatDate } from '@/modules/shared/lib/format';
 
 const columns: DataTableColumn<FeatureSet>[] = [
-	{ id: 'id', header: 'ID', className: 'w-16 font-mono', cell: (row) => row.id },
+	{
+		id: 'id',
+		header: 'ID',
+		className: 'w-16 font-mono',
+		cell: (row) => row.id,
+	},
 	{
 		id: 'name',
 		header: 'Nombre',
@@ -47,7 +52,11 @@ const columns: DataTableColumn<FeatureSet>[] = [
 		},
 		skeletonClassName: 'w-40',
 	},
-	{ id: 'created', header: 'Creado', cell: (row) => formatDate(row.created_at) },
+	{
+		id: 'created',
+		header: 'Creado',
+		cell: (row) => formatDate(row.created_at),
+	},
 ];
 
 export function AdminFeatureSetsPage() {
@@ -85,7 +94,10 @@ export function AdminFeatureSetsPage() {
 				empty="Aún no hay feature sets. Crea uno para poder calcular indicadores."
 			/>
 			<FeatureSetFormDialog open={creating} onOpenChange={setCreating} />
-			<CalculateFeaturesDialog open={calculating} onOpenChange={setCalculating} />
+			<CalculateFeaturesDialog
+				open={calculating}
+				onOpenChange={setCalculating}
+			/>
 		</div>
 	);
 }

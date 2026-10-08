@@ -1,5 +1,9 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { IconChartCandle, IconCloudDownload, IconLoader2 } from '@tabler/icons-react';
+import {
+	IconChartCandle,
+	IconCloudDownload,
+	IconLoader2,
+} from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
 import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -9,7 +13,10 @@ import {
 	useSymbolsQuery,
 	useTimeframesQuery,
 } from '@/modules/market/hooks/use-market-queries';
-import { symbolOptions, timeframeOptions } from '@/modules/market/lib/market-labels';
+import {
+	symbolOptions,
+	timeframeOptions,
+} from '@/modules/market/lib/market-labels';
 import { OptionSelect } from '@/modules/shared/components/option-select';
 import { PageListHeader } from '@/modules/shared/components/page-list-header';
 import { StatCard } from '@/modules/shared/components/stat-card';
@@ -44,12 +51,19 @@ const ingestSchema = z.object({
 });
 
 export function AdminCandlesIngestPage() {
-	usePageBreadcrumb([{ label: 'Administración' }, { label: 'Descargar velas' }]);
+	usePageBreadcrumb([
+		{ label: 'Administración' },
+		{ label: 'Descargar velas' },
+	]);
 	const symbolsQuery = useSymbolsQuery({ is_active: true });
 	const timeframesQuery = useTimeframesQuery();
 	const fetchMutation = useFetchCandlesMutation();
 
-	const form = useForm<z.input<typeof ingestSchema>, unknown, z.output<typeof ingestSchema>>({
+	const form = useForm<
+		z.input<typeof ingestSchema>,
+		unknown,
+		z.output<typeof ingestSchema>
+	>({
 		resolver: zodResolver(ingestSchema),
 		defaultValues: { symbol_id: null, timeframe_id: null, limit: 500 },
 	});
@@ -86,7 +100,8 @@ export function AdminCandlesIngestPage() {
 				<CardHeader>
 					<CardTitle>Parámetros</CardTitle>
 					<CardDescription>
-						El exchange se toma del símbolo. La descarga puede tardar unos segundos.
+						El exchange se toma del símbolo. La descarga puede tardar unos
+						segundos.
 					</CardDescription>
 				</CardHeader>
 				<CardContent>
@@ -140,7 +155,10 @@ export function AdminCandlesIngestPage() {
 								name="limit"
 								control={form.control}
 								render={({ field, fieldState }) => (
-									<Field data-invalid={fieldState.invalid} className="sm:max-w-xs">
+									<Field
+										data-invalid={fieldState.invalid}
+										className="sm:max-w-xs"
+									>
 										<FieldLabel htmlFor="ingest-limit" required>
 											Cantidad de velas
 										</FieldLabel>
@@ -152,7 +170,9 @@ export function AdminCandlesIngestPage() {
 											inputMode="numeric"
 											aria-invalid={fieldState.invalid}
 										/>
-										<FieldDescription>Entre 1 y 1000, las más recientes.</FieldDescription>
+										<FieldDescription>
+											Entre 1 y 1000, las más recientes.
+										</FieldDescription>
 										{fieldState.invalid && (
 											<FieldError errors={[fieldState.error]} />
 										)}
@@ -191,7 +211,10 @@ export function AdminCandlesIngestPage() {
 							render={
 								<Link
 									to="/market/candles"
-									search={{ symbol_id: resultSymbolId, timeframe_id: resultTimeframeId }}
+									search={{
+										symbol_id: resultSymbolId,
+										timeframe_id: resultTimeframeId,
+									}}
 								/>
 							}
 						>

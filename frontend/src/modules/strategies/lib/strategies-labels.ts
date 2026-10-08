@@ -1,4 +1,4 @@
-import { type Regime, REGIME_OPTIONS } from '@/modules/features/lib/regime';
+import { REGIME_OPTIONS, type Regime } from '@/modules/features/lib/regime';
 import type { SelectOption } from '@/modules/shared/components/option-select';
 import type { StrategyType } from '@/modules/strategies/api/strategies.api';
 

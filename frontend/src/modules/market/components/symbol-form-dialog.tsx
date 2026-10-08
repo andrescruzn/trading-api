@@ -37,7 +37,10 @@ import { toast } from '@/modules/ui/components/toast';
 const optionalDecimal = z
 	.string()
 	.trim()
-	.refine((value) => value === '' || Number(value) > 0, 'Debe ser un número mayor que 0');
+	.refine(
+		(value) => value === '' || Number(value) > 0,
+		'Debe ser un número mayor que 0',
+	);
 
 const symbolSchema = z.object({
 	exchange_id: requiredSelectField('Elige el exchange'),
@@ -172,7 +175,9 @@ export function SymbolFormDialog({
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent className="sm:max-w-lg">
 				<DialogHeader>
-					<DialogTitle>{isEdit ? 'Editar símbolo' : 'Nuevo símbolo'}</DialogTitle>
+					<DialogTitle>
+						{isEdit ? 'Editar símbolo' : 'Nuevo símbolo'}
+					</DialogTitle>
 					<DialogDescription>
 						{symbol
 							? `${symbol.symbol} · ${symbol.exchange_name ?? ''}`

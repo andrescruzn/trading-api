@@ -70,8 +70,13 @@ function useOpenBillingPeriodMutation() {
 function useCloseBillingPeriodMutation() {
 	const queryClient = useQueryClient();
 	return useMutation({
-		mutationFn: ({ id, input }: { id: number; input: CloseBillingPeriodInput }) =>
-			closeBillingPeriod(id, input),
+		mutationFn: ({
+			id,
+			input,
+		}: {
+			id: number;
+			input: CloseBillingPeriodInput;
+		}) => closeBillingPeriod(id, input),
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: BILLING_PERIODS_QUERY_KEY });
 			// Cerrar puede crear una comisión pendiente y subir la marca de agua.

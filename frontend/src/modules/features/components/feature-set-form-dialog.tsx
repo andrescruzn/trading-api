@@ -31,8 +31,16 @@ const SPEC_PLACEHOLDER =
 	'{"rsi": true, "ema": [20, 50, 200], "macd": true, "atr": true, "bbands": true}';
 
 const featureSetSchema = z.object({
-	name: z.string().trim().min(1, 'Escribe el nombre').max(120, 'Máximo 120 caracteres'),
-	version: z.string().trim().min(1, 'Escribe la versión').max(32, 'Máximo 32 caracteres'),
+	name: z
+		.string()
+		.trim()
+		.min(1, 'Escribe el nombre')
+		.max(120, 'Máximo 120 caracteres'),
+	version: z
+		.string()
+		.trim()
+		.min(1, 'Escribe la versión')
+		.max(32, 'Máximo 32 caracteres'),
 	description: z.string().trim(),
 	// Se valida como texto y se convierte a objeto al enviar.
 	spec: z
@@ -59,7 +67,10 @@ type FeatureSetFormDialogProps = {
 	onOpenChange: (open: boolean) => void;
 };
 
-export function FeatureSetFormDialog({ open, onOpenChange }: FeatureSetFormDialogProps) {
+export function FeatureSetFormDialog({
+	open,
+	onOpenChange,
+}: FeatureSetFormDialogProps) {
 	const createMutation = useCreateFeatureSetMutation();
 
 	const form = useForm<FeatureSetValues>({
@@ -210,7 +221,9 @@ export function FeatureSetFormDialog({ open, onOpenChange }: FeatureSetFormDialo
 						form="feature-set-form"
 						disabled={createMutation.isPending}
 					>
-						{createMutation.isPending && <IconLoader2 className="animate-spin" />}
+						{createMutation.isPending && (
+							<IconLoader2 className="animate-spin" />
+						)}
 						Crear feature set
 					</Button>
 				</DialogFooter>

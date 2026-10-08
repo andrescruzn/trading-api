@@ -33,7 +33,8 @@ const RULE_TYPE_DESCRIPTIONS: Record<AlertRuleType, string> = {
 	signal: 'Avisa cuando un bot emite una señal aprobada.',
 	price: 'Avisa cuando el precio de un símbolo cruza el umbral.',
 	pnl: 'Avisa cuando el PnL llega al porcentaje indicado.',
-	drawdown: 'Avisa cuando la caída desde el máximo supera el porcentaje indicado.',
+	drawdown:
+		'Avisa cuando la caída desde el máximo supera el porcentaje indicado.',
 	error: 'Avisa cuando un bot entra en error o se rechaza una de sus órdenes.',
 };
 
@@ -90,7 +91,9 @@ const PRICE_OPERATOR_OPTIONS = toOptions(PRICE_OPERATOR_LABELS);
 const PNL_PERIOD_OPTIONS = toOptions(PNL_PERIOD_LABELS);
 
 /** Nombres de los canales activos, en el orden en que se muestran. */
-function describeChannels(channels: AlertChannels | null | undefined): string[] {
+function describeChannels(
+	channels: AlertChannels | null | undefined,
+): string[] {
 	if (!channels) return [];
 	const names: string[] = [];
 	if (channels.email) names.push('Correo');

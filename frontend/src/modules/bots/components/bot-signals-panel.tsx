@@ -39,7 +39,11 @@ const columns: DataTableColumn<Signal>[] = [
 		cell: (row) => formatDateTime(row.ts),
 		skeletonClassName: 'w-32',
 	},
-	{ id: 'action', header: 'Acción', cell: (row) => <SignalActionBadge action={row.action} /> },
+	{
+		id: 'action',
+		header: 'Acción',
+		cell: (row) => <SignalActionBadge action={row.action} />,
+	},
 	{
 		id: 'approved',
 		header: 'Estado',
@@ -89,7 +93,11 @@ type BotSignalsPanelProps = {
 };
 
 /** Señales de un bot: generar una nueva con el agente y ver el detalle de cada una. */
-export function BotSignalsPanel({ bot, botLabel, onClose }: BotSignalsPanelProps) {
+export function BotSignalsPanel({
+	bot,
+	botLabel,
+	onClose,
+}: BotSignalsPanelProps) {
 	const signalsQuery = useSignalsQuery(bot.id);
 	const generateMutation = useGenerateSignalMutation();
 	const [selected, setSelected] = useState<Signal | null>(null);

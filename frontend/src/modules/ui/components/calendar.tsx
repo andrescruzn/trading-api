@@ -5,7 +5,6 @@ import {
 	IconChevronLeft,
 	IconChevronRight,
 } from '@tabler/icons-react';
-import { cn } from '@/modules/ui/lib/utils';
 import * as React from 'react';
 import {
 	type DayButton,
@@ -14,6 +13,7 @@ import {
 	type Locale,
 } from 'react-day-picker';
 import { Button, buttonVariants } from '@/modules/ui/components/button';
+import { cn } from '@/modules/ui/lib/utils';
 
 function Calendar({
 	className,

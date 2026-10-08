@@ -23,8 +23,13 @@ function useCreateBotMutation() {
 function useTransitionBotMutation() {
 	const queryClient = useQueryClient();
 	return useMutation({
-		mutationFn: ({ id, transition }: { id: number; transition: BotTransition }) =>
-			transitionBot(id, transition),
+		mutationFn: ({
+			id,
+			transition,
+		}: {
+			id: number;
+			transition: BotTransition;
+		}) => transitionBot(id, transition),
 		onSuccess: () =>
 			queryClient.invalidateQueries({ queryKey: BOTS_QUERY_KEY }),
 	});

@@ -1,5 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
-import { getStrategy, listStrategies } from '@/modules/strategies/api/strategies.api';
+import {
+	getStrategy,
+	listStrategies,
+} from '@/modules/strategies/api/strategies.api';
 
 const STRATEGIES_QUERY_KEY = ['strategies'] as const;
 

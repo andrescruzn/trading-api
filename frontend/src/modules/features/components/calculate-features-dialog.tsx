@@ -10,7 +10,10 @@ import {
 	useSymbolsQuery,
 	useTimeframesQuery,
 } from '@/modules/market/hooks/use-market-queries';
-import { symbolOptions, timeframeOptions } from '@/modules/market/lib/market-labels';
+import {
+	symbolOptions,
+	timeframeOptions,
+} from '@/modules/market/lib/market-labels';
 import { OptionSelect } from '@/modules/shared/components/option-select';
 import { formatNumber } from '@/modules/shared/lib/format';
 import { getErrorMessage } from '@/modules/shared/lib/get-error-message';
@@ -101,7 +104,11 @@ export function CalculateFeaturesDialog({
 		label: string;
 		options: { value: string; label: string }[];
 	}[] = [
-		{ name: 'symbol_id', label: 'Símbolo', options: symbolOptions(symbolsQuery.data) },
+		{
+			name: 'symbol_id',
+			label: 'Símbolo',
+			options: symbolOptions(symbolsQuery.data),
+		},
 		{
 			name: 'timeframe_id',
 			label: 'Timeframe',

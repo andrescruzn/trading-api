@@ -55,7 +55,8 @@ import { toast } from '@/modules/ui/components/toast';
 // Valor del select de bot cuando la regla aplica a cualquiera de tus bots.
 const ANY_BOT = 'any';
 
-const isNumber = (value: string) => value !== '' && Number.isFinite(Number(value));
+const isNumber = (value: string) =>
+	value !== '' && Number.isFinite(Number(value));
 
 // Los campos de la condición dependen del tipo: se guardan como texto en el
 // formulario y solo se validan los del tipo elegido (`superRefine`).
@@ -91,7 +92,11 @@ const ruleSchema = z
 			if (!valid) ctx.addIssue({ code: 'custom', path: [path], message });
 		};
 		if (values.rule_type === 'price') {
-			requireField('price_symbol_id', !!values.price_symbol_id, 'Elige el símbolo');
+			requireField(
+				'price_symbol_id',
+				!!values.price_symbol_id,
+				'Elige el símbolo',
+			);
 			requireField(
 				'price_threshold',
 				isNumber(values.price_threshold) && Number(values.price_threshold) > 0,
@@ -99,12 +104,17 @@ const ruleSchema = z
 			);
 		}
 		if (values.rule_type === 'pnl') {
-			requireField('pnl_threshold', isNumber(values.pnl_threshold), 'Escribe un número, p. ej. -5');
+			requireField(
+				'pnl_threshold',
+				isNumber(values.pnl_threshold),
+				'Escribe un número, p. ej. -5',
+			);
 		}
 		if (values.rule_type === 'drawdown') {
 			requireField(
 				'drawdown_threshold',
-				isNumber(values.drawdown_threshold) && Number(values.drawdown_threshold) > 0,
+				isNumber(values.drawdown_threshold) &&
+					Number(values.drawdown_threshold) > 0,
 				'Debe ser un número mayor que 0',
 			);
 		}
@@ -203,7 +213,8 @@ export function AlertRuleFormDialog({
 			price_threshold: rule.rule_type === 'price' ? toText(spec.threshold) : '',
 			pnl_threshold: rule.rule_type === 'pnl' ? toText(spec.threshold) : '',
 			pnl_period: spec.period ?? 'daily',
-			drawdown_threshold: rule.rule_type === 'drawdown' ? toText(spec.threshold) : '',
+			drawdown_threshold:
+				rule.rule_type === 'drawdown' ? toText(spec.threshold) : '',
 			email: !!channels.email,
 			telegram: !!channels.telegram,
 			desktop: !!channels.desktop,
@@ -239,7 +250,10 @@ export function AlertRuleFormDialog({
 
 		if (rule) {
 			updateMutation.mutate(
-				{ id: rule.id, input: { name: values.name, rule_spec: ruleSpec, channels } },
+				{
+					id: rule.id,
+					input: { name: values.name, rule_spec: ruleSpec, channels },
+				},
 				callbacks,
 			);
 		} else {
@@ -250,7 +264,9 @@ export function AlertRuleFormDialog({
 					rule_spec: ruleSpec,
 					channels,
 					bot_id:
-						values.bot_id && values.bot_id !== ANY_BOT ? Number(values.bot_id) : null,
+						values.bot_id && values.bot_id !== ANY_BOT
+							? Number(values.bot_id)
+							: null,
 				},
 				callbacks,
 			);
@@ -265,7 +281,9 @@ export function AlertRuleFormDialog({
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent className="sm:max-w-lg">
 				<DialogHeader>
-					<DialogTitle>{isEdit ? 'Editar regla' : 'Nueva regla de alerta'}</DialogTitle>
+					<DialogTitle>
+						{isEdit ? 'Editar regla' : 'Nueva regla de alerta'}
+					</DialogTitle>
 					<DialogDescription>
 						Define qué evento te avisa y por qué canales llega el aviso.
 					</DialogDescription>
@@ -398,7 +416,9 @@ export function AlertRuleFormDialog({
 										control={form.control}
 										render={({ field }) => (
 											<Field>
-												<FieldLabel htmlFor="alert-rule-operator">Condición</FieldLabel>
+												<FieldLabel htmlFor="alert-rule-operator">
+													Condición
+												</FieldLabel>
 												<OptionSelect
 													id="alert-rule-operator"
 													value={field.value}
@@ -467,7 +487,9 @@ export function AlertRuleFormDialog({
 										control={form.control}
 										render={({ field }) => (
 											<Field>
-												<FieldLabel htmlFor="alert-rule-period">Período</FieldLabel>
+												<FieldLabel htmlFor="alert-rule-period">
+													Período
+												</FieldLabel>
 												<OptionSelect
 													id="alert-rule-period"
 													value={field.value}
@@ -525,9 +547,13 @@ export function AlertRuleFormDialog({
 													<Checkbox
 														id={`alert-rule-${name}`}
 														checked={field.value}
-														onCheckedChange={(checked) => field.onChange(checked)}
+														onCheckedChange={(checked) =>
+															field.onChange(checked)
+														}
 													/>
-													<FieldLabel htmlFor={`alert-rule-${name}`}>{label}</FieldLabel>
+													<FieldLabel htmlFor={`alert-rule-${name}`}>
+														{label}
+													</FieldLabel>
 												</Field>
 											)}
 										/>
@@ -538,7 +564,9 @@ export function AlertRuleFormDialog({
 									control={form.control}
 									render={({ field, fieldState }) => (
 										<Field data-invalid={fieldState.invalid}>
-											<FieldLabel htmlFor="alert-rule-webhook">URL de webhook</FieldLabel>
+											<FieldLabel htmlFor="alert-rule-webhook">
+												URL de webhook
+											</FieldLabel>
 											<Input
 												{...field}
 												id="alert-rule-webhook"
@@ -548,7 +576,8 @@ export function AlertRuleFormDialog({
 												aria-invalid={fieldState.invalid}
 											/>
 											<FieldDescription>
-												Opcional. Sin canales, la alerta solo queda en tu historial.
+												Opcional. Sin canales, la alerta solo queda en tu
+												historial.
 											</FieldDescription>
 											{fieldState.invalid && (
 												<FieldError errors={[fieldState.error]} />

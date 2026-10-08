@@ -29,7 +29,11 @@ import {
 	AlertTitle,
 } from '@/modules/ui/components/alert';
 import { Button } from '@/modules/ui/components/button';
-import { Field, FieldDescription, FieldLabel } from '@/modules/ui/components/field';
+import {
+	Field,
+	FieldDescription,
+	FieldLabel,
+} from '@/modules/ui/components/field';
 import {
 	Tabs,
 	TabsContent,
@@ -46,7 +50,8 @@ export function AdminBillingPage() {
 	const [closedPeriod, setClosedPeriod] = useState<BillingPeriod | null>(null);
 
 	const account =
-		managedAccountsQuery.data?.find((item) => String(item.id) === selectedId) ?? null;
+		managedAccountsQuery.data?.find((item) => String(item.id) === selectedId) ??
+		null;
 	const accountId = account?.id ?? null;
 	const periodsQuery = useBillingPeriodsQuery(accountId);
 	const feesQuery = useFeeTransactionsQuery(accountId);
@@ -88,13 +93,16 @@ export function AdminBillingPage() {
 							onChange={handleAccountChange}
 							options={managedAccountOptions(managedAccountsQuery.data)}
 							placeholder={
-								managedAccountsQuery.isLoading ? 'Cargando cuentas…' : 'Elige una cuenta'
+								managedAccountsQuery.isLoading
+									? 'Cargando cuentas…'
+									: 'Elige una cuenta'
 							}
 							disabled={managedAccountsQuery.isLoading}
 						/>
 						{hasOpenPeriod && (
 							<FieldDescription>
-								Esta cuenta tiene un período abierto: ciérralo para abrir uno nuevo.
+								Esta cuenta tiene un período abierto: ciérralo para abrir uno
+								nuevo.
 							</FieldDescription>
 						)}
 					</Field>
@@ -152,7 +160,11 @@ export function AdminBillingPage() {
 							empty="Esta cuenta aún no tiene períodos. Abre el primero para empezar a facturar."
 							renderActions={(period) =>
 								period.status === 'open' ? (
-									<Button variant="outline" size="sm" onClick={() => setClosing(period)}>
+									<Button
+										variant="outline"
+										size="sm"
+										onClick={() => setClosing(period)}
+									>
 										<IconLock />
 										Cerrar
 									</Button>

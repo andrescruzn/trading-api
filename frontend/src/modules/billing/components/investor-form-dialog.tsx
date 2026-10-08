@@ -116,11 +116,17 @@ export function InvestorFormDialog({
 
 		if (investor) {
 			updateMutation.mutate(
-				{ id: investor.id, input: { fee_pct: feePct, is_active: values.is_active } },
+				{
+					id: investor.id,
+					input: { fee_pct: feePct, is_active: values.is_active },
+				},
 				callbacks,
 			);
 		} else {
-			createMutation.mutate({ user_id: values.user_id, fee_pct: feePct }, callbacks);
+			createMutation.mutate(
+				{ user_id: values.user_id, fee_pct: feePct },
+				callbacks,
+			);
 		}
 	}
 
@@ -128,7 +134,9 @@ export function InvestorFormDialog({
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent>
 				<DialogHeader>
-					<DialogTitle>{isEdit ? 'Editar inversor' : 'Nuevo inversor'}</DialogTitle>
+					<DialogTitle>
+						{isEdit ? 'Editar inversor' : 'Nuevo inversor'}
+					</DialogTitle>
 					<DialogDescription>
 						{investor
 							? `Inversor #${investor.id} · usuario #${investor.user_id}`
@@ -190,8 +198,9 @@ export function InvestorFormDialog({
 											aria-invalid={fieldState.invalid}
 										/>
 										<FieldDescription>
-											Entre 0 y 100. Se cobra sobre la ganancia por encima de la marca de agua
-											(HWM). Los períodos ya abiertos conservan la comisión anterior.
+											Entre 0 y 100. Se cobra sobre la ganancia por encima de la
+											marca de agua (HWM). Los períodos ya abiertos conservan la
+											comisión anterior.
 										</FieldDescription>
 										{fieldState.invalid && (
 											<FieldError errors={[fieldState.error]} />

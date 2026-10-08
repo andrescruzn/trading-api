@@ -35,7 +35,9 @@ function useSymbolSnapshot(symbolId?: number, timeframeId?: number) {
 	const price = last ? Number(last.close) : null;
 	const changePct =
 		last && previous
-			? ((Number(last.close) - Number(previous.close)) / Number(previous.close)) * 100
+			? ((Number(last.close) - Number(previous.close)) /
+					Number(previous.close)) *
+				100
 			: null;
 
 	return {

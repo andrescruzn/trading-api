@@ -88,7 +88,9 @@ function valuesFor(account: Account | null): AccountValues {
 		name: account?.name ?? '',
 		mode: account?.mode ?? null,
 		base_currency: account?.base_currency ?? 'USDT',
-		exchange_id: account?.exchange_id ? String(account.exchange_id) : NO_EXCHANGE,
+		exchange_id: account?.exchange_id
+			? String(account.exchange_id)
+			: NO_EXCHANGE,
 		status: account?.status ?? 'active',
 		// Los secretos nunca se precargan: vacío = conservar los actuales.
 		api_key: '',
@@ -193,9 +195,13 @@ export function AccountFormDialog({
 			: [{ value: NO_EXCHANGE, label: 'Sin exchange' }]),
 		...(exchangesQuery.data ?? [])
 			.filter(
-				(exchange) => exchange.is_active || exchange.id === account?.exchange_id,
+				(exchange) =>
+					exchange.is_active || exchange.id === account?.exchange_id,
 			)
-			.map((exchange) => ({ value: String(exchange.id), label: exchange.name })),
+			.map((exchange) => ({
+				value: String(exchange.id),
+				label: exchange.name,
+			})),
 	];
 
 	return (
@@ -348,7 +354,9 @@ export function AccountFormDialog({
 										control={form.control}
 										render={({ field, fieldState }) => (
 											<Field data-invalid={fieldState.invalid}>
-												<FieldLabel htmlFor="account-api-key">API key</FieldLabel>
+												<FieldLabel htmlFor="account-api-key">
+													API key
+												</FieldLabel>
 												<Input
 													{...field}
 													id="account-api-key"
@@ -407,8 +415,8 @@ export function AccountFormDialog({
 												aria-invalid={fieldState.invalid}
 											/>
 											<FieldDescription>
-												Para reconocerlas. Solo se guarda junto con una API key y un
-												secret nuevos.
+												Para reconocerlas. Solo se guarda junto con una API key
+												y un secret nuevos.
 											</FieldDescription>
 											{fieldState.invalid && (
 												<FieldError errors={[fieldState.error]} />

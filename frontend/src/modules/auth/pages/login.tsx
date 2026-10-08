@@ -45,7 +45,9 @@ export function LoginPage() {
 					</div>
 					<div className="flex max-w-md flex-col gap-8">
 						<div className="flex flex-col gap-2">
-							<h2 className="text-3xl font-semibold">Opera con reglas, no con emociones</h2>
+							<h2 className="text-3xl font-semibold">
+								Opera con reglas, no con emociones
+							</h2>
 							<p className="text-primary-foreground/80">
 								El sistema solo propone operaciones que pasan reglas objetivas.
 							</p>

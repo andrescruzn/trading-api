@@ -18,12 +18,27 @@ export function AdminExchangesPage() {
 	usePageBreadcrumb([{ label: 'Administración' }, { label: 'Exchanges' }]);
 	const exchangesQuery = useExchangesQuery();
 	// `undefined` = diálogo cerrado; `null` = crear; un exchange = editar.
-	const [editing, setEditing] = useState<Exchange | null | undefined>(undefined);
+	const [editing, setEditing] = useState<Exchange | null | undefined>(
+		undefined,
+	);
 
 	const columns: DataTableColumn<Exchange>[] = [
-		{ id: 'id', header: 'ID', className: 'w-16 font-mono', cell: (row) => row.id },
-		{ id: 'name', header: 'Nombre', cell: (row) => <span className="font-medium">{row.name}</span> },
-		{ id: 'type', header: 'Tipo', cell: (row) => EXCHANGE_TYPE_LABELS[row.type] ?? row.type },
+		{
+			id: 'id',
+			header: 'ID',
+			className: 'w-16 font-mono',
+			cell: (row) => row.id,
+		},
+		{
+			id: 'name',
+			header: 'Nombre',
+			cell: (row) => <span className="font-medium">{row.name}</span>,
+		},
+		{
+			id: 'type',
+			header: 'Tipo',
+			cell: (row) => EXCHANGE_TYPE_LABELS[row.type] ?? row.type,
+		},
 		{
 			id: 'status',
 			header: 'Estado',
@@ -33,7 +48,11 @@ export function AdminExchangesPage() {
 				</Badge>
 			),
 		},
-		{ id: 'created', header: 'Creado', cell: (row) => formatDate(row.created_at) },
+		{
+			id: 'created',
+			header: 'Creado',
+			cell: (row) => formatDate(row.created_at),
+		},
 		{
 			id: 'actions',
 			header: <span className="sr-only">Acciones</span>,
@@ -53,7 +72,11 @@ export function AdminExchangesPage() {
 				title="Exchanges"
 				description="Exchanges, brókers y proveedores de datos."
 				actions={[
-					{ label: 'Nuevo exchange', icon: <IconPlus />, onClick: () => setEditing(null) },
+					{
+						label: 'Nuevo exchange',
+						icon: <IconPlus />,
+						onClick: () => setEditing(null),
+					},
 				]}
 			/>
 			<DataTable

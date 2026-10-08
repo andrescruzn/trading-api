@@ -6,13 +6,19 @@ import { z } from 'zod';
 import { useAccountsQuery } from '@/modules/accounts/hooks/use-accounts-queries';
 import type { Bot, BotMode } from '@/modules/bots/api/bots.api';
 import { useCreateBotMutation } from '@/modules/bots/hooks/use-bots-mutations';
-import { BOT_MODE_FORM_OPTIONS, BOT_MODE_LABELS } from '@/modules/bots/lib/bots-labels';
+import {
+	BOT_MODE_FORM_OPTIONS,
+	BOT_MODE_LABELS,
+} from '@/modules/bots/lib/bots-labels';
 import { useFeatureSetsQuery } from '@/modules/features/hooks/use-features-queries';
 import {
 	useSymbolsQuery,
 	useTimeframesQuery,
 } from '@/modules/market/hooks/use-market-queries';
-import { symbolOptions, timeframeOptions } from '@/modules/market/lib/market-labels';
+import {
+	symbolOptions,
+	timeframeOptions,
+} from '@/modules/market/lib/market-labels';
 import { OptionSelect } from '@/modules/shared/components/option-select';
 import { getErrorMessage } from '@/modules/shared/lib/get-error-message';
 import { requiredSelectField } from '@/modules/shared/lib/required-select-field';
@@ -73,7 +79,11 @@ type BotFormDialogProps = {
 	onCreated?: (bot: Bot) => void;
 };
 
-export function BotFormDialog({ open, onOpenChange, onCreated }: BotFormDialogProps) {
+export function BotFormDialog({
+	open,
+	onOpenChange,
+	onCreated,
+}: BotFormDialogProps) {
 	const accountsQuery = useAccountsQuery();
 	const symbolsQuery = useSymbolsQuery({ is_active: true });
 	const timeframesQuery = useTimeframesQuery();
@@ -133,13 +143,22 @@ export function BotFormDialog({ open, onOpenChange, onCreated }: BotFormDialogPr
 	}));
 
 	const selectFields: {
-		name: 'account_id' | 'symbol_id' | 'timeframe_id' | 'strategy_id' | 'feature_set_id';
+		name:
+			| 'account_id'
+			| 'symbol_id'
+			| 'timeframe_id'
+			| 'strategy_id'
+			| 'feature_set_id';
 		label: string;
 		options: { value: string; label: string }[];
 		description?: string;
 	}[] = [
 		{ name: 'account_id', label: 'Cuenta', options: accountOptions },
-		{ name: 'symbol_id', label: 'Símbolo', options: symbolOptions(symbolsQuery.data) },
+		{
+			name: 'symbol_id',
+			label: 'Símbolo',
+			options: symbolOptions(symbolsQuery.data),
+		},
 		{
 			name: 'timeframe_id',
 			label: 'Timeframe',
@@ -160,8 +179,8 @@ export function BotFormDialog({ open, onOpenChange, onCreated }: BotFormDialogPr
 				<DialogHeader>
 					<DialogTitle>Nuevo bot</DialogTitle>
 					<DialogDescription>
-						El bot aplica una estrategia sobre un símbolo y genera señales que pasan
-						las reglas de riesgo.
+						El bot aplica una estrategia sobre un símbolo y genera señales que
+						pasan las reglas de riesgo.
 					</DialogDescription>
 				</DialogHeader>
 				<form
@@ -191,7 +210,9 @@ export function BotFormDialog({ open, onOpenChange, onCreated }: BotFormDialogPr
 													aria-invalid={fieldState.invalid}
 												/>
 												{item.description && (
-													<FieldDescription>{item.description}</FieldDescription>
+													<FieldDescription>
+														{item.description}
+													</FieldDescription>
 												)}
 												{fieldState.invalid && (
 													<FieldError errors={[fieldState.error]} />
@@ -231,7 +252,10 @@ export function BotFormDialog({ open, onOpenChange, onCreated }: BotFormDialogPr
 								name="risk_pct"
 								control={form.control}
 								render={({ field, fieldState }) => (
-									<Field data-invalid={fieldState.invalid} className="sm:max-w-xs">
+									<Field
+										data-invalid={fieldState.invalid}
+										className="sm:max-w-xs"
+									>
 										<FieldLabel htmlFor="bot-risk" required>
 											Riesgo por operación (%)
 										</FieldLabel>
@@ -263,8 +287,14 @@ export function BotFormDialog({ open, onOpenChange, onCreated }: BotFormDialogPr
 					<Button variant="outline" onClick={() => onOpenChange(false)}>
 						Cancelar
 					</Button>
-					<Button type="submit" form="bot-form" disabled={createMutation.isPending}>
-						{createMutation.isPending && <IconLoader2 className="animate-spin" />}
+					<Button
+						type="submit"
+						form="bot-form"
+						disabled={createMutation.isPending}
+					>
+						{createMutation.isPending && (
+							<IconLoader2 className="animate-spin" />
+						)}
 						Crear bot
 					</Button>
 				</DialogFooter>

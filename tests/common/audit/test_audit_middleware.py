@@ -82,15 +82,11 @@ class TestAuditMiddlewareSkipsExcludedPaths:
         time.sleep(0.05)
         mock_repo.insert.assert_not_called()
 
-    def test_skips_static_paths(self, mock_repo):
+    def test_skips_docs_paths(self, mock_repo):
         app = make_test_app(mock_repo)
-        # No montamos static real — solo verificamos que la lógica de skip
-        # no invoca insert para paths que empiezan con /static/
-        # Probamos directo con el middleware sin TestClient para static
-
-        # Alternativa: verificamos via /static/ → 404 pero sin insert
+        # La documentación interactiva (/docs, /redoc, /openapi.json) no se audita
         with TestClient(app, raise_server_exceptions=False) as c:
-            c.get("/static/some/file.css")
+            c.get("/docs")
             time.sleep(0.05)
             mock_repo.insert.assert_not_called()
 

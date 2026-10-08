@@ -29,6 +29,10 @@ from sqlalchemy.orm import Session
 
 from app.common.config import settings
 from app.common.errors import AUTH_ERROR_MESSAGES
+from app.modules.users.rest.auth.error_messages import (
+    CHANGE_PASSWORD_ERROR_MESSAGES,
+    OTP_REQUEST_ERROR_MESSAGES,
+)
 from app.common.http import (
     build_error_response,
     build_internal_error_response,
@@ -146,7 +150,7 @@ def login(
         result = factory.login_password().login(payload.email, payload.password)
 
         if not result.success:
-            return build_error_response(result)
+            return build_error_response(result, AUTH_ERROR_MESSAGES)
 
         if result.data is None:
             return build_internal_error_response()
@@ -163,7 +167,7 @@ def login(
     result = factory.login_otp().request_login_otp(payload.email)
 
     if not result.success:
-        return build_error_response(result)
+        return build_error_response(result, OTP_REQUEST_ERROR_MESSAGES)
 
     if result.data is None:
         return build_internal_error_response()
@@ -211,7 +215,7 @@ def verify_otp(
     result = factory.verify_otp().verify(payload.email, payload.otp_code)
 
     if not result.success:
-        return build_error_response(result)
+        return build_error_response(result, AUTH_ERROR_MESSAGES)
 
     if result.data is None:
         return build_internal_error_response()
@@ -245,7 +249,7 @@ def logout(
     result = factory.logout().logout(user_id=int(identity["user_id"]))
 
     if not result.success:
-        return build_error_response(result)
+        return build_error_response(result, AUTH_ERROR_MESSAGES)
 
     return build_logout_response()
 
@@ -332,18 +336,14 @@ def change_password(
     )
 
     if not result.success:
-        # Sin AUTH_ERROR_MESSAGES: json.msg llega como código crudo
-        # ("PASSWORD_TOO_WEAK", "INVALID_CREDENTIALS", etc.) para que
-        # el JS del frontend lo mapee a mensajes en español.
-        return build_error_response(result)
+        return build_error_response(result, CHANGE_PASSWORD_ERROR_MESSAGES)
 
-    # Limpiar cookie: el JTI fue revocado en DB, pero el browser
-    # aún tiene la cookie. Si no la borramos aquí, /login la ve
-    # como válida (JWT signature ok) y redirige a /dashboard → loop.
+    # Limpiar cookie: el JTI fue revocado en DB, así que la cookie ya no
+    # sirve; se borra para que el cliente no siga enviando una sesión muerta.
     response = JSONResponse(
         status_code=200,
         content={
-            "msg": "Password changed successfully",
+            "msg": "Cambiaste tu contraseña. Inicia sesión de nuevo.",
             "errorCode": 200,
             "data": {"password_changed": True},
         },
@@ -390,7 +390,7 @@ def rotate_token(
     result = factory.rotate_token().rotate(user_id=int(identity["user_id"]))
 
     if not result.success:
-        return build_error_response(result)
+        return build_error_response(result, AUTH_ERROR_MESSAGES)
 
     if result.data is None:
         return build_internal_error_response()

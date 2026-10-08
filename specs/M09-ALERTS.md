@@ -12,8 +12,9 @@
 | Tablas | `alert_rules`, `alert_events` (R/W); `bots`, `signals`, `orders` (R, vía hooks) |
 | Depende de | [M1](M01-AUTH.md), [M7](M07-BOTS-SIGNALS.md) y [M8](M08-ORDERS-EXECUTION.md) (hooks); mailer para el canal email |
 | Lo usan | Es un consumidor: lo invocan [M7](M07-BOTS-SIGNALS.md) y [M8](M08-ORDERS-EXECUTION.md) |
-| Prefijo API | `/api/alert-rules`, `/api/alert-events`, `/api/alerts` (el `/api/` es obligatorio) |
-| Última revisión | 2026-10-07 |
+| Prefijo API | `/api/alert-rules`, `/api/alert-events`, `/api/alerts` |
+| Frontend | `frontend/src/modules/alerts` |
+| Última revisión | 2026-10-08 |
 
 ## Descripción
 
@@ -33,10 +34,14 @@
 
 ## Páginas
 
-**Páginas:**
-- `/alerts` — Panel del usuario: reglas configuradas + historial de alertas recibidas
-- `/admin/alerts` — Vista admin: todas las reglas y eventos del sistema
-- `/admin/telegram` — Configurar y probar la conexión con Telegram Bot
+Hash routing: la URL real es `/#/<ruta>`.
+
+**Páginas — Usuario (cualquier usuario autenticado):**
+- `/#/alerts` — Panel del usuario: reglas configuradas (crear/editar en diálogo, activar/desactivar) + historial de alertas recibidas
+
+**Páginas — Administrador (solo admin):**
+- `/#/admin/alerts` — Vista admin: todas las reglas y eventos del sistema
+- `/#/admin/telegram` — Ver la configuración y probar la conexión con Telegram Bot
 
 ## Entregables
 
@@ -50,8 +55,8 @@ Entregables:
 - ✅ Provider: AlertServiceFactory + get_alert_factory() + build_evaluate_alerts_service()
 - ✅ REST: GET/POST/PUT/DELETE /api/alert-rules, GET /api/alert-events, POST /api/alerts/evaluate, POST /api/alerts/test-telegram
 - ✅ Hooks fire-and-forget en M7 (GenerateSignalService) y M8 (CreateOrderService)
-- ✅ Web UI: /alerts (usuario), /admin/alerts (admin), /admin/telegram (config Telegram)
-- ✅ Sidebar actualizado con links de Alertas
+- ✅ Web UI: `/#/alerts` (usuario), `/#/admin/alerts` (admin), `/#/admin/telegram` (config Telegram) — en React desde 2026-10-08
+- ✅ Sidebar (`app-sidebar.tsx`) con links de Alertas y Telegram
 - ✅ ALERT_TEMPLATE agregado al catálogo de mail templates
 - httpx ya instalado (v0.28.1); plyer se instala opcionalmente para desktop notifications
 
@@ -94,6 +99,7 @@ Entregables:
 | Media | Reintentos y *backoff* para entregas `failed`, y *cooldown* para no repetir la misma alerta de precio en cada ciclo | M |
 | Media | Deduplicación / agrupación de alertas (un bot en error no debe generar una alerta por ciclo) | M |
 | Baja | Telegram por usuario (cada uno vincula su chat) y plantillas por canal | M |
+| Baja | Botón en `/#/admin/alerts` para `POST /api/alerts/evaluate` (hoy solo por API; el front no lo llama) | S |
 
 ## Fuera de alcance y pendientes conocidos
 
@@ -155,12 +161,18 @@ Provider: `app/modules/alerts/providers/alert_provider.py` → `AlertServiceFact
 | POST | `/api/alerts/evaluate` | admin | Evaluación manual de reglas tipo price |
 | POST | `/api/alerts/test-telegram` | admin | Test de conexión Telegram |
 
-### Páginas web
-| URL | Template | JS |
+Los routers declaran `prefix="/alert-rules"`, `"/alert-events"`, `"/alerts"`; el `/api` lo añade `app_factory.py` (`settings.API_PREFIX`).
+
+### Frontend (`frontend/src/modules/alerts/`)
+| Ruta | Archivo de ruta | Página / componentes |
 |-----|----------|----|
-| `/alerts` | `templates/alerts/index.html` | `static/js/alerts/index.js` |
-| `/admin/alerts` | `templates/admin/alerts.html` | `static/js/admin/alerts.js` |
-| `/admin/telegram` | `templates/admin/telegram.html` | `static/js/admin/telegram.js` |
+| `/#/alerts` | `routes/_app/alerts.lazy.tsx` | `pages/alerts.tsx` (`AlertsPage`) + `components/alert-rule-form-dialog.tsx` + `components/alert-events-table.tsx` |
+| `/#/admin/alerts` | `routes/_app/admin/alerts.lazy.tsx` | `pages/admin-alerts.tsx` + `components/alert-events-table.tsx` |
+| `/#/admin/telegram` | `routes/_app/admin/telegram.lazy.tsx` | `pages/admin-telegram.tsx` |
+
+- API: `api/alerts.api.ts` (`/alert-rules`, `/alert-events`, `/alerts/test-telegram`); hooks `use-alerts-queries.ts` / `use-alerts-mutations.ts`; etiquetas `lib/alerts-labels.ts`; badges `components/alert-badges.tsx`.
+- Activar/desactivar una regla se hace con `PUT /api/alert-rules/{id}` (`is_active`); el front no usa `DELETE` ni `POST /api/alerts/evaluate`.
+- Nombres de bot: `useMyBotsQuery` de [M7](M07-BOTS-SIGNALS.md) en páginas de usuario (una petición por cuenta) y `useBotsQuery()` en admin.
 
 ### Hooks en otros módulos
 - `app/modules/bots/services/signals/generate_signal_service.py` — hook post-commit: `evaluate_alerts.evaluate_signal_alerts()`
@@ -200,3 +212,4 @@ DESKTOP_NOTIFICATIONS_ENABLED=false
 
 - **2026-03** — Módulo completado: 4 canales, reglas y eventos, hooks en M7/M8, UI `/alerts`, `/admin/alerts`, `/admin/telegram`, plantilla `ALERT_TEMPLATE`.
 - **Dependencias:** `httpx` 0.28.1 ya instalado; `plyer` opcional.
+- **2026-10-08** — API headless (/api), páginas migradas a React (frontend/).

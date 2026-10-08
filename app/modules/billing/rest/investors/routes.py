@@ -27,7 +27,7 @@ from app.modules.billing.providers.billing_provider import BillingServiceFactory
 from .error_messages import INVESTOR_ERROR_MESSAGES
 from .schemas import CreateInvestorRequest, UpdateInvestorRequest
 
-router = APIRouter(prefix="/api/investors", tags=["Billing — Investors"])
+router = APIRouter(prefix="/investors", tags=["Billing — Investors"])
 
 
 def get_factory(db: Session = Depends(get_db)) -> BillingServiceFactory:
@@ -70,7 +70,7 @@ def list_investors(
         return build_list_response(items=items, msg="OK")
 
     if not is_admin:
-        return send(msg="No autorizado.", status_code=403, data={})
+        return send(msg="No tienes permiso para hacer esta acción.", status_code=403, data={})
 
     result = factory.list_investors().execute(only_active=only_active)
     return build_list_response(
@@ -90,7 +90,7 @@ def create_investor(
     factory: BillingServiceFactory = Depends(get_factory),
 ):
     if not _require_admin(identity):
-        return send(msg="No autorizado.", status_code=403, data={})
+        return send(msg="No tienes permiso para hacer esta acción.", status_code=403, data={})
 
     result = factory.create_investor().execute(
         user_id=payload.user_id,
@@ -113,7 +113,7 @@ def get_investor(
     factory: BillingServiceFactory = Depends(get_factory),
 ):
     if not _require_admin(identity):
-        return send(msg="No autorizado.", status_code=403, data={})
+        return send(msg="No tienes permiso para hacer esta acción.", status_code=403, data={})
 
     investor = factory._investor_repo.find_by_id(investor_id)
     if not investor:
@@ -134,7 +134,7 @@ def update_investor(
     factory: BillingServiceFactory = Depends(get_factory),
 ):
     if not _require_admin(identity):
-        return send(msg="No autorizado.", status_code=403, data={})
+        return send(msg="No tienes permiso para hacer esta acción.", status_code=403, data={})
 
     result = factory.update_investor().execute(
         investor_id=investor_id,

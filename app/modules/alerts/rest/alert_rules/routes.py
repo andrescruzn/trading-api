@@ -34,7 +34,7 @@ from app.modules.alerts.providers import AlertServiceFactory, get_alert_factory
 from .error_messages import ALERT_RULE_ERROR_MESSAGES
 from .schemas import CreateAlertRuleRequest, UpdateAlertRuleRequest
 
-router = APIRouter(prefix="/api/alert-rules", tags=["Alert Rules"])
+router = APIRouter(prefix="/alert-rules", tags=["Alert Rules"])
 
 
 def get_factory(db: Session = Depends(get_db)) -> AlertServiceFactory:

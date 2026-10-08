@@ -78,7 +78,7 @@ def _is_investor(identity: dict) -> bool:
 # GET /api/billing-periods?managed_account_id=X
 # ======================================================================
 
-@router.get("/api/billing-periods", status_code=200)
+@router.get("/billing-periods", status_code=200)
 def list_billing_periods(
     managed_account_id: int,
     limit: int = 50,
@@ -92,7 +92,7 @@ def list_billing_periods(
             return build_list_response(items=[], msg="OK")
         investor_id = inv.id
     elif not _require_admin(identity):
-        return send(msg="No autorizado.", status_code=403, data={})
+        return send(msg="No tienes permiso para hacer esta acción.", status_code=403, data={})
 
     result = factory.list_billing_periods().execute(
         managed_account_id=managed_account_id,
@@ -112,14 +112,14 @@ def list_billing_periods(
 # POST /api/billing-periods/open
 # ======================================================================
 
-@router.post("/api/billing-periods/open", status_code=201)
+@router.post("/billing-periods/open", status_code=201)
 def open_billing_period(
     payload: OpenBillingPeriodRequest,
     identity: dict = Depends(token_required_actual),
     factory: BillingServiceFactory = Depends(get_factory),
 ):
     if not _require_admin(identity):
-        return send(msg="No autorizado.", status_code=403, data={})
+        return send(msg="No tienes permiso para hacer esta acción.", status_code=403, data={})
 
     result = factory.open_billing_period().execute(
         managed_account_id=payload.managed_account_id,
@@ -135,7 +135,7 @@ def open_billing_period(
 # POST /api/billing-periods/{id}/close
 # ======================================================================
 
-@router.post("/api/billing-periods/{period_id}/close", status_code=200)
+@router.post("/billing-periods/{period_id}/close", status_code=200)
 def close_billing_period(
     period_id: int,
     payload: CloseBillingPeriodRequest,
@@ -143,7 +143,7 @@ def close_billing_period(
     factory: BillingServiceFactory = Depends(get_factory),
 ):
     if not _require_admin(identity):
-        return send(msg="No autorizado.", status_code=403, data={})
+        return send(msg="No tienes permiso para hacer esta acción.", status_code=403, data={})
 
     result = factory.close_billing_period().execute(
         period_id=period_id,
@@ -159,7 +159,7 @@ def close_billing_period(
 # GET /api/fee-transactions?managed_account_id=X
 # ======================================================================
 
-@router.get("/api/fee-transactions", status_code=200)
+@router.get("/fee-transactions", status_code=200)
 def list_fee_transactions(
     managed_account_id: int,
     limit: int = 50,
@@ -173,7 +173,7 @@ def list_fee_transactions(
             return build_list_response(items=[], msg="OK")
         investor_id = inv.id
     elif not _require_admin(identity):
-        return send(msg="No autorizado.", status_code=403, data={})
+        return send(msg="No tienes permiso para hacer esta acción.", status_code=403, data={})
 
     result = factory.list_fee_transactions().execute(
         managed_account_id=managed_account_id,

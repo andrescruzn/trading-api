@@ -148,7 +148,7 @@ class LoginOtpService:
             context={
                 "otp_code": otp_plain,
                 "expires_minutes": self._otp_ttl_minutes,
-                "title": "OTP Trading AI",
+                "title": "Tu código de acceso a Trading App",
             },
             text_body=f"Tu OTP es: {otp_plain}. Expira en {self._otp_ttl_minutes} minutos.",
         )

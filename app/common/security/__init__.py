@@ -21,6 +21,7 @@ from .sanitization import sanitize_html
 from .password_hasher import hash_password, verify_password
 from .rate_limiter import (
     RateLimiter,
+    RateLimitExceeded,
     auth_rate_limiter,
     default_rate_limiter,
     rate_limit_dependency,
@@ -50,6 +51,7 @@ __all__ = [
 
     # Rate limiting
     "RateLimiter",
+    "RateLimitExceeded",
     "auth_rate_limiter",
     "default_rate_limiter",
     "rate_limit_dependency",

@@ -33,7 +33,7 @@ from app.modules.orders.providers import OrderServiceFactory, get_order_factory
 from .error_messages import ORDER_ERROR_MESSAGES
 from .schemas import CreateOrderRequest
 
-router = APIRouter(prefix="/api/orders", tags=["Orders"])
+router = APIRouter(prefix="/orders", tags=["Orders"])
 
 
 # ======================================================================
@@ -128,7 +128,7 @@ def list_orders(
     is_admin = int(identity.get("role_id", 0)) == int(settings.AUTH_ADMIN_ROLE_ID)
 
     if not is_admin and bot_id is None:
-        return send(msg="Debes indicar bot_id para listar tus órdenes.", status_code=400)
+        return send(msg="Elige un bot para ver sus órdenes.", status_code=400)
 
     result = factory.list_orders().list(bot_id=bot_id, limit=limit)
 

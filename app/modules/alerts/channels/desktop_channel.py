@@ -39,7 +39,7 @@ class DesktopChannel:
             notification.notify(
                 title=title,
                 message=message,
-                app_name="Trading AI",
+                app_name="Trading App",
                 timeout=10,
             )
             return True

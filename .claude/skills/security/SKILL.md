@@ -53,37 +53,32 @@ from app.common.security.security_headers import SecurityHeadersMiddleware
 app.add_middleware(SecurityHeadersMiddleware)
 ```
 
-### CSP para páginas web (Jinja2)
+### CSP
 
-```
-default-src 'self';
-script-src 'self';
-style-src 'self';
-img-src 'self' data:;
-font-src 'self';
-connect-src 'self';
-frame-ancestors 'none';
-base-uri 'self';
-form-action 'self';
-```
+La API es headless: todas las respuestas llevan `default-src 'none'; frame-ancestors 'none';`. La única excepción es la documentación interactiva (`/docs`, `/redoc`), que permite `cdn.jsdelivr.net` y su script inline de arranque (`_CSP_DOCS`). La CSP del frontend la pone el servidor que sirva `frontend/dist` (Nginx, Vercel…), no FastAPI.
 
-**Regla:** NUNCA usar `'unsafe-inline'` ni `'unsafe-eval'` en producción.
+### CORS y cookie de sesión con el frontend
 
-> Estado real: `_CSP_WEB` en `security_headers.py` todavía incluye `'unsafe-inline'` en `script-src`/`style-src` (más `unpkg.com` y Google Fonts). Es deuda: no añadir código que dependa de ello (ver skill `web-ui`).
+- La sesión es la cookie HttpOnly `AUTH_COOKIE_NAME`; el front llama con `credentials: 'include'` y nunca ve el token.
+- **Desarrollo**: el front usa el proxy `/api` de Vite → mismo origen, `SameSite=Lax` basta y CORS no interviene.
+- **Producción (recomendado)**: front y API en el mismo sitio (reverse proxy `/api` o subdominios del mismo dominio) con `SameSite=Lax`. Si el front vive en otro dominio: `AUTH_COOKIE_SAMESITE=None` + HTTPS y el origen exacto en `CORS_ORIGINS` (nunca `*` con credenciales).
+- **CSRF**: no hay token anti-CSRF; la protección es `SameSite` + CORS con orígenes explícitos + rutas de escritura solo por `POST/PUT/PATCH/DELETE` con JSON. Con `SameSite=None` esa defensa se debilita: antes de usarlo, añadir verificación de `Origin`.
 
 ---
 
 ## XSS Prevention
 
-### 1. Jinja2 auto-escaping
+### 1. React escapa por defecto
 
-```html
-<!-- ✅ Seguro (Jinja2 escapa automáticamente) -->
-<p>{{ user.full_name }}</p>
+```tsx
+// ✅ Seguro: React escapa el texto
+<p>{user.full_name}</p>
 
-<!-- ❌ PELIGROSO — solo para contenido confiable del sistema -->
-<p>{{ description | safe }}</p>
+// ❌ PELIGROSO — prohibido con datos del usuario o de la API
+<p dangerouslySetInnerHTML={{ __html: description }} />
 ```
+
+En las plantillas de correo (Jinja2, `app/modules/mailer/templates/`) el autoescape sigue activo: nunca `| safe` con datos del usuario.
 
 ### 2. Bleach para HTML de usuarios
 
@@ -192,7 +187,7 @@ def validate_password_strength(password: str) -> bool:
 ## Reglas para Claude
 
 1. NUNCA retornar tokens JWT en el body cuando se usan cookies.
-2. NUNCA usar `| safe` en templates Jinja2 con input de usuarios.
+2. NUNCA usar `dangerouslySetInnerHTML` en el front ni `| safe` en plantillas de correo con input de usuarios.
 3. NUNCA concatenar strings en queries SQL — usar parámetros named.
 4. NUNCA usar `'unsafe-inline'` en CSP.
 5. SIEMPRE agregar rate limit en endpoints de auth con `Depends(check_auth_rate_limit)`.

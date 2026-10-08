@@ -22,7 +22,7 @@ from app.extensions.db import get_db
 from app.modules.orders.domain.position_entity import Position
 from app.modules.orders.providers import OrderServiceFactory, get_order_factory
 
-router = APIRouter(prefix="/api/positions", tags=["Positions"])
+router = APIRouter(prefix="/positions", tags=["Positions"])
 
 
 # ======================================================================
@@ -72,7 +72,7 @@ def list_positions(
     is_admin = int(identity.get("role_id", 0)) == int(settings.AUTH_ADMIN_ROLE_ID)
 
     if not is_admin and bot_id is None:
-        return send(msg="Debes indicar bot_id para ver tus posiciones.", status_code=400)
+        return send(msg="Elige un bot para ver sus posiciones.", status_code=400)
 
     result = factory.list_positions().list(bot_id=bot_id)
 

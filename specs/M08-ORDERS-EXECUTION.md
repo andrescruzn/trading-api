@@ -12,8 +12,9 @@
 | Tablas | `orders`, `fills`, `positions` (R/W); `bots`, `candles`, `symbols`, `exchanges`, `accounts` (R) |
 | Depende de | [M2](M02-MARKET-DATA.md), [M4](M04-ACCOUNTS-PORTFOLIO.md) (credenciales Fernet), [M7](M07-BOTS-SIGNALS.md) |
 | Lo usan | [M9](M09-ALERTS.md) (hook de orden), [M10](M10-BILLING.md) (historial de órdenes y fills) |
-| Prefijo API | `/api/orders`, `/api/fills`, `/api/positions` (el `/api/` es obligatorio) |
-| Última revisión | 2026-10-07 |
+| Prefijo API | `/api/orders`, `/api/fills`, `/api/positions` |
+| Frontend | `frontend/src/modules/orders` |
+| Última revisión | 2026-10-08 |
 
 ## Descripción
 
@@ -32,11 +33,13 @@
 
 ## Páginas
 
+Hash routing: la URL real es `/#/<ruta>`.
+
 **Páginas — Usuario (cualquier usuario autenticado):**
-- `/orders` — Libro de órdenes: selector de bot, tabs de Órdenes / Posiciones / Ejecuciones, modal para crear nueva orden
+- `/#/orders` — Libro de órdenes: selector de bot (bots de tus cuentas, por nombre), pestañas Órdenes / Posiciones / Ejecuciones, diálogo para crear nueva orden
 
 **Páginas — Administrador (solo admin):**
-- `/admin/orders` — Vista global de todas las órdenes del sistema con filtros por lado, estado y tipo
+- `/#/admin/orders` — Vista global de todas las órdenes del sistema con filtros por lado, estado y tipo, y diálogo con los fills de cada orden
 
 ## Entregables
 
@@ -49,9 +52,9 @@ Entregables:
 - ✅ Services: list_orders, get_order, create_order, list_fills, list_positions
 - ✅ CreateOrderService: valida bot, selecciona executor según bot.mode, crea order+fill+position en transacción atómica
 - ✅ Provider: OrderServiceFactory con repos propios + borrowed de M7/M2/M4
-- ✅ REST: POST /orders, GET /orders, GET /orders/{id}, GET /fills, GET /positions
-- ✅ Web UI usuario: /orders con tabs Órdenes/Posiciones/Ejecuciones + modal crear orden
-- ✅ Web UI admin: /admin/orders con filtros por lado/estado/tipo + modal fills
+- ✅ REST: `POST /api/orders`, `GET /api/orders`, `GET /api/orders/{id}`, `GET /api/fills`, `GET /api/positions`
+- ✅ Web UI usuario: `/#/orders` con tabs Órdenes/Posiciones/Ejecuciones + diálogo crear orden (React desde 2026-10-08)
+- ✅ Web UI admin: `/#/admin/orders` con filtros por lado/estado/tipo + diálogo de fills
 - ✅ LiveExecutor: integración completa ccxt + Fernet credentials
 
 ## Decisiones de diseño
@@ -68,7 +71,7 @@ Entregables:
 | El símbolo para ccxt se guarda en `order.meta["symbol"]` | `LiveExecutor` no tiene que re-resolver el símbolo | Resolverlo en cada llamada |
 | Máquina de estados de la orden en la entidad: `new → sent → filled / partially_filled / canceled / rejected` | Transiciones válidas centralizadas y testeables | Estado libre |
 | Solo se crean órdenes para bots `running` | Un bot parado o en error no opera | Permitirlo y avisar |
-| Prefijo `/api/` obligatorio | Las páginas `/orders` y `/admin/orders` quedaban tapadas por el router REST | Cambiar las páginas de ruta |
+| Prefijo `/api/` | Originalmente porque las páginas Jinja `/orders` y `/admin/orders` quedaban tapadas por el router REST; desde 2026-10-08 todo el REST va bajo `settings.API_PREFIX` y la UI es React con hash routing | Cambiar las páginas de ruta |
 | Hook de alertas post-commit en `try/except` ([M9](M09-ALERTS.md)) | Una alerta no aborta el flujo de trading | Alertas dentro de la transacción |
 
 ## Avance
@@ -91,6 +94,7 @@ Entregables:
 | Alta | **SL/TP automáticos:** crear órdenes de protección (OCO/`stop`) al abrir una posición o monitorizar precio y cerrar; hoy la señal de [M7](M07-BOTS-SIGNALS.md) los calcula pero nadie los ejecuta | L |
 | Alta | Cancelar órdenes (`DELETE`/`POST .../cancel`) y **sincronizar estado y fills** con el exchange (`fetch_order`), para `limit`/`stop` y ejecuciones parciales | L |
 | Alta | Salvaguardas para `live`: tamaño máximo de orden, saldo mínimo, límite diario y confirmación explícita | M |
+| Alta | **Control de propiedad:** `POST /api/orders` y los listados por `bot_id` (`/api/orders`, `/api/positions`, `/api/fills`) solo exigen token; no comprueban que el bot sea del usuario (con `live`, cualquiera podría operar el bot de otro) | S |
 | Media | Soporte de posiciones cortas (`qty` negativa o campo `side`): una señal SELL de [M7](M07-BOTS-SIGNALS.md) implica corto y el esquema hoy lo impide (`chk_positions_qty`) | L |
 | Media | `PaperExecutor` realista: comisión y *slippage* configurables | S |
 | Media | Idempotencia con `client_order_id` para no duplicar órdenes al reintentar | M |
@@ -150,27 +154,31 @@ Provider: `app/modules/orders/providers/order_provider.py` → `OrderServiceFact
 | Método | Ruta | Auth | Nota |
 |--------|------|------|------|
 | POST | `/api/orders` | token | Crea y ejecuta orden (paper o live) |
-| GET | `/api/orders` | token | Lista por bot_id (admin puede listar todo) |
+| GET | `/api/orders` | token | Lista por bot_id; sin `bot_id` solo admin (los demás reciben 400 "Elige un bot para ver sus órdenes.") |
 | GET | `/api/orders/{id}` | token | Detalle de una orden |
 | GET | `/api/fills` | token | Lista por order_id o bot_id |
-| GET | `/api/positions` | token | Lista por bot_id (admin puede listar todo) |
+| GET | `/api/positions` | token | Lista por bot_id; sin `bot_id` solo admin (400 para los demás) |
 
-**⚠️ IMPORTANTE:** Prefijo `/api/` obligatorio — sin él colisiona con las páginas web `/orders` y `/admin/orders`.
+Los routers declaran `prefix="/orders"`, `"/fills"`, `"/positions"`; el `/api` lo añade `app_factory.py` (`settings.API_PREFIX`).
 
-Routers registrados en `app/app_factory.py`:
+Routers registrados en `app/app_factory.py` (dentro de `api_routers`):
 ```python
 from app.modules.orders.rest import orders_router, fills_router, positions_router
 ```
 
-### Páginas web
-| URL | Template | JS |
+### Frontend (`frontend/src/modules/orders/`)
+| Ruta | Archivo de ruta | Página / componentes |
 |-----|----------|----|
-| `/orders` | `templates/orders/index.html` | `static/js/orders/index.js` |
-| `/admin/orders` | `templates/admin/orders.html` | `static/js/admin/orders.js` |
+| `/#/orders` | `routes/_app/orders.lazy.tsx` | `pages/orders.tsx` (`OrdersPage`) + `components/orders-table.tsx` + `components/positions-grid.tsx` + `components/fills-table.tsx` + `components/order-form-dialog.tsx` |
+| `/#/admin/orders` | `routes/_app/admin/orders.lazy.tsx` | `pages/admin-orders.tsx` + `components/order-fills-dialog.tsx` |
+
+- API: `api/orders.api.ts` (`listOrders`, `getOrder`, `createOrder`, `listPositions`, `listFills`); hooks `use-orders-queries.ts` / `use-orders-mutations.ts`; etiquetas `lib/orders-labels.ts`; badges `components/order-badges.tsx`.
+- El selector de bot de `/#/orders` usa `useBotsByAccountsQuery` de [M7](M07-BOTS-SIGNALS.md) (una petición `GET /api/bots?account_id=` por cuenta, porque la API exige `account_id` a los no admin); la página admin usa `useBotsQuery()` sin filtro.
 
 ## Gotchas críticos
 
-- **Prefijo `/api/`:** las rutas REST DEBEN usar `/api/orders`, `/api/fills`, `/api/positions` — sin él la página web `/orders` nunca se renderiza (el router REST captura antes).
+- ~~Prefijo `/api/` obligatorio por colisión con la página web~~ — resuelto el 2026-10-08: ya no hay páginas servidas por FastAPI.
+- **Decimales como `float`:** los serializadores de órdenes, fills y posiciones (`_decimal_or_none` → `float(...)`) devuelven `qty`, `price`, `fee`, `avg_price`, `realized_pnl`… como números, no como string `DECIMAL(30,12)`; el front los tipa como `number`. Puede perder precisión en cantidades con muchos decimales.
 - **PaperExecutor:** usa `candle_repo.list_candles(symbol_id, timeframe_id, limit=1)` — método se llama `list_candles`, NO `list_by_symbol_and_timeframe`.
 - **symbol string para ccxt:** se guarda en `order.meta["symbol"]` en `CreateOrderService` para que `LiveExecutor` lo use.
 - **Transacción atómica:** order + fill + upsert position en un solo `order_repo.commit()`; si el executor lanza `RuntimeError`, `order_repo.rollback()` explícito.
@@ -195,3 +203,4 @@ from app.modules.orders.rest import orders_router, fills_router, positions_route
 - **Requisito:** aplicar antes las migraciones de [M7](M07-BOTS-SIGNALS.md).
 - **Posterior** — Hook de alertas post-commit ([M9](M09-ALERTS.md)).
 - **2026-10-07** — `commit()` movido a la capa repositorio; rollback explícito cuando falla el executor. Las rutas admin devolvían 500 en vez de 403 (`send()` sin `data`): corregido.
+- **2026-10-08** — API headless (/api), páginas migradas a React (frontend/).

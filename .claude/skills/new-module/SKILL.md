@@ -12,7 +12,7 @@ Trabajo para: **$ARGUMENTS**
 
 1. Leer [`specs/_ROOT.md`](../../../specs/_ROOT.md) (orden de dependencias, prioridades) y la spec del módulo `specs/MNN-*.md`. Si el módulo no tiene spec, crearla primero con la plantilla de `_ROOT.md` → "Plantilla de spec".
 2. Revisar un módulo hermano ya terminado como referencia (p. ej. `app/modules/strategies/`).
-3. Cargar los skills `backend-core`, `code-style` y, según toque, `database`, `api-standards`, `security`, `web-ui`.
+3. Cargar los skills `backend-core`, `code-style` y, según toque, `database`, `api-standards`, `security`, `frontend`.
 4. Presentar al usuario el plan (tablas, archivos, endpoints, páginas) y esperar su confirmación.
 
 ## 1. Base de datos
@@ -46,13 +46,13 @@ Trabajo para: **$ARGUMENTS**
 
 ## 6. REST — `app/modules/<modulo>/rest/<recurso>/`
 
-- [ ] `schemas.py` (Pydantic v2), `error_messages.py` (todos los códigos del servicio), `routes.py` (`APIRouter(prefix="/api/<recurso>")`).
+- [ ] `schemas.py` (Pydantic v2), `error_messages.py` (todos los códigos del servicio), `routes.py` (`APIRouter(prefix="/<recurso>")`; el `/api` lo añade `app_factory.py`).
 - [ ] Auth: `token_required_actual` / `admin_required`.
 - [ ] Registrar el router en `app/app_factory.py`.
 
-## 7. Web (si el módulo tiene páginas)
+## 7. Frontend (si el módulo tiene pantallas)
 
-- [ ] Seguir el checklist del skill `web-ui`: ruta en `web/routes.py`, prefijo en `_is_web_route()`, template, JS con `?v={{ sv }}`, enlace en el sidebar.
+- [ ] Seguir el checklist del skill `frontend`: `modules/<x>/api` → `hooks` → `pages`, ruta fina en `frontend/src/routes/_app/...`, item en `app-sidebar.tsx`, `npm run check-types`.
 
 ## 8. Verificar
 

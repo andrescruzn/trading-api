@@ -15,7 +15,6 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 
 from app.common.audit import AuditMiddleware
 from app.common.audit.audit_repository import AuditRepository
@@ -40,7 +39,6 @@ from app.modules.orders.rest import orders_router, fills_router, positions_route
 from app.modules.alerts.rest import alert_rules_router, alert_events_router, alerts_admin_router
 from app.modules.billing.rest import investors_router, managed_accounts_router, billing_periods_router
 from app.modules.users.rest import auth_router
-from app.modules.web import web_router
 
 
 @asynccontextmanager
@@ -71,11 +69,6 @@ def create_app() -> FastAPI:
     )
 
     # ------------------------------------------------------------------
-    # Static files (CSS, JS)
-    # ------------------------------------------------------------------
-    app.mount("/static", StaticFiles(directory="app/static"), name="static")
-
-    # ------------------------------------------------------------------
     # Middlewares (orden importa: se ejecutan en orden inverso)
     # ------------------------------------------------------------------
 
@@ -99,57 +92,37 @@ def create_app() -> FastAPI:
     app.add_middleware(AuditMiddleware, repository=audit_repo)
 
     # ------------------------------------------------------------------
-    # Routers
+    # Routers — API headless: todo bajo settings.API_PREFIX (/api) salvo
+    # /health (lo consultan balanceadores y monitoreo en la raíz).
     # ------------------------------------------------------------------
     app.include_router(health_router)
-    app.include_router(auth_router)
 
-    # Market Data
-    app.include_router(exchanges_router)
-    app.include_router(symbols_router)
-    app.include_router(timeframes_router)
-    app.include_router(candles_router)
-
-    # Feature Engineering
-    app.include_router(feature_sets_router)
-    app.include_router(candle_features_router)
-
-    # Accounts & Portfolio
-    app.include_router(accounts_router)
-    app.include_router(balances_router)
-
-    # Strategies
-    app.include_router(strategies_router)
-    app.include_router(datasets_router)
-
-    # Agent (AI Agent + ML Models + Model Runs)
-    app.include_router(agent_router)
-    app.include_router(models_router)
-    app.include_router(model_runs_router)
-
-    # Bots & Signals
-    app.include_router(bots_router)
-    app.include_router(signals_router)
-
-    # Orders & Execution
-    app.include_router(orders_router)
-    app.include_router(fills_router)
-    app.include_router(positions_router)
-
-    # Alerts
-    app.include_router(alert_rules_router)
-    app.include_router(alert_events_router)
-    app.include_router(alerts_admin_router)
-
-    # Billing & Managed Accounts
-    app.include_router(investors_router)
-    app.include_router(managed_accounts_router)
-    app.include_router(billing_periods_router)
-
-    app.include_router(web_router)      # Páginas HTML (siempre al final)
+    api_routers = (
+        auth_router,
+        # Market Data
+        exchanges_router, symbols_router, timeframes_router, candles_router,
+        # Feature Engineering
+        feature_sets_router, candle_features_router,
+        # Accounts & Portfolio
+        accounts_router, balances_router,
+        # Strategies
+        strategies_router, datasets_router,
+        # Agent (AI Agent + ML Models + Model Runs)
+        agent_router, models_router, model_runs_router,
+        # Bots & Signals
+        bots_router, signals_router,
+        # Orders & Execution
+        orders_router, fills_router, positions_router,
+        # Alerts
+        alert_rules_router, alert_events_router, alerts_admin_router,
+        # Billing & Managed Accounts
+        investors_router, managed_accounts_router, billing_periods_router,
+    )
+    for router in api_routers:
+        app.include_router(router, prefix=settings.API_PREFIX)
 
     # ------------------------------------------------------------------
-    # Handlers globales (AuthException/JwtCodecError -> envelope)
+    # Handlers globales (todo error -> envelope {msg, errorCode, data})
     # ------------------------------------------------------------------
     register_error_handlers(app)
 

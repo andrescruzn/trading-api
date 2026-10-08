@@ -22,7 +22,7 @@ from app.extensions.db import get_db
 from app.modules.alerts.domain.alert_event_entity import AlertEvent
 from app.modules.alerts.providers import AlertServiceFactory, get_alert_factory
 
-router = APIRouter(prefix="/api/alert-events", tags=["Alert Events"])
+router = APIRouter(prefix="/alert-events", tags=["Alert Events"])
 
 
 def get_factory(db: Session = Depends(get_db)) -> AlertServiceFactory:

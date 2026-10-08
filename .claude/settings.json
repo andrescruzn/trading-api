@@ -31,6 +31,19 @@
           }
         ]
       }
-    ]
+    ],
+    "PostToolUse": [
+			{
+				"matcher": "Write|Edit",
+				"hooks": [
+					{
+						"type": "command",
+						"command": "pnpm run lint --write",
+						"timeout": 60,
+						"statusMessage": "Running pnpm run lint --write..."
+					}
+				]
+			}
+		]
   }
 }

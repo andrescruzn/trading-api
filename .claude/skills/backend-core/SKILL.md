@@ -32,9 +32,10 @@ app/
     session.py               # engine síncrono (UTC) + get_db()
     models_registry.py       # importa TODOS los modelos ORM          ← registrar modelos nuevos
   modules/<modulo>/          # accounts, agent, alerts, billing, bots, features, market,
-                             # orders, strategies, users, mailer, health, scheduler, web
-  templates/ static/         # Páginas Jinja2 + JS/CSS (ver skill web-ui)
+                             # orders, strategies, users, mailer, health, scheduler
 ```
+
+La API es **headless**: no hay templates, `static/` ni rutas de páginas. El front vive en `frontend/` (skill `frontend`). Todos los routers se registran con `prefix=settings.API_PREFIX` (`/api`) en `app_factory.py`, salvo `health`.
 
 ### Anatomía de un módulo (ejemplo real: `app/modules/strategies/`)
 
@@ -120,8 +121,8 @@ def get_factory(db: Session = Depends(get_db)) -> StrategyServiceFactory:
 |---|---|
 | `app/extensions/db/models_registry.py` | Modelo ORM nuevo |
 | `app/app_factory.py` | Router nuevo |
-| `app/modules/web/routes.py` | Página web nueva |
-| `app/common/security/security_headers.py` | Prefijo web nuevo → `_is_web_route()` |
+| `app/common/errors/errors.py` | Handlers globales: todo error sale con el envelope (401/404/422/429…) |
+| `app/common/security/security_headers.py` | CSP de la API (restrictiva) y de `/docs` |
 | `app/extensions/db/session.py` | `get_db()`; no cambiar sin motivo |
 | `app/common/contracts/service_result.py` | Contrato de todos los servicios |
 | `app/common/http/response_builder.py` | Helpers de respuesta |

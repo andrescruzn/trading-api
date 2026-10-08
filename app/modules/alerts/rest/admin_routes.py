@@ -23,7 +23,7 @@ from app.extensions.db import get_db
 from app.modules.alerts.channels.telegram_channel import TelegramChannel
 from app.modules.alerts.providers import AlertServiceFactory, get_alert_factory
 
-router = APIRouter(prefix="/api/alerts", tags=["Alerts Admin"])
+router = APIRouter(prefix="/alerts", tags=["Alerts Admin"])
 
 
 def get_factory(db: Session = Depends(get_db)) -> AlertServiceFactory:
@@ -67,7 +67,7 @@ def test_telegram(
 ):
     """Envía un mensaje de prueba al chat Telegram configurado."""
     channel = TelegramChannel(settings=settings)
-    ok = channel.send_raw("🤖 Trading AI — Conexión Telegram verificada correctamente.")
+    ok = channel.send_raw("Trading App: la conexión con Telegram funciona.")
 
     if not ok:
         return send(

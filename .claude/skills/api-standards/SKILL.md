@@ -84,7 +84,8 @@ Reglas:
 
 ## URLs
 
-- Prefijo `/api/<recurso>` para toda ruta REST nueva (evita colisión con páginas web homónimas: `/bots` es la página, `/api/bots` la API). Los módulos antiguos (`/users`, `/exchanges`, `/symbols`, `/timeframes`, `/candles`, `/feature-sets`, `/candle-features`, `/accounts`, `/agent`) no lo llevan: no renombrarlos sin que el usuario lo pida (rompe el JS).
+- **Todo** vive bajo `/api`: el prefijo lo pone `app_factory.py` (`include_router(router, prefix=settings.API_PREFIX)`). El router declara solo el recurso: `APIRouter(prefix="/bots")` → `/api/bots`. Nunca escribir `/api` dentro del router. Excepción: `/health` (raíz).
+- La API es headless: ninguna ruta devuelve HTML ni redirige; el frontend (`frontend/`, skill `frontend`) muestra el `msg` tal cual.
 - Sustantivos en plural y kebab-case: `/api/managed-accounts`, `/api/model-runs`.
 - Sin verbos, salvo acciones no-CRUD justificadas: `POST /api/signals/generate`, `POST /api/bots/{id}/start`.
 - Sub-recursos máximo 2 niveles: `/api/accounts/{id}/balances`.

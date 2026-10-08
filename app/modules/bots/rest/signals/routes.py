@@ -31,7 +31,7 @@ from app.modules.bots.providers import BotServiceFactory, get_bot_factory
 from .error_messages import SIGNAL_ERROR_MESSAGES
 from .schemas import GenerateSignalRequest
 
-router = APIRouter(prefix="/api/signals", tags=["Signals"])
+router = APIRouter(prefix="/signals", tags=["Signals"])
 
 
 # ======================================================================

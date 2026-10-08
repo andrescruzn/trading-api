@@ -12,8 +12,9 @@
 | Tablas | `accounts`, `account_balances` (R/W); `exchanges` (R) |
 | Depende de | [M1](M01-AUTH.md), [M2](M02-MARKET-DATA.md) (exchange de la cuenta) |
 | Lo usan | [M6](M06-AI-AGENT.md) (capital disponible), [M7](M07-BOTS-SIGNALS.md) (cuenta del bot), [M8](M08-ORDERS-EXECUTION.md) (credenciales del `LiveExecutor`), [M10](M10-BILLING.md) (cuenta administrada) |
-| Prefijo API | `/accounts` (sin `/api/`; la página web es `/portfolio`) |
-| Última revisión | 2026-10-07 |
+| Prefijo API | `/api/accounts` (la página del front es `/#/portfolio`) |
+| Frontend | `frontend/src/modules/accounts` |
+| Última revisión | 2026-10-08 |
 
 ## Descripción
 
@@ -28,11 +29,13 @@
 
 ## Páginas
 
+Hash routing: la URL real es `/#/<ruta>`.
+
 **Páginas — Usuario (cualquier usuario autenticado):**
-- `/portfolio` — Panel de cuentas: lista tus cuentas, crea nuevas, consulta balances y equity curve
+- `/#/portfolio` — "Mis cuentas": lista tus cuentas, crea/edita (diálogo), y abre un panel lateral con el historial de balances donde puedes registrar uno nuevo
 
 **Páginas — Administrador (solo admin):**
-- `/admin/accounts` — Vista global de todas las cuentas del sistema
+- `/#/admin/accounts` — Vista global de todas las cuentas del sistema (con su panel de balances)
 
 ## Entregables
 
@@ -42,13 +45,13 @@ Entregables:
 - ✅ CRUD cuentas (exchange + API key/secret cifrada con Fernet → `meta['enc_creds']`)
 - ✅ Registro de balances por moneda (USDT, BTC, etc.) — snapshots inmutables
 - ✅ Equity curve vía time series de `account_balances`
-- ✅ Endpoints: GET/POST `/accounts`, GET/PUT `/accounts/{id}`, GET/POST `/accounts/{id}/balances`
+- ✅ Endpoints: GET/POST `/api/accounts`, GET/PUT `/api/accounts/{id}`, GET/POST `/api/accounts/{id}/balances`
 - ✅ Cifrado simétrico: `CredentialsCipher` (Fernet, `CREDENTIALS_SECRET_KEY`)
-- ✅ Web UI: `/accounts` (panel usuario) + `/admin/accounts` (vista admin)
+- ✅ Web UI: `/#/portfolio` (panel usuario) + `/#/admin/accounts` (vista admin) — en React desde 2026-10-08
 - ✅ 36 tests unitarios pasando (list/get/create/update accounts + list/record balances)
 - Test unitarios
 
-> Nota: el roadmap original citaba la página `/accounts`; la ruta real del panel de usuario es **`/portfolio`** (`app/modules/web/routes.py`).
+> Nota: el roadmap original citaba la página `/accounts`; la ruta real del panel de usuario es **`/#/portfolio`** (`frontend/src/routes/_app/portfolio.lazy.tsx`).
 
 ## Decisiones de diseño
 
@@ -60,7 +63,7 @@ Entregables:
 | Propiedad: un usuario solo ve/edita sus cuentas; el admin ve todas (`belongs_to` + `is_admin`) | Aislamiento entre usuarios | Filtrar solo en la UI |
 | La cuenta valida el exchange (`EXCHANGE_NOT_FOUND`) y el modo (`ACCOUNT_INVALID_MODE`) al crear | Errores claros con códigos estables | Dejar que fallen los `CHECK` de MySQL |
 | `portfolio_snapshots` diferida: requiere `bot_id` ([M7](M07-BOTS-SIGNALS.md)) | La tabla es por bot, no por cuenta | Snapshots por cuenta |
-| Ruta sin prefijo `/api/` (`/accounts`) y página en `/portfolio` | Evita colisión con la página web | Página en `/accounts` |
+| Ruta REST `/api/accounts` y página en `/#/portfolio` | Desde 2026-10-08 toda la API vive bajo `/api` y la UI usa hash routing, así que ya no hay colisión; se mantuvo `/portfolio` por continuidad de URLs | Página en `/accounts` |
 
 ## Avance
 
@@ -69,7 +72,7 @@ Entregables:
 | Alcance original | **100 %** (8/8) | CRUD, balances, equity curve, cifrado, UI usuario + admin y 36 tests |
 | Madurez | **≈ 79 %** | Funcionalidad 85 · Tests 80 · Seguridad 90 · Operación 60 |
 
-- **Funcionalidad (85):** los balances se registran **a mano** (`POST /accounts/{id}/balances`); no se sincronizan desde el exchange.
+- **Funcionalidad (85):** los balances se registran **a mano** (`POST /api/accounts/{id}/balances`); no se sincronizan desde el exchange.
 - **Tests (80):** 6 suites en `tests/accounts/` (list/get/create/update de cuentas, list/record de balances).
 - **Seguridad (90):** cifrado Fernet y control de propiedad.
 - **Operación (60):** sin rotación de clave ni validación de credenciales contra el exchange.
@@ -81,7 +84,7 @@ Entregables:
 | Alta | Sincronizar balances desde el exchange con ccxt `fetch_balance` (hoy son manuales) — además alimentaría la `closing_equity` de [M10](M10-BILLING.md) | M |
 | Alta | "Probar conexión": validar API key/secret y permisos (solo lectura/trading, sin retiro) antes de guardar la cuenta | S |
 | Media | Rotación de `CREDENTIALS_SECRET_KEY` con re-cifrado de `enc_creds` (cambiar la clave hoy deja las cuentas sin poder descifrar) | M |
-| Media | Equity total valorada en la moneda base (conversión de activos) y gráfico en `/portfolio` | M |
+| Media | Equity total valorada en la moneda base (conversión de activos) y gráfico de equity curve en `/#/portfolio` (hoy el panel de balances es una tabla) | M |
 | Media | Usar `portfolio_snapshots` (tabla creada y sin código asociado) para equity por bot | M |
 | Baja | Borrado lógico / archivado de cuentas | S |
 
@@ -130,23 +133,25 @@ Cifrado: `app/common/security/credentials_cipher.py` → `CredentialsCipher` (Fe
 ### Endpoints REST
 | Método | Ruta | Auth | Nota |
 |--------|------|------|------|
-| GET | `/accounts` | token | Admin ve todas; usuario, las suyas |
-| POST | `/accounts` | token | Crea cuenta (cifra credenciales si se envían) |
-| GET | `/accounts/{id}` | token | Detalle con control de propiedad |
-| PUT | `/accounts/{id}` | token | Actualiza cuenta |
-| GET | `/accounts/{id}/balances` | token | Serie de balances |
-| POST | `/accounts/{id}/balances` | token | Registra un snapshot de balance |
+| GET | `/api/accounts` | token | Admin ve todas; usuario, las suyas |
+| POST | `/api/accounts` | token | Crea cuenta (cifra credenciales si se envían) |
+| GET | `/api/accounts/{id}` | token | Detalle con control de propiedad |
+| PUT | `/api/accounts/{id}` | token | Actualiza cuenta |
+| GET | `/api/accounts/{id}/balances` | token | Serie de balances |
+| POST | `/api/accounts/{id}/balances` | token | Registra un snapshot de balance |
 
-Routers registrados en `app/app_factory.py`:
+Routers registrados en `app/app_factory.py` (dentro de `api_routers`, con `prefix=settings.API_PREFIX`):
 ```python
 from app.modules.accounts.rest import accounts_router, balances_router
 ```
 
-### Páginas web
-| URL | Template | JS |
+### Frontend (`frontend/src/modules/accounts/`)
+| Ruta | Archivo de ruta | Página / componentes |
 |-----|----------|----|
-| `/portfolio` | `templates/accounts/index.html` | `static/js/accounts/index.js` |
-| `/admin/accounts` | `templates/admin/accounts.html` | `static/js/admin/accounts.js` |
+| `/#/portfolio` | `routes/_app/portfolio.lazy.tsx` | `pages/portfolio.tsx` (`PortfolioPage`) + `components/account-form-dialog.tsx` + `components/account-balances-sheet.tsx` + `components/record-balance-dialog.tsx` |
+| `/#/admin/accounts` | `routes/_app/admin/accounts.lazy.tsx` | `pages/admin-accounts.tsx` + `components/account-balances-sheet.tsx` |
+
+- API: `api/accounts.api.ts`; hooks `use-accounts-queries.ts` (`useAccountsQuery`, reutilizado por dashboard, agent, bots y billing) y `use-accounts-mutations.ts`; etiquetas `lib/accounts-labels.ts`; badges `components/account-badges.tsx`.
 
 ### Seed
 - `database/seeds/accounts.py` — cuentas paper de ejemplo (Binance y Bybit) con balances, idempotente por (usuario, nombre). Requiere que exista el usuario demo.
@@ -171,3 +176,4 @@ from app.modules.accounts.rest import accounts_router, balances_router
 
 - **2026-03** — Módulo completado (CRUD cuentas, balances, cifrado Fernet, UI `/portfolio` y `/admin/accounts`, 36 tests).
 - **Posterior** — Es la base de las cuentas administradas de [M10](M10-BILLING.md).
+- **2026-10-08** — API headless (/api), páginas migradas a React (frontend/).

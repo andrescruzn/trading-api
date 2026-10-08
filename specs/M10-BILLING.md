@@ -12,8 +12,9 @@
 | Tablas | `investors`, `managed_accounts`, `billing_periods`, `fee_transactions` (R/W); `users`, `bots` (R) |
 | Depende de | [M1](M01-AUTH.md) (rol `investor`), [M4](M04-ACCOUNTS-PORTFOLIO.md) (cuenta), [M7](M07-BOTS-SIGNALS.md) (bot opcional), [M8](M08-ORDERS-EXECUTION.md) (historial de órdenes/fills) |
 | Lo usan | Es el módulo final (modelo de negocio) |
-| Prefijo API | `/api/investors`, `/api/managed-accounts`, `/api/billing-periods`, `/api/fee-transactions` (el `/api/` es obligatorio) |
-| Última revisión | 2026-10-07 |
+| Prefijo API | `/api/investors`, `/api/managed-accounts`, `/api/billing-periods`, `/api/fee-transactions` |
+| Frontend | `frontend/src/modules/billing` |
+| Última revisión | 2026-10-08 |
 
 ## Descripción
 
@@ -37,17 +38,19 @@
 
 **Tablas nuevas:** `investors`, `managed_accounts`, `billing_periods`, `fee_transactions`
 
-**Rol nuevo:** `role_id=3 → investor` (solo ve su propio dashboard)
+**Rol nuevo:** `role_id=3 → investor` (además de las secciones comunes del menú, ve "Mi inversión" con su dashboard)
 
 ## Páginas
 
+Hash routing: la URL real es `/#/<ruta>`.
+
 **Páginas — Administrador (solo admin):**
-- `/admin/investors` — CRUD de inversores: crear, editar fee_pct y estado
-- `/admin/managed-accounts` — CRUD de cuentas administradas: capital, HWM, período, bot asignado
-- `/admin/billing` — Gestión de períodos: abrir/cerrar período + High-Water Mark + historial de fees
+- `/#/admin/investors` — CRUD de inversores: crear, editar fee (en %) y estado
+- `/#/admin/managed-accounts` — CRUD de cuentas administradas: capital, HWM, período, bot asignado
+- `/#/admin/billing` — Gestión de períodos: abrir/cerrar período (diálogos con vista previa del fee) + High-Water Mark + historial de fees
 
 **Páginas — Inversor (usuario con rol `investor`):**
-- `/investor/dashboard` — KPIs: capital inicial, HWM, PnL neto total, fees pagados + historial de períodos + transacciones
+- `/#/investor/dashboard` — KPIs: capital inicial, HWM, PnL neto total, fees pagados + historial de períodos + transacciones
 
 ## Entregables
 
@@ -60,15 +63,15 @@ Entregables:
 - ✅ HWM logic en `BillingPeriod.calculate_fee()`: `baseline = max(opening_equity, high_water_mark)`
 - ✅ Services: CRUD investors, CRUD managed_accounts, open_billing_period, close_billing_period (atómico)
 - ✅ Provider: BillingServiceFactory + get_billing_factory(session)
-- ✅ REST: GET/POST /api/investors, GET/PUT /api/investors/{id}
-- ✅ REST: GET/POST /api/managed-accounts, GET/PUT /api/managed-accounts/{id}
-- ✅ REST: GET /api/billing-periods, POST /api/billing-periods/open, POST /api/billing-periods/{id}/close
-- ✅ REST: GET /api/fee-transactions
-- ✅ Web UI admin: /admin/investors, /admin/managed-accounts, /admin/billing
-- ✅ Web UI inversor: /investor/dashboard (KPIs + historial períodos + fee transactions)
-- ✅ Sidebar: panel inversor visible solo para role_id=3 (isInvestor flag en sidebar.js)
+- ✅ REST: GET/POST `/api/investors`, GET/PUT `/api/investors/{id}`
+- ✅ REST: GET/POST `/api/managed-accounts`, GET/PUT `/api/managed-accounts/{id}`
+- ✅ REST: GET `/api/billing-periods`, POST `/api/billing-periods/open`, POST `/api/billing-periods/{id}/close`
+- ✅ REST: GET `/api/fee-transactions`
+- ✅ Web UI admin: `/#/admin/investors`, `/#/admin/managed-accounts`, `/#/admin/billing` (React desde 2026-10-08)
+- ✅ Web UI inversor: `/#/investor/dashboard` (KPIs + historial períodos + fee transactions)
+- ✅ Sidebar: sección "Mi inversión" visible solo para `role_code = investor` (`app-sidebar.tsx`, `role: ROLES.INVESTOR`)
 - ✅ Nuevo rol: role_id=3 → investor; settings.AUTH_INVESTOR_ROLE_ID = 3
-- ✅ CSP: prefijo /investor/ en security_headers.py
+- ✅ ~~CSP: prefijo /investor/ en security_headers.py~~ (ya no aplica: API headless desde 2026-10-08)
 - ✅ Tests unitarios: 53 tests pasando (entity HWM, close/open period service)
 
 ## Decisiones de diseño
@@ -80,13 +83,13 @@ Entregables:
 | Se copia `investor.fee_pct` al período al abrirlo (**snapshot**) | Cambiar el fee del inversor no reescribe períodos pasados | Leer el fee vigente al cerrar |
 | Cierre **atómico**: actualizar período + crear `fee_transaction` + `update_high_water_mark()` en un solo `commit()` | Nunca queda un período cerrado sin su cobro o con HWM desfasado | Pasos en transacciones separadas |
 | Un solo período abierto por cuenta administrada | Evita solapes de facturación | Varios períodos concurrentes |
-| `fee_pct` como `Numeric(5,4)` (0.20 = 20 %); el JS divide por 100 al enviar | Precisión exacta sin `float` | Guardar porcentaje entero |
+| `fee_pct` como `Numeric(5,4)` (0.20 = 20 %); el front pide el % y lo convierte a fracción string al enviar (`billing-labels.ts`: `(percent / 100).toFixed(4)`) | Precisión exacta sin `float` | Guardar porcentaje entero |
 | Importes con `Numeric(30,12)` y `Decimal` | Dinero sin errores de coma flotante | `float` |
 | `fee_transactions` con `billing_period_id` UNIQUE y estados `pending` / `charged` / `waived` | Un cobro por período, auditable | Campo `fee_paid` en el período |
-| Rol nuevo `investor` (`role_id = 3`, `settings.AUTH_INVESTOR_ROLE_ID`) | El inversor solo ve su dashboard; el sidebar oculta menús de admin y trading | Reutilizar el rol `user` |
+| Rol nuevo `investor` (`role_id = 3`, `settings.AUTH_INVESTOR_ROLE_ID`) | El inversor tiene su dashboard propio (`_app/investor.tsx` con `InvestorGuardLayout`); el sidebar le añade "Mi inversión" y le oculta "Administración" | Reutilizar el rol `user` |
 | Propiedad: el inversor ve solo sus cuentas (`find_by_user_id`); el admin usa `list_all()` | Aislamiento entre inversores | Filtrar en el cliente |
 | Alta/edición de inversores, cuentas y períodos solo para admin | El cobro lo controla quien administra el negocio | Autoservicio |
-| Prefijo `/api/` y prefijo `/investor/` añadido al CSP | Evitar colisión con páginas web y que el dashboard cargue sus JS/CSS | — |
+| Prefijo `/api/` (hoy común a toda la API vía `settings.API_PREFIX`) | Originalmente para evitar colisión con las páginas Jinja; el prefijo `/investor/` del CSP desapareció con la API headless (2026-10-08) | — |
 
 ## Avance
 
@@ -103,7 +106,7 @@ Entregables:
 
 | Prioridad | Mejora | Esfuerzo |
 |---|---|---|
-| Alta | Endpoints (y botones en `/admin/billing`) para marcar una `fee_transaction` como `charged` o `waived`; hoy quedan en `pending` salvo edición en BD | S |
+| Alta | Endpoints (y botones en `/#/admin/billing`) para marcar una `fee_transaction` como `charged` o `waived`; hoy quedan en `pending` salvo edición en BD | S |
 | Alta | Derivar `closing_equity` de los balances de la cuenta ([M4](M04-ACCOUNTS-PORTFOLIO.md)) o de `portfolio_snapshots` en lugar de pedirlo a mano | M |
 | Alta | Aportes y retiros de capital a mitad de período (hoy distorsionan `gross_pnl` y el HWM) | L |
 | Media | Cierre automático al llegar `period_type` (mensual/trimestral) con un job programado | M |
@@ -180,7 +183,7 @@ Provider: `app/modules/billing/providers/billing_provider.py` → `BillingServic
 ### Endpoints REST
 | Método | Ruta | Auth | Nota |
 |--------|------|------|------|
-| GET | `/api/investors` | admin | Lista todos los inversores |
+| GET | `/api/investors` | admin · investor | Admin: lista todos; investor: solo su propio perfil (lo usa el dashboard); otros roles → 403 |
 | POST | `/api/investors` | admin | Crea inversor (valida user_id único, fee_pct 0-1) |
 | GET | `/api/investors/{id}` | admin | Detalle inversor |
 | PUT | `/api/investors/{id}` | admin | Actualiza fee_pct y/o is_active |
@@ -193,25 +196,26 @@ Provider: `app/modules/billing/providers/billing_provider.py` → `BillingServic
 | POST | `/api/billing-periods/{id}/close` | admin | Cierra período (HWM + fee_tx atómico) |
 | GET | `/api/fee-transactions` | token | Filtro por managed_account_id |
 
-**⚠️ IMPORTANTE:** Prefijo `/api/` obligatorio para evitar colisión con páginas web.
+Los routers declaran `prefix="/investors"` y `"/managed-accounts"`; `billing_periods_router` no tiene prefijo y declara `/billing-periods…` y `/fee-transactions` en cada ruta. El `/api` lo añade `app_factory.py` (`settings.API_PREFIX`).
 
-Routers registrados en `app/app_factory.py`:
+Routers registrados en `app/app_factory.py` (dentro de `api_routers`):
 ```python
 from app.modules.billing.rest import investors_router, managed_accounts_router, billing_periods_router
 ```
 
-### Páginas web
-| URL | Template | JS | Rol |
+### Frontend (`frontend/src/modules/billing/`)
+| Ruta | Archivo de ruta | Página / componentes | Rol |
 |-----|----------|----|-----|
-| `/admin/investors` | `templates/admin/investors.html` | `static/js/admin/investors.js` | admin |
-| `/admin/managed-accounts` | `templates/admin/managed_accounts.html` | `static/js/admin/managed_accounts.js` | admin |
-| `/admin/billing` | `templates/admin/billing.html` | `static/js/admin/billing.js` | admin |
-| `/investor/dashboard` | `templates/investor/dashboard.html` | `static/js/investor/dashboard.js` | investor |
+| `/#/admin/investors` | `routes/_app/admin/investors.lazy.tsx` | `pages/admin-investors.tsx` + `components/investor-form-dialog.tsx` | admin |
+| `/#/admin/managed-accounts` | `routes/_app/admin/managed-accounts.lazy.tsx` | `pages/admin-managed-accounts.tsx` + `components/managed-account-form-dialog.tsx` | admin |
+| `/#/admin/billing` | `routes/_app/admin/billing.lazy.tsx` | `pages/admin-billing.tsx` + `components/billing-period-dialogs.tsx` (`OpenPeriodDialog`, `ClosePeriodDialog`) + `components/billing-tables.tsx` | admin |
+| `/#/investor/dashboard` | `routes/_app/investor/dashboard.lazy.tsx` (guard `_app/investor.tsx`) | `pages/investor-dashboard.tsx` | investor |
+
+- API: `api/billing.api.ts` (importes y `fee_pct` como string); hooks `use-billing-queries.ts` / `use-billing-mutations.ts`; conversión % ↔ fracción y etiquetas en `lib/billing-labels.ts`.
 
 ### Sidebar
-- `sidebar.js` detecta `isInvestor = (jwtPayload.role_id === AUTH_INVESTOR_ROLE_ID)` desde el JWT
-- Muestra `#investor-panel` div con link "Mi Dashboard" → `/investor/dashboard`
-- Los admins no ven el panel de inversor; los inversores no ven los menús de admin/trading
+- `app-shell/components/app-sidebar.tsx`: sección "Mi inversión" (`role: ROLES.INVESTOR`) con "Mi dashboard" → `/investor/dashboard`; sección "Administración" → "Inversores" (Inversores, Cuentas gestionadas, Facturación) solo para admin.
+- El rol se decide por `role_code` de `GET /api/users/me`, no por el JWT.
 
 ### Settings nuevos (`app/common/config/settings.py`)
 ```python
@@ -220,13 +224,11 @@ AUTH_INVESTOR_ROLE_ID: int = 3  # leído de env AUTH_INVESTOR_ROLE_ID, default 3
 
 ## Gotchas críticos
 
-- **Prefijo `/api/`:** billing routes DEBEN usar `/api/billing-periods`, `/api/investors`, etc.
-- **fee_pct en BD:** `Numeric(5,4)` — se guarda como decimal (0.20 = 20%). El JS divide por 100 al enviar.
+- **fee_pct en BD:** `Numeric(5,4)` — se guarda como decimal (0.20 = 20%). El front pide el porcentaje y lo divide por 100 al enviar (`billing-labels.ts`).
 - **HWM inicial:** en `create_managed_account`, `high_water_mark = initial_capital` (no cero).
 - **Snapshot fee_pct:** al abrir período se copia `investor.fee_pct` al período — si cambia el fee futuro no afecta períodos pasados.
 - **Cierre atómico:** `close_billing_period_service.py` hace un solo `session.commit()` que incluye: actualizar período + crear fee_tx + llamar `update_high_water_mark()`.
 - **Investor ownership:** `list_managed_accounts` llama `find_by_user_id(current_user.id)` para filtrar al inversor. Admin usa `list_all()`.
-- **CSP:** prefijo `/investor/` agregado a `_is_web_route()` en `security_headers.py`.
 - **Esquema:** 4 tablas declaradas en los modelos de `billing/infrastructure/` (antes `migrations/m10_billing.sql`, eliminado) + rol investor en `database/seeds/roles.py`.
 
 ## Tests
@@ -243,3 +245,4 @@ AUTH_INVESTOR_ROLE_ID: int = 3  # leído de env AUTH_INVESTOR_ROLE_ID, default 3
 ## Historial
 
 - **2026-03** — Módulo completado: migración `m10_billing.sql` + seed `seed_billing.sql` (rol `investor` id=3), dominio con HWM, servicios, REST, UI `/admin/investors`, `/admin/managed-accounts`, `/admin/billing` y `/investor/dashboard`.
+- **2026-10-08** — API headless (/api), páginas migradas a React (frontend/).

@@ -35,7 +35,7 @@ class MailTemplate:
 # ----------------------------------------------------------------------
 WELCOME_TEMPLATE = MailTemplate(
     code="welcome",
-    subject="Bienvenido a Trading AI",
+    subject="Tu cuenta en Trading App está lista",
     filename="welcome.html",
 )
 
@@ -47,6 +47,6 @@ OTP_TEMPLATE = MailTemplate(
 
 ALERT_TEMPLATE = MailTemplate(
     code="alert",
-    subject="Alerta Trading AI",
+    subject="Alerta de Trading App",
     filename="alert.html",
 )

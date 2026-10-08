@@ -26,42 +26,34 @@ from app.common.config import settings
 
 
 # ======================================================================
-# CSP por tipo de ruta
+# CSP
 # ======================================================================
+# La API es headless: no sirve HTML propio, así que todas las respuestas
+# llevan la política más restrictiva. La única excepción es la documentación
+# interactiva de FastAPI (/docs, /redoc), que carga Swagger UI / ReDoc
+# desde cdn.jsdelivr.net y usa un script inline para inicializarse.
 
-# Para páginas web (Jinja2): permite cargar recursos desde 'self' y CDNs usados
-_CSP_WEB = (
-    "default-src 'self'; "
-    "script-src 'self' 'unsafe-inline' https://unpkg.com; "
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
-    "font-src 'self' https://fonts.gstatic.com; "
-    "img-src 'self' data:; "
-    "connect-src 'self' https://unpkg.com; "
-    "frame-ancestors 'none'; "
-    "base-uri 'self'; "
-    "form-action 'self';"
-)
-
-# Para endpoints API pura: política más restrictiva
 _CSP_API = (
     "default-src 'none'; "
     "frame-ancestors 'none';"
 )
 
+_CSP_DOCS = (
+    "default-src 'self'; "
+    "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+    "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; "
+    "font-src 'self' https://fonts.gstatic.com; "
+    "img-src 'self' data: https://fastapi.tiangolo.com https://cdn.redoc.ly; "
+    "worker-src 'self' blob:; "
+    "frame-ancestors 'none';"
+)
 
-def _is_web_route(path: str) -> bool:
-    """
-    Determina si la ruta sirve páginas HTML (usa CSP_WEB).
-    Rutas /static/ y páginas web usan CSP más permisivo.
-    """
-    web_prefixes = (
-        "/login", "/dashboard", "/profile",
-        "/static/",
-        "/market/", "/admin/", "/features", "/portfolio",
-        "/strategies", "/agent", "/bots", "/orders", "/alerts",
-        "/investor/",
-    )
-    return any(path.startswith(p) for p in web_prefixes) or path == "/"
+_DOCS_PATHS = ("/docs", "/redoc")
+
+
+def _is_docs_route(path: str) -> bool:
+    """True para Swagger UI / ReDoc (incluye /docs/oauth2-redirect)."""
+    return any(path == p or path.startswith(f"{p}/") for p in _DOCS_PATHS)
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -89,9 +81,9 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         )
 
         # ------------------------------------------------------------------
-        # CSP: diferente según tipo de ruta
+        # CSP: restrictiva para toda la API; /docs y /redoc necesitan su CDN
         # ------------------------------------------------------------------
-        csp = _CSP_WEB if _is_web_route(path) else _CSP_API
+        csp = _CSP_DOCS if _is_docs_route(path) else _CSP_API
         response.headers["Content-Security-Policy"] = csp
 
         # ------------------------------------------------------------------

@@ -32,7 +32,7 @@ from app.modules.agent.providers import AgentServiceFactory
 from .error_messages import MODEL_RUN_ERROR_MESSAGES
 from .schemas import CreateModelRunRequest, FinishModelRunRequest
 
-router = APIRouter(prefix="/api/model-runs", tags=["Model Runs"])
+router = APIRouter(prefix="/model-runs", tags=["Model Runs"])
 
 
 def get_factory(db: Session = Depends(get_db)) -> AgentServiceFactory:

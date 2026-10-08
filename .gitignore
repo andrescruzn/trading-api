@@ -53,3 +53,12 @@ Thumbs.db
 # =========================
 # settings.local.json siempre local — no commitear
 .claude/settings.local.json
+# =========================
+# Frontend (Node / Vite)
+# =========================
+node_modules/
+frontend/dist/
+*.tsbuildinfo
+# El patrón .env.* no cubre .env_frontend (guion bajo)
+.env_frontend
+!.env_frontend.example

@@ -23,7 +23,7 @@ from app.modules.orders.providers import OrderServiceFactory, get_order_factory
 
 from .error_messages import FILL_ERROR_MESSAGES
 
-router = APIRouter(prefix="/api/fills", tags=["Fills"])
+router = APIRouter(prefix="/fills", tags=["Fills"])
 
 
 # ======================================================================

@@ -9,12 +9,12 @@ STRATEGY_ERROR_MESSAGES: dict[str, str] = {
     "STRATEGY_NOT_FOUND":             "La estrategia no existe.",
     "STRATEGY_DUPLICATE_NAME_VERSION": "Ya existe una estrategia con ese nombre y versión.",
     "STRATEGY_INVALID_TYPE":          (
-        "Tipo de estrategia inválido. "
-        "Valores permitidos: trend_following, mean_reversion."
+        "El tipo de estrategia no es válido. "
+        "Elige Seguimiento de tendencia o Reversión a la media."
     ),
     "STRATEGY_INCOHERENT_REGIME": (
-        "El régimen requerido no es compatible con el tipo de estrategia. "
-        "trend_following acepta trend_up o trend_down. "
-        "mean_reversion acepta sideways."
+        "El régimen no encaja con el tipo de estrategia: "
+        "Seguimiento de tendencia opera en tendencia alcista o bajista, "
+        "y Reversión a la media en mercado lateral."
     ),
 }

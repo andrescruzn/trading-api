@@ -60,7 +60,7 @@ Tablas usadas: `users`, `roles`
 
 | Decisión | Motivo | Alternativa descartada |
 |---|---|---|
-| **Login solo por OTP** al correo; sin contraseñas ni cambio/reset de contraseña. `users.password_hash` queda nullable y en `NULL` (no se borra la columna) | Una sola vía de acceso, sin credenciales que robar ni reutilizar | Contraseña + OTP opcional (dos superficies de ataque) · borrar la columna (irreversible) |
+| **Login solo por OTP** al correo; sin contraseñas ni cambio/reset de contraseña. Se elimina la columna `users.password_hash` | Una sola vía de acceso, sin credenciales que robar ni reutilizar; no se guarda nada que no se use | Contraseña + OTP opcional (dos superficies de ataque) · dejar la columna nullable y vacía |
 | JWT HS256 en cookie **HTTP-only** (`SameSite=Lax`, `Secure` en producción) | El JS de la página no puede leer el token → mitiga robo por XSS | Token en `localStorage` / header manual |
 | Rotación de `token_current_jti` en cada sesión activa | Una sola sesión válida por usuario; iniciar sesión en otro sitio invalida la anterior | Tokens sin estado revocable solo por expiración |
 | `role_id` va dentro del `subject` del JWT | Lo usaban las antiguas páginas Jinja para decidir sin consultar la BD (ver gotcha); hoy `jwt_guard` lee el rol de la BD | Consultar `users` en cada página |
@@ -109,7 +109,7 @@ Tablas usadas: `users`, `roles`
 ### Tablas en BD
 | Tabla | Uso |
 |-------|-----|
-| `users` | Usuarios, OTP, JTI de sesión, lockout, last_login_at (`password_hash` obsoleta, nullable y en `NULL`) |
+| `users` | Usuarios, OTP, JTI de sesión, lockout, last_login_at (sin columna de contraseña) |
 | `roles` | id=1→user, id=2→admin |
 
 ### Modelos ORM
@@ -226,4 +226,4 @@ Vite **no** lee el `.env` del backend: `vite.config.ts` carga `.env.frontend` a 
 - **Posterior** — Rol `investor` (id=3) introducido por [M10](M10-BILLING.md).
 - **2026-10-07** — Defaults de `AUTH_USER_ROLE_ID`/`AUTH_ADMIN_ROLE_ID` en `settings.py` corregidos (1/2, antes invertidos). `GetMeService` lee el rol con `UserRepository.get_role_info()`. Servicios de auth sin `Session`: confirman con `repo.commit()`.
 - **2026-10-08** — API headless (/api), páginas migradas a React (frontend/).
-- **2026-10-08** — Login solo por OTP: se eliminan login con contraseña, `PATCH /users/me/password`, la página `/#/profile` y `SEED_USERS_PASSWORD`; `users.password_hash` pasa a nullable y se vacía (migración `m01`).
+- **2026-10-08** — Login solo por OTP: se eliminan login con contraseña, `PATCH /users/me/password`, la página `/#/profile` y `SEED_USERS_PASSWORD`; se elimina la columna `users.password_hash` (migración `c4497f5a0188`).

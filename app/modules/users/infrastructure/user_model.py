@@ -64,16 +64,7 @@ class UserModel(Base):
     email = Column(String(255), nullable=False)
     full_name = Column(String(255), nullable=True)
 
-    # ------------------------------------------------------------------
-    # Credenciales (obsoleta)
-    # - El login es solo por OTP; la columna se conserva vacía (NULL) y ya
-    #   no se lee ni se escribe desde el dominio.
-    # ------------------------------------------------------------------
-    password_hash = Column(
-        String(255),
-        nullable=True,
-        comment="Obsoleta: el login es solo por OTP",
-    )
+    # Sin credenciales propias: el login es solo por OTP (otp_* más abajo).
 
     # --------------------------------------------------------------
     # Rol (FK)

@@ -133,7 +133,7 @@ db.execute(f"SELECT * FROM users WHERE email = '{email}'")
 
 ## Login solo por OTP
 
-No hay contraseñas en el sistema (`users.password_hash` es una columna obsoleta, siempre `NULL`).
+No hay contraseñas en el sistema (la tabla `users` no tiene columna de contraseña).
 El único acceso es el código de un solo uso al correo:
 
 1. `POST /api/users/login` con `{email}` → genera un OTP de 6 dígitos (TTL 10 min), lo guarda

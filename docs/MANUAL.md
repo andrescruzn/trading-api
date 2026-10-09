@@ -73,17 +73,29 @@ Son cálculos matemáticos sobre las velas que ayudan a predecir hacia dónde va
 └──────────────────┴─────────────────────────────────────────────────────────┴─────────────────────────────────────────────┘
 
 ---
-1.5.1 ¿Qué es un Feature Set?
+1.5.1 ¿Qué es un conjunto de indicadores (Feature Set)?
 
-Un Feature Set es una etiqueta que agrupa y versiona un conjunto de indicadores. No es una estrategia — es simplemente un nombre para identificar qué indicadores se calcularon y con qué configuración.
+Un conjunto de indicadores dice qué indicadores calcula un agente sobre las velas y cuáles lee la IA
+para decidir. No es una estrategia: la estrategia pone las reglas ("RSI menor que 30"), y el conjunto
+asegura que ese RSI exista.
 
-Ejemplo del Feature Set que se crea en el sistema:
+¿Por qué hace falta? Porque las reglas de cada estrategia están escritas sobre indicadores. Una regla
+como "EMA 20 por encima de EMA 50" no se puede evaluar si nadie calculó las EMA.
 
-  Nombre:  default
-  Versión: 1.0.0
-  Spec:    {"rsi": true, "ema": [20, 50, 200], "macd": true, "atr": true, "bbands": true}
+El sistema trae tres conjuntos listos (no hay que configurar nada):
 
-¿Qué significa el Spec (JSON)?
+  Completo   → todos los indicadores. Sirve para cualquier estrategia.
+  Tendencia  → EMA 20/50/200, MACD, RSI, ATR y volumen relativo. Para estrategias que siguen tendencias.
+  Rango      → RSI, bandas de Bollinger, MACD, ATR y volumen relativo. Para mercados laterales.
+
+Al crear un agente solo aparecen los conjuntos que calculan todo lo que pide la estrategia elegida,
+y el recomendado viene marcado. Por ejemplo, "RSI Mean Reversion" usa las bandas de Bollinger, así
+que solo ofrece Rango y Completo.
+
+¿Qué cambia elegir uno u otro? Con un conjunto más chico la IA recibe solo los datos que importan
+para esa estrategia, sin ruido. Los periodos (RSI de 14, EMA de 20/50/200…) son los mismos en todos.
+
+¿Qué mide cada indicador?
 
   "rsi": true
     → RSI (Relative Strength Index): mide si un activo está sobrecomprado o sobrevendido. Va de 0 a 100.
@@ -113,27 +125,16 @@ Ejemplo del Feature Set que se crea en el sistema:
       Cuando toca la banda inferior → está barato, posible rebote.
       Bandas angostas = mercado tranquilo. Bandas anchas = mercado volátil.
 
-En conjunto estos 5 indicadores le dan al agente de IA todo lo que necesita:
+En conjunto estos indicadores le dan a la IA todo lo que necesita:
   ¿El mercado sube o baja?          → EMA
   ¿Está agotado el movimiento?      → RSI
   ¿Hay momentum?                    → MACD
   ¿Cuánto poner de Stop Loss?       → ATR
   ¿El precio está en extremos?      → Bollinger Bands
+  ¿El movimiento tiene respaldo?    → Volumen relativo
 
-El Spec es solo documentación — es como una receta escrita que describe los ingredientes. El sistema
-siempre calcula todos los indicadores disponibles independientemente de lo que diga el Spec.
-
-¿Para qué sirve el Feature Set en la práctica?
-
-  1. Calculas los indicadores de BTC/USDT 1h y los guardas bajo el nombre "default v1.0.0"
-  2. En el futuro, el bot dice: "dame los indicadores de BTC/USDT 1h del feature set default"
-  3. El agente de IA recibe esos datos ya calculados y toma su decisión
-
-¿Necesitas crear varios Feature Sets?
-
-No necesariamente. Con "default v1.0.0" puedes operar todos los símbolos y timeframes.
-Solo crearías uno nuevo si en el futuro quisieras usar parámetros diferentes (ej: EMA de 10/30/100
-en vez de 20/50/200) sin borrar los datos del feature set original.
+Además, siempre se calcula el régimen de mercado (ver 1.6), porque toda estrategia lo usa como
+primer filtro.
 
 ---
 1.6 ¿Qué es el Régimen de Mercado?
@@ -163,19 +164,29 @@ Es un conjunto de reglas que definen cuándo entrar y salir del mercado. Ejemplo
 Cada estrategia funciona mejor en un régimen específico.
 
 ---
-1.8 ¿Qué es un Bot?
+1.8 ¿Qué es un Agente (antes "Bot")?
 
-Un bot es una instancia de una estrategia funcionando automáticamente:
+Un agente es una estrategia funcionando sola sobre un símbolo. Es lo primero que se crea para operar
+y lo que se ve en el inicio de la app.
 
-Bot = Estrategia + Símbolo + Timeframe + Cuenta + Parámetros de riesgo
+Agente = Nombre + Símbolo + Estrategia + Conjunto de indicadores + Cuenta
 
-Ejemplo: Bot #1 aplica la estrategia "Trend BTC" sobre BTC/USDT en timeframe 1h usando la cuenta de Binance de Andrés,
-arriesgando máximo 1% del capital por operación.
+El timeframe y el riesgo por operación los pone la estrategia; el modo (paper o live) lo pone la cuenta.
+
+Ejemplo: el agente "BTC/USDT · EMA Trend Follower" vigila BTC/USDT en velas de 1h con la estrategia
+EMA Trend Follower y el conjunto Tendencia, usando la cuenta de práctica de Andrés y arriesgando como
+máximo el 1 % del capital por operación.
+
+Mientras un agente está activo, el sistema descarga solo las velas de su símbolo y calcula sus
+indicadores. Si no hay ningún agente activo, no se descarga nada.
+
+(En el código y en la API se sigue llamando "bot". La "IA" es el modelo de lenguaje que el agente
+consulta para confirmar cada operación.)
 
 ---
 1.9 ¿Qué es una Señal (Signal)?
 
-Cuando el bot analiza el mercado y sus reglas se cumplen, genera una señal:
+Cuando el agente analiza el mercado y sus reglas se cumplen, genera una señal:
 
 {
   "action": "buy",
@@ -312,7 +323,7 @@ La aplicación tiene dos partes que se encienden por separado:
 Las direcciones de la web llevan un "#" después del dominio. Por ejemplo:
   http://localhost:5193/#/login       → pantalla de inicio de sesión
   http://localhost:5193/#/dashboard   → panel principal
-  http://localhost:5193/#/bots        → tus bots
+  http://localhost:5193/#/agents      → tus agentes
 
 Para iniciar sesión no hay contraseña: escribes tu correo, te llega un código de 6 dígitos
 y lo escribes antes de que venza (10 minutos). Si no te llegó o se venció, pide uno nuevo;
@@ -327,9 +338,12 @@ averiguar quién usa la app probando correos.
 Por seguridad solo hay una sesión abierta por persona: si entras desde otro navegador, la
 sesión anterior se cierra y la web te muestra "Tu sesión expiró" y te lleva al login.
 
-Todo se navega desde el menú lateral: Inicio, Mercado (símbolos, velas, indicadores),
-Trading (cuentas, estrategias, agente de IA, bots, órdenes, alertas) y, según tu rol,
-"Mi inversión" (inversores) o "Administración" (administradores).
+Todo se navega desde el menú lateral: Inicio, Operar (mis agentes, órdenes, alertas, mis cuentas),
+Explorar (estrategias, indicadores, símbolos, velas) y, según tu rol, "Mi inversión" (inversores)
+o "Administración" (administradores).
+
+El inicio muestra tus agentes. Si aún no tienes ninguno, te explica qué es un agente y te ofrece
+crear el primero.
 
 3.1 Módulo 5 — Strategies (Estrategias)
 
@@ -366,10 +380,13 @@ Un dataset es un recorte de datos históricos (velas + features) para backtestin
 - Se usará en futuros módulos (AI Agent, entrenamiento de modelos) para evaluar estrategias
 
 ---
-3.3 Módulo 6 — AI Agent (Agente de IA)
+3.3 Módulo 6 — AI Agent (la IA que decide)
 
-El agente es el motor de decisión del sistema. Recibe una combinación de símbolo + timeframe + estrategia + cuenta y
-devuelve un veredicto: APROBADA o RECHAZADA.
+La IA es el motor de decisión del sistema. Recibe una combinación de símbolo + timeframe + estrategia + cuenta y
+devuelve un veredicto: APROBADA o RECHAZADA. Solo ve los indicadores del conjunto del agente.
+
+No tiene una página propia: se usa desde el detalle de cada agente con el botón "Analizar ahora"
+(ver 3.4).
 
 Internamente aplica el Prompt Maestro con 4 fases en secuencia:
 
@@ -454,68 +471,95 @@ Cada entrenamiento queda registrado como un "run": fecha de inicio, estado (runn
 métricas (accuracy, F1, etc.) y parámetros usados. Permite comparar versiones del mismo modelo.
 
 ---
-3.4 Módulo 7 — Bots & Signals (Bots y Señales)
+3.4 Módulo 7 — Agentes y Señales (Bots & Signals)
 
-Un bot es la pieza que automatiza todo. Une una estrategia, un símbolo, un timeframe, una cuenta y
-un feature set en una sola unidad que puede generar señales de trading de forma continua.
+Un agente es la pieza que automatiza todo y el punto de entrada de la app. Une un símbolo, una
+estrategia, un conjunto de indicadores y una cuenta en una sola unidad que analiza el mercado.
 
-¿Qué es un Bot exactamente?
+Cómo crear un agente (menú "Mis agentes" → "Nuevo agente", o "Crear agente" en el inicio):
 
-  Bot = Cuenta + Símbolo + Timeframe + Estrategia + Feature Set + Risk %
+  Paso 1 — ¿Qué quieres operar?
+    Eliges el símbolo (por ejemplo BTC/USDT). Solo aparecen los que el sistema puede descargar solo.
 
-  Ejemplo: Bot #1 opera BTC/USDT en 1h usando la estrategia "Trend BTC v1.0", con el feature set
-  "default v1.0.0", en la cuenta de Binance de Andrés, arriesgando máximo 1% del capital por operación.
+  Paso 2 — ¿Cómo opera?
+    Eliges la estrategia. Debajo aparecen solo los conjuntos de indicadores que le sirven, con el
+    recomendado ya marcado. El timeframe y el riesgo vienen de la estrategia.
 
-Cada bot tiene su propio Feature Set porque distintos bots pueden necesitar diferentes conjuntos
-de indicadores. Un bot de tendencia y uno de reversión pueden usar indicadores distintos.
+  Paso 3 — ¿Con qué dinero?
+    Eliges una de tus cuentas; ves su saldo. Si no tienes ninguna, ahí mismo creas una cuenta de
+    práctica (paper) con un capital inicial, por ejemplo 10.000 USDT.
 
-Estados de un bot:
+  Paso 4 — Revisa y crea
+    El sistema propone un nombre ("BTC/USDT · EMA Trend Follower") que puedes cambiar. Con
+    "Iniciarlo al crear" marcado, el agente empieza a trabajar de inmediato.
 
-  stopped  → El bot está detenido (estado inicial)
-  running  → El bot está activo generando señales
-  paused   → El bot está pausado temporalmente (conserva su configuración)
-  error    → El bot se detuvo por un error interno
+Ejemplo con números: cuenta de práctica de 10.000 USDT y estrategia con riesgo de 1 % → cada
+operación puede perder como máximo 100 USDT. Si la IA propone entrada en 95.500 y stop loss en
+94.250, el tamaño de la posición es 100 / 1.250 = 0,08 BTC.
 
-Transiciones válidas (máquina de estados):
+La página de cada agente:
+  - Arriba: nombre (se puede cambiar), estado, modo, botones Iniciar / Pausar / Detener y
+    "Analizar ahora".
+  - "Preparando datos": aparece mientras se descargan las primeras velas y se calculan los
+    indicadores (uno o dos minutos). La página se actualiza sola.
+  - Pestañas: Señales, Órdenes (con "Nueva orden"), Posiciones y Configuración (reglas de la
+    estrategia y qué mide cada indicador).
 
-  stopped  → running            (iniciar el bot)
-  running  → paused             (pausar temporalmente)
-  running  → stopped            (detener)
-  running  → error              (fallo interno)
-  paused   → running            (reanudar)
-  paused   → stopped            (detener desde pausa)
-  error    → stopped            (resetear tras error)
+"Analizar ahora" le pide a la IA que evalúe el mercado en ese momento. El resultado queda guardado
+como señal (aprobada o rechazada) y se abre su detalle con los filtros que pasó o no pasó.
 
-No se puede saltar estados: por ejemplo, desde "error" no se puede pasar directamente a "running".
-Primero hay que volver a "stopped" y luego a "running".
+Estados de un agente:
 
-Regla importante: solo se puede editar un bot cuando está en estado "stopped". Si el bot está
-running o paused, los cambios de configuración están bloqueados para evitar inconsistencias.
+  Detenido  → no hace nada (estado inicial)
+  Activo    → descarga velas, calcula indicadores y se puede analizar
+  Pausado   → conserva sus datos al día; se reanuda con "Reanudar"
+  Error     → se detuvo por un fallo interno; hay que detenerlo y volver a iniciarlo
+
+Transiciones válidas:
+
+  Detenido → Activo           (iniciar)
+  Activo   → Pausado          (pausar)
+  Activo   → Detenido         (detener)
+  Pausado  → Activo           (reanudar)
+  Pausado  → Detenido         (detener desde pausa)
+  Error    → Detenido         (resetear tras error)
+
+Reglas que el sistema hace cumplir al crear un agente:
+  - La cuenta tiene que ser tuya y estar activa.
+  - El modo del agente es el de la cuenta (paper con paper, live con live).
+  - El conjunto de indicadores tiene que calcular todo lo que pide la estrategia.
+  - Nunca más del 1 % del capital por operación.
+
+Cada persona solo ve y opera sus propios agentes. El nombre se puede cambiar en cualquier momento;
+el resto de la configuración no (si quieres otra, crea otro agente).
 
 Señales y cómo se generan:
 
-  1. El bot invoca al Agente de IA (M6) con su contexto:
-     símbolo + timeframe + estrategia + cuenta + feature set del bot
-  2. El Agente aplica el Prompt Maestro (4 fases: régimen → reglas → LLM → R/R)
+  1. El agente consulta a la IA (M6) con su contexto:
+     símbolo + timeframe + estrategia + cuenta + conjunto de indicadores
+  2. La IA aplica el Prompt Maestro (4 fases: régimen → reglas → LLM → R/R)
   3. Si APROBADA → la señal tiene acción BUY o SELL + entry, SL, TP, position_size, rr_ratio
   4. Si RECHAZADA → la señal tiene acción HOLD, approved=False
-  5. TODAS las señales se guardan en la BD, incluyendo las rechazadas (trazabilidad completa)
+  5. TODAS las señales se guardan, incluidas las rechazadas (trazabilidad completa)
+
+Hoy las señales se generan a mano con "Analizar ahora"; la generación automática por vela es la
+siguiente mejora prevista.
 
 ¿Cómo se infiere BUY vs SELL?
 
-  El agente calcula entry y stop_loss. La relación entre ellos define la dirección:
   entry > stop_loss → BUY  (compra: ganas si el precio sube)
   entry < stop_loss → SELL (short: ganas si el precio baja)
 
 features_hash:
 
-  Cada señal guarda un SHA-256 del snapshot de indicadores que usó para tomarla.
-  Esto permite auditar exactamente qué datos vio el agente cuando tomó la decisión.
+  Cada señal guarda una huella (SHA-256) de los indicadores que usó. Así se puede auditar
+  exactamente qué datos vio la IA cuando tomó la decisión.
 
 Páginas de la UI:
-  /#/bots       → Panel de usuario: los bots de todas tus cuentas, crear nuevo, iniciar/pausar/detener
-                  desde el menú de cada bot, ver sus señales y generar una señal a mano
-  /#/admin/bots → Vista admin: todos los bots del sistema con filtros de estado y modo
+  /#/agents       → Mis agentes: tarjetas con estado, símbolo, estrategia y última señal
+  /#/agents/new   → Asistente para crear un agente
+  /#/agents/12    → Detalle del agente 12
+  /#/admin/agents → Vista admin: todos los agentes del sistema con filtros de estado y modo
 
 ---
 3.5 Módulo 8 — Orders & Execution (Órdenes y Ejecución)
@@ -585,7 +629,7 @@ Regla de oro: siempre correr al menos 3 meses en paper mode antes de pasar a liv
 Esto permite acumular 50-100+ operaciones y calcular métricas reales de la estrategia.
 
 Páginas de la UI:
-  /#/orders       → Panel de usuario: elige un bot y verás las pestañas Órdenes/Posiciones/Ejecuciones;
+  /#/orders       → Panel de usuario: elige un agente y verás las pestañas Órdenes/Posiciones/Ejecuciones;
                     el botón de nueva orden abre un formulario para crear una orden manual
   /#/admin/orders → Vista admin: todas las órdenes del sistema con filtros de lado, estado y tipo
 

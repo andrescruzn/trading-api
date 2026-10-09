@@ -1,4 +1,4 @@
-# Módulo 7 — Bots & Signals (Bots y Señales) ✅ COMPLETO
+# Módulo 7 — Bots & Signals (Agentes y Señales) ✅ COMPLETO
 
 ← [Índice de módulos](_ROOT.md)
 
@@ -7,98 +7,112 @@
 | Campo | Valor |
 |---|---|
 | Estado | ✅ Completo |
-| Avance (alcance original) | 100 % — 8/8 entregables |
-| Madurez (estimada) | 73 % — ver [Avance](#avance) |
+| Avance (alcance original) | 100 % — 11/11 entregables |
+| Madurez (estimada) | 75 % — ver [Avance](#avance) |
 | Tablas | `bots`, `signals` (R/W); `strategies`, `accounts`, `account_balances`, `candles`, `candle_features`, `feature_sets`, `symbols`, `timeframes` (R) |
 | Depende de | [M2](M02-MARKET-DATA.md), [M3](M03-FEATURE-ENGINEERING.md), [M4](M04-ACCOUNTS-PORTFOLIO.md), [M5](M05-STRATEGIES.md), [M6](M06-AI-AGENT.md) |
-| Lo usan | [M8](M08-ORDERS-EXECUTION.md) (órdenes por bot), [M9](M09-ALERTS.md) (hooks de señal/error), [M10](M10-BILLING.md) (bot de la cuenta administrada), scheduler de [M2](M02-MARKET-DATA.md) |
+| Lo usan | [M8](M08-ORDERS-EXECUTION.md) (órdenes por bot), [M9](M09-ALERTS.md) (hooks de señal/error), [M10](M10-BILLING.md) (bot de la cuenta administrada), scheduler de [M2](M02-MARKET-DATA.md), dashboard de [M1](M01-AUTH.md) |
 | Prefijo API | `/api/bots`, `/api/signals` (ver [corrección de rutas](#corrección-de-rutas)) |
 | Frontend | `frontend/src/modules/bots` |
 | Última revisión | 2026-10-08 |
 
 ## Descripción
 
-**En palabras simples:** Es el piloto automático. Un bot es una instancia que aplica una estrategia sobre un símbolo específico, de forma continua y automática.
+**En palabras simples:** Es el piloto automático y el **punto de entrada de la app**. En la interfaz los bots se llaman **agentes**: un agente vigila un símbolo, aplica una estrategia y le pide a la IA que confirme cada operación. Crear y encender un agente es lo que pone a andar todo lo demás (el scheduler solo descarga velas e indicadores para agentes activos).
 
 **Qué hace:**
-- Crea **bots** que combinan: cuenta + símbolo + estrategia + feature set + parámetros de riesgo
-- Los bots se pueden activar (`start`), pausar (`pause`) y detener (`stop`) — máquina de estados con transiciones válidas
-- Cada bot tiene su propio `feature_set_id` (no es global)
-- Al generar una señal: invoca el Agente (M6) con el contexto del bot y persiste el resultado
-- Las señales APROBADAS: acción BUY o SELL + entry, SL, TP, position_size, rr_ratio
-- Las señales RECHAZADAS: acción HOLD, `approved=False`, todas persisten para trazabilidad
-- `features_hash`: SHA-256 del contexto de mercado, fingerprint para auditoría
+- Crea **agentes** (tabla `bots`) con nombre + cuenta + símbolo + estrategia + conjunto de indicadores + parámetros de riesgo.
+- Valida al crear: que existan las referencias, que la cuenta sea del usuario y esté activa, que el modo coincida con el de la cuenta, que el conjunto de indicadores cubra las reglas de la estrategia y la regla del 1 %.
+- Los agentes se activan (`start`), pausan (`pause`) y detienen (`stop`) con una máquina de estados.
+- Un usuario solo ve y opera **sus** agentes (propiedad por cuenta); el admin ve todos.
+- Al generar una señal ("Analizar ahora"): invoca el Agente (M6) con el contexto del bot y persiste el resultado.
+- Señales APROBADAS: BUY o SELL + entry, SL, TP, position_size, rr_ratio. RECHAZADAS: HOLD, `approved=False`; todas persisten.
+- `features_hash`: SHA-256 del contexto de mercado, fingerprint para auditoría.
 
 ## Páginas
 
 Hash routing: la URL real es `/#/<ruta>`.
 
 **Páginas — Usuario (cualquier usuario autenticado):**
-- `/#/bots` — Panel de bots: lista los bots de todas tus cuentas (con nombres de estrategia, símbolo, timeframe y cuenta), crea nuevos, iniciar/pausar/detener desde el menú de acciones, ver señales de cada bot (con detalle en panel lateral) y generar señal manualmente
+- `/#/agents` — **Mis agentes**: tarjetas con estado (punto que late si está activo), símbolo · timeframe, estrategia, última señal y botones Iniciar/Reanudar/Pausar. Filtro Todos / Activos / Detenidos. Sin agentes: bienvenida que explica qué es un agente.
+- `/#/agents/new` — **Asistente de creación** en 4 pasos: (1) qué operar (solo símbolos con velas automáticas), (2) cómo opera (estrategia + conjunto de indicadores compatible, con el recomendado preseleccionado), (3) con qué dinero (cuentas propias con su saldo; crea una cuenta de práctica en línea si no hay), (4) revisar: nombre sugerido editable, riesgo de la estrategia en solo lectura, "Iniciarlo al crear".
+- `/#/agents/:id` — **Detalle**: nombre editable, controles, **Analizar ahora** (genera una señal y abre su detalle), aviso "Preparando datos" hasta que hay indicadores, pestañas Señales · Órdenes (con Nueva orden) · Posiciones (+ ejecuciones) · Configuración (reglas e indicadores explicados).
+- `/#/bots` y `/#/agent` redirigen a `/#/agents`.
 
 **Páginas — Administrador (solo admin):**
-- `/#/admin/bots` — Vista global de todos los bots del sistema con filtros por estado y modo
+- `/#/admin/agents` — Vista global de todos los agentes con filtros por estado y modo; clic en una fila abre el detalle. `/#/admin/bots` redirige aquí.
 
 ## Entregables
 
 Tablas: `bots`, `signals`
 
 Entregables:
-- ✅ Bot = cuenta + símbolo + estrategia + feature_set + parámetros de riesgo
+- ✅ Bot = nombre + cuenta + símbolo + estrategia + feature_set + parámetros de riesgo
 - ✅ CRUD bots (start/pause/stop) con máquina de estados en domain entity
 - ✅ Cada bot tiene su propio `feature_set_id` (migración m07b)
 - ✅ Señales: BUY / SELL / HOLD con entry, SL, TP, position_size, rr_ratio (migración m07a)
 - ✅ Señales rechazadas persisten con approved=False (trazabilidad completa)
 - ✅ features_hash: SHA-256 del snapshot de features para auditoría
-- ✅ Web UI: `/#/bots` (usuario) + `/#/admin/bots` (admin) — en React desde 2026-10-08
+- ✅ Web UI en React: Mis agentes, asistente, detalle y vista admin
 - ✅ 55 tests unitarios pasando (bot entity, status transitions, signal generation)
+- ✅ **Agentes con nombre** (`bots.name`, migración `m07 add name to bots`)
+- ✅ **Propiedad** en todas las rutas de bots y señales (404 para bots ajenos)
+- ✅ **Validaciones al crear** (referencias, cuenta propia y activa, modo = cuenta, compatibilidad estrategia/indicadores, regla del 1 %)
 
 ## Decisiones de diseño
 
 | Decisión | Motivo | Alternativa descartada |
 |---|---|---|
-| Bot = cuenta + símbolo + estrategia + feature set + `risk_params` | Un bot es una configuración completa y reproducible | Bot ligado solo a la estrategia |
-| `feature_set_id` es **por bot**, no global (migración `m07b`) | Cada bot puede usar su propio conjunto de indicadores; se pasa al `AnalyzeService` | Un feature set global |
-| Máquina de estados en la **entidad de dominio** (`stopped` / `running` / `paused` / `error`) | Las transiciones válidas viven en un solo sitio y se testean sin BD | Validar transiciones en las rutas |
-| Un bot nuevo siempre nace `stopped`; solo se edita su configuración cuando está `stopped` | Evita cambiar parámetros de riesgo con el bot operando | Edición libre |
-| `paused` **sí** es activo (`is_active() = True`) | Puede seguir generando señales aunque esté pausado | Pausa = inactivo |
+| En la UI "bot" se llama **agente**; código, tablas y API siguen siendo `bot` | El usuario piensa en "agentes" que operan por él; renombrar el backend no aporta y rompe contratos | Renombrar tablas y endpoints |
+| La página "Agente de IA" (análisis puntual sin bot) se integra en cada agente como **Analizar ahora** | Un solo concepto para el usuario; el análisis queda guardado como señal | Mantener dos páginas con nombres parecidos |
+| Bot = nombre + cuenta + símbolo + estrategia + feature set + `risk_params` | Un bot es una configuración completa y reproducible | Bot ligado solo a la estrategia |
+| El asistente deriva **timeframe** y **riesgo** de la estrategia y el **modo** de la cuenta | Menos campos y sin incoherencias (antes se podían elegir distintos) | Pedirlos de nuevo en el formulario |
+| Solo se ofrecen conjuntos de indicadores **compatibles** con las reglas de la estrategia; el backend lo vuelve a validar | Una regla sin su indicador se rechazaría siempre en silencio | Dejar elegir cualquiera |
+| Un bot ajeno responde **404** (`BOT_NOT_FOUND`) | No revela qué IDs existen | 403 |
+| `GET /api/bots` sin `account_id` devuelve los bots del usuario; `?mine=true` hace lo mismo para admin | Una sola petición desde el front (antes una por cuenta) | `useBotsByAccountsQuery` con N peticiones |
+| `risk_pct` ≤ 0.01 validado en el backend (`Bot.is_valid_risk_pct`) | Regla de negocio del 1 %; antes solo la validaba el front | Aceptar hasta 100 % |
+| El nombre se puede cambiar en cualquier estado; modo y riesgo solo con el bot `stopped` | Renombrar no afecta la operación | Exigir `stopped` para todo |
+| `feature_set_id` es **por bot**, no global (migración `m07b`) | Cada bot usa su propio conjunto; se pasa al `AnalyzeService` | Un feature set global |
+| Máquina de estados en la **entidad de dominio** (`stopped` / `running` / `paused` / `error`) | Las transiciones viven en un solo sitio y se testean sin BD | Validar transiciones en las rutas |
+| Un bot nuevo siempre nace `stopped` (el asistente lo inicia después si se marca "Iniciarlo al crear") | Crear y operar son pasos distintos en la API | Crear ya activo |
+| `paused` **sí** es activo (`is_active() = True`) | Sigue con datos al día y puede generar señales | Pausa = inactivo |
 | Las señales rechazadas **también se persisten** con `approved=False` (acción `hold`) | Trazabilidad completa y base para medir el edge | Descartarlas |
 | `features_hash`: SHA-256 del contexto de mercado | Huella para auditar con qué datos se generó cada señal | Guardar el snapshot completo |
 | Dirección buy/sell inferida: `entry > stop_loss` → buy; `entry < stop_loss` → sell | La señal no necesita un campo de dirección aparte | Pedirle la dirección al LLM |
-| Migración `m07` añade `entry_price`, `stop_loss`, `take_profit`, `position_size`, `rr_ratio`, `approved` a `signals` | La señal guarda el plan completo de la operación | Dejarlo en `reasons` JSON |
 | `GenerateSignalService` invoca [M6](M06-AI-AGENT.md) vía `_build_analyze_service()` con repos propios y *prestados* | Reutiliza el agente sin duplicar su cableado | Llamar a `/api/agent/analyze` por HTTP |
 | Hook de alertas post-commit, siempre en `try/except` ([M9](M09-ALERTS.md)) | Una alerta nunca debe abortar el flujo de trading | Alertas dentro de la transacción |
-| Rutas bajo `/api/bots` y `/api/signals` | Antes evitaba colisión con la página Jinja `/bots`; desde 2026-10-08 todo el REST va bajo `settings.API_PREFIX` | Rutas sin prefijo |
-| El front une una petición `GET /api/bots?account_id=` por cada cuenta del usuario (`useBotsByAccountsQuery`) | La API exige `account_id` a los no admin; así no se cambió el contrato | Endpoint "mis bots" en el backend |
 
 ## Avance
 
 | Métrica | Valor | Evidencia |
 |---|---|---|
-| Alcance original | **100 %** (8/8) | CRUD, estados, señales con precios, trazabilidad, `features_hash`, UI y 55 tests |
-| Madurez | **≈ 73 %** | Funcionalidad 80 · Tests 80 · Seguridad 80 · Operación 50 |
+| Alcance original | **100 %** (11/11) | CRUD, estados, señales, trazabilidad, nombre, propiedad, validaciones, UI y 55 tests |
+| Madurez | **≈ 75 %** | Funcionalidad 85 · Tests 75 · Seguridad 90 · Operación 50 |
 
-- **Funcionalidad (80):** las señales se generan **solo a mano** (`POST /api/signals/generate`): el único llamador de `generate_signal` es esa ruta. El scheduler de [M2](M02-MARKET-DATA.md) mantiene velas y features al día pero **no genera señales**.
-- **Tests (80):** 55 tests (entidad, transiciones de estado, generación de señal); sin tests de REST ni de propiedad.
-- **Operación (50):** sin ejecución periódica de bots ni paso automático de la señal a una orden.
+- **Funcionalidad (85):** flujo guiado de punta a punta (asistente → iniciar → analizar). Las señales siguen generándose **solo a mano** ("Analizar ahora" / `POST /api/signals/generate`).
+- **Tests (75):** 55 tests (entidad, transiciones, generación); sin tests de propiedad, de las nuevas validaciones de creación ni de REST.
+- **Seguridad (90):** propiedad en todas las rutas; validación de referencias y de la regla del 1 % en el backend.
+- **Operación (50):** sin ejecución periódica de señales ni paso automático señal → orden.
 
 ## Posibles mejoras
 
 | Prioridad | Mejora | Esfuerzo |
 |---|---|---|
 | Alta | **Generación automática de señales:** que el scheduler llame a `generate_signal` para cada bot `running` cuando cierra una vela nueva (hoy es manual) | M |
-| Alta | **Puente señal → orden:** crear la orden de [M8](M08-ORDERS-EXECUTION.md) a partir de una señal aprobada (hoy `signal_id` es un parámetro opcional de `CreateOrderService`, no un flujo automático) | M |
+| Alta | **Puente señal → orden:** crear la orden de [M8](M08-ORDERS-EXECUTION.md) a partir de una señal aprobada | M |
 | Alta | Evitar señales duplicadas por vela (idempotencia por `bot_id` + `ts`) | S |
-| Media | *Kill switch* / límites de riesgo por bot (pérdida diaria máxima, nº de operaciones) y paso automático a `error` ante fallos repetidos (dispara las alertas `error` de [M9](M09-ALERTS.md)) | M |
-| Alta | **Control de propiedad en las rutas de bots y señales:** hoy solo exigen token; `GET /api/bots?account_id=`, `GET/PUT /api/bots/{id}`, `start/pause/stop`, `GET /api/signals` y `POST /api/signals/generate` no comprueban que el bot o la cuenta sean del usuario | S |
-| Media | Endpoint `GET /api/bots` que devuelva los bots del usuario sin `account_id` (evita N peticiones desde el front) | S |
-| Media | Tests de rutas REST y de propiedad (usuario vs admin) | S |
+| Media | Tests de propiedad (usuario vs admin), de `CreateBotService` (validaciones) y de rutas REST | S |
+| Media | *Kill switch* / límites de riesgo por bot (pérdida diaria máxima, nº de operaciones) y paso automático a `error` ante fallos repetidos | M |
+| Media | `risk_params.risk_pct` del bot no se usa al dimensionar (el agente usa el de la estrategia); unificar | S |
+| Media | Resumen por agente en la tarjeta (PnL, nº de operaciones, win rate) | M |
 | Baja | Paginación y filtros por fecha/acción en el listado de señales | S |
+| Baja | Duplicar un agente desde el detalle | S |
 
 ## Fuera de alcance y pendientes conocidos
 
 - Ejecución autónoma de bots (generar señal + operar sin intervención).
-- Tabla `predictions` (diferida desde [M6](M06-AI-AGENT.md) porque requiere `bot_id`; sin modelo ORM todavía).
+- Editar símbolo, estrategia, cuenta o conjunto de un agente ya creado (se crea otro).
+- Tabla `predictions` (diferida desde [M6](M06-AI-AGENT.md); sin modelo ORM todavía).
 - Tabla `portfolio_snapshots` (por bot; sin modelo ORM todavía).
 
 ## Detalle técnico
@@ -106,16 +120,16 @@ Entregables:
 ### Tablas en BD
 | Tabla | Acción | Nota |
 |-------|--------|------|
-| `bots` | WRITE | CRUD + state machine (stopped/running/paused/error) |
+| `bots` | WRITE | CRUD + state machine (stopped/running/paused/error); `name VARCHAR(80) NOT NULL` |
 | `signals` | WRITE | Señales generadas por bot (buy/sell/hold + precios) |
-| `strategies` | READ | Para construir AnalyzeService (borrowed de M5) |
-| `accounts` | READ | Para obtener capital (borrowed de M4) |
-| `account_balances` | READ | Balance más reciente (borrowed de M4) |
-| `candles` | READ | Última vela (borrowed de M2) |
-| `candle_features` | READ | Features del feature_set del bot (borrowed de M3) |
-| `feature_sets` | READ | Validar feature_set_id del bot |
-| `symbols` | READ | Para validar (borrowed de M2) |
-| `timeframes` | READ | Para validar (borrowed de M2) |
+| `strategies` | READ | Validar al crear y construir AnalyzeService (M5) |
+| `accounts` | READ | Propiedad, estado y modo; capital (M4) |
+| `account_balances` | READ | Balance más reciente (M4) |
+| `candles` | READ | Última vela (M2) |
+| `candle_features` | READ | Features del feature_set del bot (M3) |
+| `feature_sets` | READ | Validar existencia y compatibilidad (M3) |
+| `symbols` | READ | Validar que exista y esté activo (M2) |
+| `timeframes` | READ | Validar (M2) |
 
 ### Modelos ORM (`app/modules/bots/infrastructure/`)
 | Archivo | Clase ORM | Tabla |
@@ -126,84 +140,89 @@ Entregables:
 Registrados en: `app/extensions/db/models_registry.py`
 
 ### Migraciones
-- Columnas de precio en `signals` (entry_price, stop_loss, take_profit, position_size, rr_ratio, approved) y `bots.feature_set_id`: antes en `migrations/m07*.sql` (eliminados); hoy las declara el modelo y las crea la migración inicial de Alembic.
+- Columnas de precio en `signals` y `bots.feature_set_id`: en la migración inicial de Alembic.
+- `bots.name`: revisión `m07 add name to bots` (columna nullable → backfill `CONCAT('Agente #', id)` → NOT NULL).
 
 ### Repositorios
 | Domain (interfaz) | Infrastructure (impl) |
 |-------------------|-----------------------|
-| `domain/bot_repository.py` | `infrastructure/bot_repository_impl.py` → `SqlAlchemyBotRepository` |
+| `domain/bot_repository.py` | `infrastructure/bot_repository_impl.py` → `SqlAlchemyBotRepository` (incluye `list_by_account_ids`) |
 | `domain/signal_repository.py` | `infrastructure/signal_repository_impl.py` → `SqlAlchemySignalRepository` |
 
 ### Servicios (`app/modules/bots/services/`)
 | Subdir | Servicios |
 |--------|-----------|
-| `bots/` | `list_bots_service.py`, `get_bot_service.py`, `create_bot_service.py`, `update_bot_service.py`, `update_bot_status_service.py` |
+| `bots/` | `list_bots_service.py`, `get_bot_service.py`, `create_bot_service.py`, `update_bot_service.py`, `update_bot_status_service.py`, `bot_access.py` (`find_accessible_bot`: regla de propiedad compartida) |
 | `signals/` | `list_signals_service.py`, `generate_signal_service.py` |
+
+Todos los servicios que reciben un `bot_id` aceptan `owner_id` (`None` = admin, sin restricción).
 
 Provider: `app/modules/bots/providers/bot_provider.py` → `BotServiceFactory`
 - Repos propios: `SqlAlchemyBotRepository`, `SqlAlchemySignalRepository`
-- Repos borrowed: M2 (candle/symbol/timeframe), M3 (feature/candle_feature), M4 (account/balance), M5 (strategy)
+- Repos borrowed: M2 (candle/symbol/timeframe), M3 (feature_set/candle_feature), M4 (account/balance), M5 (strategy)
 - `_build_analyze_service()` instancia M6 AnalyzeService con todos sus deps
 
 ### Endpoints REST
 | Método | Ruta | Auth | Nota |
 |--------|------|------|------|
-| GET | `/api/bots` | token | Admin ve todos (o filtra por `account_id`); **el resto debe enviar `account_id`** o recibe 400 "Elige una cuenta para ver sus bots." |
-| POST | `/api/bots` | token | Crea bot (siempre inicia en stopped) |
-| GET | `/api/bots/{id}` | token | Detalle del bot |
-| PUT | `/api/bots/{id}` | token | Edita config (solo cuando stopped) |
+| GET | `/api/bots` | token | Usuario: sus bots (opcional `account_id` propio). Admin: todos, por `account_id`, o los suyos con `?mine=true` |
+| POST | `/api/bots` | token | Crea bot (`name` obligatorio; siempre inicia en stopped) |
+| GET | `/api/bots/{id}` | token | Detalle (404 si no es del usuario) |
+| PUT | `/api/bots/{id}` | token | `name` en cualquier estado; `mode`/`risk_params` solo si stopped |
 | POST | `/api/bots/{id}/start` | token | Transición → running |
 | POST | `/api/bots/{id}/pause` | token | Transición → paused |
 | POST | `/api/bots/{id}/stop` | token | Transición → stopped |
-| GET | `/api/signals` | token | Lista señales (requiere ?bot_id=X) |
-| POST | `/api/signals/generate` | token | Genera señal invocando M6 |
+| GET | `/api/signals` | token | Lista señales (requiere `?bot_id=`; 404 si el bot no es del usuario) |
+| POST | `/api/signals/generate` | token | Genera señal invocando M6 ("Analizar ahora") |
 
-Ninguna de estas rutas verifica hoy la propiedad del bot/cuenta (ver Posibles mejoras).
+`owner_scope(identity)` (en `rest/bots/routes.py`) devuelve el `user_id` o `None` para admin; lo reutiliza `rest/signals/routes.py`.
 
-Routers registrados en `app/app_factory.py` (dentro de `api_routers`, con `prefix=settings.API_PREFIX`):
-```python
-from app.modules.bots.rest import bots_router, signals_router
-```
+Routers registrados en `app/app_factory.py` (dentro de `api_routers`, con `prefix=settings.API_PREFIX`).
 
 ### Frontend (`frontend/src/modules/bots/`)
 | Ruta | Archivo de ruta | Página / componentes |
 |-----|----------|----|
-| `/#/bots` | `routes/_app/bots.lazy.tsx` | `pages/bots.tsx` (`BotsPage`) + `components/bot-form-dialog.tsx` + `components/bot-actions-menu.tsx` + `components/bot-signals-panel.tsx` + `components/signal-detail-sheet.tsx` |
-| `/#/admin/bots` | `routes/_app/admin/bots.lazy.tsx` | `pages/admin-bots.tsx` |
+| `/#/agents` | `routes/_app/agents/index.lazy.tsx` | `pages/agents.tsx` + `components/agent-card.tsx` + `components/agents-empty-state.tsx` |
+| `/#/agents/new` | `routes/_app/agents/new.lazy.tsx` | `pages/agent-new.tsx` + `components/agent-wizard/{choice-card,symbol-step,strategy-step,account-step}.tsx` + `shared/components/stepper.tsx` |
+| `/#/agents/:id` | `routes/_app/agents/$agentId.lazy.tsx` | `pages/agent-detail.tsx` + `components/{agent-controls,analyze-now-button,signals-table,signal-detail-sheet}.tsx` |
+| `/#/admin/agents` | `routes/_app/admin/agents.lazy.tsx` | `pages/admin-agents.tsx` + `components/bot-actions-menu.tsx` |
+| `/#/bots`, `/#/admin/bots`, `/#/agent` | `routes/_app/{bots,agent}.tsx`, `routes/_app/admin/bots.tsx` | Redirecciones (`beforeLoad` + `redirect`) |
 
-- API: `api/bots.api.ts` (`listBots`, `getBot`, `createBot`, transiciones `/bots/{id}/{start|pause|stop}`, `listSignals`, `generateSignal`).
-- Queries `hooks/use-bots-queries.ts`: `useBotsQuery` (sin `account_id` solo sirve a admin), `useBotsByAccountsQuery` (una petición por cuenta, unidas y ordenadas), `useMyBotsQuery` (bots de las cuentas propias; lo usa Alertas — Órdenes usa `useBotsByAccountsQuery`), `useSignalsQuery`. Mutations en `use-bots-mutations.ts`; catálogos para nombres en `use-bot-catalogs.ts`; etiquetas en `lib/bots-labels.ts`; badges en `components/bot-badges.tsx`.
+- API: `api/bots.api.ts` (`listBots({account_id, mine})`, `getBot`, `createBot`, `updateBot`, transiciones, `listSignals`, `generateSignal`).
+- Queries: `useBotsQuery`, `useMyBotsQuery` (`?mine=true`), `useBotQuery`, `useSignalsQuery`. Mutations: create, update, transition, generate signal. `hooks/use-bot-transition.ts` centraliza las transiciones con sus toasts.
+- `lib/agent-wizard.ts`: compatibilidad estrategia ↔ conjunto (mismo criterio que `rule_keys` del backend), conjunto recomendado, timeframe y riesgo de la estrategia, nombre sugerido.
+- `lib/bots-labels.ts`: `describeBot(bot)` = nombre; `describeBotMarket(bot, catalogs)` = `BTC/USDT · 1h`.
 
 ### Corrección de rutas
 
-> El antiguo MODULES_MAP listaba los endpoints sin prefijo. Hoy los routers declaran `prefix="/bots"` y `prefix="/signals"` y `app_factory.py` les añade `/api`. Rutas públicas: `/api/bots`, `/api/bots/{id}`, `/api/bots/{id}/start|pause|stop`, `/api/signals` y `/api/signals/generate`. En el front se escriben sin `/api`.
+> Los routers declaran `prefix="/bots"` y `prefix="/signals"` y `app_factory.py` les añade `/api`. En el front se escriben sin `/api`.
 
 ## Gotchas críticos
 
-- `ServiceResult` almacena el error en `result.error.code` (NO `result.code`). Error que se encontró en `generate_signal_service.py` y se corrigió.
+- `ServiceResult` almacena el error en `result.error.code` (NO `result.code`).
 - `feature_set_id` es por bot, NO global. El bot pasa su propio `feature_set_id` al AnalyzeService.
-- El bot `paused` ES activo (`is_active() = True`) — puede generar señales aunque esté pausado.
-- Señales rechazadas siempre se persisten con `approved=False` para trazabilidad.
+- El bot `paused` ES activo (`is_active() = True`).
+- Señales rechazadas siempre se persisten con `approved=False`.
 - Dirección buy/sell se infiere: `entry > stop_loss` → buy; `entry < stop_loss` → sell.
-- **`GET /api/bots` exige `account_id` a los no admin** (400 si falta). En el front: `useBotsQuery()` sin filtros solo en páginas admin; en páginas de usuario `useBotsByAccountsQuery` / `useMyBotsQuery` (una petición por cuenta).
-- **Decimales como `float`:** `_signal_to_dict` serializa `entry_price`, `stop_loss`, `take_profit`, `position_size`, `rr_ratio` y `confidence` con `float(...)` (`_decimal_or_none`), a diferencia de la convención `DECIMAL(30,12)` → string; el front los tipa como `number`. Puede perder precisión en valores con muchos decimales.
+- **Admin y `GET /api/bots`:** sin filtros recibe **todos** los bots del sistema. En pantallas de usuario usar `useMyBotsQuery` (`?mine=true`), nunca `useBotsQuery()` a secas.
+- **Compatibilidad en dos lados:** el front filtra conjuntos con `isFeatureSetCompatible` y el backend valida con `indicator_catalog.is_compatible`. Si cambia el formato de las reglas, actualizar ambos.
+- **Decimales como `float`:** `_signal_to_dict` serializa precios y `confidence` con `float(...)`; el front los tipa como `number`.
 
 ## Tests
 
 - `tests/bots/test_bot_entity.py` — 22 tests (máquina de estados, is_active, risk_params)
 - `tests/bots/test_update_bot_status_service.py` — 16 tests (transiciones, timestamps, repo.commit)
 - `tests/bots/test_generate_signal_service.py` — 17 tests (validaciones, dirección, campos)
-- Total: 55 tests unitarios (22 + 16 + 17).
-- **Huecos:** rutas REST, listado/ownership, hook de alertas.
+- Total: 55 tests unitarios. **Huecos:** propiedad, validaciones de `CreateBotService`, rutas REST, hook de alertas.
 
 ## Riesgos
 
-- Una señal generada con velas/features desactualizados (si el scheduler está apagado o falla un fetch) puede llevar a operar con datos viejos.
-- Sin idempotencia por vela, generaciones manuales repetidas crean señales duplicadas.
+- Una señal generada con velas/features desactualizados (scheduler apagado o fetch fallido) puede llevar a operar con datos viejos.
+- Sin idempotencia por vela, "Analizar ahora" repetido crea señales duplicadas.
 
 ## Historial
 
 - **2026-03** — Módulo completado: CRUD de bots con máquina de estados, `GenerateSignalService`, UI `/bots` y `/admin/bots`, 55 tests.
-- **Migraciones:** `m07_add_signal_price_columns.sql`, `m07b_add_bot_feature_set_id.sql` (hoy incluidas en el esquema inicial de Alembic).
 - **Posterior** — Hook post-commit de alertas ([M9](M09-ALERTS.md)).
 - **2026-10-08** — API headless (/api), páginas migradas a React (frontend/).
+- **2026-10-08** — **Agentes:** los bots pasan a llamarse agentes en la UI y son el punto de entrada (dashboard, asistente, detalle). Nombre (`bots.name`), propiedad en todas las rutas, validaciones de creación, regla del 1 % en el backend, `?mine=true`. La página "Agente de IA" se integra como "Analizar ahora".

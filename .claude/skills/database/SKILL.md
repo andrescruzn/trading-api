@@ -114,6 +114,7 @@ uv run python -m database.seeds --list               # ver los disponibles
 | `roles` | user / admin / investor con los IDs de `settings.AUTH_*_ROLE_ID` |
 | `market_data` | 7 exchanges, 14 timeframes, 24 símbolos |
 | `strategies` | 6 estrategias de ejemplo |
+| `feature_sets` | 3 conjuntos de indicadores por enfoque: Completo, Tendencia, Rango |
 | `accounts` | 2 cuentas paper con balances para el usuario demo (se omite si el usuario no existe) |
 
 Reglas para un seed nuevo:

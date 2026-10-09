@@ -135,7 +135,7 @@ frontend/
       shared/                 api-client, envelope, DataTable, OptionSelect, StatCard, format, layouts
       app-shell/              sidebar (navSections), nav-user, breadcrumb
       auth/ · dashboard/
-      market/ · features/ · accounts/ · strategies/ · agent/ · bots/ · orders/ · alerts/ · billing/   (uno por módulo M2–M10)
+      market/ · features/ · accounts/ · strategies/ · bots/ · orders/ · alerts/ · billing/   (uno por módulo M2–M10; M6 se usa desde bots)
         api/<x>.api.ts · hooks/use-<x>-queries.ts · hooks/use-<x>-mutations.ts · lib/ · components/ · pages/
 ```
 

@@ -13,7 +13,7 @@
 | Depende de | [M2](M02-MARKET-DATA.md), [M3](M03-FEATURE-ENGINEERING.md), [M4](M04-ACCOUNTS-PORTFOLIO.md), [M5](M05-STRATEGIES.md) |
 | Lo usan | [M7](M07-BOTS-SIGNALS.md) (`GenerateSignalService` instancia el `AnalyzeService`) |
 | Prefijo API | `/api/agent`, `/api/models`, `/api/model-runs` |
-| Frontend | `frontend/src/modules/agent` |
+| Frontend | Sin módulo propio desde 2026-10-08: se usa desde el detalle de cada agente ([M7](M07-BOTS-SIGNALS.md), "Analizar ahora") |
 | Última revisión | 2026-10-08 |
 
 ## Descripción
@@ -34,7 +34,7 @@
 Hash routing: la URL real es `/#/<ruta>`.
 
 **Páginas — Usuario (cualquier usuario autenticado):**
-- `/#/agent` — "Agente de IA": panel de análisis: selecciona símbolo, timeframe, estrategia y cuenta, lanza el análisis y ve el resultado (APROBADA/RECHAZADA con entry, SL, TP, tamaño de posición y resumen de indicadores)
+- No tiene página propia. La antigua `/#/agent` (análisis puntual sin bot) redirige a `/#/agents`: el análisis se lanza con **Analizar ahora** en el detalle de cada agente ([M7](M07-BOTS-SIGNALS.md)), que llama a `POST /api/signals/generate` y guarda el resultado como señal. En la UI el LLM se nombra "la IA" ("agente" es el bot).
 
 **Páginas — Administrador (solo admin):**
 - No hay página admin específica en este módulo; la gestión de modelos ML se hace vía API
@@ -55,7 +55,7 @@ Entregables:
 - ✅ CRUD modelos ML (tabla `models`): list, get, create, update
 - ✅ CRUD model_runs (tabla `model_runs`): list, create, finish
 - ✅ `POST /api/agent/analyze` — Prompt Maestro completo
-- ✅ Web UI: `/#/agent` — Página de análisis con formulario y resultado visual (React desde 2026-10-08)
+- ✅ Web UI: análisis desde el detalle de cada agente ("Analizar ahora"); la página `/#/agent` se retiró el 2026-10-08
 - ✅ 20 tests unitarios pasando (LLM 100% mockeado, sin llamadas reales)
 
 ## Decisiones de diseño
@@ -197,13 +197,10 @@ Routers registrados en `app/app_factory.py` (dentro de `api_routers`, con `prefi
 from app.modules.agent.rest import agent_router, models_router, model_runs_router
 ```
 
-### Frontend (`frontend/src/modules/agent/`)
-| Ruta | Archivo de ruta | Página / componentes |
-|-----|----------|----|
-| `/#/agent` | `routes/_app/agent.lazy.tsx` | `pages/analyze.tsx` (`AgentAnalyzePage`) + `components/analysis-result-panel.tsx` |
-
-- API: `api/agent.api.ts` (`api.post('/agent/analyze')`; el `/api` lo pone `VITE_API_URL`); mutation `hooks/use-agent-mutations.ts`; etiquetas `lib/agent-labels.ts`.
-- Selects de símbolo, timeframe, estrategia y cuenta con las queries de `market`, `strategies` y `accounts` (muestran nombres, no IDs).
+### Frontend
+- Se eliminó `frontend/src/modules/agent` (página `analyze.tsx`, `analysis-result-panel.tsx`, api y labels). `routes/_app/agent.tsx` solo redirige a `/agents`.
+- El análisis se usa desde `bots/components/analyze-now-button.tsx` ([M7](M07-BOTS-SIGNALS.md)); el resultado se ve en `signal-detail-sheet.tsx`.
+- `POST /api/agent/analyze` sigue disponible en la API (sin UI).
 - `models` / `model_runs` siguen sin UI.
 
 ### Settings LLM/Agent (en `app/common/config/settings.py`)
@@ -222,6 +219,7 @@ AGENT_MASTER_PROMPT # prompt del sistema configurable (env var)
 
 - **Defaults del proveedor:** `LLM_PROVIDER=openai` y `LLM_MODEL=gpt-4o` si no se configuran. Para usar IA local hay que fijar `LLM_PROVIDER=ollama` y el modelo (p. ej. `gemma3:4b`, como indica `CLAUDE.md`) en `.env`.
 - `POST /api/agent/analyze` responde 200 también cuando la operación es **RECHAZADA**: mirar el veredicto en `data`, no el código HTTP.
+- **Solo los indicadores del conjunto:** el prompt y `features_snapshot` incluyen solo las claves presentes en las features (las del conjunto del bot, ver [M3](M03-FEATURE-ENGINEERING.md)). Si a una regla de la estrategia le falta su indicador, el análisis falla con `AGENT_FEATURE_SET_INCOMPATIBLE` (422) en vez de rechazar la regla en silencio.
 - **Hueco de seguridad:** `POST /api/agent/analyze` no comprueba que la cuenta (`account_id`) pertenezca al usuario; el front solo ofrece las cuentas propias, pero la API acepta cualquier ID (ver Posibles mejoras).
 - `regime_required = None` acepta cualquier régimen (fase 1 no filtra).
 - El `AnalyzeService` lo reutiliza [M7](M07-BOTS-SIGNALS.md) a través de `BotServiceFactory._build_analyze_service()`; un cambio de firma aquí rompe la generación de señales.
@@ -244,3 +242,4 @@ AGENT_MASTER_PROMPT # prompt del sistema configurable (env var)
 - **2026-03** — Módulo completado por un compañero: multi-provider, Prompt Maestro 4 fases, CRUD `models` / `model_runs`, UI `/agent`, 20 tests.
 - **Posterior** — Panel de error y mejor manejo de errores en la página de análisis (commit `d8b2e43`).
 - **2026-10-08** — API headless (/api), páginas migradas a React (frontend/).
+- **2026-10-08** — El prompt usa solo los indicadores del conjunto; nuevo error `AGENT_FEATURE_SET_INCOMPATIBLE`. Se retira la página `/#/agent`: el análisis vive en cada agente ("Analizar ahora").

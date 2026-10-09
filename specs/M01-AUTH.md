@@ -38,7 +38,7 @@ Hash routing: la URL real es `/#/<ruta>`.
 - `/#/login` — Inicio de sesión con código por correo: se escribe el correo, llega un OTP de 6 dígitos (cuenta regresiva y botón para reenviar). `/` redirige a `/dashboard` o `/login` según haya sesión.
 
 **Usuario (y demás roles):**
-- `/#/dashboard` — Panel principal (saludo, último ingreso, 4 tarjetas y gráfica de BTC/USDT)
+- `/#/dashboard` — Panel principal centrado en los **agentes** ([M7](M07-BOTS-SIGNALS.md)): sin agentes, bienvenida con "Crear agente"; con agentes, KPIs, tarjetas de los agentes y el mercado que están viendo
 
 **Admin / Inversor:** no tiene páginas propias; el shell solo muestra la sección "Administración" a `admin` y "Mi inversión" a `investor`.
 
@@ -182,11 +182,12 @@ Todas las rutas REST se montan bajo `settings.API_PREFIX` (`/api`) en `app/app_f
 - Rutas excluidas: `/health`, `/docs`, `/redoc`, `/openapi.json`, `/favicon`.
 - Para columnas `TIMESTAMP(6)` en SQLAlchemy Core usar `sqlalchemy.dialects.mysql.TIMESTAMP(fsp=6)`.
 
-### Dashboard — stats + gráfica (`/#/dashboard`)
-- Saludo con el nombre y último ingreso (`GET /api/users/me`).
-- 4 `StatCard`: BTC/USDT y ETH/USDT (precio, variación y badge de régimen), Mis cuentas (paper · live) y Estrategias (tendencia · reversión).
-- Gráfica de línea de BTC/USDT con el cierre de las últimas 48 velas de 1h, en SVG propio (`price-chart.tsx`, sin librería), verde/rojo con tokens del tema.
-- Datos reales desde: `/api/strategies`, `/api/accounts`, `/api/symbols`, `/api/timeframes`, `/api/candles`, `/api/candle-features`.
+### Dashboard — agentes primero (`/#/dashboard`)
+- Saludo con el nombre y cuántos agentes están analizando el mercado (`GET /api/users/me`, `GET /api/bots?mine=true`).
+- **Sin agentes:** `AgentsEmptyState` (qué es un agente, cómo funciona en 3 pasos y botón "Crear agente" → `/#/agents/new`).
+- **Con agentes:** 3 `StatCard` (agentes activos, paper/live, mis cuentas), aviso si ninguno está activo y hasta 6 `AgentCard` con su última señal y controles.
+- **Mercado:** tarjetas y gráfica (SVG propio, `price-chart.tsx`) de los pares que operan los agentes; sin agentes, BTC/USDT y ETH/USDT en 1h.
+- Sidebar reorganizado: **General** (Inicio) · **Operar** (Mis agentes, Órdenes, Alertas, Mis cuentas) · **Explorar** (Estrategias, Indicadores, Símbolos, Velas) · Mi inversión · Administración.
 
 ## Gotchas críticos
 
@@ -236,4 +237,5 @@ Vite **no** lee el `.env` del backend: `vite.config.ts` carga `.env.frontend` a 
 - **2026-10-08** — API headless (/api), páginas migradas a React (frontend/).
 - **2026-10-08** — Login solo por OTP: se eliminan login con contraseña, `PATCH /users/me/password`, la página `/#/profile` y `SEED_USERS_PASSWORD`; se elimina la columna `users.password_hash` (migración `c4497f5a0188`).
 - **2026-10-08** — Anti-enumeración en el login: se elimina "No encontramos una cuenta con ese correo"; el front avanza siempre al paso del código.
+- **2026-10-08** — Dashboard centrado en agentes y sidebar reorganizado (Operar / Explorar); la tarjeta del login dice "Agentes con IA".
 - **2026-10-08** — Se quita el lockout de cuenta (migración `9ca3ab02fd7a`) y se reemplaza por rate limit por correo; el correo del OTP sale en segundo plano (sin 502); el 429 dice cuánto esperar.

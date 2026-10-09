@@ -23,7 +23,7 @@ Una palabra por concepto. Si la app dice "cuenta" en un lado y "wallet" en otro,
 | **orden** | trade (para la orden) | Tipos: **Mercado**, **Límite**, **Stop**, **Stop límite**. Lados: **Compra** / **Venta**. |
 | **ejecución** | fill | "Ejecuciones" en la pestaña. |
 | **posición** | trade abierto | |
-| **agente** | bot, robot | Lo que la persona crea para operar: símbolo + estrategia + cuenta. En código y API sigue siendo `bot`. Estados: **Activo**, **Pausado**, **Detenido**. Acciones: **Iniciar**, **Pausar**, **Detener**. "Mis agentes" para la lista. Excepción: el **bot de Telegram** conserva su nombre. |
+| **agente** | bot, robot | Lo que la persona crea para operar: símbolo + estrategia + cuenta. En código y API sigue siendo `bot`. Estados: **Activo**, **Pausado**, **Detenido**. Acciones: **Iniciar** (**Reanudar** si está pausado), **Pausar**, **Detener**, **Analizar ahora** (pide una señal a la IA). "Mis agentes" para la lista. Excepción: el **bot de Telegram** conserva su nombre. |
 | **la IA** | agente de IA, modelo (para la IA) | El modelo de lenguaje que evalúa cada operación dentro de un agente. "Modelo" queda para los modelos de ML registrados. |
 | **regla de alerta** | trigger, alarma | Historial = **eventos de alerta**. |
 | **inversor** | cliente, socio | |

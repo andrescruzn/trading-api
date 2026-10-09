@@ -27,6 +27,7 @@ from app.common.security.jwt import token_required_actual
 from app.extensions.db import get_db
 from app.modules.bots.domain.signal_entity import Signal
 from app.modules.bots.providers import BotServiceFactory, get_bot_factory
+from app.modules.bots.rest.bots.routes import owner_scope
 
 from .error_messages import SIGNAL_ERROR_MESSAGES
 from .schemas import GenerateSignalRequest
@@ -89,6 +90,7 @@ def list_signals(
         from_ts=from_ts,
         to_ts=to_ts,
         limit=limit,
+        owner_id=owner_scope(identity),
     )
 
     if not result.success:
@@ -116,7 +118,9 @@ def generate_signal(
     El bot debe estar en estado 'running'.
     La señal se persiste siempre (aprobada o rechazada) para trazabilidad.
     """
-    result = factory.generate_signal().generate(bot_id=payload.bot_id)
+    result = factory.generate_signal().generate(
+        bot_id=payload.bot_id, owner_id=owner_scope(identity)
+    )
 
     if not result.success:
         return build_error_response(result, SIGNAL_ERROR_MESSAGES)

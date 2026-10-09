@@ -28,6 +28,7 @@ from app.modules.bots.domain.bot_entity import Bot
 def make_bot(status: str = "stopped", risk_params: dict | None = None) -> Bot:
     return Bot(
         id=1,
+        name="Agente de prueba",
         strategy_id=10,
         symbol_id=5,
         timeframe_id=3,

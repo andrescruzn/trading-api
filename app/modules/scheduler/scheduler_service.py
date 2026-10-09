@@ -9,7 +9,9 @@
 #   2. Por cada par único (symbol_id, timeframe_id): fetch de velas si
 #      el timeframe venció o no hay datos aún.
 #   3. Por cada tripla única (symbol_id, timeframe_id, feature_set_id):
-#      calcular features si se obtuvieron velas nuevas.
+#      calcular features si se obtuvieron velas nuevas o si sus features
+#      van detrás de la última vela (p. ej. un bot recién iniciado sobre
+#      un par que ya estaba al día, o con otro conjunto de indicadores).
 #   4. Cleanup de candles y candle_features más allá del límite de
 #      retención configurado.
 #
@@ -86,7 +88,8 @@ def run_cycle() -> None:
     2. Agrupa pares únicos (symbol_id, timeframe_id) y consulta si
        sus velas están vigentes o necesitan fetch.
     3. Agrupa triplas únicas (symbol_id, timeframe_id, feature_set_id)
-       para calcular features solo cuando hubo fetch exitoso.
+       y calcula features cuando hubo fetch exitoso o cuando van atrasadas
+       respecto a la última vela.
     4. Limpia candles y candle_features más allá del retention limit.
     """
     retention = settings.SCHEDULER_RETENTION_CANDLES
@@ -103,6 +106,7 @@ def run_cycle() -> None:
 
         timeframe_repo = SqlAlchemyTimeframeRepository(session)
         candle_repo = SqlAlchemyCandleRepository(session)
+        feature_repo = SqlAlchemyCandleFeatureRepository(session)
 
         # Pares únicos para fetch: (symbol_id, timeframe_id) → seconds
         fetch_pairs: dict[tuple[int, int], int] = {}
@@ -122,17 +126,31 @@ def run_cycle() -> None:
 
         # Determinar qué pares necesitan fetch
         fetch_needed: dict[tuple[int, int], int] = {}
+        latest_candle_ts: dict[tuple[int, int], datetime | None] = {}
         for (symbol_id, tf_id), tf_seconds in fetch_pairs.items():
             latest_ts = candle_repo.get_latest_ts(symbol_id, tf_id)
+            latest_candle_ts[(symbol_id, tf_id)] = latest_ts
             should, limit = _should_fetch(latest_ts, tf_seconds)
             if should:
                 fetch_needed[(symbol_id, tf_id)] = limit
 
+        # Triplas con velas pero con features atrasadas o inexistentes
+        stale_triplets: set[tuple[int, int, int]] = set()
+        for (symbol_id, tf_id, fs_id) in calc_triplets:
+            candle_ts = latest_candle_ts.get((symbol_id, tf_id))
+            if candle_ts is None:
+                continue
+            latest_features = feature_repo.list_features(
+                symbol_id=symbol_id, timeframe_id=tf_id, feature_set_id=fs_id, limit=1
+            )
+            if not latest_features or latest_features[0].ts < candle_ts:
+                stale_triplets.add((symbol_id, tf_id, fs_id))
+
     finally:
         session.close()
 
-    if not fetch_needed:
-        logger.debug("[Scheduler] Todas las velas están vigentes. Ciclo omitido.")
+    if not fetch_needed and not stale_triplets:
+        logger.debug("[Scheduler] Velas e indicadores vigentes. Ciclo omitido.")
         return
 
     # ------------------------------------------------------------------
@@ -192,12 +210,13 @@ def run_cycle() -> None:
             session.close()
 
     # ------------------------------------------------------------------
-    # Paso 4: calculate features por tripla
+    # Paso 4: calculate features por tripla (velas nuevas o atrasadas)
     # ------------------------------------------------------------------
-    for (symbol_id, tf_id, fs_id) in calc_triplets:
-        if (symbol_id, tf_id) not in fetched_pairs:
-            continue
-
+    to_calculate = {
+        t for t in calc_triplets
+        if (t[0], t[1]) in fetched_pairs or t in stale_triplets
+    }
+    for (symbol_id, tf_id, fs_id) in to_calculate:
         session = SessionLocal()
         try:
             result = FeatureServiceFactory(session).calculate_features().calculate(
@@ -228,10 +247,7 @@ def run_cycle() -> None:
     # ------------------------------------------------------------------
     # Paso 5: cleanup de candle_features
     # ------------------------------------------------------------------
-    for (symbol_id, tf_id, fs_id) in calc_triplets:
-        if (symbol_id, tf_id) not in fetched_pairs:
-            continue
-
+    for (symbol_id, tf_id, fs_id) in to_calculate:
         session = SessionLocal()
         try:
             feature_repo = SqlAlchemyCandleFeatureRepository(session)

@@ -51,6 +51,7 @@ def make_bot(
 ) -> Bot:
     return Bot(
         id=1,
+        name="Agente de prueba",
         strategy_id=10,
         symbol_id=5,
         timeframe_id=3,
@@ -148,6 +149,7 @@ def make_service(
         bot_repo=mock_bot_repo,
         signal_repo=mock_signal_repo,
         analyze_service=mock_analyze,
+        account_repo=MagicMock(),
     )
     tx_repo = mock_signal_repo  # commit()/rollback() viven en el repositorio
     return service, mock_bot_repo, mock_signal_repo, mock_analyze, tx_repo

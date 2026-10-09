@@ -41,6 +41,7 @@ from typing import Any
 from app.common.contracts import ServiceResult
 from app.modules.agent.domain.analysis_result import AnalysisResult, RuleCheckDetail
 from app.modules.agent.llm.llm_client import LLMCallError, LLMClient, LLMParseError
+from app.modules.features.domain.indicator_catalog import missing_for_rules
 
 logger = logging.getLogger(__name__)
 
@@ -193,6 +194,16 @@ class AnalyzeService:
                 code="AGENT_NO_FEATURES", http_status=422
             )
         features: dict = features_list[0].features
+
+        # El conjunto de indicadores debe cubrir lo que piden las reglas;
+        # si no, cada regla sin dato se rechazaría en silencio.
+        missing = missing_for_rules(strategy.rules, set(features))
+        if missing:
+            return ServiceResult.fail(
+                code="AGENT_FEATURE_SET_INCOMPATIBLE",
+                http_status=422,
+                meta={"missing": sorted(missing)},
+            )
 
         # Capital disponible en la moneda base de la cuenta
         base_currency = account.base_currency
@@ -551,6 +562,30 @@ class AnalyzeService:
             for r in rules_detail
         )
 
+        # Solo los indicadores que calcula el conjunto del bot: clave que
+        # debe existir → línea del prompt
+        indicator_lines: list[tuple[str, str]] = [
+            ("rsi_14", f"RSI(14):   {_fmt(features.get('rsi_14'), 2)}"),
+            ("ema_20", f"EMA(20):   {_fmt(features.get('ema_20'), 4)}"),
+            ("ema_50", f"EMA(50):   {_fmt(features.get('ema_50'), 4)}"),
+            ("ema_200", f"EMA(200):  {_fmt(features.get('ema_200'), 4)}"),
+            ("macd", (
+                f"MACD:      {_fmt(features.get('macd'), 4)} | "
+                f"Signal: {_fmt(features.get('macd_signal'), 4)} | "
+                f"Hist: {_fmt(features.get('macd_hist'), 4)}"
+            )),
+            ("atr_14", f"ATR(14):   {_fmt(features.get('atr_14'), 4)}"),
+            ("bb_upper", (
+                f"BB Upper:  {_fmt(features.get('bb_upper'), 4)} | "
+                f"Mid: {_fmt(features.get('bb_mid'), 4)} | "
+                f"Lower: {_fmt(features.get('bb_lower'), 4)}"
+            )),
+            ("vol_rel", f"Vol Rel:   {_fmt(features.get('vol_rel'), 2)}x"),
+        ]
+        indicators_text = "\n".join(
+            line for key, line in indicator_lines if key in features
+        ) or "  (no indicators)"
+
         return (
             f"=== TRADING ANALYSIS REQUEST ===\n\n"
             f"SYMBOL: {symbol.symbol}\n"
@@ -561,18 +596,7 @@ class AnalyzeService:
             f"REQUIRED REGIME: {strategy.regime_required or 'any'}\n"
             f"CURRENT REGIME: {regime}\n\n"
             f"=== TECHNICAL INDICATORS (latest candle) ===\n"
-            f"RSI(14):   {_fmt(features.get('rsi_14'), 2)}\n"
-            f"EMA(20):   {_fmt(features.get('ema_20'), 4)}\n"
-            f"EMA(50):   {_fmt(features.get('ema_50'), 4)}\n"
-            f"EMA(200):  {_fmt(features.get('ema_200'), 4)}\n"
-            f"MACD:      {_fmt(features.get('macd'), 4)} | "
-            f"Signal: {_fmt(features.get('macd_signal'), 4)} | "
-            f"Hist: {_fmt(features.get('macd_hist'), 4)}\n"
-            f"ATR(14):   {_fmt(features.get('atr_14'), 4)}\n"
-            f"BB Upper:  {_fmt(features.get('bb_upper'), 4)} | "
-            f"Mid: {_fmt(features.get('bb_mid'), 4)} | "
-            f"Lower: {_fmt(features.get('bb_lower'), 4)}\n"
-            f"Vol Rel:   {_fmt(features.get('vol_rel'), 2)}x\n\n"
+            f"{indicators_text}\n\n"
             f"=== STRATEGY RULES (all passed) ===\n"
             f"{rules_text or '  (no rules defined)'}\n\n"
             f"=== ACCOUNT ===\n"
@@ -604,5 +628,6 @@ class AnalyzeService:
                     "rsi_14", "ema_20", "ema_50", "ema_200",
                     "macd", "atr_14", "vol_rel", "regime",
                 )
+                if k in features
             },
         }

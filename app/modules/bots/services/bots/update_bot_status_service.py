@@ -10,9 +10,11 @@ from __future__ import annotations
 
 
 from app.common.contracts import ServiceResult
+from app.modules.accounts.domain.account_repository import AccountRepository
 from app.modules.bots.domain.bot_entity import Bot
 from app.common.utils import utc_now
 from app.modules.bots.domain.bot_repository import BotRepository
+from app.modules.bots.services.bots.bot_access import find_accessible_bot
 
 
 class UpdateBotStatusService:
@@ -32,11 +34,18 @@ class UpdateBotStatusService:
     - Al pasar a 'error'    → no se modifica started_at ni stopped_at.
     """
 
-    def __init__(self, repo: BotRepository):
+    def __init__(self, repo: BotRepository, account_repo: AccountRepository):
         self._repo = repo
+        self._account_repo = account_repo
 
-    def transition(self, bot_id: int, new_status: str) -> ServiceResult[Bot]:
-        bot = self._repo.get_by_id(bot_id)
+    def transition(
+        self,
+        bot_id: int,
+        new_status: str,
+        owner_id: int | None = None,
+    ) -> ServiceResult[Bot]:
+        """`owner_id=None` = sin restricción de propiedad (admin)."""
+        bot = find_accessible_bot(self._repo, self._account_repo, bot_id, owner_id)
         if bot is None:
             return ServiceResult.fail(code="BOT_NOT_FOUND", http_status=404)
 

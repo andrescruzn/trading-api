@@ -34,6 +34,7 @@ from app.modules.bots.services.bots.update_bot_status_service import (
 def make_bot(status: str = "stopped") -> Bot:
     return Bot(
         id=1,
+        name="Agente de prueba",
         strategy_id=10,
         symbol_id=5,
         timeframe_id=3,
@@ -54,7 +55,7 @@ def make_service(bot: Bot | None = None):
     # update devuelve el mismo bot que recibe
     mock_repo.update.side_effect = lambda b: b
 
-    service = UpdateBotStatusService(repo=mock_repo)
+    service = UpdateBotStatusService(repo=mock_repo, account_repo=MagicMock())
     tx_repo = mock_repo  # commit()/rollback() viven en el repositorio
     return service, mock_repo, tx_repo
 

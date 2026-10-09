@@ -37,6 +37,9 @@ class Bot:
     VALID_STATUSES = ("running", "stopped", "paused", "error")
     VALID_MODES = ("paper", "live")
 
+    # Regla del 1 %: nunca arriesgar más del 1 % del capital por operación
+    MAX_RISK_PCT = 0.01
+
     # Mapa de transiciones válidas: estado_actual → estados_permitidos
     _ALLOWED_TRANSITIONS: dict[str, tuple[str, ...]] = {
         "stopped": ("running",),
@@ -48,6 +51,7 @@ class Bot:
     def __init__(
         self,
         id: int,
+        name: str,
         strategy_id: int,
         symbol_id: int,
         timeframe_id: int,
@@ -61,6 +65,7 @@ class Bot:
         created_at: datetime | None = None,
     ):
         self.id = id
+        self.name = name
         self.strategy_id = strategy_id
         self.symbol_id = symbol_id
         self.timeframe_id = timeframe_id
@@ -97,6 +102,14 @@ class Bot:
 
     def is_valid_mode(self) -> bool:
         return self.mode in self.VALID_MODES
+
+    @classmethod
+    def is_valid_risk_pct(cls, value: object) -> bool:
+        """risk_pct debe estar en (0, MAX_RISK_PCT] (fracción: 0.01 = 1 %)."""
+        try:
+            return 0 < float(value) <= cls.MAX_RISK_PCT  # type: ignore[arg-type]
+        except (TypeError, ValueError):
+            return False
 
     def can_transition_to(self, new_status: str) -> bool:
         """

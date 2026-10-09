@@ -2,9 +2,11 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
 	type BotInput,
 	type BotTransition,
+	type BotUpdate,
 	createBot,
 	generateSignal,
 	transitionBot,
+	updateBot,
 } from '@/modules/bots/api/bots.api';
 import {
 	BOTS_QUERY_KEY,
@@ -15,6 +17,16 @@ function useCreateBotMutation() {
 	const queryClient = useQueryClient();
 	return useMutation({
 		mutationFn: (input: BotInput) => createBot(input),
+		onSuccess: () =>
+			queryClient.invalidateQueries({ queryKey: BOTS_QUERY_KEY }),
+	});
+}
+
+function useUpdateBotMutation() {
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: ({ id, input }: { id: number; input: BotUpdate }) =>
+			updateBot(id, input),
 		onSuccess: () =>
 			queryClient.invalidateQueries({ queryKey: BOTS_QUERY_KEY }),
 	});
@@ -48,4 +60,5 @@ export {
 	useCreateBotMutation,
 	useGenerateSignalMutation,
 	useTransitionBotMutation,
+	useUpdateBotMutation,
 };

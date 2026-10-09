@@ -16,8 +16,14 @@ function useFeatureSetsQuery() {
 	});
 }
 
-/** Solo consulta cuando hay símbolo y timeframe elegidos. */
-function useCandleFeaturesQuery(filters: Partial<CandleFeatureFilters>) {
+/**
+ * Solo consulta cuando hay símbolo y timeframe elegidos. `refetchInterval`
+ * sirve para esperar a que el scheduler calcule los primeros indicadores.
+ */
+function useCandleFeaturesQuery(
+	filters: Partial<CandleFeatureFilters>,
+	options: { refetchInterval?: number | false } = {},
+) {
 	const { symbol_id, timeframe_id, feature_set_id, limit } = filters;
 	return useQuery({
 		queryKey: [
@@ -33,6 +39,7 @@ function useCandleFeaturesQuery(filters: Partial<CandleFeatureFilters>) {
 			}),
 		enabled: !!symbol_id && !!timeframe_id,
 		placeholderData: keepPreviousData,
+		refetchInterval: options.refetchInterval,
 	});
 }
 

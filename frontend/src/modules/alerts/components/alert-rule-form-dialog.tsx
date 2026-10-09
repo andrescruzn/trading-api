@@ -307,7 +307,7 @@ export function AlertRuleFormDialog({
 										<Input
 											{...field}
 											id="alert-rule-name"
-											placeholder="Compras del bot principal"
+											placeholder="Compras del agente principal"
 											maxLength={255}
 											aria-invalid={fieldState.invalid}
 										/>
@@ -345,13 +345,13 @@ export function AlertRuleFormDialog({
 									control={form.control}
 									render={({ field }) => (
 										<Field>
-											<FieldLabel htmlFor="alert-rule-bot">Bot</FieldLabel>
+											<FieldLabel htmlFor="alert-rule-bot">Agente</FieldLabel>
 											<OptionSelect
 												id="alert-rule-bot"
 												value={field.value}
 												onChange={field.onChange}
 												options={[
-													{ value: ANY_BOT, label: 'Cualquier bot' },
+													{ value: ANY_BOT, label: 'Cualquier agente' },
 													...botOptions(botsQuery.data, symbolsQuery.data),
 												]}
 												disabled={isEdit}
@@ -363,7 +363,7 @@ export function AlertRuleFormDialog({
 							{(typeDescription || isEdit) && (
 								<FieldDescription>
 									{typeDescription}
-									{isEdit && ' El tipo y el bot no se pueden cambiar.'}
+									{isEdit && ' El tipo y el agente no se pueden cambiar.'}
 								</FieldDescription>
 							)}
 

@@ -72,7 +72,7 @@ function formatRuleValue(value: unknown): string {
 	return String(value);
 }
 
-/** Detalle de solo lectura de una señal: niveles, filtros y razonamiento del agente. */
+/** Detalle de solo lectura de una señal: niveles, filtros y razonamiento de la IA. */
 export function SignalDetailSheet({
 	signal,
 	onOpenChange,
@@ -174,9 +174,7 @@ export function SignalDetailSheet({
 
 							{reasons.reasoning && (
 								<section className="flex flex-col gap-1">
-									<h3 className="text-sm font-medium">
-										Razonamiento del agente de IA
-									</h3>
+									<h3 className="text-sm font-medium">Razonamiento de la IA</h3>
 									<p className="text-sm leading-relaxed whitespace-pre-line text-muted-foreground">
 										{reasons.reasoning}
 									</p>

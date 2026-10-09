@@ -18,7 +18,7 @@ const RULE_TYPE_LABELS: Record<AlertRuleType, string> = {
 	price: 'Precio',
 	pnl: 'PnL',
 	drawdown: 'Drawdown',
-	error: 'Error del bot',
+	error: 'Error del agente',
 };
 
 const RULE_TYPE_VARIANTS: Record<AlertRuleType, BadgeVariant> = {
@@ -30,12 +30,13 @@ const RULE_TYPE_VARIANTS: Record<AlertRuleType, BadgeVariant> = {
 };
 
 const RULE_TYPE_DESCRIPTIONS: Record<AlertRuleType, string> = {
-	signal: 'Avisa cuando un bot emite una señal aprobada.',
+	signal: 'Avisa cuando un agente emite una señal aprobada.',
 	price: 'Avisa cuando el precio de un símbolo cruza el umbral.',
 	pnl: 'Avisa cuando el PnL llega al porcentaje indicado.',
 	drawdown:
 		'Avisa cuando la caída desde el máximo supera el porcentaje indicado.',
-	error: 'Avisa cuando un bot entra en error o se rechaza una de sus órdenes.',
+	error:
+		'Avisa cuando un agente entra en error o se rechaza una de sus órdenes.',
 };
 
 const SIGNAL_ACTION_LABELS: Record<SignalActionFilter, string> = {
@@ -103,7 +104,7 @@ function describeChannels(
 	return names;
 }
 
-/** `Bot #12 · BTC/USDT` (el bot no tiene nombre propio). */
+/** `BTC tendencia · BTC/USDT`: nombre del agente y su símbolo. */
 function botLabel(
 	botId: number,
 	bots: Bot[] | undefined,
@@ -113,7 +114,8 @@ function botLabel(
 	const symbol = bot
 		? symbols?.find((item) => item.id === bot.symbol_id)?.symbol
 		: undefined;
-	return symbol ? `Bot #${botId} · ${symbol}` : `Bot #${botId}`;
+	const name = bot?.name || `Agente #${botId}`;
+	return symbol ? `${name} · ${symbol}` : name;
 }
 
 function botOptions(

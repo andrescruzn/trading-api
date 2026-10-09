@@ -65,7 +65,7 @@ const SIGNAL_ACTION_LABELS: Record<SignalAction, string> = {
 const SIGNAL_REJECTION_LABELS: Record<SignalRejectionReason, string> = {
 	REGIME_MISMATCH: 'El régimen del mercado no es el que pide la estrategia.',
 	RULES_NOT_MET: 'No se cumplen todas las reglas de la estrategia.',
-	LLM_REJECTED: 'El agente de IA descartó la operación.',
+	LLM_REJECTED: 'La IA descartó la operación.',
 	RR_RATIO_TOO_LOW: 'La operación no cumple el riesgo/beneficio mínimo de 2:1.',
 };
 
@@ -96,11 +96,16 @@ type BotCatalogs = {
 	strategies: Map<number, string>;
 };
 
-/** `#12 · BTC/USDT · 4h`. */
-function describeBot(bot: Bot, catalogs: BotCatalogs): string {
-	const symbol = catalogs.symbols.get(bot.symbol_id);
+/** Nombre visible del agente (en la UI los bots se llaman agentes). */
+function describeBot(bot: Pick<Bot, 'id' | 'name'>): string {
+	return bot.name || `Agente #${bot.id}`;
+}
+
+/** `BTC/USDT · 4h`. */
+function describeBotMarket(bot: Bot, catalogs: BotCatalogs): string {
+	const symbol = catalogs.symbols.get(bot.symbol_id) ?? `#${bot.symbol_id}`;
 	const timeframe = catalogs.timeframes.get(bot.timeframe_id);
-	return [`#${bot.id}`, symbol, timeframe].filter(Boolean).join(' · ');
+	return [symbol, timeframe].filter(Boolean).join(' · ');
 }
 
 export type { BadgeVariant, BotCatalogs };
@@ -113,6 +118,7 @@ export {
 	BOT_STATUS_VARIANTS,
 	canTransition,
 	describeBot,
+	describeBotMarket,
 	formatRiskReward,
 	getRiskPct,
 	rejectionLabel,

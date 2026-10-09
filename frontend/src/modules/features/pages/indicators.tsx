@@ -6,7 +6,11 @@ import {
 	useCandleFeaturesQuery,
 	useFeatureSetsQuery,
 } from '@/modules/features/hooks/use-features-queries';
-import { featureSetOptions } from '@/modules/features/lib/features-labels';
+import {
+	featureSetOptions,
+	INDICATOR_GROUP_HINTS,
+	INDICATOR_GROUP_LABELS,
+} from '@/modules/features/lib/features-labels';
 import {
 	useSymbolsQuery,
 	useTimeframesQuery,
@@ -81,7 +85,7 @@ const columns: DataTableColumn<CandleFeature>[] = [
 ];
 
 export function IndicatorsPage() {
-	usePageBreadcrumb([{ label: 'Mercado' }, { label: 'Indicadores' }]);
+	usePageBreadcrumb([{ label: 'Explorar' }, { label: 'Indicadores' }]);
 	const [symbolId, setSymbolId] = useState<string | null>(null);
 	const [timeframeChoice, setTimeframeChoice] = useState<string | null>(null);
 	const [featureSetChoice, setFeatureSetChoice] = useState<string | null>(null);
@@ -113,8 +117,34 @@ export function IndicatorsPage() {
 		<div className="flex flex-col gap-6">
 			<PageListHeader
 				title="Indicadores"
-				description="RSI, EMA, MACD, ATR, bandas de Bollinger y régimen de mercado calculados por vela."
+				description="Cálculos sobre las velas que tus agentes usan para decidir. Se calculan solos mientras un agente está activo."
 			/>
+			<details className="group rounded-xl border bg-card px-4 py-3 text-sm">
+				<summary className="cursor-pointer font-medium marker:text-muted-foreground">
+					¿Qué mide cada indicador?
+				</summary>
+				<dl className="mt-3 grid gap-3 sm:grid-cols-2">
+					{Object.entries(INDICATOR_GROUP_HINTS).map(([group, hint]) => (
+						<div key={group} className="flex flex-col gap-0.5">
+							<dt className="font-medium">
+								{
+									INDICATOR_GROUP_LABELS[
+										group as keyof typeof INDICATOR_GROUP_LABELS
+									]
+								}
+							</dt>
+							<dd className="text-muted-foreground">{hint}</dd>
+						</div>
+					))}
+					<div className="flex flex-col gap-0.5">
+						<dt className="font-medium">Régimen</dt>
+						<dd className="text-muted-foreground">
+							Si el mercado va en tendencia alcista, bajista o de lado. Cada
+							estrategia solo opera en el régimen que declara.
+						</dd>
+					</div>
+				</dl>
+			</details>
 			<div className="grid gap-3 sm:grid-cols-2 lg:max-w-4xl lg:grid-cols-4">
 				<Field>
 					<FieldLabel htmlFor="indicators-symbol">Símbolo</FieldLabel>
@@ -138,7 +168,7 @@ export function IndicatorsPage() {
 					/>
 				</Field>
 				<Field>
-					<FieldLabel htmlFor="indicators-feature-set">Feature set</FieldLabel>
+					<FieldLabel htmlFor="indicators-feature-set">Conjunto</FieldLabel>
 					<OptionSelect
 						id="indicators-feature-set"
 						size="sm"
@@ -173,7 +203,7 @@ export function IndicatorsPage() {
 						isLoading={featuresQuery.isLoading}
 						error={featuresQuery.error}
 						errorTitle="No pudimos cargar los indicadores"
-						empty="No hay indicadores calculados para este símbolo y timeframe. Un administrador puede calcularlos desde Feature sets."
+						empty="No hay indicadores calculados para este símbolo y timeframe. Se calculan solos cuando un agente activo opera este símbolo y timeframe."
 					/>
 				</div>
 			) : (

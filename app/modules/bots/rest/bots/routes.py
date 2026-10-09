@@ -4,7 +4,7 @@
 # app/modules/bots/rest/bots/routes.py
 #
 # ENDPOINTS:
-# - GET  /bots              → listar bots (admin: todos; user: los suyos)
+# - GET  /bots              → listar bots (admin: todos; user o ?mine=true: los suyos)
 # - POST /bots              → crear bot
 # - GET  /bots/{id}         → detalle de un bot
 # - PUT  /bots/{id}         → renombrar (siempre) o actualizar config (si stopped)
@@ -87,15 +87,17 @@ def _bot_to_dict(b: Bot) -> dict[str, Any]:
 @router.get("", status_code=200)
 def list_bots(
     account_id: int | None = Query(default=None, gt=0),
+    mine: bool = Query(default=False, description="Solo los bots de mis cuentas (también para admin)."),
     identity: dict = Depends(token_required_actual),
     factory: BotServiceFactory = Depends(get_factory),
 ):
     """
     Lista bots.
-    - Admin: todos, o los de `account_id`.
+    - Admin: todos, o los de `account_id`; con `mine=true`, solo los suyos.
     - Usuario: los de sus cuentas, o los de `account_id` si es suya.
     """
-    result = factory.list_bots().list(account_id=account_id, owner_id=owner_scope(identity))
+    owner_id = int(identity["user_id"]) if mine else owner_scope(identity)
+    result = factory.list_bots().list(account_id=account_id, owner_id=owner_id)
     return build_list_response(
         items=[_bot_to_dict(b) for b in (result.data or [])],
         msg="OK",

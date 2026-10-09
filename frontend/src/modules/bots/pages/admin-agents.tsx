@@ -1,3 +1,4 @@
+import { useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
 import { usePageBreadcrumb } from '@/modules/app-shell/hooks/use-page-breadcrumb';
 import type { Bot } from '@/modules/bots/api/bots.api';
@@ -11,6 +12,7 @@ import { useBotsQuery } from '@/modules/bots/hooks/use-bots-queries';
 import {
 	BOT_MODE_OPTIONS,
 	BOT_STATUS_OPTIONS,
+	describeBot,
 	getRiskPct,
 } from '@/modules/bots/lib/bots-labels';
 import {
@@ -27,9 +29,10 @@ import {
 
 const ALL = 'all';
 
-export function AdminBotsPage() {
-	usePageBreadcrumb([{ label: 'Administración' }, { label: 'Bots' }]);
-	// Sin `account_id` el backend devuelve todos los bots (solo admin).
+export function AdminAgentsPage() {
+	usePageBreadcrumb([{ label: 'Administración' }, { label: 'Agentes' }]);
+	const navigate = useNavigate();
+	// Sin filtros el backend devuelve todos los agentes (solo admin).
 	const botsQuery = useBotsQuery();
 	const { catalogs } = useBotCatalogs();
 	const [status, setStatus] = useState(ALL);
@@ -42,12 +45,15 @@ export function AdminBotsPage() {
 			(mode === ALL || bot.mode === mode),
 	);
 
+	function openAgent(bot: Bot) {
+		navigate({ to: '/agents/$agentId', params: { agentId: String(bot.id) } });
+	}
+
 	const columns: DataTableColumn<Bot>[] = [
 		{
-			id: 'id',
-			header: 'ID',
-			className: 'w-16 font-mono',
-			cell: (row) => `#${row.id}`,
+			id: 'name',
+			header: 'Agente',
+			cell: (row) => <span className="font-medium">{describeBot(row)}</span>,
 		},
 		{
 			id: 'status',
@@ -108,18 +114,18 @@ export function AdminBotsPage() {
 			id: 'actions',
 			header: <span className="sr-only">Acciones</span>,
 			className: 'text-right',
-			cell: (row) => <BotActionsMenu bot={row} />,
+			cell: (row) => <BotActionsMenu bot={row} onView={() => openAgent(row)} />,
 		},
 	];
 
 	return (
 		<div className="flex flex-col gap-6">
 			<PageListHeader
-				title="Bots"
+				title="Agentes"
 				description={
 					botsQuery.data
-						? `Todos los bots del sistema. ${filteredBots.length} de ${allBots.length} bots.`
-						: 'Todos los bots del sistema.'
+						? `Todos los agentes del sistema. ${filteredBots.length} de ${allBots.length} agentes.`
+						: 'Todos los agentes del sistema.'
 				}
 			/>
 			<div className="grid gap-3 sm:grid-cols-2 lg:max-w-xl">
@@ -150,12 +156,13 @@ export function AdminBotsPage() {
 				getRowId={(row) => row.id}
 				isLoading={botsQuery.isLoading}
 				error={botsQuery.error}
-				errorTitle="No pudimos cargar los bots"
+				errorTitle="No pudimos cargar los agentes"
 				empty={
 					allBots.length > 0
-						? 'No hay bots con esos filtros.'
-						: 'Aún no hay bots en el sistema.'
+						? 'No hay agentes con esos filtros.'
+						: 'Aún no hay agentes en el sistema.'
 				}
+				onRowClick={openAgent}
 			/>
 		</div>
 	);

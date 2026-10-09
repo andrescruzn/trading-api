@@ -110,8 +110,8 @@ export function RecordBalanceDialog({
 				<DialogHeader>
 					<DialogTitle>Registrar balance</DialogTitle>
 					<DialogDescription>
-						Saldo de un activo en este momento. El agente de IA usa el saldo
-						libre en {account?.base_currency ?? 'la moneda base'} como capital.
+						Saldo de un activo en este momento. La IA usa el saldo libre en{' '}
+						{account?.base_currency ?? 'la moneda base'} como capital.
 					</DialogDescription>
 				</DialogHeader>
 				<form

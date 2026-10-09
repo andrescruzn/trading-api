@@ -6,11 +6,16 @@ import { CalculateFeaturesDialog } from '@/modules/features/components/calculate
 import { FeatureSetFormDialog } from '@/modules/features/components/feature-set-form-dialog';
 import { useFeatureSetsQuery } from '@/modules/features/hooks/use-features-queries';
 import {
+	FEATURE_SET_FOCUS_LABELS,
+	INDICATOR_GROUP_LABELS,
+} from '@/modules/features/lib/features-labels';
+import {
 	DataTable,
 	type DataTableColumn,
 } from '@/modules/shared/components/data-table';
 import { PageListHeader } from '@/modules/shared/components/page-list-header';
 import { formatDate } from '@/modules/shared/lib/format';
+import { Badge } from '@/modules/ui/components/badge';
 
 const columns: DataTableColumn<FeatureSet>[] = [
 	{
@@ -37,6 +42,25 @@ const columns: DataTableColumn<FeatureSet>[] = [
 		cell: (row) => row.description || '—',
 	},
 	{
+		id: 'focus',
+		header: 'Enfoque',
+		cell: (row) => FEATURE_SET_FOCUS_LABELS[row.focus] ?? row.focus,
+	},
+	{
+		id: 'indicators',
+		header: 'Indicadores',
+		cell: (row) => (
+			<span className="flex flex-wrap gap-1">
+				{row.indicators.map((group) => (
+					<Badge key={group} variant="outline">
+						{INDICATOR_GROUP_LABELS[group] ?? group}
+					</Badge>
+				))}
+			</span>
+		),
+		skeletonClassName: 'w-40',
+	},
+	{
 		id: 'spec',
 		header: 'Configuración',
 		cell: (row) => {
@@ -60,7 +84,10 @@ const columns: DataTableColumn<FeatureSet>[] = [
 ];
 
 export function AdminFeatureSetsPage() {
-	usePageBreadcrumb([{ label: 'Administración' }, { label: 'Feature sets' }]);
+	usePageBreadcrumb([
+		{ label: 'Administración' },
+		{ label: 'Conjuntos de indicadores' },
+	]);
 	const featureSetsQuery = useFeatureSetsQuery();
 	const [creating, setCreating] = useState(false);
 	const [calculating, setCalculating] = useState(false);
@@ -68,11 +95,11 @@ export function AdminFeatureSetsPage() {
 	return (
 		<div className="flex flex-col gap-6">
 			<PageListHeader
-				title="Feature sets"
-				description="Conjuntos de indicadores técnicos que se calculan sobre las velas."
+				title="Conjuntos de indicadores"
+				description="Qué indicadores calcula cada agente. El spec usa {focus, indicators} con los grupos rsi, ema, macd, atr, bbands y vol_rel."
 				actions={[
 					{
-						label: 'Nuevo feature set',
+						label: 'Nuevo conjunto',
 						icon: <IconPlus />,
 						onClick: () => setCreating(true),
 					},
@@ -90,8 +117,8 @@ export function AdminFeatureSetsPage() {
 				getRowId={(row) => row.id}
 				isLoading={featureSetsQuery.isLoading}
 				error={featureSetsQuery.error}
-				errorTitle="No pudimos cargar los feature sets"
-				empty="Aún no hay feature sets. Crea uno para poder calcular indicadores."
+				errorTitle="No pudimos cargar los conjuntos de indicadores"
+				empty="Aún no hay conjuntos de indicadores. Crea uno o carga los de ejemplo con el seed feature_sets."
 			/>
 			<FeatureSetFormDialog open={creating} onOpenChange={setCreating} />
 			<CalculateFeaturesDialog

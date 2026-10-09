@@ -6,8 +6,12 @@ import {
 	BotStatusBadge,
 } from '@/modules/bots/components/bot-badges';
 import { useBotCatalogs } from '@/modules/bots/hooks/use-bot-catalogs';
-import { useBotsByAccountsQuery } from '@/modules/bots/hooks/use-bots-queries';
-import { BOT_MODE_LABELS, describeBot } from '@/modules/bots/lib/bots-labels';
+import { useMyBotsQuery } from '@/modules/bots/hooks/use-bots-queries';
+import {
+	BOT_MODE_LABELS,
+	describeBot,
+	describeBotMarket,
+} from '@/modules/bots/lib/bots-labels';
 import type { Order } from '@/modules/orders/api/orders.api';
 import { FillsTable } from '@/modules/orders/components/fills-table';
 import { OrderFillsDialog } from '@/modules/orders/components/order-fills-dialog';
@@ -43,7 +47,7 @@ function OrdersTab({ botId }: { botId: number }) {
 				orders={ordersQuery.data}
 				isLoading={ordersQuery.isLoading}
 				error={ordersQuery.error}
-				empty="Este bot aún no tiene órdenes."
+				empty="Este agente aún no tiene órdenes."
 				onViewFills={setFillsOrder}
 			/>
 			<OrderFillsDialog
@@ -79,16 +83,15 @@ function FillsTab({ botId }: { botId: number }) {
 			fills={fillsQuery.data}
 			isLoading={fillsQuery.isLoading}
 			error={fillsQuery.error}
-			empty="Este bot aún no tiene ejecuciones."
+			empty="Este agente aún no tiene ejecuciones."
 		/>
 	);
 }
 
 export function OrdersPage() {
-	usePageBreadcrumb([{ label: 'Trading' }, { label: 'Órdenes' }]);
-	const { accountsQuery, catalogs } = useBotCatalogs();
-	const accountIds = (accountsQuery.data ?? []).map((account) => account.id);
-	const botsQuery = useBotsByAccountsQuery(accountIds);
+	usePageBreadcrumb([{ label: 'Operar' }, { label: 'Órdenes' }]);
+	const { catalogs } = useBotCatalogs();
+	const botsQuery = useMyBotsQuery();
 	const [pickedBotId, setPickedBotId] = useState<number | null>(null);
 	const [creating, setCreating] = useState(false);
 
@@ -97,21 +100,21 @@ export function OrdersPage() {
 	const selectedBot =
 		bots.find((bot) => bot.id === pickedBotId) ??
 		(pickedBotId ? null : (bots[0] ?? null));
-	const selectedLabel = selectedBot ? describeBot(selectedBot, catalogs) : '';
+	const selectedLabel = selectedBot ? describeBot(selectedBot) : '';
 
 	const botOptions = bots.map((bot) => ({
 		value: String(bot.id),
-		label: `${describeBot(bot, catalogs)} · ${BOT_MODE_LABELS[bot.mode] ?? bot.mode}`,
+		label: `${describeBot(bot)} · ${describeBotMarket(bot, catalogs)} · ${BOT_MODE_LABELS[bot.mode] ?? bot.mode}`,
 	}));
 
-	const isLoadingBots = accountsQuery.isLoading || botsQuery.isLoading;
-	const botsError = accountsQuery.error ?? botsQuery.error;
+	const isLoadingBots = botsQuery.isLoading;
+	const botsError = botsQuery.error;
 
 	return (
 		<div className="flex flex-col gap-6">
 			<PageListHeader
 				title="Órdenes"
-				description="Órdenes, posiciones y ejecuciones de tus bots."
+				description="Órdenes, posiciones y ejecuciones de tus agentes."
 				actions={[
 					{
 						label: 'Nueva orden',
@@ -123,18 +126,20 @@ export function OrdersPage() {
 			/>
 
 			{botsError ? (
-				<ErrorAlert title="No pudimos cargar tus bots" error={botsError} />
+				<ErrorAlert title="No pudimos cargar tus agentes" error={botsError} />
 			) : (
 				<div className="flex flex-col gap-3 sm:flex-row sm:items-end">
 					<Field className="sm:max-w-md">
-						<FieldLabel htmlFor="orders-bot">Bot</FieldLabel>
+						<FieldLabel htmlFor="orders-bot">Agente</FieldLabel>
 						<OptionSelect
 							id="orders-bot"
 							size="sm"
 							value={selectedBot ? String(selectedBot.id) : null}
 							onChange={(value) => setPickedBotId(value ? Number(value) : null)}
 							options={botOptions}
-							placeholder={isLoadingBots ? 'Cargando bots…' : 'Elige un bot'}
+							placeholder={
+								isLoadingBots ? 'Cargando agentes…' : 'Elige un agente'
+							}
 							disabled={isLoadingBots || bots.length === 0}
 						/>
 					</Field>
@@ -172,8 +177,8 @@ export function OrdersPage() {
 				!botsError && (
 					<p className="rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">
 						{bots.length === 0
-							? 'Aún no tienes bots. Crea uno en Bots para poder enviar órdenes.'
-							: 'Elige un bot para ver sus órdenes.'}
+							? 'Aún no tienes agentes. Crea uno en Mis agentes para poder enviar órdenes.'
+							: 'Elige un agente para ver sus órdenes.'}
 					</p>
 				)
 			)}

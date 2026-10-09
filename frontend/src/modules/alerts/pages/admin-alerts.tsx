@@ -58,12 +58,12 @@ export function AdminAlertsPage() {
 		},
 		{
 			id: 'bot',
-			header: 'Bot',
+			header: 'Agente',
 			cell: (row) =>
 				row.bot_id ? (
 					botLabel(row.bot_id, botsQuery.data, symbolsQuery.data)
 				) : (
-					<span className="text-muted-foreground">Cualquier bot</span>
+					<span className="text-muted-foreground">Cualquier agente</span>
 				),
 		},
 		{

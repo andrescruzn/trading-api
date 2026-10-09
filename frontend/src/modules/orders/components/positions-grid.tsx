@@ -62,7 +62,7 @@ export function PositionsGrid({
 	if (!positions?.length) {
 		return (
 			<p className="rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">
-				Este bot no tiene posiciones.
+				Este agente no tiene posiciones.
 			</p>
 		);
 	}

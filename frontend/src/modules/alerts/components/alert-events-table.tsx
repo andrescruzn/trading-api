@@ -71,7 +71,7 @@ export function AlertEventsTable({ variant }: AlertEventsTableProps) {
 				},
 				{
 					id: 'bot',
-					header: 'Bot',
+					header: 'Agente',
 					cell: (row) =>
 						row.bot_id
 							? botLabel(row.bot_id, botsQuery.data, symbolsQuery.data)

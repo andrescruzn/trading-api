@@ -5,13 +5,24 @@ import { api } from '@/modules/shared/lib/api-client';
 // Tipos (reflejan el JSON del backend tal cual, en snake_case)
 // ======================================================================
 
+/** Enfoque del conjunto: para qué tipo de estrategia está pensado. */
+type FeatureSetFocus = 'all' | 'trend_following' | 'mean_reversion';
+
+/** Grupos de indicadores que sabe calcular el backend (`indicator_catalog`). */
+type IndicatorGroup = 'rsi' | 'ema' | 'macd' | 'atr' | 'bbands' | 'vol_rel';
+
 type FeatureSet = {
 	id: number;
 	name: string;
 	version: string;
 	description: string | null;
-	/** Configuración JSON de los indicadores. */
+	/** Configuración JSON: `{focus, indicators}`. */
 	spec: Record<string, unknown>;
+	/** Derivados del spec por el backend. */
+	focus: FeatureSetFocus;
+	indicators: IndicatorGroup[];
+	/** Claves que calcula (`rsi_14`, `ema_20`…), incluido `regime`. */
+	outputs: string[];
 	created_at: string | null;
 };
 
@@ -104,8 +115,10 @@ export type {
 	CandleFeature,
 	CandleFeatureFilters,
 	FeatureSet,
+	FeatureSetFocus,
 	FeatureSetInput,
 	FeatureValues,
+	IndicatorGroup,
 };
 export {
 	calculateFeatures,

@@ -1,4 +1,8 @@
-import type { FeatureSet } from '@/modules/features/api/features.api';
+import type {
+	FeatureSet,
+	FeatureSetFocus,
+	IndicatorGroup,
+} from '@/modules/features/api/features.api';
 import type { SelectOption } from '@/modules/shared/components/option-select';
 
 /** `default · v1.0.0`. */
@@ -37,4 +41,39 @@ function jsonObjectError(value: string): string | null {
 	}
 }
 
-export { featureSetLabel, featureSetOptions, jsonObjectError };
+/** Nombre corto de cada grupo de indicadores, para chips y listas. */
+const INDICATOR_GROUP_LABELS: Record<IndicatorGroup, string> = {
+	rsi: 'RSI',
+	ema: 'EMA 20/50/200',
+	macd: 'MACD',
+	atr: 'ATR',
+	bbands: 'Bollinger',
+	vol_rel: 'Volumen relativo',
+};
+
+/** Qué mide cada grupo, en una frase y sin jerga (página Indicadores y asistente). */
+const INDICATOR_GROUP_HINTS: Record<IndicatorGroup, string> = {
+	rsi: 'Mide si el precio subió o bajó demasiado rápido (sobrecompra o sobreventa).',
+	ema: 'Medias móviles: muestran la dirección de la tendencia a corto, medio y largo plazo.',
+	macd: 'Compara dos medias para detectar cuándo la tendencia gana o pierde fuerza.',
+	atr: 'Mide cuánto se mueve el precio por vela (volatilidad); ayuda a ubicar el stop loss.',
+	bbands:
+		'Bandas alrededor del precio: tocarlas suele indicar un extremo del rango.',
+	vol_rel:
+		'Volumen de la vela frente al promedio: confirma si el movimiento tiene respaldo.',
+};
+
+const FEATURE_SET_FOCUS_LABELS: Record<FeatureSetFocus, string> = {
+	all: 'Cualquier estrategia',
+	trend_following: 'Seguimiento de tendencia',
+	mean_reversion: 'Reversión a la media',
+};
+
+export {
+	FEATURE_SET_FOCUS_LABELS,
+	featureSetLabel,
+	featureSetOptions,
+	INDICATOR_GROUP_HINTS,
+	INDICATOR_GROUP_LABELS,
+	jsonObjectError,
+};

@@ -118,7 +118,7 @@ export function AccountBalancesSheet({
 							debouncedAsset
 								? `No hay balances de ${debouncedAsset}.`
 								: canRecord
-									? `Aún no hay balances registrados. Registra el saldo en ${current?.base_currency ?? 'la moneda base'} para que el agente de IA pueda calcular el tamaño de posición.`
+									? `Aún no hay balances registrados. Registra el saldo en ${current?.base_currency ?? 'la moneda base'} para que tus agentes puedan calcular el tamaño de posición.`
 									: 'Aún no hay balances registrados.'
 						}
 					/>

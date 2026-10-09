@@ -25,7 +25,7 @@ type OrdersTableProps = {
 	error: unknown;
 	empty: ReactNode;
 	onViewFills: (order: Order) => void;
-	/** Si se pasa, agrega la columna "Bot" con estos nombres (`id → nombre`). */
+	/** Si se pasa, agrega la columna "Agente" con estos nombres (`id → nombre`). */
 	botNames?: Map<number, string>;
 };
 
@@ -48,7 +48,7 @@ export function OrdersTable({
 			? [
 					{
 						id: 'bot',
-						header: 'Bot',
+						header: 'Agente',
 						cell: (row: Order) => botNames.get(row.bot_id) ?? `#${row.bot_id}`,
 					},
 				]

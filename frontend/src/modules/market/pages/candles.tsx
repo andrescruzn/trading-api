@@ -52,7 +52,7 @@ const columns: DataTableColumn<Candle>[] = [
 ];
 
 export function CandlesPage() {
-	usePageBreadcrumb([{ label: 'Mercado' }, { label: 'Velas OHLCV' }]);
+	usePageBreadcrumb([{ label: 'Explorar' }, { label: 'Velas OHLCV' }]);
 	const search = routeApi.useSearch();
 	const navigate = routeApi.useNavigate();
 	const [limit, setLimit] = useState('100');

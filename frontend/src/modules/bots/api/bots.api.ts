@@ -8,8 +8,10 @@ type BotMode = 'paper' | 'live';
 type BotStatus = 'running' | 'stopped' | 'paused' | 'error';
 type BotTransition = 'start' | 'pause' | 'stop';
 
+/** En la UI un bot se llama "agente"; la API y los tipos conservan `bot`. */
 type Bot = {
 	id: number;
+	name: string;
 	strategy_id: number;
 	symbol_id: number;
 	timeframe_id: number;
@@ -31,6 +33,7 @@ type BotRiskParams = {
 };
 
 type BotInput = {
+	name: string;
 	strategy_id: number;
 	symbol_id: number;
 	timeframe_id: number;
@@ -38,6 +41,19 @@ type BotInput = {
 	feature_set_id: number;
 	mode: BotMode;
 	risk_params: BotRiskParams;
+};
+
+/** Renombrar se puede en cualquier estado; modo y riesgo solo con el bot detenido. */
+type BotUpdate = {
+	name?: string;
+	mode?: BotMode;
+	risk_params?: BotRiskParams;
+};
+
+type BotFilters = {
+	account_id?: number;
+	/** Solo los bots de mis cuentas (para admin, que sin filtro ve todos). */
+	mine?: boolean;
 };
 
 type SignalAction = 'buy' | 'sell' | 'hold';
@@ -102,10 +118,10 @@ type SignalFilters = {
 // ======================================================================
 
 /**
- * Usuario: el backend exige `account_id` (solo sus bots). Admin: sin filtro
- * devuelve todos.
+ * Usuario: siempre sus bots (con `account_id`, solo los de esa cuenta).
+ * Admin: sin filtro devuelve todos; con `mine`, solo los suyos.
  */
-function listBots(filters: { account_id?: number } = {}) {
+function listBots(filters: BotFilters = {}) {
 	return api.get<Bot[]>('/bots', filters);
 }
 
@@ -115,6 +131,10 @@ function getBot(id: number) {
 
 function createBot(input: BotInput) {
 	return api.post<Bot>('/bots', input);
+}
+
+function updateBot(id: number, input: BotUpdate) {
+	return api.put<Bot>(`/bots/${id}`, input);
 }
 
 /** `start`: detenido → activo · `pause`: activo → pausado · `stop`: → detenido. */
@@ -131,18 +151,20 @@ function listSignals(filters: SignalFilters) {
 	return api.get<Signal[]>('/signals', filters);
 }
 
-/** Invoca al agente de IA (puede tardar). El bot debe estar activo. */
+/** Analiza el mercado con la IA (puede tardar). El bot debe estar activo. */
 function generateSignal(botId: number) {
 	return api.post<Signal>('/signals/generate', { bot_id: botId });
 }
 
 export type {
 	Bot,
+	BotFilters,
 	BotInput,
 	BotMode,
 	BotRiskParams,
 	BotStatus,
 	BotTransition,
+	BotUpdate,
 	Signal,
 	SignalAction,
 	SignalFilters,
@@ -157,4 +179,5 @@ export {
 	listBots,
 	listSignals,
 	transitionBot,
+	updateBot,
 };

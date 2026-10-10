@@ -12,8 +12,9 @@
 # 4. Enviar la orden al exchange
 # 5. Parsear la respuesta y construir el Fill con datos reales
 #
-# Exchanges soportados (mismo mapa que M2 - FetchCandlesService):
-# binance, bybit, kraken, coinbase, bitget, okx
+# Exchanges soportados: los de CCXT_EXCHANGE_MAP (M2, ccxt_exchanges.py).
+# Solo spot: los perpetuos (`XAU/USDT:USDT`) se rechazan, porque ccxt
+# interpreta `amount` como contratos y no hay apalancamiento ni cortos.
 # ======================================================================
 
 from __future__ import annotations
@@ -26,22 +27,12 @@ from app.common.security.credentials_cipher import CredentialsCipher
 from app.common.utils.datetime_utils import utc_now
 from app.modules.accounts.domain.account_repository import AccountRepository
 from app.modules.bots.domain.bot_entity import Bot
+from app.modules.market.domain.ccxt_exchanges import CCXT_EXCHANGE_MAP, ccxt_id_for, is_perpetual
 from app.modules.market.domain.exchange_repository import ExchangeRepository
 from app.modules.orders.domain.fill_entity import Fill
 from app.modules.orders.domain.order_entity import Order
 from app.modules.orders.execution.executor_interface import ExecutorInterface
 
-
-# Mapeo nombre del exchange en BD → id de ccxt
-# Mismo mapa que FetchCandlesService (M2) para consistencia
-_CCXT_EXCHANGE_MAP: dict[str, str] = {
-    "binance":  "binance",
-    "bybit":    "bybit",
-    "kraken":   "kraken",
-    "coinbase": "coinbase",
-    "bitget":   "bitget",
-    "okx":      "okx",
-}
 
 # Mapeo tipo de orden del dominio → tipo ccxt
 _ORDER_TYPE_MAP: dict[str, str] = {
@@ -139,11 +130,11 @@ class LiveExecutor(ExecutorInterface):
                 f"Exchange no encontrado: exchange_id={account.exchange_id}."
             )
 
-        ccxt_id = _CCXT_EXCHANGE_MAP.get(exchange_entity.name.lower())
+        ccxt_id = ccxt_id_for(exchange_entity.name)
         if ccxt_id is None:
             raise RuntimeError(
                 f"El exchange '{exchange_entity.name}' no está soportado para live trading. "
-                f"Exchanges disponibles: {', '.join(_CCXT_EXCHANGE_MAP.keys())}."
+                f"Exchanges disponibles: {', '.join(CCXT_EXCHANGE_MAP.keys())}."
             )
 
         # 5. Inicializar cliente ccxt con credenciales reales
@@ -178,6 +169,11 @@ class LiveExecutor(ExecutorInterface):
             raise RuntimeError(
                 "La orden no tiene el símbolo en meta. "
                 "Asegúrate de que CreateOrderService lo incluya."
+            )
+        if is_perpetual(symbol_str):
+            raise RuntimeError(
+                f"'{symbol_str}' es un perpetuo y solo se opera en paper: "
+                "la ejecución live no maneja contratos, apalancamiento ni cortos."
             )
 
         # 7. Enviar la orden al exchange

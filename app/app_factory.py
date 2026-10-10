@@ -29,6 +29,7 @@ from app.modules.market.rest import (
     symbols_router,
     timeframes_router,
     candles_router,
+    explorer_router,
 )
 from app.modules.features.rest import feature_sets_router, candle_features_router
 from app.modules.accounts.rest import accounts_router, balances_router
@@ -100,7 +101,7 @@ def create_app() -> FastAPI:
     api_routers = (
         auth_router,
         # Market Data
-        exchanges_router, symbols_router, timeframes_router, candles_router,
+        exchanges_router, symbols_router, timeframes_router, candles_router, explorer_router,
         # Feature Engineering
         feature_sets_router, candle_features_router,
         # Accounts & Portfolio

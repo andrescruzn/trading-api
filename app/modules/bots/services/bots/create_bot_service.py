@@ -17,6 +17,7 @@ from app.modules.bots.domain.bot_entity import Bot
 from app.modules.bots.domain.bot_repository import BotRepository
 from app.modules.features.domain.feature_set_repository import FeatureSetRepository
 from app.modules.features.domain.indicator_catalog import is_compatible, outputs_for
+from app.modules.market.domain.ccxt_exchanges import is_perpetual
 from app.modules.market.domain.symbol_repository import SymbolRepository
 from app.modules.market.domain.timeframe_repository import TimeframeRepository
 from app.modules.strategies.domain.strategy_repository import StrategyRepository
@@ -35,6 +36,8 @@ class CreateBotService:
     - El conjunto de indicadores debe calcular todo lo que piden las
       reglas de la estrategia.
     - Regla del 1 %: risk_pct en risk_params debe ser > 0 y <= 0.01.
+    - Los perpetuos (`XAU/USDT:USDT`) solo en paper: la ejecución live
+      no maneja contratos, apalancamiento ni cortos.
     - El bot siempre inicia en estado 'stopped'.
     """
 
@@ -112,6 +115,8 @@ class CreateBotService:
         symbol = self._symbol_repo.get_by_id(symbol_id)
         if symbol is None or not symbol.is_active:
             return ServiceResult.fail(code="BOT_SYMBOL_NOT_FOUND", http_status=404)
+        if mode == "live" and is_perpetual(symbol.symbol):
+            return ServiceResult.fail(code="BOT_PERPETUAL_LIVE_NOT_SUPPORTED", http_status=422)
 
         if self._timeframe_repo.get_by_id(timeframe_id) is None:
             return ServiceResult.fail(code="BOT_TIMEFRAME_NOT_FOUND", http_status=404)

@@ -77,6 +77,42 @@ def _should_fetch(
 
 
 # ======================================================================
+# Explorador de tendencia
+# ======================================================================
+
+def refresh_explorer() -> None:
+    """
+    Trae las velas 1d que faltan para el explorador de tendencia (M2).
+
+    Va aparte de run_cycle(): el explorador necesita datos de todos los
+    símbolos, haya o no agentes activos. Sin `force`: solo descarga los
+    símbolos cuya última vela diaria tiene un día o más.
+    """
+    session = SessionLocal()
+    try:
+        result = MarketServiceFactory(session).refresh_explorer_candles().refresh()
+        if result.success:
+            d = result.data
+            logger.info(
+                "[Scheduler] Explorador — actualizados=%d al día=%d fallidos=%d",
+                len(d["updated"]), len(d["skipped"]), len(d["failed"]),
+            )
+            for item in d["failed"]:
+                logger.warning(
+                    "[Scheduler] Explorador FAIL — %s code=%s", item["symbol"], item["code"]
+                )
+        else:
+            logger.warning(
+                "[Scheduler] Explorador omitido — code=%s",
+                result.error.code if result.error else "UNKNOWN",
+            )
+    except Exception:
+        logger.exception("[Scheduler] Explorador ERROR")
+    finally:
+        session.close()
+
+
+# ======================================================================
 # Ciclo principal
 # ======================================================================
 

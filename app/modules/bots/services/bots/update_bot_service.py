@@ -15,6 +15,8 @@ from app.modules.accounts.domain.account_repository import AccountRepository
 from app.modules.bots.domain.bot_entity import Bot
 from app.modules.bots.domain.bot_repository import BotRepository
 from app.modules.bots.services.bots.bot_access import find_accessible_bot
+from app.modules.market.domain.ccxt_exchanges import is_perpetual
+from app.modules.market.domain.symbol_repository import SymbolRepository
 
 
 class UpdateBotService:
@@ -26,11 +28,18 @@ class UpdateBotService:
     - El resto de la configuración solo si el bot está 'stopped'.
     - No se puede cambiar la cuenta, símbolo, estrategia ni timeframe
       de un bot activo (podría dejar posiciones huérfanas).
+    - Un agente sobre un perpetuo no puede pasar a live.
     """
 
-    def __init__(self, repo: BotRepository, account_repo: AccountRepository):
+    def __init__(
+        self,
+        repo: BotRepository,
+        account_repo: AccountRepository,
+        symbol_repo: SymbolRepository,
+    ):
         self._repo = repo
         self._account_repo = account_repo
+        self._symbol_repo = symbol_repo
 
     def update(
         self,
@@ -57,6 +66,12 @@ class UpdateBotService:
             bot.mode = mode
             if not bot.is_valid_mode():
                 return ServiceResult.fail(code="BOT_INVALID_MODE", http_status=422)
+            if mode == "live":
+                symbol = self._symbol_repo.get_by_id(bot.symbol_id)
+                if symbol is not None and is_perpetual(symbol.symbol):
+                    return ServiceResult.fail(
+                        code="BOT_PERPETUAL_LIVE_NOT_SUPPORTED", http_status=422
+                    )
 
         if risk_params is not None:
             if not Bot.is_valid_risk_pct(risk_params.get("risk_pct")):

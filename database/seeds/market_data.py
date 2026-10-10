@@ -7,8 +7,17 @@
 # - Catálogos del Módulo 2 (Market Data): exchanges, timeframes y símbolos.
 #
 # NOTAS:
-# - 7 exchanges, 14 timeframes y 24 símbolos (crypto en Binance y Bybit;
-#   metales y forex en TradingView como data vendor).
+# - 7 exchanges, 14 timeframes y 37 símbolos. Binance: 18 cripto spot,
+#   PAXG (oro tokenizado) y 12 perpetuos TradFi (metales, materias primas,
+#   ETFs y acciones). Bybit: 4 cripto spot y 2 perpetuos (oro y plata).
+# - Perpetuos TradFi: símbolo unificado de ccxt `XAU/USDT:USDT` (base/quote
+#   :settle). Cotizan 24/7 y siguen el precio del activo real; ccxt elige
+#   el mercado por el símbolo, así que se descargan con el mismo código que
+#   el spot. Solo en paper: no se ejecutan en live (ver `is_perpetual`).
+# - Ojo: `SPX/USDT:USDT` es la memecoin SPX6900, no el S&P 500.
+# - TradingView queda como exchange (data_vendor) sin símbolos: no hay
+#   proveedor que descargue sus velas. La migración m02 desactiva los
+#   símbolos que se sembraron antes (y MATIC, renombrado a POL).
 # - Los símbolos se enlazan al exchange por nombre, nunca por ID.
 # ======================================================================
 
@@ -31,6 +40,12 @@ EXCHANGES: list[tuple[str, str]] = [
     ("TradingView", "data_vendor"),
 ]
 
+
+def _perpetuals(items: list[tuple[str, str]]) -> list[tuple[str, str, str, str]]:
+    """Perpetuos lineales en USDT: `XAU` → `XAU/USDT:USDT`."""
+    return [(f"{base}/USDT:USDT", base, "USDT", asset_class) for base, asset_class in items]
+
+
 TIMEFRAMES: list[tuple[str, int]] = [
     ("1m", 60),
     ("3m", 180),
@@ -51,22 +66,39 @@ TIMEFRAMES: list[tuple[str, int]] = [
 # exchange → [(symbol, base, quote, asset_class)]
 SYMBOLS: dict[str, list[tuple[str, str, str, str]]] = {
     "Binance": [
-        (f"{base}/USDT", base, "USDT", "crypto")
-        for base in (
-            "BTC", "ETH", "BNB", "SOL", "XRP", "ADA", "DOGE", "AVAX",
-            "LINK", "DOT", "MATIC", "UNI", "ATOM", "LTC", "BCH",
-        )
+        *[
+            (f"{base}/USDT", base, "USDT", "crypto")
+            for base in (
+                "BTC", "ETH", "BNB", "SOL", "XRP", "ADA", "DOGE", "AVAX",
+                "LINK", "DOT", "POL", "UNI", "ATOM", "LTC", "BCH",
+                "TRX", "NEAR", "SUI",
+            )
+        ],
+        # Token respaldado por oro físico: el único "oro" en spot (long-only)
+        ("PAXG/USDT", "PAXG", "USDT", "metal"),
+        *_perpetuals(
+            [
+                ("XAU", "metal"),       # oro
+                ("XAG", "metal"),       # plata
+                ("XPT", "metal"),       # platino
+                ("XPD", "metal"),       # paladio
+                ("CL", "commodity"),    # petróleo WTI
+                ("NATGAS", "commodity"),
+                ("COPPER", "commodity"),
+                ("SPY", "etf"),         # S&P 500
+                ("QQQ", "etf"),         # Nasdaq 100
+                ("NVDA", "stock"),
+                ("TSLA", "stock"),
+                ("AAPL", "stock"),
+            ]
+        ),
     ],
     "Bybit": [
-        (f"{base}/USDT", base, "USDT", "crypto")
-        for base in ("BTC", "ETH", "SOL", "XRP")
-    ],
-    "TradingView": [
-        ("XAU/USD", "XAU", "USD", "metal"),
-        ("XAG/USD", "XAG", "USD", "metal"),
-        ("EUR/USD", "EUR", "USD", "forex"),
-        ("GBP/USD", "GBP", "USD", "forex"),
-        ("USD/JPY", "USD", "JPY", "forex"),
+        *[
+            (f"{base}/USDT", base, "USDT", "crypto")
+            for base in ("BTC", "ETH", "SOL", "XRP")
+        ],
+        *_perpetuals([("XAU", "metal"), ("XAG", "metal")]),
     ],
 }
 

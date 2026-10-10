@@ -4,9 +4,16 @@
 # database/seeds/strategies.py
 #
 # PROPÓSITO:
-# - 6 estrategias de ejemplo del Módulo 5 para desarrollo y pruebas.
+# - 9 estrategias de ejemplo del Módulo 5 para desarrollo y pruebas.
 #
 # NOTAS:
+# - Una corrección es una versión nueva, no un cambio de la anterior:
+#   `get_or_create` nunca actualiza, y los agentes que ya usan la vieja
+#   siguen igual. Así llegaron RSI Mean Reversion y Bollinger Band
+#   Reversion 1.1.0.
+# - `bb_bandwidth` es el ancho de las bandas en % del precio medio
+#   (pandas-ta BBB): comparable entre activos con precios muy distintos,
+#   a diferencia de `atr_14`, que está en unidades de precio.
 # - Clave natural: (name, version), igual que uq_strategies_name_version.
 # - `regime_required` declara en qué régimen opera cada estrategia
 #   (regla de negocio del filtro de régimen); None = sin restricción.
@@ -111,6 +118,68 @@ STRATEGIES: list[dict[str, Any]] = [
                 _rule("rsi_14", "gt", 20),
                 _rule("macd", "gt", -0.001),
                 _rule("vol_rel", "lt", 2.0),
+            ],
+        },
+    },
+    {
+        "name": "RSI Mean Reversion",
+        "version": "1.1.0",
+        "description": (
+            "Compra sobreventa (RSI < 30) en rangos laterales con bandas estrechas: "
+            "si las bandas se abren, es una ruptura y no un rebote."
+        ),
+        "parameters": {
+            "strategy_type": "mean_reversion",
+            "regime_required": "sideways",
+            "timeframe_code": "15m",
+            "risk_pct": 0.005,
+            "rules": [
+                _rule("rsi_14", "lt", 30),
+                _rule("bb_bandwidth", "lt", 3),
+                _rule("vol_rel", "lt", 1.5),
+            ],
+        },
+    },
+    {
+        "name": "Bollinger Band Reversion",
+        "version": "1.1.0",
+        "description": (
+            "Rebotes dentro de un rango con bandas de Bollinger de ancho moderado: "
+            "ni tan estrechas que no dejen recorrido ni tan anchas que indiquen ruptura."
+        ),
+        "parameters": {
+            "strategy_type": "mean_reversion",
+            "regime_required": "sideways",
+            "timeframe_code": "1h",
+            "risk_pct": 0.008,
+            "rules": [
+                _rule("rsi_14", "lt", 35),
+                _rule("rsi_14", "gt", 20),
+                _rule("bb_bandwidth", "gt", 1),
+                _rule("bb_bandwidth", "lt", 5),
+                _rule("vol_rel", "lt", 2.0),
+            ],
+        },
+    },
+    # ─── Metales y TradFi ─────────────────────────────────────────────
+    {
+        "name": "Tendencia Metales",
+        "version": "1.0.0",
+        "description": (
+            "Sigue tendencias alcistas largas en oro, plata y otros activos TradFi (4h). "
+            "Sin filtros de volumen ni ATR absoluto, que no comparan bien entre activos."
+        ),
+        "parameters": {
+            "strategy_type": "trend_following",
+            "regime_required": "trend_up",
+            "timeframe_code": "4h",
+            "risk_pct": 0.01,
+            "rules": [
+                _rule("ema_20", "gt", "ema_50"),
+                _rule("ema_50", "gt", "ema_200"),
+                _rule("rsi_14", "gt", 50),
+                _rule("rsi_14", "lt", 70),
+                _rule("macd_hist", "gt", 0),
             ],
         },
     },

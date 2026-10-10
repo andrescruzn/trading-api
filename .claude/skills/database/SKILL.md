@@ -38,7 +38,7 @@ signals.action             : buy | sell | hold
 models.model_type          : xgboost | lightgbm | sklearn | nn
 models.status              : active | deprecated | archived
 model_runs.status          : running | success | failed
-symbols.asset_class        : crypto | metal | etf | stock | forex
+symbols.asset_class        : crypto | metal | commodity | index | etf | stock | forex
 exchanges.type             : crypto_exchange | broker | data_vendor
 users.status               : active | blocked | disabled
 alert_rules.rule_type      : pnl | drawdown | signal | error | price
@@ -112,14 +112,18 @@ uv run python -m database.seeds --list               # ver los disponibles
 | Seed | Contenido |
 |---|---|
 | `roles` | user / admin / investor con los IDs de `settings.AUTH_*_ROLE_ID` |
-| `market_data` | 7 exchanges, 14 timeframes, 24 símbolos |
-| `strategies` | 6 estrategias de ejemplo |
+| `users` | Usuarios admin iniciales (login solo por código, sin contraseña) |
+| `market_data` | 7 exchanges, 14 timeframes, 37 símbolos (cripto spot + perpetuos TradFi `X/USDT:USDT`) |
+| `strategies` | 9 estrategias de ejemplo (correcciones = versión nueva) |
 | `feature_sets` | 3 conjuntos de indicadores por enfoque: Completo, Tendencia, Rango |
-| `accounts` | 2 cuentas paper con balances para el usuario demo (se omite si el usuario no existe) |
+| `accounts` | 2 cuentas paper con balances por usuario demo (se omite el usuario que no exista) |
+| `bots` | 2 agentes demo en paper y detenidos (oro 4h, BTC 1h) |
+| `alerts` | 3 reglas de alerta demo sobre esos agentes (solo canal de escritorio) |
 
 Reglas para un seed nuevo:
 - Archivo `database/seeds/<dominio>.py` con `def run(session: Session) -> SeedStats`, registrado en `SEEDS` de `database/seeds/__main__.py` respetando el orden de dependencias.
 - **Idempotente:** insertar con `get_or_create(session, Model, lookup={clave natural}, values={...}, stats=stats)` de `database/seeds/_helpers.py`. Busca por clave natural y nunca actualiza filas existentes. No depender de `INSERT IGNORE`: si la tabla no tiene `UNIQUE` sobre esa clave, duplica.
+- `get_or_create` usa `scalar_one_or_none()`: no sirve para tablas de serie temporal donde la clave natural puede repetirse (p. ej. `account_balances`, UNIQUE con `ts`). Ahí, comprobar existencia con `select(...).limit(1)` e insertar solo si no hay filas.
 - Usar los modelos ORM y enlazar por nombre (exchange por `name`, usuario por `email`), nunca por IDs fijos. La excepción son los roles, que salen de `settings`.
 - El seed no hace commit: el runner confirma uno por seed con `SqlAlchemyRepository.commit()` y hace rollback si falla.
 

@@ -3,16 +3,33 @@ import type {
 	ExchangeType,
 	MarketSymbol,
 	Timeframe,
+	TrendDirection,
 } from '@/modules/market/api/market.api';
 import type { SelectOption } from '@/modules/shared/components/option-select';
 
 const ASSET_CLASS_LABELS: Record<AssetClass, string> = {
 	crypto: 'Cripto',
 	metal: 'Metal',
+	commodity: 'Materia prima',
+	index: 'Índice',
 	etf: 'ETF',
 	stock: 'Acción',
 	forex: 'Forex',
 };
+
+const TREND_DIRECTION_LABELS: Record<TrendDirection, string> = {
+	up: 'Alcista',
+	down: 'Bajista',
+	sideways: 'Lateral',
+};
+
+/**
+ * Contrato perpetuo (`XAU/USDT:USDT`, símbolo unificado de ccxt con
+ * `:liquidación`). Misma regla que `is_perpetual` del backend.
+ */
+function isPerpetualSymbol(symbol: string | null | undefined): boolean {
+	return !!symbol && symbol.includes(':');
+}
 
 const EXCHANGE_TYPE_LABELS: Record<ExchangeType, string> = {
 	crypto_exchange: 'Exchange cripto',
@@ -72,6 +89,8 @@ export {
 	describeSeconds,
 	EXCHANGE_TYPE_LABELS,
 	EXCHANGE_TYPE_OPTIONS,
+	isPerpetualSymbol,
 	symbolOptions,
+	TREND_DIRECTION_LABELS,
 	timeframeOptions,
 };

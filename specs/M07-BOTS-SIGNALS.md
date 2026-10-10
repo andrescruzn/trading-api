@@ -14,7 +14,7 @@
 | Lo usan | [M8](M08-ORDERS-EXECUTION.md) (órdenes por bot), [M9](M09-ALERTS.md) (hooks de señal/error), [M10](M10-BILLING.md) (bot de la cuenta administrada), scheduler de [M2](M02-MARKET-DATA.md), dashboard de [M1](M01-AUTH.md) |
 | Prefijo API | `/api/bots`, `/api/signals` (ver [corrección de rutas](#corrección-de-rutas)) |
 | Frontend | `frontend/src/modules/bots` |
-| Última revisión | 2026-10-08 |
+| Última revisión | 2026-10-10 |
 
 ## Descripción
 
@@ -199,6 +199,9 @@ Routers registrados en `app/app_factory.py` (dentro de `api_routers`, con `prefi
 
 ## Gotchas críticos
 
+- **Perpetuos solo en paper:** `CreateBotService` y `UpdateBotService` (al pasar a live) devuelven `BOT_PERPETUAL_LIVE_NOT_SUPPORTED` (422) si el símbolo es un perpetuo (`XAU/USDT:USDT`, `is_perpetual()` de M2). El asistente oculta las cuentas live con un perpetuo elegido y acepta `?symbol_id=` (desde Explorar mercados).
+- **Seed `bots`:** dos agentes demo en paper y detenidos para el usuario demo ("Oro — tendencia 4h" con Tendencia Metales y "BTC — tendencia 1h" con EMA Trend Follower, conjunto Tendencia), idempotente por (account_id, name).
+
 - `ServiceResult` almacena el error en `result.error.code` (NO `result.code`).
 - `feature_set_id` es por bot, NO global. El bot pasa su propio `feature_set_id` al AnalyzeService.
 - El bot `paused` ES activo (`is_active() = True`).
@@ -226,3 +229,4 @@ Routers registrados en `app/app_factory.py` (dentro de `api_routers`, con `prefi
 - **Posterior** — Hook post-commit de alertas ([M9](M09-ALERTS.md)).
 - **2026-10-08** — API headless (/api), páginas migradas a React (frontend/).
 - **2026-10-08** — **Agentes:** los bots pasan a llamarse agentes en la UI y son el punto de entrada (dashboard, asistente, detalle). Nombre (`bots.name`), propiedad en todas las rutas, validaciones de creación, regla del 1 % en el backend, `?mine=true`. La página "Agente de IA" se integra como "Analizar ahora".
+- **2026-10-10** — Perpetuos TradFi bloqueados en live; `?symbol_id=` en `/agents/new`; seed `bots` con dos agentes demo.

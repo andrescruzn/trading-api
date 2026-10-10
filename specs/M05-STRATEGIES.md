@@ -14,7 +14,7 @@
 | Lo usan | [M6](M06-AI-AGENT.md) (Prompt Maestro), [M7](M07-BOTS-SIGNALS.md) (cada bot referencia una estrategia) |
 | Prefijo API | `/api/strategies`, `/api/datasets` |
 | Frontend | `frontend/src/modules/strategies` |
-| Última revisión | 2026-10-08 |
+| Última revisión | 2026-10-10 |
 
 ## Descripción
 
@@ -48,7 +48,7 @@ Entregables:
 - ✅ Validación coherencia tipo/régimen (hint en vivo en UI + validación backend)
 - ✅ Web UI: `/#/strategies` (viewer) + `/#/admin/strategies` (CRUD admin) — en React desde 2026-10-08
 - ✅ API: GET/POST `/api/strategies`, GET/PUT `/api/strategies/{id}`
-- ✅ Seed: 6 estrategias de ejemplo (`database/seeds/strategies.py`)
+- ✅ Seed: 9 estrategias de ejemplo (`database/seeds/strategies.py`)
 - Tests unitarios: pendientes (no solicitados)
 
 ## Decisiones de diseño
@@ -63,7 +63,7 @@ Entregables:
 | `(name, version)` único (`STRATEGY_DUPLICATE_NAME_VERSION`) | Versionar estrategias sin pisar las anteriores | Editar en sitio sin versión |
 | Prefijo API `/api/strategies` | Originalmente para no colisionar con la página Jinja `/strategies`; desde 2026-10-08 todas las rutas REST viven bajo `/api` (`settings.API_PREFIX`) y la UI usa hash routing (`/#/strategies`), así que la colisión ya no existe | Cambiar la ruta de la página |
 | Lectura para cualquier usuario autenticado, escritura solo admin | El trader ve las estrategias disponibles pero no las altera | Estrategias por usuario |
-| Seed de 6 estrategias de ejemplo con `INSERT IGNORE` | Arranque rápido e idempotente | Crearlas a mano |
+| Seed de estrategias con `get_or_create` por (name, version); una corrección es una **versión nueva** | Arranque rápido e idempotente; no cambia estrategias que ya usan agentes | Crearlas a mano / actualizar la fila existente |
 
 ## Avance
 
@@ -164,7 +164,12 @@ from app.modules.strategies.rest import strategies_router, datasets_router
 - Hint en vivo en UI + validación en backend (service devuelve warning)
 
 ### Seed
-- `database/seeds/strategies.py` — 6 estrategias de ejemplo, idempotente por (name, version)
+- `database/seeds/strategies.py` — 9 estrategias de ejemplo, idempotente por (name, version):
+  - EMA Trend Follower 1.0.0 (1h) y 2.0.0 (4h), Bearish EMA Follower 1.0.0, MACD Crossover 1.0.0
+  - RSI Mean Reversion 1.0.0 y Bollinger Band Reversion 1.0.0 (versiones viejas con reglas defectuosas: `bb_lower > 0` siempre se cumple; la segunda no usa bandas)
+  - RSI Mean Reversion **1.1.0** (`bb_bandwidth < 3`) y Bollinger Band Reversion **1.1.0** (`1 < bb_bandwidth < 5`): las corrigen; solo las acepta el conjunto Rango o Completo
+  - **Tendencia Metales 1.0.0** (trend_up, 4h, 1 %): EMAs alineadas, RSI 50–70, `macd_hist > 0`; sin `vol_rel` ni `atr_14` absoluto, para que sirva en oro, plata y demás perpetuos TradFi
+- `bb_bandwidth` está en % del precio medio (pandas-ta BBB) y es comparable entre activos; `atr_14` está en unidades de precio y no (la regla `atr_14 > 0.005` de EMA Trend Follower 2.0.0 casi siempre se cumple).
 
 ## Gotchas críticos
 
@@ -188,3 +193,4 @@ from app.modules.strategies.rest import strategies_router, datasets_router
 - **2026-03** — Módulo completado: CRUD estrategias/datasets, validación de coherencia, UI `/strategies` y `/admin/strategies`, seed de 6 estrategias.
 - **2026-03** — Fix de colisión de rutas: el API pasa a `/api/strategies`.
 - **2026-10-08** — API headless (/api), páginas migradas a React (frontend/).
+- **2026-10-10** — Seed: RSI Mean Reversion 1.1.0 y Bollinger Band Reversion 1.1.0 (reglas de bandas corregidas) y Tendencia Metales 1.0.0 para perpetuos TradFi.

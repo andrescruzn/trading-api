@@ -14,7 +14,7 @@
 | Lo usan | [M9](M09-ALERTS.md) (hook de orden), [M10](M10-BILLING.md) (historial de órdenes y fills) |
 | Prefijo API | `/api/orders`, `/api/fills`, `/api/positions` |
 | Frontend | `frontend/src/modules/orders` |
-| Última revisión | 2026-10-08 |
+| Última revisión | 2026-10-10 |
 
 ## Descripción
 
@@ -104,7 +104,7 @@ Entregables:
 
 - Stop Loss / Take Profit automáticos (el flujo de [`_ROOT.md`](_ROOT.md) los describe como objetivo, no están implementados).
 - Cancelación de órdenes y reconciliación con el exchange.
-- Posiciones cortas y apalancamiento / futuros.
+- Posiciones cortas y apalancamiento / futuros. Por eso los perpetuos TradFi de [M2](M02-MARKET-DATA.md) (`XAU/USDT:USDT`) solo se operan en paper: `LiveExecutor` rechaza cualquier símbolo con `:` (ccxt leería `amount` como contratos).
 - Tests (el roadmap original no los listaba).
 
 ## Detalle técnico
@@ -204,3 +204,4 @@ from app.modules.orders.rest import orders_router, fills_router, positions_route
 - **Posterior** — Hook de alertas post-commit ([M9](M09-ALERTS.md)).
 - **2026-10-07** — `commit()` movido a la capa repositorio; rollback explícito cuando falla el executor. Las rutas admin devolvían 500 en vez de 403 (`send()` sin `data`): corregido.
 - **2026-10-08** — API headless (/api), páginas migradas a React (frontend/).
+- **2026-10-10** — `LiveExecutor` usa el `CCXT_EXCHANGE_MAP` de M2 (sin copia propia) y rechaza perpetuos.

@@ -12,9 +12,9 @@
 | Tablas | `exchanges`, `symbols`, `timeframes`, `candles` (R/W) |
 | Depende de | [M1](M01-AUTH.md) (auth y roles) |
 | Lo usan | [M3](M03-FEATURE-ENGINEERING.md), [M5](M05-STRATEGIES.md), [M6](M06-AI-AGENT.md), [M7](M07-BOTS-SIGNALS.md), [M8](M08-ORDERS-EXECUTION.md) y el scheduler |
-| Prefijo API | `/api/exchanges`, `/api/symbols`, `/api/timeframes`, `/api/candles` |
+| Prefijo API | `/api/exchanges`, `/api/symbols`, `/api/timeframes`, `/api/candles`, `/api/explorer` |
 | Frontend | `frontend/src/modules/market` |
-| Última revisión | 2026-10-08 |
+| Última revisión | 2026-10-10 |
 
 ## Descripción
 
@@ -22,9 +22,10 @@
 
 **Qué hace:**
 - Registra los **exchanges** (plataformas de trading) como Binance, Bybit, Kraken, etc.
-- Registra los **símbolos** (pares de trading) como BTC/USDT, ETH/USDT, EUR/USD, XAU/USD, etc.
+- Registra los **símbolos** como BTC/USDT o ETH/USDT, y también **perpetuos TradFi** de Binance/Bybit que siguen el precio del oro, la plata, el petróleo, el gas, el cobre, ETFs (SPY, QQQ) y acciones (NVDA, TSLA, AAPL): `XAU/USDT:USDT`.
 - Registra los **timeframes** (marcos de tiempo) como 1 minuto, 5 minutos, 1 hora, 1 día, etc.
 - Almacena **velas OHLCV**: cada vela es un resumen del precio en un período de tiempo (precio de apertura, precio más alto, precio más bajo, precio de cierre y volumen negociado)
+- **Explorador de tendencia:** ordena los mercados por la fuerza de su tendencia en velas diarias para elegir dónde crear agentes.
 
 **Por qué importa:** sin este módulo no hay datos para analizar. Además mantiene las velas al día de forma automática para los bots activos (ver [Scheduler](#scheduler-ingesta-automática)).
 
@@ -33,6 +34,7 @@
 Hash routing: la URL real es `/#/<ruta>`.
 
 **Usuario (todos los roles):**
+- `/#/market/explorer` — "Explorar mercados": ranking por fuerza de tendencia (velas 1d) con filtro por clase de activo y "Crear agente" (abre el asistente con el símbolo elegido). Los admin ven además "Actualizar datos"
 - `/#/market/symbols` — Lista de todos los símbolos disponibles, con filtros y acceso "Ver velas"
 - `/#/market/candles` — Ver las velas/precios de un símbolo (acepta `?symbol_id=&timeframe_id=`)
 
@@ -54,6 +56,8 @@ Entregables:
 - Endpoint: `GET /api/candles?symbol_id=…&timeframe_id=…&from_ts=…&to_ts=…`
 - Web UI: lista de símbolos, últimas velas en tabla (desde 2026-10-08 en React, `frontend/src/modules/market`)
 - Tests unitarios de los services
+- ✅ Perpetuos TradFi (metales, materias primas, ETFs, acciones) vía ccxt en Binance/Bybit; clases de activo `commodity` e `index` (2026-10-10)
+- ✅ Explorador de tendencia: `GET /api/explorer`, `POST /api/explorer/refresh` y página `/#/market/explorer` (2026-10-10)
 
 ## Decisiones de diseño
 
@@ -63,7 +67,11 @@ Entregables:
 | `bulk_upsert` con `INSERT … ON DUPLICATE KEY UPDATE` sobre `uq_candles_symbol_tf_ts` | La ingesta es idempotente: reintentar o solapar rangos no duplica velas | Insertar y capturar errores de clave duplicada |
 | Cada vela se valida con `candle.is_valid_ohlcv()` antes del upsert | Rechaza datos corruptos (high < low, negativos) antes de llegar a la BD | Confiar solo en los `CHECK` de MySQL |
 | El exchange de ccxt se resuelve desde `symbol.exchange_id` → nombre en minúsculas (`_CCXT_EXCHANGE_MAP`) | Un único símbolo en BD determina el origen del dato | Parámetro `exchange` libre en cada request |
-| `exchanges` admite `crypto_exchange` / `broker` / `data_vendor` (p. ej. TradingView para metales y forex) | Mismo modelo para cripto, metales y forex | Una tabla por tipo de activo |
+| `exchanges` admite `crypto_exchange` / `broker` / `data_vendor` | Mismo modelo para cripto, metales y forex | Una tabla por tipo de activo |
+| Metales, materias primas, ETFs y acciones como **perpetuos TradFi** de Binance/Bybit (`XAU/USDT:USDT`) | Datos y ejecución en el mismo sitio, 24/7, con el mismo código ccxt: ccxt elige el mercado por el símbolo unificado | Proveedor de datos aparte (yfinance, Twelve Data) + bróker: más código, horarios de mercado y sin ejecución |
+| Perpetuos solo en **paper** (`is_perpetual()` en `domain/ccxt_exchanges.py`) | En live ccxt interpreta `amount` como contratos y harían falta apalancamiento, margen y cortos | Habilitar live con la lógica spot (tamaños de posición erróneos) |
+| Explorador calculado al vuelo desde `candles` (1d), sin tabla nueva | ~40 símbolos × 250 velas: barato y siempre coherente con las velas | Tabla de métricas precalculadas |
+| `strength` = min(ADX/50, 1) × eficiencia de Kaufman (30 d); ADX < 20 → lateral | Exige fuerza y limpieza del movimiento a la vez; comparable entre activos de precios muy distintos | Solo rendimiento %: premia saltos puntuales |
 | `timeframes` guarda `seconds` y usa PK `SMALLINT` | El scheduler decide si una vela "venció" comparando segundos | Calcular segundos desde el código del timeframe |
 | Datetimes de MySQL se normalizan a UTC con `_as_utc_aware()` | MySQL devuelve datetimes naive | Trabajar con naive y asumir UTC |
 | Ingesta manual (`/api/candles/ingest`, máx. 5000 filas) + descarga ccxt (`/api/candles/fetch`) + scheduler | Cubre cargas históricas, uso puntual y mantenimiento automático | Solo scheduler |
@@ -90,7 +98,9 @@ Entregables:
 | Alta | Ejecutar el scheduler en un proceso/worker dedicado o con *lock*: hoy es un hilo daemon dentro de la app, y con varios workers de uvicorn se ejecutaría varias veces | M |
 | Media | Detección y relleno de huecos: el ciclo incremental pide solo 3 velas, así que una caída del servidor de más de 3 timeframes deja velas faltantes | M |
 | Media | La retención por defecto (500 velas) limita el histórico disponible para datasets/backtesting de [M5](M05-STRATEGIES.md); separar retención operativa de histórico | M |
-| Media | Fetch automático para `broker`/`data_vendor` (forex y metales de TradingView): hoy `_CCXT_EXCHANGE_MAP` solo cubre exchanges cripto, esos símbolos solo se cargan manualmente | L |
+| Media | Proveedor de datos no-ccxt (yfinance / Twelve Data) para forex e índices reales: capa de proveedores en `FetchCandlesService`, horario de mercado en el scheduler y `vol_rel` con volumen 0 | L |
+| Media | Live de perpetuos: cortos (`positions.qty >= 0`), apalancamiento, `contractSize` y redondeo a `lot_size` | L |
+| Baja | Tests de `trend_metrics.compute_trend_metrics` (función pura) | S |
 | Baja | Paginación y filtros en servidor para catálogos grandes | S |
 
 ## Fuera de alcance y pendientes conocidos
@@ -105,15 +115,18 @@ Entregables:
 | Tabla | Uso | Notas |
 |-------|-----|-------|
 | `exchanges` | Exchanges, brokers, data vendors | UNIQUE `name`; type: crypto_exchange/broker/data_vendor |
-| `symbols` | Pares por exchange (BTC/USDT, EUR/USD, XAU/USD…) | UNIQUE (exchange_id, symbol); asset_class: crypto/metal/etf/stock/forex |
+| `symbols` | Pares por exchange (BTC/USDT, XAU/USDT:USDT…) | UNIQUE (exchange_id, symbol); asset_class: crypto/metal/commodity/index/etf/stock/forex (revisión `m02 asset_class commodity index`) |
 | `timeframes` | Marcos temporales | PK es `SMALLINT`; UNIQUE `code`; tiene `seconds` |
 | `candles` | Velas OHLCV | UNIQUE (symbol_id, timeframe_id, ts); bulk upsert vía ON DUPLICATE KEY UPDATE |
 
-### Seed de datos (ya ejecutado)
+### Seed de datos
 Archivo: `database/seeds/market_data.py` (`uv run python -m database.seeds market_data`)
-- 7 exchanges: Binance, Bybit, Kraken, Coinbase, Bitget, OKX, TradingView
+- 7 exchanges: Binance, Bybit, Kraken, Coinbase, Bitget, OKX, TradingView (sin símbolos)
 - 14 timeframes: 1m, 3m, 5m, 15m, 30m, 1h, 2h, 4h, 6h, 8h, 12h, 1d, 3d, 1w
-- 24 símbolos: 15 Binance crypto + 4 Bybit crypto + 2 TradingView metals + 3 TradingView forex
+- 37 símbolos:
+  - Binance: 18 cripto spot (BTC, ETH, BNB, SOL, XRP, ADA, DOGE, AVAX, LINK, DOT, POL, UNI, ATOM, LTC, BCH, TRX, NEAR, SUI), `PAXG/USDT` (oro tokenizado, spot) y 12 perpetuos `X/USDT:USDT`: XAU, XAG, XPT, XPD (metal), CL, NATGAS, COPPER (commodity), SPY, QQQ (etf), NVDA, TSLA, AAPL (stock)
+  - Bybit: 4 cripto spot (BTC, ETH, SOL, XRP) y perpetuos XAU y XAG
+- La migración m02 desactiva los 5 símbolos viejos de TradingView (sin descarga) y `MATIC/USDT` (renombrado a POL).
 
 ### Modelos ORM (`app/modules/market/infrastructure/`)
 | Archivo | Clase | Tabla |
@@ -139,7 +152,8 @@ Registrados en: `app/extensions/db/models_registry.py`
 | `exchanges/` | `list_exchanges_service.py`, `create_exchange_service.py`, `update_exchange_service.py` |
 | `symbols/` | `list_symbols_service.py`, `create_symbol_service.py`, `update_symbol_service.py` |
 | `timeframes/` | `list_timeframes_service.py`, `create_timeframe_service.py` |
-| `candles/` | `list_candles_service.py`, `ingest_candles_service.py` |
+| `candles/` | `list_candles_service.py`, `ingest_candles_service.py`, `fetch_candles_service.py` (acepta `client_cache` para reutilizar el cliente ccxt en lotes) |
+| `explorer/` | `trend_metrics.py` (función pura: ADX, eficiencia, ATR %, rendimientos, dirección, fuerza), `list_trend_explorer_service.py`, `refresh_explorer_candles_service.py` |
 
 Provider: `app/modules/market/providers/market_provider.py` → `MarketServiceFactory`
 
@@ -157,15 +171,18 @@ Provider: `app/modules/market/providers/market_provider.py` → `MarketServiceFa
 | GET | `/api/candles` | token | Params: symbol_id, timeframe_id, from_ts, to_ts, limit (max 1000) |
 | POST | `/api/candles/ingest` | admin | Bulk upsert de velas (max 5000 rows por request) |
 | POST | `/api/candles/fetch` | admin | Descarga OHLCV del exchange con ccxt |
+| GET | `/api/explorer` | token | Ranking por tendencia (velas 1d). Filtro: asset_class. Solo símbolos activos con `supports_auto_fetch` |
+| POST | `/api/explorer/refresh` | admin | Descarga velas 1d de todos esos símbolos (incluida la del día en curso) |
 
 Routers registrados en `app/app_factory.py` (dentro de `api_routers`, montados con `prefix=settings.API_PREFIX`):
 ```python
-from app.modules.market.rest import exchanges_router, symbols_router, timeframes_router, candles_router
+from app.modules.market.rest import exchanges_router, symbols_router, timeframes_router, candles_router, explorer_router
 ```
 
 ### Frontend (`frontend/src/modules/market/`)
 | Ruta | Archivo de ruta | Página |
 |-----|----------|----|
+| `/#/market/explorer` | `routes/_app/market/explorer.lazy.tsx` | `pages/explorer.tsx` (`useTrendExplorerQuery`, `useRefreshExplorerMutation`) |
 | `/#/market/symbols` | `routes/_app/market/symbols.lazy.tsx` | `pages/symbols.tsx` |
 | `/#/market/candles` | `routes/_app/market/candles.tsx` (`validateSearch`: `symbol_id`, `timeframe_id`) + `candles.lazy.tsx` | `pages/candles.tsx` |
 | `/#/admin/exchanges` | `routes/_app/admin/exchanges.lazy.tsx` | `pages/admin-exchanges.tsx` + `components/exchange-form-dialog.tsx` |
@@ -180,7 +197,8 @@ from app.modules.market.rest import exchanges_router, symbols_router, timeframes
 - `POST /api/candles/fetch` → `FetchCandlesService` → usa ccxt para descargar OHLCV del exchange real
 - Exchange se resuelve desde `symbol.exchange_id` → busca en DB → mapea a ccxt id (lowercase)
 - Schema: `FetchCandlesRequest(symbol_id, timeframe_id, limit)`
-- Soporta: binance, bybit, kraken, coinbase, bitget, okx (mapa en `_CCXT_EXCHANGE_MAP`)
+- Soporta: binance, bybit, kraken, coinbase, bitget, okx (`CCXT_EXCHANGE_MAP` en `domain/ccxt_exchanges.py`, compartido con `live_executor.py`)
+- Perpetuos: el símbolo unificado (`XAU/USDT:USDT`) basta para que ccxt use el mercado de futuros; no hace falta `defaultType`.
 
 ### Scheduler (ingesta automática)
 
@@ -189,7 +207,7 @@ from app.modules.market.rest import exchanges_router, symbols_router, timeframes
 | Archivo | Qué hace |
 |---|---|
 | `scheduler_runner.py` | Hilo `trading-scheduler` (`daemon=True`) con `threading.Event` de parada; `start()` / `stop()` se enganchan al *lifespan* de FastAPI en `app_factory.py` |
-| `scheduler_service.py` | `run_cycle()`: un ciclo completo de actualización |
+| `scheduler_service.py` | `run_cycle()`: un ciclo completo de actualización · `refresh_explorer()`: velas 1d del explorador |
 
 Ciclo (`run_cycle`):
 1. Lee bots con `status IN ('running','paused')`; si no hay ninguno, omite el ciclo. Por eso **iniciar un agente es lo que pone a andar la descarga de datos** de su símbolo.
@@ -205,12 +223,18 @@ SCHEDULER_ENABLED=true              # false para tests / entorno manual (default
 SCHEDULER_INTERVAL_SECONDS=60       # segundos entre ciclos (default: 60)
 SCHEDULER_RETENTION_CANDLES=500     # velas a conservar por par (default: 500)
 ```
+Explorador: `scheduler_runner` llama a `refresh_explorer()` al arrancar y luego cada 24 h (`time.monotonic`), aparte de `run_cycle()` porque necesita datos de todos los símbolos aunque no haya agentes. Sin `force` solo descarga los símbolos cuya última vela 1d tiene un día o más.
+
 El scheduler **no genera señales ni órdenes**: solo mantiene velas y features al día para los bots ([M7](M07-BOTS-SIGNALS.md)).
 
 ## Gotchas críticos
 
 - **ccxt:** versión fijada en `pyproject.toml` (`ccxt==4.4.96`).
-- **Símbolos sin descarga automática:** solo los exchanges de `domain/ccxt_exchanges.py` (`CCXT_EXCHANGE_MAP`: binance, bybit, kraken, coinbase, bitget, okx) se descargan solos. `GET /api/symbols` devuelve `supports_auto_fetch` y el asistente de agentes ([M7](M07-BOTS-SIGNALS.md)) solo ofrece esos símbolos; un agente sobre forex/metales (TradingView) nunca recibiría velas. `orders/execution/live_executor.py` mantiene su propia copia del mapa.
+- **Símbolos sin descarga automática:** solo los exchanges de `domain/ccxt_exchanges.py` (`CCXT_EXCHANGE_MAP`: binance, bybit, kraken, coinbase, bitget, okx) se descargan solos. `GET /api/symbols` devuelve `supports_auto_fetch` y el asistente de agentes ([M7](M07-BOTS-SIGNALS.md)) solo ofrece esos símbolos. Los de TradingView (`data_vendor`) nunca reciben velas: por eso el seed ya no los crea y la migración m02 los desactiva.
+- **`SPX/USDT:USDT` no es el S&P 500:** en Binance y Bybit es la memecoin SPX6900. Para el índice usar `SPY` (o `US500`/`SP500` en otros exchanges).
+- **`MATIC/USDT` ya no existe** (renombrado a `POL/USDT`): ccxt responde `BadSymbol`.
+- **Perpetuos y volumen:** los perpetuos TradFi traen volumen real, así que `vol_rel` funciona; un proveedor de forex sin volumen lo dejaría en `NaN`.
+- **Perpetuos en live:** bloqueados en `CreateBotService`, `UpdateBotService` (`BOT_PERPETUAL_LIVE_NOT_SUPPORTED`) y `LiveExecutor`; el asistente oculta las cuentas live si el símbolo es perpetuo.
 - **Dropdowns de símbolos duplicados** (BTC/USDT ×2 en Binance y Bybit): la entidad `Symbol` incluye `exchange_name` vía JOIN → el front muestra `BTC/USDT (Binance)`.
 - Resueltos con la migración a React (2026-10-08): CSP por prefijo web (`_is_web_route`), clases `.page-header`/`.pagination` de `app.css` y el redirect admin por `role_id` de la cookie ya no aplican (ver [M1](M01-AUTH.md)).
 
@@ -238,4 +262,5 @@ El scheduler **no genera señales ni órdenes**: solo mantiene velas y features 
 - **Posterior** — Scheduler de ingesta automática con retención de velas.
 - **2026-10-07** — El scheduler deja de usar SQL crudo y modelos ORM: usa `BotRepository.list_by_statuses`, `CandleRepository.get_latest_ts` / `delete_beyond_retention` y `CandleFeatureRepository.delete_beyond_retention`; el commit lo hace el repositorio.
 - **2026-10-08** — API headless (/api), páginas migradas a React (frontend/).
+- **2026-10-10** — Perpetuos TradFi (oro, plata, platino, paladio, petróleo, gas, cobre, SPY, QQQ, NVDA, TSLA, AAPL) en el seed; clases `commodity` e `index` (migración m02, que además desactiva TradingView y MATIC); `MATIC`→`POL` + TRX, NEAR, SUI, PAXG; explorador de tendencia (`/api/explorer`, página Explorar mercados, refresco diario en el scheduler); perpetuos bloqueados en live; mapa ccxt único (sin copia en `live_executor.py`).
 - **2026-10-08** — Scheduler: recalcula features atrasadas aunque no haya velas nuevas. `CCXT_EXCHANGE_MAP` movido al dominio (`ccxt_exchanges.py`) y `supports_auto_fetch` en la respuesta de símbolos. Páginas de usuario movidas a la sección "Explorar" del menú.

@@ -302,7 +302,8 @@ export function OrderFormDialog({
 											aria-invalid={fieldState.invalid}
 										/>
 										<FieldDescription>
-											En unidades del activo base (ej.: 0.01 BTC).
+											En unidades del activo base: BTC en BTC/USDT, onzas de oro
+											en XAU/USDT:USDT.
 										</FieldDescription>
 										{fieldState.invalid && (
 											<FieldError errors={[fieldState.error]} />

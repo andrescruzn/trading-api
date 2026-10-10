@@ -7,6 +7,7 @@ import {
 	type ExchangeInput,
 	type ExchangeUpdate,
 	fetchCandles,
+	refreshExplorer,
 	type SymbolInput,
 	type SymbolUpdate,
 	type TimeframeInput,
@@ -16,6 +17,7 @@ import {
 import {
 	CANDLES_QUERY_KEY,
 	EXCHANGES_QUERY_KEY,
+	EXPLORER_QUERY_KEY,
 	SYMBOLS_QUERY_KEY,
 	TIMEFRAMES_QUERY_KEY,
 } from '@/modules/market/hooks/use-market-queries';
@@ -79,11 +81,23 @@ function useFetchCandlesMutation() {
 	});
 }
 
+function useRefreshExplorerMutation() {
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: refreshExplorer,
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: EXPLORER_QUERY_KEY });
+			queryClient.invalidateQueries({ queryKey: CANDLES_QUERY_KEY });
+		},
+	});
+}
+
 export {
 	useCreateExchangeMutation,
 	useCreateSymbolMutation,
 	useCreateTimeframeMutation,
 	useFetchCandlesMutation,
+	useRefreshExplorerMutation,
 	useUpdateExchangeMutation,
 	useUpdateSymbolMutation,
 };

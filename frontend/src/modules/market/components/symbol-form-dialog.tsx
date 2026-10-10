@@ -105,8 +105,10 @@ export function SymbolFormDialog({
 	}, [open, symbol, form]);
 
 	// Al escribir `BTC/USDT` se sugieren base y cotización si están vacías.
+	// En perpetuos (`XAU/USDT:USDT`) se ignora la moneda de liquidación.
 	function handleSymbolBlur(value: string) {
-		const [base, quote] = value.toUpperCase().split('/');
+		const [pair = ''] = value.toUpperCase().split(':');
+		const [base, quote] = pair.split('/');
 		if (base && quote) {
 			if (!form.getValues('base_asset')) form.setValue('base_asset', base);
 			if (!form.getValues('quote_asset')) form.setValue('quote_asset', quote);

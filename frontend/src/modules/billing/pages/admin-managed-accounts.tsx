@@ -73,12 +73,12 @@ export function AdminManagedAccountsPage() {
 		},
 		{
 			id: 'bot',
-			header: 'Bot',
+			header: 'Agente',
 			cell: (row) =>
 				row.bot_id ? (
 					botLabel(row.bot_id, botsQuery.data, symbolsQuery.data)
 				) : (
-					<span className="text-muted-foreground">Sin bot</span>
+					<span className="text-muted-foreground">Sin agente</span>
 				),
 		},
 		{

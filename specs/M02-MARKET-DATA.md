@@ -192,11 +192,12 @@ from app.modules.market.rest import exchanges_router, symbols_router, timeframes
 | `scheduler_service.py` | `run_cycle()`: un ciclo completo de actualización |
 
 Ciclo (`run_cycle`):
-1. Lee bots con `status IN ('running','paused')`; si no hay ninguno, omite el ciclo.
+1. Lee bots con `status IN ('running','paused')`; si no hay ninguno, omite el ciclo. Por eso **iniciar un agente es lo que pone a andar la descarga de datos** de su símbolo.
 2. Agrupa pares únicos `(symbol_id, timeframe_id)` y decide si hace falta fetch: sin velas → carga inicial de **500**; última vela vencida (`ahora − ts ≥ seconds`) → incremental de **3**; vigente → nada.
 3. Descarga con `MarketServiceFactory(session).fetch_candles()` (una sesión por operación; un fallo no detiene los demás).
 4. Limpia velas más antiguas que la retención con `CandleRepository.delete_beyond_retention()` (`DELETE` con subconsulta doble por la restricción de MySQL).
-5. Para cada tripla `(symbol_id, timeframe_id, feature_set_id)` con velas nuevas, recalcula features con `FeatureServiceFactory(...).calculate_features()` ([M3](M03-FEATURE-ENGINEERING.md)) y limpia `candle_features` más allá de la retención.
+5. Para cada tripla `(symbol_id, timeframe_id, feature_set_id)` con velas nuevas **o con features atrasadas** (la última feature de esa tripla es anterior a la última vela, o no hay ninguna), recalcula features con `FeatureServiceFactory(...).calculate_features()` ([M3](M03-FEATURE-ENGINEERING.md)) y limpia `candle_features` más allá de la retención. Así un agente nuevo sobre un par que ya estaba al día (o con otro conjunto de indicadores) tiene datos en ≤ 1 ciclo, sin esperar a la siguiente vela.
+6. Si no hubo nada que descargar ni features atrasadas, el ciclo termina sin más trabajo.
 
 Settings (`app/common/config/settings.py`):
 ```
@@ -209,6 +210,7 @@ El scheduler **no genera señales ni órdenes**: solo mantiene velas y features 
 ## Gotchas críticos
 
 - **ccxt:** versión fijada en `pyproject.toml` (`ccxt==4.4.96`).
+- **Símbolos sin descarga automática:** solo los exchanges de `domain/ccxt_exchanges.py` (`CCXT_EXCHANGE_MAP`: binance, bybit, kraken, coinbase, bitget, okx) se descargan solos. `GET /api/symbols` devuelve `supports_auto_fetch` y el asistente de agentes ([M7](M07-BOTS-SIGNALS.md)) solo ofrece esos símbolos; un agente sobre forex/metales (TradingView) nunca recibiría velas. `orders/execution/live_executor.py` mantiene su propia copia del mapa.
 - **Dropdowns de símbolos duplicados** (BTC/USDT ×2 en Binance y Bybit): la entidad `Symbol` incluye `exchange_name` vía JOIN → el front muestra `BTC/USDT (Binance)`.
 - Resueltos con la migración a React (2026-10-08): CSP por prefijo web (`_is_web_route`), clases `.page-header`/`.pagination` de `app.css` y el redirect admin por `role_id` de la cookie ya no aplican (ver [M1](M01-AUTH.md)).
 
@@ -236,3 +238,4 @@ El scheduler **no genera señales ni órdenes**: solo mantiene velas y features 
 - **Posterior** — Scheduler de ingesta automática con retención de velas.
 - **2026-10-07** — El scheduler deja de usar SQL crudo y modelos ORM: usa `BotRepository.list_by_statuses`, `CandleRepository.get_latest_ts` / `delete_beyond_retention` y `CandleFeatureRepository.delete_beyond_retention`; el commit lo hace el repositorio.
 - **2026-10-08** — API headless (/api), páginas migradas a React (frontend/).
+- **2026-10-08** — Scheduler: recalcula features atrasadas aunque no haya velas nuevas. `CCXT_EXCHANGE_MAP` movido al dominio (`ccxt_exchanges.py`) y `supports_auto_fetch` en la respuesta de símbolos. Páginas de usuario movidas a la sección "Explorar" del menú.

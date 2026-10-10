@@ -26,6 +26,8 @@ type MarketSymbol = {
 	tick_size: string | null;
 	lot_size: string | null;
 	is_active: boolean;
+	/** `true` si sus velas se descargan solas (exchange soportado). */
+	supports_auto_fetch: boolean;
 	created_at: string | null;
 };
 

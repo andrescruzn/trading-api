@@ -14,6 +14,9 @@
 #   - Bollinger Bands(20, 2)
 #   - Volumen relativo (vol / media_vol_20)
 #   - Régimen: trend_up | trend_down | sideways
+#
+# Solo se guardan los indicadores de los grupos del `spec` del feature
+# set (ver `indicator_catalog`); el régimen se guarda siempre.
 # ======================================================================
 
 from __future__ import annotations
@@ -28,12 +31,37 @@ from app.common.contracts import ServiceResult
 from app.modules.features.domain.candle_feature_entity import CandleFeature
 from app.modules.features.domain.candle_feature_repository import CandleFeatureRepository
 from app.modules.features.domain.feature_set_repository import FeatureSetRepository
+from app.modules.features.domain.indicator_catalog import INDICATOR_GROUPS, groups_for
 from app.modules.market.domain.candle_repository import CandleRepository
 from app.modules.market.domain.symbol_repository import SymbolRepository
 from app.modules.market.domain.timeframe_repository import TimeframeRepository
 
 # Número mínimo de velas para calcular EMA(200) con margen
 _MIN_CANDLES = 220
+
+# Clave de salida → columna que genera pandas-ta
+_OUTPUT_COLUMNS: dict[str, str] = {
+    "rsi_14": "RSI_14",
+    "ema_20": "EMA_20",
+    "ema_50": "EMA_50",
+    "ema_200": "EMA_200",
+    "macd": "MACD_12_26_9",
+    "macd_signal": "MACDs_12_26_9",
+    "macd_hist": "MACDh_12_26_9",
+    "atr_14": "ATRr_14",
+    "bb_upper": "BBU_20_2.0_2.0",
+    "bb_mid": "BBM_20_2.0_2.0",
+    "bb_lower": "BBL_20_2.0_2.0",
+    "bb_bandwidth": "BBB_20_2.0_2.0",
+    "vol_rel": "vol_rel",
+}
+
+# Columna que debe existir sin NaN, por grupo, para considerar la fila válida
+_REQUIRED_BY_GROUP: dict[str, tuple[str, ...]] = {
+    "rsi": ("RSI_14",),
+    "ema": ("EMA_20", "EMA_50", "EMA_200"),
+    "atr": ("ATRr_14",),
+}
 
 
 class CalculateFeaturesService:
@@ -80,8 +108,12 @@ class CalculateFeaturesService:
         if self._timeframe_repo.get_by_id(timeframe_id) is None:
             return ServiceResult.fail(code="TIMEFRAME_NOT_FOUND", http_status=404)
 
-        if self._feature_set_repo.get_by_id(feature_set_id) is None:
+        feature_set = self._feature_set_repo.get_by_id(feature_set_id)
+        if feature_set is None:
             return ServiceResult.fail(code="FEATURE_SET_NOT_FOUND", http_status=404)
+
+        groups = groups_for(feature_set.spec)
+        output_keys = [key for group in groups for key in INDICATOR_GROUPS[group]]
 
         # ------------------------------------------------------------------
         # 2. Cargar velas (hasta 1000, ordenadas de más antigua a más nueva)
@@ -141,27 +173,17 @@ class CalculateFeaturesService:
         # 6. Construir entidades CandleFeature (solo filas con datos completos)
         # ------------------------------------------------------------------
         # Columnas que deben existir sin NaN para considerar la fila válida
-        required_cols = ["RSI_14", "EMA_20", "EMA_50", "EMA_200", "ATRr_14"]
-        df_valid = df.dropna(subset=required_cols)
+        required_cols = [
+            col for group in groups for col in _REQUIRED_BY_GROUP.get(group, ())
+        ]
+        df_valid = df.dropna(subset=required_cols) if required_cols else df
 
         feature_entities = []
         for ts, row in df_valid.iterrows():
-            features = {
-                "rsi_14":        self._safe_float(row.get("RSI_14")),
-                "ema_20":        self._safe_float(row.get("EMA_20")),
-                "ema_50":        self._safe_float(row.get("EMA_50")),
-                "ema_200":       self._safe_float(row.get("EMA_200")),
-                "macd":          self._safe_float(row.get("MACD_12_26_9")),
-                "macd_signal":   self._safe_float(row.get("MACDs_12_26_9")),
-                "macd_hist":     self._safe_float(row.get("MACDh_12_26_9")),
-                "atr_14":        self._safe_float(row.get("ATRr_14")),
-                "bb_upper":      self._safe_float(row.get("BBU_20_2.0_2.0")),
-                "bb_mid":        self._safe_float(row.get("BBM_20_2.0_2.0")),
-                "bb_lower":      self._safe_float(row.get("BBL_20_2.0_2.0")),
-                "bb_bandwidth":  self._safe_float(row.get("BBB_20_2.0_2.0")),
-                "vol_rel":       self._safe_float(row.get("vol_rel")),
-                "regime":        row.get("regime", "sideways"),
+            features: dict = {
+                key: self._safe_float(row.get(_OUTPUT_COLUMNS[key])) for key in output_keys
             }
+            features["regime"] = row.get("regime", "sideways")
             feature_entities.append(CandleFeature(
                 id=0,
                 symbol_id=symbol_id,

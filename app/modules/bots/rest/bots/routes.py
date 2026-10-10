@@ -4,13 +4,18 @@
 # app/modules/bots/rest/bots/routes.py
 #
 # ENDPOINTS:
-# - GET  /bots              → listar bots (admin: todos; user: por cuenta)
+# - GET  /bots              → listar bots (admin: todos; user o ?mine=true: los suyos)
 # - POST /bots              → crear bot
 # - GET  /bots/{id}         → detalle de un bot
-# - PUT  /bots/{id}         → actualizar config (solo si stopped)
+# - PUT  /bots/{id}         → renombrar (siempre) o actualizar config (si stopped)
 # - POST /bots/{id}/start   → iniciar bot  (stopped  → running)
 # - POST /bots/{id}/stop    → detener bot  (running/paused → stopped)
 # - POST /bots/{id}/pause   → pausar bot   (running → paused)
+#
+# NOTAS:
+# - En la UI los bots se llaman "agentes"; los mensajes usan esa palabra.
+# - Un usuario solo ve y opera bots de sus cuentas (`owner_id`); para un
+#   bot ajeno la respuesta es 404, igual que si no existiera.
 # ======================================================================
 
 from __future__ import annotations
@@ -26,7 +31,6 @@ from app.common.http import (
     build_error_response,
     build_list_response,
     build_success_response,
-    send,
 )
 from app.common.security.jwt import token_required_actual
 from app.extensions.db import get_db
@@ -47,6 +51,13 @@ def get_factory(db: Session = Depends(get_db)) -> BotServiceFactory:
     return get_bot_factory(db)
 
 
+def owner_scope(identity: dict) -> int | None:
+    """user_id del que llama, o None si es admin (sin restricción de propiedad)."""
+    if int(identity.get("role_id", 0)) == int(settings.AUTH_ADMIN_ROLE_ID):
+        return None
+    return int(identity["user_id"])
+
+
 # ======================================================================
 # Serializer
 # ======================================================================
@@ -54,6 +65,7 @@ def get_factory(db: Session = Depends(get_db)) -> BotServiceFactory:
 def _bot_to_dict(b: Bot) -> dict[str, Any]:
     return {
         "id":             b.id,
+        "name":           b.name,
         "strategy_id":    b.strategy_id,
         "symbol_id":      b.symbol_id,
         "timeframe_id":   b.timeframe_id,
@@ -75,20 +87,17 @@ def _bot_to_dict(b: Bot) -> dict[str, Any]:
 @router.get("", status_code=200)
 def list_bots(
     account_id: int | None = Query(default=None, gt=0),
+    mine: bool = Query(default=False, description="Solo los bots de mis cuentas (también para admin)."),
     identity: dict = Depends(token_required_actual),
     factory: BotServiceFactory = Depends(get_factory),
 ):
     """
     Lista bots.
-    - Admin: puede listar todos o filtrar por account_id.
-    - Usuario: debe proveer account_id para ver solo sus bots.
+    - Admin: todos, o los de `account_id`; con `mine=true`, solo los suyos.
+    - Usuario: los de sus cuentas, o los de `account_id` si es suya.
     """
-    is_admin = int(identity.get("role_id", 0)) == int(settings.AUTH_ADMIN_ROLE_ID)
-
-    if not is_admin and account_id is None:
-        return send(msg="Elige una cuenta para ver sus bots.", status_code=400)
-
-    result = factory.list_bots().list(account_id=account_id if not is_admin else account_id)
+    owner_id = int(identity["user_id"]) if mine else owner_scope(identity)
+    result = factory.list_bots().list(account_id=account_id, owner_id=owner_id)
     return build_list_response(
         items=[_bot_to_dict(b) for b in (result.data or [])],
         msg="OK",
@@ -107,6 +116,7 @@ def create_bot(
 ):
     """Crea un nuevo bot. Disponible para todos los usuarios autenticados."""
     result = factory.create_bot().create(
+        name=payload.name,
         strategy_id=payload.strategy_id,
         symbol_id=payload.symbol_id,
         timeframe_id=payload.timeframe_id,
@@ -114,6 +124,7 @@ def create_bot(
         feature_set_id=payload.feature_set_id,
         mode=payload.mode,
         risk_params=payload.risk_params,
+        owner_id=owner_scope(identity),
     )
 
     if not result.success:
@@ -121,7 +132,7 @@ def create_bot(
 
     return build_created_response(
         data=_bot_to_dict(result.data),
-        msg="Bot creado exitosamente.",
+        msg="Agente creado.",
     )
 
 
@@ -136,7 +147,7 @@ def get_bot(
     factory: BotServiceFactory = Depends(get_factory),
 ):
     """Obtiene el detalle de un bot por ID."""
-    result = factory.get_bot().get(bot_id=bot_id)
+    result = factory.get_bot().get(bot_id=bot_id, owner_id=owner_scope(identity))
 
     if not result.success:
         return build_error_response(result, BOT_ERROR_MESSAGES)
@@ -155,11 +166,13 @@ def update_bot(
     identity: dict = Depends(token_required_actual),
     factory: BotServiceFactory = Depends(get_factory),
 ):
-    """Actualiza la configuración de un bot. Solo si está en estado 'stopped'."""
+    """Renombra un bot (en cualquier estado) o cambia su configuración (solo si 'stopped')."""
     result = factory.update_bot().update(
         bot_id=bot_id,
+        name=payload.name,
         mode=payload.mode,
         risk_params=payload.risk_params,
+        owner_id=owner_scope(identity),
     )
 
     if not result.success:
@@ -167,7 +180,7 @@ def update_bot(
 
     return build_success_response(
         data=_bot_to_dict(result.data),
-        msg="Bot actualizado exitosamente.",
+        msg="Agente actualizado.",
     )
 
 
@@ -182,12 +195,14 @@ def start_bot(
     factory: BotServiceFactory = Depends(get_factory),
 ):
     """Inicia un bot (stopped → running)."""
-    result = factory.update_bot_status().transition(bot_id=bot_id, new_status="running")
+    result = factory.update_bot_status().transition(
+        bot_id=bot_id, new_status="running", owner_id=owner_scope(identity)
+    )
 
     if not result.success:
         return build_error_response(result, BOT_ERROR_MESSAGES)
 
-    return build_success_response(data=_bot_to_dict(result.data), msg="Bot iniciado.")
+    return build_success_response(data=_bot_to_dict(result.data), msg="Agente iniciado.")
 
 
 # ======================================================================
@@ -201,12 +216,14 @@ def stop_bot(
     factory: BotServiceFactory = Depends(get_factory),
 ):
     """Detiene un bot (running/paused → stopped)."""
-    result = factory.update_bot_status().transition(bot_id=bot_id, new_status="stopped")
+    result = factory.update_bot_status().transition(
+        bot_id=bot_id, new_status="stopped", owner_id=owner_scope(identity)
+    )
 
     if not result.success:
         return build_error_response(result, BOT_ERROR_MESSAGES)
 
-    return build_success_response(data=_bot_to_dict(result.data), msg="Bot detenido.")
+    return build_success_response(data=_bot_to_dict(result.data), msg="Agente detenido.")
 
 
 # ======================================================================
@@ -220,9 +237,11 @@ def pause_bot(
     factory: BotServiceFactory = Depends(get_factory),
 ):
     """Pausa un bot (running → paused)."""
-    result = factory.update_bot_status().transition(bot_id=bot_id, new_status="paused")
+    result = factory.update_bot_status().transition(
+        bot_id=bot_id, new_status="paused", owner_id=owner_scope(identity)
+    )
 
     if not result.success:
         return build_error_response(result, BOT_ERROR_MESSAGES)
 
-    return build_success_response(data=_bot_to_dict(result.data), msg="Bot pausado.")
+    return build_success_response(data=_bot_to_dict(result.data), msg="Agente pausado.")

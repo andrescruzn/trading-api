@@ -213,7 +213,7 @@ export function AccountFormDialog({
 					<DialogDescription>
 						{account
 							? account.name
-							: 'Cuenta de exchange donde los bots registran sus órdenes, en modo paper o live.'}
+							: 'Cuenta de exchange donde los agentes registran sus órdenes, en modo paper o live.'}
 					</DialogDescription>
 				</DialogHeader>
 				<form

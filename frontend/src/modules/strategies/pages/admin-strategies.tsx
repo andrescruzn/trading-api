@@ -47,7 +47,7 @@ export function AdminStrategiesPage() {
 				rows={strategiesQuery.data}
 				isLoading={strategiesQuery.isLoading}
 				error={strategiesQuery.error}
-				empty="Aún no hay estrategias. Crea la primera para que los bots puedan operar con ella."
+				empty="Aún no hay estrategias. Crea la primera para que los agentes puedan operar con ella."
 				onRowClick={openDetail}
 				renderActions={(strategy) => (
 					// Evita que abrir el menú dispare el clic de la fila (detalle).

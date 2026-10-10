@@ -32,28 +32,28 @@ import {
 
 // Las secciones sin `role` las ve cualquier usuario autenticado (el inversor
 // también: además ve "Mi inversión"). "Administración" solo la ve `admin`.
+// Orden: lo que se opera a diario arriba (agentes); lo de consulta, al final.
 const navSections: NavSectionData[] = [
 	{
 		label: 'General',
 		items: [{ title: 'Inicio', icon: IconHome, url: '/dashboard' }],
 	},
 	{
-		label: 'Mercado',
+		label: 'Operar',
 		items: [
-			{ title: 'Símbolos', icon: IconList, url: '/market/symbols' },
-			{ title: 'Velas OHLCV', icon: IconChartCandle, url: '/market/candles' },
-			{ title: 'Indicadores', icon: IconChartLine, url: '/features' },
+			{ title: 'Mis agentes', icon: IconRobot, url: '/agents' },
+			{ title: 'Órdenes', icon: IconReceipt, url: '/orders' },
+			{ title: 'Alertas', icon: IconBell, url: '/alerts' },
+			{ title: 'Mis cuentas', icon: IconWallet, url: '/portfolio' },
 		],
 	},
 	{
-		label: 'Trading',
+		label: 'Explorar',
 		items: [
-			{ title: 'Mis cuentas', icon: IconWallet, url: '/portfolio' },
 			{ title: 'Estrategias', icon: IconBook, url: '/strategies' },
-			{ title: 'Agente de IA', icon: IconRobot, url: '/agent' },
-			{ title: 'Bots', icon: IconCpu, url: '/bots' },
-			{ title: 'Órdenes', icon: IconReceipt, url: '/orders' },
-			{ title: 'Alertas', icon: IconBell, url: '/alerts' },
+			{ title: 'Indicadores', icon: IconChartLine, url: '/features' },
+			{ title: 'Símbolos', icon: IconList, url: '/market/symbols' },
+			{ title: 'Velas OHLCV', icon: IconChartCandle, url: '/market/candles' },
 		],
 	},
 	{
@@ -79,7 +79,7 @@ const navSections: NavSectionData[] = [
 					{ title: 'Símbolos', url: '/admin/symbols' },
 					{ title: 'Timeframes', url: '/admin/timeframes' },
 					{ title: 'Descargar velas', url: '/admin/candles/ingest' },
-					{ title: 'Feature sets', url: '/admin/feature-sets' },
+					{ title: 'Conjuntos de indicadores', url: '/admin/feature-sets' },
 				],
 			},
 			{
@@ -88,7 +88,7 @@ const navSections: NavSectionData[] = [
 				items: [
 					{ title: 'Cuentas', url: '/admin/accounts' },
 					{ title: 'Estrategias', url: '/admin/strategies' },
-					{ title: 'Bots', url: '/admin/bots' },
+					{ title: 'Agentes', url: '/admin/agents' },
 					{ title: 'Órdenes', url: '/admin/orders' },
 					{ title: 'Alertas', url: '/admin/alerts' },
 					{ title: 'Telegram', url: '/admin/telegram' },

@@ -60,7 +60,7 @@ const columns: DataTableColumn<MarketSymbol>[] = [
 ];
 
 export function SymbolsPage() {
-	usePageBreadcrumb([{ label: 'Mercado' }, { label: 'Símbolos' }]);
+	usePageBreadcrumb([{ label: 'Explorar' }, { label: 'Símbolos' }]);
 	const [exchangeId, setExchangeId] = useState<string>(ALL);
 	const [assetClass, setAssetClass] = useState<string>(ALL);
 

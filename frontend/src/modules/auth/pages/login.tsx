@@ -26,8 +26,8 @@ const FEATURES = [
 	},
 	{
 		icon: IconRobot,
-		title: 'Agente de IA',
-		text: 'Evalúa cada señal contra las reglas, sin emociones.',
+		title: 'Agentes con IA',
+		text: 'Cada agente evalúa el mercado contra tus reglas, sin emociones.',
 	},
 ];
 

@@ -8,15 +8,15 @@ Una explicación simple de los 10 módulos del sistema, sin tecnicismos. Cada m�
 |--------|--------|--------:|--------:|-------------|
 | [M1 — Auth & Frontend](M01-AUTH.md) | ✅ Completo | 100 % | 81 % | Login solo por código OTP, sesiones JWT, roles, frontend React (shell, dashboard) |
 | [M2 — Market Data](M02-MARKET-DATA.md) | ✅ Completo | 86 % | 65 % | Exchanges, símbolos, timeframes, velas OHLCV via ccxt + scheduler de ingesta |
-| [M3 — Feature Engineering](M03-FEATURE-ENGINEERING.md) | ✅ Completo | 100 % | 79 % | RSI, ATR, EMA, MACD, Bollinger Bands, régimen de mercado |
+| [M3 — Feature Engineering](M03-FEATURE-ENGINEERING.md) | ✅ Completo | 100 % | 82 % | RSI, ATR, EMA, MACD, Bollinger Bands, régimen; conjuntos por enfoque (Completo/Tendencia/Rango) |
 | [M4 — Accounts & Portfolio](M04-ACCOUNTS-PORTFOLIO.md) | ✅ Completo | 100 % | 79 % | Cuentas de exchange (credenciales cifradas), balances, equity curve |
 | [M5 — Strategies](M05-STRATEGIES.md) | ✅ Completo | 86 % | 55 % | Reglas de entrada/salida, validación tipo/régimen, datasets |
 | [M6 — AI Agent / Models](M06-AI-AGENT.md) | ✅ Completo | 100 % | 76 % | Prompt Maestro multi-provider LLM, modelos ML y model runs |
-| [M7 — Bots & Signals](M07-BOTS-SIGNALS.md) | ✅ Completo | 100 % | 73 % | Bots automáticos, señales BUY/SELL/HOLD con entry/SL/TP |
+| [M7 — Bots & Signals](M07-BOTS-SIGNALS.md) | ✅ Completo | 100 % | 75 % | **Agentes** (bots en la UI): punto de entrada, asistente de creación, señales BUY/SELL/HOLD con entry/SL/TP |
 | [M8 — Orders & Execution](M08-ORDERS-EXECUTION.md) | ✅ Completo | 100 % | 50 % | Órdenes paper/live (ccxt), fills, posiciones |
 | [M9 — Alerts](M09-ALERTS.md) | ✅ Completo | 100 % | 50 % | Reglas de alerta, notificaciones email/Telegram/webhook/desktop |
 | [M10 — Billing & Managed Accounts](M10-BILLING.md) | ✅ Completo | 100 % | 75 % | Inversores, cuentas administradas, performance fee con HWM |
-| **Promedio** | | **97 %** | **68 %** | |
+| **Promedio** | | **97 %** | **69 %** | |
 
 - **Alcance** = entregables del plan original hechos / planificados. Las dos filas por debajo del 100 % (M2 y M5) son por los tests de services que el plan original listaba y nunca se escribieron.
 - **Madurez** = estimación de qué tan lista para producción está cada pieza (rúbrica abajo). Es una opinión fundamentada en el repo, no una medición.
@@ -70,8 +70,8 @@ El [Módulo 10 (Billing)](M10-BILLING.md) se apoya en el historial de órdenes y
 
 El diagrama de arriba describe el objetivo. Hoy:
 
-- **Scheduler ([M2](M02-MARKET-DATA.md)):** actualiza velas y features de los bots `running`/`paused`, pero **no genera señales ni órdenes**.
-- **Señales ([M7](M07-BOTS-SIGNALS.md)):** se generan **a mano** con `POST /api/signals/generate`.
+- **Scheduler ([M2](M02-MARKET-DATA.md)):** actualiza velas y features de los agentes (bots) `running`/`paused` —también las features atrasadas de un agente recién iniciado—, pero **no genera señales ni órdenes**.
+- **Señales ([M7](M07-BOTS-SIGNALS.md)):** se generan **a mano** con "Analizar ahora" en el detalle de cada agente (`POST /api/signals/generate`).
 - **Órdenes ([M8](M08-ORDERS-EXECUTION.md)):** se crean con `POST /api/orders`; no existe un paso automático "señal aprobada → orden".
 - **Stop Loss / Take Profit:** la señal los calcula, pero **no hay ejecución automática** de SL/TP tras la entrada.
 - **Alertas ([M9](M09-ALERTS.md)):** se disparan solas con señales y órdenes; las de precio solo con evaluación manual; `pnl` y `drawdown` no se evalúan.
@@ -130,11 +130,13 @@ Hash routing: la URL real es `/#/<ruta>`. Cada ruta vive en `frontend/src/routes
 | Rol | Páginas |
 |---|---|
 | Público | `/login` |
-| Usuario (y demás roles) | `/dashboard`, `/market/symbols`, `/market/candles`, `/features`, `/portfolio`, `/strategies`, `/agent`, `/bots`, `/orders`, `/alerts` |
-| Admin (`_app/admin/*`) | `/admin/exchanges`, `/admin/symbols`, `/admin/timeframes`, `/admin/candles/ingest`, `/admin/feature-sets`, `/admin/accounts`, `/admin/strategies`, `/admin/bots`, `/admin/orders`, `/admin/alerts`, `/admin/telegram`, `/admin/investors`, `/admin/managed-accounts`, `/admin/billing` |
+| Usuario (y demás roles) | `/dashboard`, `/agents`, `/agents/new`, `/agents/:id`, `/orders`, `/alerts`, `/portfolio`, `/strategies`, `/features`, `/market/symbols`, `/market/candles` (`/bots` y `/agent` redirigen a `/agents`) |
+| Admin (`_app/admin/*`) | `/admin/exchanges`, `/admin/symbols`, `/admin/timeframes`, `/admin/candles/ingest`, `/admin/feature-sets`, `/admin/accounts`, `/admin/strategies`, `/admin/agents`, `/admin/orders`, `/admin/alerts`, `/admin/telegram`, `/admin/investors`, `/admin/managed-accounts`, `/admin/billing` |
 | Inversor (`_app/investor/*`) | `/investor/dashboard` |
 
 Comprar/Vender vive en el [Módulo 8 — Orders & Execution](M08-ORDERS-EXECUTION.md).
+
+En la UI los bots se llaman **agentes** y son el punto de entrada: el dashboard los muestra primero y el menú se organiza en **Operar** (Mis agentes, Órdenes, Alertas, Mis cuentas) y **Explorar** (Estrategias, Indicadores, Símbolos, Velas). En código, tablas y API siguen siendo `bot`.
 
 ---
 

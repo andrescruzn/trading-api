@@ -7,8 +7,8 @@
 | Campo | Valor |
 |---|---|
 | Estado | ✅ Completo |
-| Avance (alcance original) | 100 % — 8/8 entregables |
-| Madurez (estimada) | 79 % — ver [Avance](#avance) |
+| Avance (alcance original) | 100 % — 10/10 entregables |
+| Madurez (estimada) | 82 % — ver [Avance](#avance) |
 | Tablas | `candle_features`, `feature_sets` (R/W); `candles`, `symbols`, `timeframes` (R) |
 | Depende de | [M2](M02-MARKET-DATA.md) (velas) |
 | Lo usan | [M6](M06-AI-AGENT.md) (Prompt Maestro), [M7](M07-BOTS-SIGNALS.md) (feature set por bot), scheduler de [M2](M02-MARKET-DATA.md) |
@@ -29,19 +29,20 @@
   - **Bollinger Bands** — Rango normal de movimiento del precio
   - **Volumen relativo** — Si el volumen actual es mayor o menor al promedio reciente
 - Detecta el **régimen del mercado**: ¿Está el precio haciendo máximos más altos (tendencia alcista)? ¿O está moviéndose en un rango lateral?
-- Permite crear **Feature Sets**: conjuntos de indicadores nombrados y versionados que se reutilizan entre estrategias
+- Permite crear **conjuntos de indicadores** (feature sets) nombrados y versionados. Cada agente usa uno, y **el conjunto decide qué indicadores se calculan y cuáles lee la IA**.
+- Trae 3 conjuntos sembrados, uno por enfoque: **Completo** (todos), **Tendencia** (EMA, MACD, RSI, ATR, volumen) y **Rango** (RSI, Bollinger, MACD, ATR, volumen).
 
-**Por qué importa:** El agente de IA necesita estos indicadores para tomar decisiones. Sin ellos, el agente no tiene información suficiente para operar.
+**Por qué importa:** las reglas de cada estrategia están escritas sobre indicadores ("RSI < 30", "EMA 20 > EMA 50") y la IA los lee para decidir. Sin ellos, un agente no tiene con qué evaluar el mercado. El usuario no los configura a mano: el asistente de creación de agentes le ofrece solo los conjuntos compatibles con su estrategia.
 
 ## Páginas
 
 Hash routing: la URL real es `/#/<ruta>`.
 
 **Páginas — Usuario (cualquier usuario autenticado):**
-- `/#/features` — "Indicadores": ver los indicadores calculados de un símbolo: filtra por símbolo, timeframe y feature set, y muestra la tabla con todos los valores (RSI, EMAs, MACD, ATR, Bollinger, régimen)
+- `/#/features` — "Indicadores" (sección Explorar): explica en una frase qué mide cada indicador y muestra los valores calculados por vela, filtrando por símbolo, timeframe y conjunto
 
 **Páginas — Administrador (solo admin):**
-- `/#/admin/feature-sets` — Gestionar feature sets (crear nuevos con su spec JSON) y lanzar el cálculo de indicadores sobre cualquier símbolo y timeframe
+- `/#/admin/feature-sets` — "Conjuntos de indicadores": lista con enfoque e indicadores, crear nuevos (spec `{focus, indicators}`) y lanzar el cálculo sobre cualquier símbolo y timeframe
 
 ## Entregables
 
@@ -56,6 +57,8 @@ Entregables:
 - ✅ Web UI: `/#/features` (viewer) + `/#/admin/feature-sets` (gestión + calcular) — en React desde 2026-10-08
 - ✅ TA library: pandas-ta 0.4.71b0
 - ✅ Test unitarios (18 tests)
+- ✅ **El cálculo y la IA respetan el `spec`** (`indicator_catalog`): solo se guardan y se envían al LLM los indicadores del conjunto
+- ✅ **Seed `feature_sets`** con Completo / Tendencia / Rango
 
 ## Decisiones de diseño
 
@@ -66,6 +69,10 @@ Entregables:
 | Las features de cada vela se guardan como **un JSON** en `candle_features.features` | Añadir indicadores no exige migraciones; `uq_candle_features` evita duplicados | Una columna por indicador |
 | Cálculo con **bulk upsert** por `(symbol, timeframe, ts, feature_set)` | Recalcular es idempotente | Borrar y reinsertar |
 | Régimen de mercado por análisis de swings (HH/HL, LH/LL), mínimo 10 velas | Regla simple y explicable que luego usa [M5](M05-STRATEGIES.md)/[M6](M06-AI-AGENT.md) como filtro de fase 1 | Clasificador ML |
+| `spec = {focus, indicators}` con **grupos** fijos (`rsi`, `ema`, `macd`, `atr`, `bbands`, `vol_rel`) y periodos fijos | Las reglas de las estrategias usan claves fijas (`rsi_14`, `ema_20`): cambiar periodos por conjunto obligaría a reescribirlas | Conjuntos por velocidad (RSI 7, EMA 9/21…) |
+| Un `spec` sin `indicators` equivale a todos los grupos | Los sets creados antes siguen funcionando igual | Migrar los specs existentes |
+| `regime` se guarda siempre | El filtro de régimen es regla de negocio de toda estrategia | Hacerlo opcional |
+| La respuesta de `GET /feature-sets` incluye `focus`, `indicators` y `outputs` derivados | El front filtra compatibilidad con las reglas sin duplicar el catálogo | Que el front interprete el spec |
 | `feature_sets` con `(name, version)` único | Versionar conjuntos y poder reproducir qué indicadores usó una señal | Un único conjunto global |
 | `feature_set_id` opcional en repositorio y servicio de `candle_features` (commit `ddc4336`) | Consultar features sin fijar un feature set (inferido del historial de git) | Obligatorio siempre |
 | Repos de velas, símbolos y timeframes **prestados** de [M2](M02-MARKET-DATA.md) en `FeatureServiceFactory` | Evita duplicar acceso a datos de mercado | Repos propios |
@@ -75,21 +82,22 @@ Entregables:
 | Métrica | Valor | Evidencia |
 |---|---|---|
 | Alcance original | **100 %** (8/8) | Todos los entregables del roadmap implementados |
-| Madurez | **≈ 79 %** | Funcionalidad 85 · Tests 75 · Seguridad 80 · Operación 75 |
+| Madurez | **≈ 82 %** | Funcionalidad 90 · Tests 75 · Seguridad 80 · Operación 85 |
 
-- **Funcionalidad (85):** `calculate_features_service` calcula siempre el mismo conjunto fijo de indicadores; **no lee el `spec` JSON** del feature set (solo comprueba que el feature set exista). El `spec` es hoy descriptivo.
+- **Funcionalidad (90):** el `spec` decide qué indicadores se guardan y cuáles lee la IA; los periodos siguen fijos.
 - **Tests (75):** 4 suites en `tests/features/` (18 tests según el roadmap).
-- **Operación (75):** el scheduler de [M2](M02-MARKET-DATA.md) recalcula features para los bots activos.
+- **Operación (85):** el scheduler de [M2](M02-MARKET-DATA.md) recalcula features para los agentes activos, también cuando van atrasadas respecto a la última vela; 3 conjuntos sembrados.
 
 ## Posibles mejoras
 
 | Prioridad | Mejora | Esfuerzo |
 |---|---|---|
-| Alta | Que `calculate_features_service` respete el `spec` del feature set (qué indicadores y con qué parámetros); hoy el `spec` no cambia el resultado | M |
+| Media | Parámetros por conjunto (periodos de RSI/EMA…) junto con reglas de estrategia que referencien claves parametrizadas | L |
+| Baja | Calcular con pandas-ta solo los grupos del conjunto (hoy calcula todos y filtra al guardar) | S |
 | Media | Más indicadores (ADX, Stochastic, OBV, VWAP, SuperTrend) y multi-timeframe (p. ej. régimen en 4h para operar en 1h) | M |
 | Media | Cálculo incremental: recalcular solo las velas nuevas en lugar de toda la ventana en cada ciclo del scheduler | M |
 | Media | Tests de regresión del detector de régimen con series conocidas (tendencia, rango, falsos quiebres) | S |
-| Baja | Exponer en la UI el `spec` y un preview del cálculo antes de lanzar el bulk | S |
+| Baja | Preview del cálculo antes de lanzar el bulk | S |
 
 ## Fuera de alcance y pendientes conocidos
 
@@ -128,8 +136,10 @@ Registrados en: `app/extensions/db/models_registry.py`
 ### Servicios (`app/modules/features/services/`)
 | Subdir | Servicios |
 |--------|-----------|
-| `feature_sets/` | `list_feature_sets_service.py`, `create_feature_set_service.py` |
-| `calculations/` | `calculate_features_service.py` — RSI/EMA/MACD/ATR/BB/vol_rel + régimen |
+| `feature_sets/` | `list_feature_sets_service.py`, `create_feature_set_service.py` (valida grupos y `focus`: `FEATURE_SET_INVALID_INDICATORS`, `FEATURE_SET_INVALID_FOCUS`) |
+| `calculations/` | `calculate_features_service.py` — RSI/EMA/MACD/ATR/BB/vol_rel + régimen; guarda solo los grupos del `spec` |
+
+Dominio: `domain/indicator_catalog.py` — `INDICATOR_GROUPS` (grupo → claves), `groups_for`, `outputs_for`, `focus_of`, `invalid_groups`, `rule_keys`, `missing_for_rules`, `is_compatible`. Lo usan el cálculo, [M6](M06-AI-AGENT.md) (prompt y compatibilidad) y [M7](M07-BOTS-SIGNALS.md) (validación al crear).
 | `candle_features/` | `list_candle_features_service.py` |
 
 Provider: `app/modules/features/providers/feature_provider.py` → `FeatureServiceFactory`
@@ -140,7 +150,7 @@ Provider: `app/modules/features/providers/feature_provider.py` → `FeatureServi
 ### Endpoints REST
 | Método | Ruta | Auth | Nota |
 |--------|------|------|------|
-| GET | `/api/feature-sets` | token | Lista todos los feature sets |
+| GET | `/api/feature-sets` | token | Lista todos los conjuntos, con `focus`, `indicators` y `outputs` derivados del spec |
 | POST | `/api/feature-sets` | admin | Crea feature set (spec JSON) |
 | GET | `/api/candle-features` | token | Params: symbol_id, timeframe_id, feature_set_id, from_ts, to_ts, limit |
 | POST | `/api/candle-features/calculate` | admin | Calcula indicadores bulk (RSI/EMA/MACD/ATR/BB/vol_rel/regime) |
@@ -158,7 +168,15 @@ from app.modules.features.rest import feature_sets_router, candle_features_route
 
 - API: `api/features.api.ts`; hooks `use-features-queries.ts` (`useCandleFeaturesQuery`, también lo usa el dashboard de [M1](M01-AUTH.md)) y `use-features-mutations.ts`; etiquetas y régimen en `lib/features-labels.ts` y `lib/regime.ts` (`regimeLabel`, `REGIME_BADGE_VARIANT`).
 
+### Seed `feature_sets` (`database/seeds/feature_sets.py`)
+| Nombre | focus | indicators |
+|---|---|---|
+| Completo | all | rsi, ema, macd, atr, bbands, vol_rel |
+| Tendencia | trend_following | ema, macd, rsi, atr, vol_rel |
+| Rango | mean_reversion | rsi, bbands, macd, atr, vol_rel |
+
 ### Campos del JSON features (candle_features.features)
+Solo las claves de los grupos del conjunto, más `regime`:
 ```json
 {
   "regime": "trend_up|trend_down|sideways",
@@ -196,6 +214,8 @@ from app.modules.features.rest import feature_sets_router, candle_features_route
 
 - `pandas-ta` genera `ATRr_14` (con **r** minúscula), no `ATR_14`, y las bandas de Bollinger como `BBU_20_2.0_2.0` / `BBL_20_2.0_2.0` / `BBM_20_2.0_2.0` (doble `_2.0`), no `BBU_20_2.0`. Verificar siempre los nombres reales con `df.columns` antes de usarlos en `dropna(subset=...)`: `df.ta.<indicador>(append=True); print(df.columns)`. Tabla completa de columnas [arriba](#columnas-exactas-de-pandas-ta-versión-0471b0).
 - `pandas-ta 0.4.71b0` está instalado en el `.venv` (con `pandas 3.0.1`); `numba` / `llvmlite` (vía pandas-ta) no soportan Python 3.14, por eso el proyecto usa Python 3.12.
+- **Filas válidas por grupo:** se descartan filas con NaN solo en las columnas de los grupos presentes (`_REQUIRED_BY_GROUP`); un conjunto sin `ema` tiene filas desde antes porque no espera a la EMA(200).
+- **Features antiguas:** las filas calculadas antes del catálogo tienen todas las claves; no hace falta recalcularlas.
 - Con menos de 220 velas el servicio devuelve error (`meta.required` / `meta.available`); la retención del scheduler (500 por defecto) lo cubre, pero un par con poca historia no calculará.
 
 ## Tests
@@ -213,3 +233,4 @@ from app.modules.features.rest import feature_sets_router, candle_features_route
 - **2026-03** — Módulo completado: CRUD feature sets, cálculo bulk, régimen, UI `/features` y `/admin/feature-sets`.
 - **Posterior** — `feature_set_id` opcional en `candle_features` (commit `ddc4336`).
 - **2026-10-08** — API headless (/api), páginas migradas a React (frontend/).
+- **2026-10-08** — Conjuntos por enfoque: `indicator_catalog`, el cálculo y la IA respetan el `spec`, seed Completo/Tendencia/Rango, `focus`/`indicators`/`outputs` en la API; páginas renombradas a "Conjuntos de indicadores".

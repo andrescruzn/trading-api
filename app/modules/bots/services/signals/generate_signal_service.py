@@ -25,11 +25,13 @@ import json
 from decimal import Decimal
 
 from app.common.contracts import ServiceResult
+from app.modules.accounts.domain.account_repository import AccountRepository
 from app.modules.agent.services.agent.analyze_service import AnalyzeService
 from app.modules.bots.domain.bot_repository import BotRepository
 from app.modules.bots.domain.signal_entity import Signal
 from app.common.utils import utc_now
 from app.modules.bots.domain.signal_repository import SignalRepository
+from app.modules.bots.services.bots.bot_access import find_accessible_bot
 
 # TYPE_CHECKING para evitar import circular — se resuelve en runtime
 from typing import TYPE_CHECKING
@@ -54,18 +56,20 @@ class GenerateSignalService:
         bot_repo: BotRepository,
         signal_repo: SignalRepository,
         analyze_service: AnalyzeService,
+        account_repo: AccountRepository,
         evaluate_alerts: "EvaluateAlertsService | None" = None,
     ):
+        self._account_repo = account_repo
         self._bot_repo = bot_repo
         self._signal_repo = signal_repo
         self._analyze = analyze_service
         self._evaluate_alerts = evaluate_alerts
 
-    def generate(self, bot_id: int) -> ServiceResult[Signal]:
+    def generate(self, bot_id: int, owner_id: int | None = None) -> ServiceResult[Signal]:
         # ------------------------------------------------------------------
-        # 1. Cargar y validar el bot
+        # 1. Cargar y validar el bot (un usuario solo opera los suyos)
         # ------------------------------------------------------------------
-        bot = self._bot_repo.get_by_id(bot_id)
+        bot = find_accessible_bot(self._bot_repo, self._account_repo, bot_id, owner_id)
         if bot is None:
             return ServiceResult.fail(code="BOT_NOT_FOUND", http_status=404)
 

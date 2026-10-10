@@ -137,7 +137,7 @@ export function ManagedAccountFormDialog({
 	// uno, solo se ofrece cambiarlo.
 	const canRemoveBot = !managedAccount?.bot_id;
 	const botSelectOptions = [
-		...(canRemoveBot ? [{ value: NO_BOT, label: 'Sin bot' }] : []),
+		...(canRemoveBot ? [{ value: NO_BOT, label: 'Sin agente' }] : []),
 		...botOptions(accountBots, symbolsQuery.data),
 	];
 
@@ -320,13 +320,15 @@ export function ManagedAccountFormDialog({
 									control={form.control}
 									render={({ field }) => (
 										<Field>
-											<FieldLabel htmlFor="managed-account-bot">Bot</FieldLabel>
+											<FieldLabel htmlFor="managed-account-bot">
+												Agente
+											</FieldLabel>
 											<OptionSelect
 												id="managed-account-bot"
 												value={field.value}
 												onChange={field.onChange}
 												options={botSelectOptions}
-												placeholder="Sin bot"
+												placeholder="Sin agente"
 											/>
 											{!canRemoveBot && (
 												<FieldDescription>

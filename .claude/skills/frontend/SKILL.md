@@ -35,7 +35,7 @@ frontend/
                               ErrorAlert, PageListHeader, TablePagination, layouts, páginas de error
       app-shell/              sidebar (app-sidebar.tsx), nav-user, breadcrumb, layout autenticado
       auth/                   login (solo código OTP), AuthProvider/useAuth, roles, guards
-      <dominio>/              market · features · accounts · strategies · agent · bots · orders · alerts · billing · dashboard
+      <dominio>/              market · features · accounts · strategies · bots · orders · alerts · billing · dashboard
         api/<dominio>.api.ts          funciones + tipos del JSON del backend
         hooks/use-<dominio>-queries.ts    query keys + useQuery
         hooks/use-<dominio>-mutations.ts  useMutation + invalidación
@@ -44,17 +44,21 @@ frontend/
         pages/<pagina>.tsx            una página por ruta (`<Nombre>Page`)
 ```
 
-Un módulo del front por módulo de backend (M2 → `market`, M3 → `features`, M4 → `accounts`, M5 → `strategies`, M6 → `agent`, M7 → `bots`, M8 → `orders`, M9 → `alerts`, M10 → `billing`). Un módulo puede importar `api`/`hooks`/`lib` de otro (p. ej. `bots` usa `useSymbolsQuery` de `market`); nunca sus `pages`.
+Un módulo del front por módulo de backend (M2 → `market`, M3 → `features`, M4 → `accounts`, M5 → `strategies`, M7 → `bots`, M8 → `orders`, M9 → `alerts`, M10 → `billing`). M6 no tiene módulo propio: se usa desde `bots` ("Analizar ahora").
+
+**Bots = agentes.** En pantalla un bot se llama siempre **agente** (rutas `/agents`, `/agents/new`, `/agents/$agentId`, `/admin/agents`); el código, los tipos y la API conservan `bot`. El LLM se nombra "la IA". Excepción: el bot de Telegram. En pantallas de usuario los agentes se piden con `useMyBotsQuery()` (`?mine=true`); `useBotsQuery()` sin filtros a un admin le devuelve los de todo el sistema. Un módulo puede importar `api`/`hooks`/`lib` de otro (p. ej. `bots` usa `useSymbolsQuery` de `market`); nunca sus `pages`.
 
 ## Rutas
 
 - El archivo de ruta solo conecta la URL con la página:
   ```tsx
-  // routes/_app/bots.lazy.tsx
-  export const Route = createLazyFileRoute('/_app/bots')({ component: BotsPage });
+  // routes/_app/agents/index.lazy.tsx
+  export const Route = createLazyFileRoute('/_app/agents/')({ component: AgentsPage });
   ```
 - Search params tipados: archivo base `x.tsx` con `validateSearch` (zod con `.catch()` para no romper la ruta) + `x.lazy.tsx` con el componente. La página los lee con `getRouteApi('/_app/x').useSearch()`. Ejemplo: `routes/_app/market/candles.tsx`.
-- **Hash history**: las URLs son `/#/bots`. Los `<Link to="/bots">` no llevan `#`.
+- **Hash history**: las URLs son `/#/agents`. Los `<Link to="/agents">` no llevan `#`.
+- **Parámetros de ruta**: `routes/_app/agents/$agentId.lazy.tsx`; la página los lee con `getRouteApi('/_app/agents/$agentId').useParams()`.
+- **Redirección de una URL vieja**: archivo no lazy con `beforeLoad: () => { throw redirect({ to: '/nueva', replace: true }); }` (ver `routes/_app/bots.tsx`).
 - Páginas de admin bajo `_app/admin/`, de inversor bajo `_app/investor/`: el guard ya está en el layout. Igual el backend valida el rol en cada endpoint; el guard es solo UX.
 - Tras crear/renombrar rutas, `pnpm check-types` regenera `routeTree.gen.ts`.
 

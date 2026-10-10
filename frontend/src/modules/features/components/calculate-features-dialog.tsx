@@ -39,7 +39,7 @@ import { toast } from '@/modules/ui/components/toast';
 const calculateSchema = z.object({
 	symbol_id: requiredSelectField('Elige el símbolo'),
 	timeframe_id: requiredSelectField('Elige el timeframe'),
-	feature_set_id: requiredSelectField('Elige el feature set'),
+	feature_set_id: requiredSelectField('Elige el conjunto de indicadores'),
 });
 
 type CalculateFormInput = z.input<typeof calculateSchema>;
@@ -117,7 +117,7 @@ export function CalculateFeaturesDialog({
 		},
 		{
 			name: 'feature_set_id',
-			label: 'Feature set',
+			label: 'Conjunto de indicadores',
 			options: featureSetOptions(featureSetsQuery.data),
 		},
 	];

@@ -42,7 +42,10 @@ from app.modules.accounts.infrastructure import (
     SqlAlchemyAccountRepository,
     SqlAlchemyAccountBalanceRepository,
 )
-from app.modules.features.infrastructure import SqlAlchemyCandleFeatureRepository
+from app.modules.features.infrastructure import (
+    SqlAlchemyCandleFeatureRepository,
+    SqlAlchemyFeatureSetRepository,
+)
 from app.modules.market.infrastructure import (
     SqlAlchemyCandleRepository,
     SqlAlchemySymbolRepository,
@@ -73,6 +76,7 @@ class BotServiceFactory:
         self._account_repo = SqlAlchemyAccountRepository(session)
         self._balance_repo = SqlAlchemyAccountBalanceRepository(session)
         self._candle_feature_repo = SqlAlchemyCandleFeatureRepository(session)
+        self._feature_set_repo = SqlAlchemyFeatureSetRepository(session)
         self._candle_repo = SqlAlchemyCandleRepository(session)
         self._symbol_repo = SqlAlchemySymbolRepository(session)
         self._timeframe_repo = SqlAlchemyTimeframeRepository(session)
@@ -108,32 +112,44 @@ class BotServiceFactory:
     # ------------------------------------------------------------------
 
     def list_bots(self) -> ListBotsService:
-        return ListBotsService(repo=self._bot_repo)
+        return ListBotsService(repo=self._bot_repo, account_repo=self._account_repo)
 
     def get_bot(self) -> GetBotService:
-        return GetBotService(repo=self._bot_repo)
+        return GetBotService(repo=self._bot_repo, account_repo=self._account_repo)
 
     def create_bot(self) -> CreateBotService:
-        return CreateBotService(repo=self._bot_repo)
+        return CreateBotService(
+            repo=self._bot_repo,
+            account_repo=self._account_repo,
+            strategy_repo=self._strategy_repo,
+            symbol_repo=self._symbol_repo,
+            timeframe_repo=self._timeframe_repo,
+            feature_set_repo=self._feature_set_repo,
+        )
 
     def update_bot(self) -> UpdateBotService:
-        return UpdateBotService(repo=self._bot_repo)
+        return UpdateBotService(repo=self._bot_repo, account_repo=self._account_repo)
 
     def update_bot_status(self) -> UpdateBotStatusService:
-        return UpdateBotStatusService(repo=self._bot_repo)
+        return UpdateBotStatusService(repo=self._bot_repo, account_repo=self._account_repo)
 
     # ------------------------------------------------------------------
     # Signals
     # ------------------------------------------------------------------
 
     def list_signals(self) -> ListSignalsService:
-        return ListSignalsService(repo=self._signal_repo)
+        return ListSignalsService(
+            repo=self._signal_repo,
+            bot_repo=self._bot_repo,
+            account_repo=self._account_repo,
+        )
 
     def generate_signal(self) -> GenerateSignalService:
         return GenerateSignalService(
             bot_repo=self._bot_repo,
             signal_repo=self._signal_repo,
             analyze_service=self._build_analyze_service(),
+            account_repo=self._account_repo,
             evaluate_alerts=build_evaluate_alerts_service(self._session),
         )
 

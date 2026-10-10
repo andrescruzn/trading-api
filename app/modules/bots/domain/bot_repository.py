@@ -29,6 +29,11 @@ class BotRepository(TransactionalRepository, ABC):
         ...
 
     @abstractmethod
+    def list_by_account_ids(self, account_ids: list[int]) -> list[Bot]:
+        """Lista los bots de varias cuentas (los de un usuario)."""
+        ...
+
+    @abstractmethod
     def list_all(self) -> list[Bot]:
         """Lista todos los bots del sistema (uso admin)."""
         ...

@@ -43,3 +43,26 @@ export function SignalActionBadge({ action }: { action: SignalAction }) {
 		</Badge>
 	);
 }
+
+/**
+ * Punto de estado del agente: late mientras está activo (analizando el
+ * mercado), fijo cuando está pausado y apagado si está detenido.
+ */
+export function AgentStatusDot({ status }: { status: BotStatus }) {
+	const color =
+		status === 'running'
+			? 'bg-chart-1'
+			: status === 'paused'
+				? 'bg-muted-foreground'
+				: status === 'error'
+					? 'bg-destructive'
+					: 'bg-border';
+	return (
+		<span className="relative flex size-2.5 shrink-0" aria-hidden>
+			{status === 'running' && (
+				<span className="absolute inline-flex size-full animate-ping rounded-full bg-chart-1 opacity-60" />
+			)}
+			<span className={`relative inline-flex size-2.5 rounded-full ${color}`} />
+		</span>
+	);
+}

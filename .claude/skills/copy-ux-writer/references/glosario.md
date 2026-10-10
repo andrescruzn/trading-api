@@ -12,7 +12,8 @@ Una palabra por concepto. Si la app dice "cuenta" en un lado y "wallet" en otro,
 | **símbolo** | par, ticker, activo (para el registro) | El registro `BTC/USDT`. "Activo" = base o cotización (`BTC`, `USDT`). |
 | **vela** | candle, barra | "Velas OHLCV" en títulos; "vela" en texto. |
 | **timeframe** | temporalidad, intervalo | Término de oficio; se mantiene en inglés. |
-| **indicador** | feature (en pantalla) | "Feature set" solo en la pantalla de admin que los configura. |
+| **indicador** | feature (en pantalla) | Cálculo sobre las velas (RSI, EMA, MACD…) que la IA revisa. |
+| **conjunto de indicadores** | feature set (en pantalla) | Grupo de indicadores que usa un agente: **Completo**, **Tendencia**, **Rango**. |
 | **régimen** | tendencia (para el concepto general) | Valores: **Tendencia alcista**, **Tendencia bajista**, **Lateral**. |
 | **estrategia** | setup, sistema | |
 | **señal** | alerta (para BUY/SELL/HOLD) | Acciones: **Compra**, **Venta**, **Mantener**. |
@@ -22,8 +23,8 @@ Una palabra por concepto. Si la app dice "cuenta" en un lado y "wallet" en otro,
 | **orden** | trade (para la orden) | Tipos: **Mercado**, **Límite**, **Stop**, **Stop límite**. Lados: **Compra** / **Venta**. |
 | **ejecución** | fill | "Ejecuciones" en la pestaña. |
 | **posición** | trade abierto | |
-| **bot** | robot, agente (para el bot) | Estados: **Activo**, **Pausado**, **Detenido**. Acciones: **Iniciar**, **Pausar**, **Detener**. |
-| **agente de IA** | IA (sola), modelo (para el agente) | "Modelo" queda para los modelos de ML registrados. |
+| **agente** | bot, robot | Lo que la persona crea para operar: símbolo + estrategia + cuenta. En código y API sigue siendo `bot`. Estados: **Activo**, **Pausado**, **Detenido**. Acciones: **Iniciar** (**Reanudar** si está pausado), **Pausar**, **Detener**, **Analizar ahora** (pide una señal a la IA). "Mis agentes" para la lista. Excepción: el **bot de Telegram** conserva su nombre. |
+| **la IA** | agente de IA, modelo (para la IA) | El modelo de lenguaje que evalúa cada operación dentro de un agente. "Modelo" queda para los modelos de ML registrados. |
 | **regla de alerta** | trigger, alarma | Historial = **eventos de alerta**. |
 | **inversor** | cliente, socio | |
 | **cuenta gestionada** | cuenta administrada, managed account | |
@@ -37,7 +38,7 @@ Una palabra por concepto. Si la app dice "cuenta" en un lado y "wallet" en otro,
 
 ## Reglas de forma
 
-- **Mayúsculas**: solo la inicial en títulos, botones, labels y toasts (`Nuevo bot`, no `Nuevo Bot`). Siglas y nombres propios se respetan (OHLCV, HWM, BTC, Telegram).
+- **Mayúsculas**: solo la inicial en títulos, botones, labels y toasts (`Nuevo agente`, no `Nuevo Agente`). Siglas y nombres propios se respetan (OHLCV, HWM, BTC, Telegram).
 - **Botones**: infinitivo o sustantivo de acción (`Crear bot`, `Guardar cambios`, `Descargar del exchange`). **Validaciones**: imperativo (`Elige el símbolo`, `Escribe el nombre`).
 - **Puntuación**: títulos y botones sin punto; descripciones con punto. Signos de apertura completos (`¿Detener el bot?`).
 - **Exclamaciones y emojis**: no en la app. En Telegram, solo el indicador de acción (🟢 compra / 🔴 venta / ⚪ mantener) si ya está en la plantilla.

@@ -45,6 +45,11 @@ class BotModel(Base):
     )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
+    name = Column(
+        String(80),
+        nullable=False,
+        comment="Nombre visible del agente (en la UI los bots se llaman agentes)",
+    )
     strategy_id = Column(
         BigInteger,
         ForeignKey("strategies.id", name="fk_bots_strategy"),

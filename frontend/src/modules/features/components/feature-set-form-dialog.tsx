@@ -28,7 +28,7 @@ import { Textarea } from '@/modules/ui/components/textarea';
 import { toast } from '@/modules/ui/components/toast';
 
 const SPEC_PLACEHOLDER =
-	'{"rsi": true, "ema": [20, 50, 200], "macd": true, "atr": true, "bbands": true}';
+	'{"focus": "trend_following", "indicators": ["ema", "macd", "rsi", "atr", "vol_rel"]}';
 
 const featureSetSchema = z.object({
 	name: z
@@ -92,12 +92,12 @@ export function FeatureSetFormDialog({
 			},
 			{
 				onSuccess: () => {
-					toast.add({ title: 'Feature set creado', type: 'success' });
+					toast.add({ title: 'Conjunto creado', type: 'success' });
 					onOpenChange(false);
 				},
 				onError: (error) =>
 					toast.add({
-						title: 'No pudimos crear el feature set',
+						title: 'No pudimos crear el conjunto',
 						description: getErrorMessage(error),
 						type: 'error',
 					}),
@@ -109,7 +109,7 @@ export function FeatureSetFormDialog({
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent className="sm:max-w-lg">
 				<DialogHeader>
-					<DialogTitle>Nuevo feature set</DialogTitle>
+					<DialogTitle>Nuevo conjunto de indicadores</DialogTitle>
 					<DialogDescription>
 						Conjunto de indicadores que se calcula para cada vela.
 					</DialogDescription>
@@ -201,7 +201,8 @@ export function FeatureSetFormDialog({
 											aria-invalid={fieldState.invalid}
 										/>
 										<FieldDescription>
-											Objeto JSON con los indicadores y sus parámetros.
+											focus: all, trend_following o mean_reversion. indicators:
+											rsi, ema, macd, atr, bbands, vol_rel.
 										</FieldDescription>
 										{fieldState.invalid && (
 											<FieldError errors={[fieldState.error]} />

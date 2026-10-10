@@ -102,12 +102,12 @@ export function AlertsPage() {
 		},
 		{
 			id: 'bot',
-			header: 'Bot',
+			header: 'Agente',
 			cell: (row) =>
 				row.bot_id ? (
 					botLabel(row.bot_id, botsQuery.data, symbolsQuery.data)
 				) : (
-					<span className="text-muted-foreground">Cualquier bot</span>
+					<span className="text-muted-foreground">Cualquier agente</span>
 				),
 		},
 		{
@@ -191,7 +191,7 @@ export function AlertsPage() {
 						isLoading={rulesQuery.isLoading}
 						error={rulesQuery.error}
 						errorTitle="No pudimos cargar tus reglas de alerta"
-						empty="Aún no tienes reglas de alerta. Crea una para recibir avisos de tus bots."
+						empty="Aún no tienes reglas de alerta. Crea una para recibir avisos de tus agentes."
 					/>
 				</TabsContent>
 				<TabsContent value="events" className="pt-2">

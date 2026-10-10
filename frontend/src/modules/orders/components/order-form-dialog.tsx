@@ -234,9 +234,10 @@ export function OrderFormDialog({
 							{bot && !isRunning && (
 								<Alert>
 									<IconAlertTriangle />
-									<AlertTitle>El bot no está activo</AlertTitle>
+									<AlertTitle>El agente no está activo</AlertTitle>
 									<AlertDescription>
-										Solo los bots activos aceptan órdenes. Inícialo desde Bots.
+										Solo los agentes activos aceptan órdenes. Inícialo desde Mis
+										agentes.
 									</AlertDescription>
 								</Alert>
 							)}

@@ -10,20 +10,10 @@ import ccxt
 from app.common.contracts import ServiceResult
 from app.modules.market.domain.candle_entity import Candle
 from app.modules.market.domain.candle_repository import CandleRepository
+from app.modules.market.domain.ccxt_exchanges import ccxt_id_for
 from app.modules.market.domain.exchange_repository import ExchangeRepository
 from app.modules.market.domain.symbol_repository import SymbolRepository
 from app.modules.market.domain.timeframe_repository import TimeframeRepository
-
-
-# Exchanges que soporta ccxt (nombre DB → id ccxt)
-_CCXT_EXCHANGE_MAP: dict[str, str] = {
-    "binance": "binance",
-    "bybit": "bybit",
-    "kraken": "kraken",
-    "coinbase": "coinbase",
-    "bitget": "bitget",
-    "okx": "okx",
-}
 
 
 class FetchCandlesService:
@@ -67,7 +57,7 @@ class FetchCandlesService:
         if exchange_entity is None:
             return ServiceResult.fail(code="EXCHANGE_NOT_FOUND", http_status=404)
 
-        ccxt_id = _CCXT_EXCHANGE_MAP.get(exchange_entity.name.lower())
+        ccxt_id = ccxt_id_for(exchange_entity.name)
         if ccxt_id is None:
             return ServiceResult.fail(
                 code="EXCHANGE_NOT_SUPPORTED_CCXT",

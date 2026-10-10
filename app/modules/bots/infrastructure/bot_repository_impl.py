@@ -30,6 +30,7 @@ class SqlAlchemyBotRepository(SqlAlchemyRepository, BotRepository):
     def _to_domain(model: BotModel) -> Bot:
         return Bot(
             id=model.id,
+            name=model.name,
             strategy_id=model.strategy_id,
             symbol_id=model.symbol_id,
             timeframe_id=model.timeframe_id,
@@ -45,6 +46,7 @@ class SqlAlchemyBotRepository(SqlAlchemyRepository, BotRepository):
 
     @staticmethod
     def _apply_domain_to_model(bot: Bot, model: BotModel) -> BotModel:
+        model.name         = bot.name
         model.strategy_id  = bot.strategy_id
         model.symbol_id    = bot.symbol_id
         model.timeframe_id = bot.timeframe_id
@@ -69,6 +71,17 @@ class SqlAlchemyBotRepository(SqlAlchemyRepository, BotRepository):
         models = (
             self._session.query(BotModel)
             .filter(BotModel.account_id == account_id)
+            .order_by(BotModel.created_at.desc())
+            .all()
+        )
+        return [self._to_domain(m) for m in models]
+
+    def list_by_account_ids(self, account_ids: list[int]) -> list[Bot]:
+        if not account_ids:
+            return []
+        models = (
+            self._session.query(BotModel)
+            .filter(BotModel.account_id.in_(account_ids))
             .order_by(BotModel.created_at.desc())
             .all()
         )

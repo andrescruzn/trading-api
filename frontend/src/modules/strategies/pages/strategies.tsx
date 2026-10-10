@@ -9,7 +9,7 @@ import { useStrategiesQuery } from '@/modules/strategies/hooks/use-strategies-qu
 import { Button } from '@/modules/ui/components/button';
 
 export function StrategiesPage() {
-	usePageBreadcrumb([{ label: 'Trading' }, { label: 'Estrategias' }]);
+	usePageBreadcrumb([{ label: 'Explorar' }, { label: 'Estrategias' }]);
 	const strategiesQuery = useStrategiesQuery();
 	// La estrategia elegida se conserva al cerrar para no vaciar el panel
 	// mientras corre la animación de salida.

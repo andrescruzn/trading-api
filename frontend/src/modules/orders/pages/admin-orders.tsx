@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { usePageBreadcrumb } from '@/modules/app-shell/hooks/use-page-breadcrumb';
 import { useBotCatalogs } from '@/modules/bots/hooks/use-bot-catalogs';
 import { useBotsQuery } from '@/modules/bots/hooks/use-bots-queries';
-import { describeBot } from '@/modules/bots/lib/bots-labels';
+import { describeBot, describeBotMarket } from '@/modules/bots/lib/bots-labels';
 import type { Order } from '@/modules/orders/api/orders.api';
 import { OrderFillsDialog } from '@/modules/orders/components/order-fills-dialog';
 import { OrdersTable } from '@/modules/orders/components/orders-table';
@@ -33,7 +33,10 @@ export function AdminOrdersPage() {
 
 	const botNames = new Map<number, string>();
 	for (const bot of botsQuery.data ?? [])
-		botNames.set(bot.id, describeBot(bot, catalogs));
+		botNames.set(
+			bot.id,
+			`${describeBot(bot)} · ${describeBotMarket(bot, catalogs)}`,
+		);
 
 	const allOrders = ordersQuery.data ?? [];
 	const filteredOrders = allOrders.filter(

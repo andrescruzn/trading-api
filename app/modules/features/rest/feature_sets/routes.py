@@ -19,6 +19,7 @@ from app.common.http import build_error_response, build_list_response, build_cre
 from app.common.security.jwt import token_required_actual
 from app.common.security.jwt.role_guard import admin_required
 from app.extensions.db import get_db
+from app.modules.features.domain.indicator_catalog import focus_of, groups_for, outputs_for
 from app.modules.features.providers import FeatureServiceFactory
 
 from .error_messages import FEATURE_SET_ERROR_MESSAGES
@@ -38,6 +39,11 @@ def _fs_to_dict(fs: Any) -> dict:
         "version": fs.version,
         "description": fs.description,
         "spec": fs.spec,
+        # Derivados del spec: el front los usa para filtrar compatibilidad
+        # con las reglas de una estrategia sin duplicar el catálogo.
+        "focus": focus_of(fs.spec),
+        "indicators": list(groups_for(fs.spec)),
+        "outputs": sorted(outputs_for(fs.spec)),
         "created_at": fs.created_at.isoformat() if fs.created_at else None,
     }
 
@@ -79,4 +85,4 @@ def create_feature_set(
     if not result.success:
         return build_error_response(result, FEATURE_SET_ERROR_MESSAGES)
 
-    return build_created_response(data=_fs_to_dict(result.data), msg="Feature set creado.")
+    return build_created_response(data=_fs_to_dict(result.data), msg="Conjunto de indicadores creado.")

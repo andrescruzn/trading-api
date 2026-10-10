@@ -7,6 +7,7 @@ from typing import Any
 from app.common.contracts import ServiceResult
 from app.modules.features.domain.feature_set_entity import FeatureSet
 from app.modules.features.domain.feature_set_repository import FeatureSetRepository
+from app.modules.features.domain.indicator_catalog import VALID_FOCUS, invalid_groups
 
 
 class CreateFeatureSetService:
@@ -21,6 +22,17 @@ class CreateFeatureSetService:
         spec: dict[str, Any],
         description: str | None = None,
     ) -> ServiceResult[FeatureSet]:
+        # El spec solo puede pedir grupos que el cálculo sabe producir
+        invalid = invalid_groups(spec)
+        if invalid:
+            return ServiceResult.fail(
+                code="FEATURE_SET_INVALID_INDICATORS",
+                http_status=422,
+                meta={"invalid": invalid},
+            )
+        if "focus" in spec and spec["focus"] not in VALID_FOCUS:
+            return ServiceResult.fail(code="FEATURE_SET_INVALID_FOCUS", http_status=422)
+
         # Verificar que no exista ya un feature set con el mismo nombre y versión
         existing = self._repo.get_by_name_version(name=name, version=version)
         if existing:

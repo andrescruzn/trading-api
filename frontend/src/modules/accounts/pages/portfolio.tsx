@@ -32,7 +32,7 @@ import {
 } from '@/modules/ui/components/dropdown-menu';
 
 export function PortfolioPage() {
-	usePageBreadcrumb([{ label: 'Trading' }, { label: 'Mis cuentas' }]);
+	usePageBreadcrumb([{ label: 'Operar' }, { label: 'Mis cuentas' }]);
 	const { user } = useAuth();
 	const accountsQuery = useAccountsQuery();
 	const exchangesQuery = useExchangesQuery();

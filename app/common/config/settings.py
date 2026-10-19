@@ -374,6 +374,16 @@ class Settings:
         )
         self.ORDER_MAX_NOTIONAL: float = _env_float("ORDER_MAX_NOTIONAL", 10000.0)
 
+        # ORDER_NATIVE_STOP_LOSS: en live, al abrir una posición desde una señal
+        #   se deja el stop loss como orden en el exchange (protege aunque la
+        #   API esté caída). Si el exchange no lo soporta, vigila el scheduler.
+        # LIVE_USE_SANDBOX: usa la testnet del exchange (claves de testnet)
+        #   para probar el circuito live sin dinero real.
+        self.ORDER_NATIVE_STOP_LOSS: bool = (
+            os.getenv("ORDER_NATIVE_STOP_LOSS", "true").lower() == "true"
+        )
+        self.LIVE_USE_SANDBOX: bool = os.getenv("LIVE_USE_SANDBOX", "false").lower() == "true"
+
         # --------------------------------------------------------------
         # Modo de ejecución de los agentes (manual / approval / auto)
         # --------------------------------------------------------------

@@ -50,6 +50,8 @@ type Position = {
 	stop_loss: number | null;
 	take_profit: number | null;
 	signal_id: number | null;
+	/** Orden stop loss nativa en el exchange (live); `null` = la vigila el scheduler. */
+	sl_order_id: number | null;
 };
 
 type Fill = {

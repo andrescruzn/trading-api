@@ -8,6 +8,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from decimal import Decimal
 
 from sqlalchemy.orm import Session
@@ -101,6 +102,22 @@ class SqlAlchemyOrderRepository(SqlAlchemyRepository, OrderRepository):
             .first()
             is not None
         )
+
+    def list_open_live(self, since: datetime, limit: int = 50) -> list[Order]:
+        models = (
+            self._session.query(OrderModel)
+            .filter(
+                OrderModel.status.in_(("sent", "partially_filled")),
+                OrderModel.ts >= since,
+            )
+            .order_by(OrderModel.ts.asc())
+            .limit(limit * 4)
+            .all()
+        )
+        # El modo vive en meta (JSON): se filtra en Python para no depender
+        # de la sintaxis JSON de MySQL
+        live = [m for m in models if (m.meta or {}).get("mode") == "live"]
+        return [self._to_domain(m) for m in live[:limit]]
 
     def list_all(self, limit: int = 200) -> list[Order]:
         models = (

@@ -23,6 +23,10 @@ ORDER_ERROR_MESSAGES: dict[str, str] = {
     "ORDER_EXECUTION_FAILED":   "El exchange no aceptó la orden. Quedó registrada como rechazada; revisa la cuenta y el saldo.",
     "ORDER_EXECUTION_UNCERTAIN":"No recibimos respuesta del exchange. Revisa la orden en el exchange antes de reintentar.",
     "SIGNAL_NOT_FOUND":         "La señal no existe o no es de este agente.",
+    "ORDER_NATIVE_STOP_ACTIVE": (
+        "El stop loss de esta posición está en el exchange y no se pudo cancelar "
+        "(puede que ya se haya ejecutado). Espera unos minutos a que se sincronice."
+    ),
     "TRADING_DISABLED":         "El envío de órdenes está detenido temporalmente por el administrador.",
     "TRADING_LIVE_DISABLED":    "Las órdenes en modo live están desactivadas. Por ahora solo se ejecutan órdenes paper.",
     "BOT_MAX_DRAWDOWN_REACHED": "El agente alcanzó su pérdida máxima y se detuvo para proteger el capital. Revísalo antes de volver a operar.",

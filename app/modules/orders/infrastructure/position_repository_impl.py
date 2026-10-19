@@ -42,6 +42,7 @@ class SqlAlchemyPositionRepository(SqlAlchemyRepository, PositionRepository):
             stop_loss=Decimal(str(model.stop_loss)) if model.stop_loss is not None else None,
             take_profit=Decimal(str(model.take_profit)) if model.take_profit is not None else None,
             signal_id=model.signal_id,
+            sl_order_id=model.sl_order_id,
         )
 
     @staticmethod
@@ -54,6 +55,7 @@ class SqlAlchemyPositionRepository(SqlAlchemyRepository, PositionRepository):
         model.stop_loss     = position.stop_loss
         model.take_profit   = position.take_profit
         model.signal_id     = position.signal_id
+        model.sl_order_id   = position.sl_order_id
         return model
 
     # ------------------------------------------------------------------

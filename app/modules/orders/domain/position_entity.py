@@ -50,6 +50,7 @@ class Position:
         stop_loss: Decimal | None = None,
         take_profit: Decimal | None = None,
         signal_id: int | None = None,
+        sl_order_id: int | None = None,
     ):
         self.id = id
         self.bot_id = bot_id
@@ -61,6 +62,8 @@ class Position:
         self.stop_loss = stop_loss
         self.take_profit = take_profit
         self.signal_id = signal_id
+        # Orden stop nativa en el exchange (live); None = la vigila el scheduler
+        self.sl_order_id = sl_order_id
 
     # ------------------------------------------------------------------
     # Cálculos financieros
@@ -134,6 +137,10 @@ class Position:
         self.stop_loss = None
         self.take_profit = None
         self.signal_id = None
+        self.sl_order_id = None
+
+    def has_native_stop(self) -> bool:
+        return self.sl_order_id is not None
 
     def protection_hit(self, low: Decimal, high: Decimal) -> str | None:
         """

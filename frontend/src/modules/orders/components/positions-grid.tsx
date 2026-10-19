@@ -107,6 +107,11 @@ export function PositionsGrid({
 									<span className="font-medium text-chart-1 tabular-nums">
 										{formatPrice(position.take_profit)}
 									</span>
+									{position.sl_order_id !== null && (
+										<span className="block text-xs">
+											El stop loss está como orden en el exchange.
+										</span>
+									)}
 								</span>
 							)}
 							<span className="text-xs">

@@ -12,6 +12,7 @@
 #      y sin otra orden activa)
 #   4. Precio de referencia y regla de spot: no vender más de lo que hay
 #   5. RiskGate: kill switch, live apagado, notional máximo, drawdown
+#   5b. Venta de una posición con SL nativo (live): cancelarlo primero
 #   6. Persistir la Order (status="new") con su client_order_id y COMMIT:
 #      la intención queda registrada antes de hablar con el exchange
 #   7. Ejecutar (paper o live) y registrar el resultado REAL:
@@ -43,7 +44,6 @@ from app.modules.market.domain.symbol_repository import SymbolRepository
 from app.modules.orders.domain.fill_repository import FillRepository
 from app.modules.orders.domain.order_entity import Order
 from app.modules.orders.domain.order_repository import OrderRepository
-from app.modules.orders.domain.position_entity import Position
 from app.modules.orders.domain.position_repository import PositionRepository
 from app.modules.orders.execution.executor_interface import (
     ExecutionUncertainError,
@@ -51,10 +51,12 @@ from app.modules.orders.execution.executor_interface import (
 )
 from app.modules.orders.execution.live_executor import LiveExecutor
 from app.modules.orders.execution.paper_executor import PaperExecutor
+from app.modules.orders.services.orders.position_updater import apply_fill
 from app.modules.orders.services.risk.risk_gate_service import RiskGateService
 
 if TYPE_CHECKING:
     from app.modules.alerts.services.evaluation.evaluate_alerts_service import EvaluateAlertsService
+    from app.modules.orders.services.execution.native_stop_service import NativeStopService
 
 
 class CreateOrderService:
@@ -86,7 +88,9 @@ class CreateOrderService:
         paper_executor: PaperExecutor,
         live_executor: LiveExecutor,
         evaluate_alerts: "EvaluateAlertsService | None" = None,
+        native_stop: "NativeStopService | None" = None,
     ):
+        self._native_stop = native_stop
         self._order_repo = order_repo
         self._fill_repo = fill_repo
         self._position_repo = position_repo
@@ -217,6 +221,23 @@ class CreateOrderService:
             )
 
         # ------------------------------------------------------------------
+        # 5b. Un SL nativo vivo vendería otra vez la misma posición: se
+        #     cancela antes de cualquier otra venta
+        # ------------------------------------------------------------------
+        if (
+            side == "sell"
+            and position is not None
+            and position.has_native_stop()
+            and self._native_stop is not None
+        ):
+            canceled = self._native_stop.cancel(bot, position)
+            if not canceled.success:
+                return ServiceResult.fail(
+                    code=canceled.error.code,
+                    http_status=canceled.error.http_status,
+                )
+
+        # ------------------------------------------------------------------
         # 6. Persistir la intención antes de hablar con el exchange
         # ------------------------------------------------------------------
         order = self._order_repo.create(
@@ -284,9 +305,10 @@ class CreateOrderService:
             fill = self._fill_repo.create(fill)
             if order.exchange_order_id is None:
                 order.exchange_order_id = fill.exchange_trade_id
-            self._apply_fill(
-                position=position,
+            apply_fill(
+                self._position_repo,
                 bot=bot,
+                position=position,
                 fill_qty=fill.qty,
                 fill_price=fill.price,
                 side=side,
@@ -330,43 +352,6 @@ class CreateOrderService:
             limit=1,
         )
         return candles[0].close if candles else None
-
-    def _apply_fill(
-        self,
-        position: Position | None,
-        bot: Bot,
-        fill_qty: Decimal,
-        fill_price: Decimal,
-        side: str,
-    ) -> None:
-        """
-        Crea o actualiza la posición del bot para su símbolo.
-
-        - Si no existe posición: la crea con qty y avg_price del fill.
-        - Si ya existe: aplica apply_buy_fill o apply_sell_fill según el side,
-          recalculando el precio promedio ponderado (WAP) y el P&L realizado.
-        """
-        is_new = position is None
-        if position is None:
-            # Primera operación del bot en este símbolo — crear posición nueva
-            position = Position(
-                id=0,
-                bot_id=bot.id,
-                symbol_id=bot.symbol_id,
-                qty=Decimal("0"),
-                avg_price=Decimal("0"),
-                realized_pnl=Decimal("0"),
-            )
-
-        if side == "buy":
-            position.apply_buy_fill(fill_qty, fill_price)
-        else:
-            position.apply_sell_fill(fill_qty, fill_price)
-
-        if is_new:
-            self._position_repo.create(position)
-        else:
-            self._position_repo.update(position)
 
     def _fire_order_alerts(self, order: Order, bot_id: int) -> None:
         """Hook de alertas (fire-and-forget — nunca bloquea la operación)."""

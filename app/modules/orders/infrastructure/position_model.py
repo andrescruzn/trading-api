@@ -78,6 +78,12 @@ class PositionModel(Base):
         nullable=True,
         comment="Señal que abrió la posición",
     )
+    sl_order_id = Column(
+        BigInteger,
+        ForeignKey("orders.id", name="fk_positions_sl_order"),
+        nullable=True,
+        comment="Orden stop loss nativa en el exchange (live)",
+    )
 
     updated_at = Column(
         TIMESTAMP(fsp=6),

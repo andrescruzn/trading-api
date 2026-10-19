@@ -11,8 +11,10 @@
 #      - approval → queda pendiente y se avisa por Telegram.
 #      - auto     → se ejecuta en el acto (ExecuteSignalService).
 #   2. Caducar las señales pendientes vencidas.
-#   3. Proteger posiciones: cerrar las que tocaron su SL/TP.
-#   4. Telegram en modo polling (desarrollo): procesar mensajes y botones.
+#   3. Reconciliar órdenes live abiertas con el exchange (límites, SL
+#      nativo, respuestas perdidas por red).
+#   4. Proteger posiciones: cerrar las que tocaron su SL/TP.
+#   5. Telegram en modo polling (desarrollo): procesar mensajes y botones.
 #
 # SALVAGUARDAS:
 # - Timeframe mínimo (SIGNALS_AUTO_MIN_TIMEFRAME_SECONDS) y tope diario de
@@ -48,7 +50,13 @@ logger = logging.getLogger(__name__)
 
 def run_execution_cycle() -> None:
     """Pasos de ejecución, cada uno aislado: si uno falla, los demás corren."""
-    for step in (_generate_automatic_signals, _expire_pending_signals, _protect_positions, _poll_telegram):
+    for step in (
+        _generate_automatic_signals,
+        _expire_pending_signals,
+        _reconcile_orders,
+        _protect_positions,
+        _poll_telegram,
+    ):
         try:
             step()
         except Exception:
@@ -205,7 +213,26 @@ def _expire_pending_signals() -> None:
 
 
 # ======================================================================
-# 3. Stop loss / take profit
+# 3. Reconciliación con el exchange
+# ======================================================================
+
+def _reconcile_orders() -> None:
+    from app.modules.orders.providers import OrderServiceFactory
+
+    session = SessionLocal()
+    try:
+        report = OrderServiceFactory(session=session).reconcile_orders().run().data
+        if report.updated:
+            logger.info(
+                "[Execution] Reconciliación — revisadas=%d actualizadas=%d",
+                report.checked, len(report.updated),
+            )
+    finally:
+        session.close()
+
+
+# ======================================================================
+# 4. Stop loss / take profit
 # ======================================================================
 
 def _protect_positions() -> None:
@@ -224,7 +251,7 @@ def _protect_positions() -> None:
 
 
 # ======================================================================
-# 4. Telegram (polling en desarrollo)
+# 5. Telegram (polling en desarrollo)
 # ======================================================================
 
 def _poll_telegram() -> None:

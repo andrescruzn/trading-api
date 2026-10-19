@@ -10,19 +10,30 @@
 # 2. Descifrar credenciales API (Fernet, de account.meta['enc_creds'])
 # 3. Inicializar cliente ccxt con api_key + api_secret
 # 4. Enviar la orden al exchange
-# 5. Traducir la respuesta al estado real (sin asumir ejecución total)
+# 5. Traducir la respuesta al estado real (filled / partially_filled / sent)
+#
+# Además de `execute`, expone lo que necesitan la reconciliación y la
+# protección nativa (mismo cliente, mismas credenciales):
+# - fetch(order, bot)            → estado actual de la orden en el exchange
+# - cancel(order, bot)           → cancelar una orden abierta
+# - place_stop_loss(order, bot)  → stop loss nativo (si el exchange lo soporta)
 #
 # Exchanges soportados: los de CCXT_EXCHANGE_MAP (M2, ccxt_exchanges.py).
 # Solo spot: los perpetuos (`XAU/USDT:USDT`) se rechazan, porque ccxt
 # interpreta `amount` como contratos y no hay apalancamiento ni cortos.
+#
+# LIVE_USE_SANDBOX=true usa la testnet del exchange (set_sandbox_mode):
+# permite probar todo el circuito live sin dinero real.
 # ======================================================================
 
 from __future__ import annotations
 
 from decimal import Decimal
+from typing import Any
 
 import ccxt
 
+from app.common.config import settings
 from app.common.security.credentials_cipher import CredentialsCipher
 from app.common.utils.datetime_utils import utc_now
 from app.modules.accounts.domain.account_repository import AccountRepository
@@ -44,6 +55,15 @@ _ORDER_TYPE_MAP: dict[str, str] = {
     "limit":      "limit",
     "stop":       "stop",
     "stop_limit": "stop_limit",
+}
+
+# Estados de una orden ccxt (`status`) → estado de dominio cuando NO hay
+# ejecución nueva que registrar
+_CCXT_FINAL_STATUS: dict[str, str] = {
+    "canceled": "canceled",
+    "cancelled": "canceled",
+    "rejected": "rejected",
+    "expired": "rejected",
 }
 
 
@@ -74,6 +94,10 @@ class LiveExecutor(ExecutorInterface):
         self._exchange_repo = exchange_repo
         self._cipher = cipher
 
+    # ==================================================================
+    # Enviar una orden
+    # ==================================================================
+
     def execute(self, order: Order, bot: Bot) -> ExecutionResult:
         """
         Envía la orden al exchange real y retorna su resultado, con el Fill
@@ -84,6 +108,137 @@ class LiveExecutor(ExecutorInterface):
             RuntimeError: ante cualquier error de configuración,
                           credenciales o rechazo del exchange.
         """
+        client = self._build_client(bot)
+        symbol_str = self._order_symbol(order)
+
+        # ccxt espera: symbol (str), type (str), side (str), amount (float), price (float|None)
+        ccxt_type = _ORDER_TYPE_MAP.get(order.type, order.type)
+        ccxt_price = float(order.price) if order.price is not None else None
+
+        params: dict = {}
+        if order.stop_price is not None:
+            params["stopPrice"] = float(order.stop_price)
+        if order.time_in_force is not None:
+            params["timeInForce"] = order.time_in_force
+        # Idempotencia: el exchange rechaza un segundo clientOrderId igual y
+        # permite buscar la orden si la respuesta se pierde por red.
+        if order.client_order_id:
+            params["clientOrderId"] = order.client_order_id
+
+        response = self._send(
+            lambda: client.create_order(
+                symbol=symbol_str,
+                type=ccxt_type,
+                side=order.side,
+                amount=float(order.qty),
+                price=ccxt_price,
+                params=params,
+            )
+        )
+        return self._to_result(order, response)
+
+    def place_stop_loss(self, order: Order, bot: Bot) -> ExecutionResult:
+        """
+        Stop loss nativo: orden de venta a mercado que el exchange dispara al
+        tocar `order.stop_price`. Protege aunque la API esté caída.
+
+        Raises:
+            RuntimeError: el exchange no soporta stop loss por la API unificada
+                          de ccxt o lo rechazó (el llamador deja la protección
+                          del scheduler como respaldo).
+            ExecutionUncertainError: sin respuesta tras enviarla.
+        """
+        if order.stop_price is None:
+            raise RuntimeError("El stop loss nativo necesita stop_price.")
+
+        client = self._build_client(bot)
+        if not client.has.get("createStopLossOrder"):
+            raise RuntimeError(f"{client.id} no soporta stop loss nativo por la API de ccxt.")
+
+        symbol_str = self._order_symbol(order)
+        params: dict = {}
+        if order.client_order_id:
+            params["clientOrderId"] = order.client_order_id
+
+        response = self._send(
+            lambda: client.create_stop_loss_order(
+                symbol_str,
+                "market",
+                order.side,
+                float(order.qty),
+                None,
+                float(order.stop_price),
+                params,
+            )
+        )
+        return self._to_result(order, response)
+
+    # ==================================================================
+    # Consultar y cancelar (reconciliación / protección)
+    # ==================================================================
+
+    def fetch(self, order: Order, bot: Bot) -> dict[str, Any] | None:
+        """
+        Estado actual de la orden en el exchange, o None si el exchange no
+        la conoce (nunca llegó).
+
+        Busca por exchange_order_id; sin él (timeout al enviarla), por
+        clientOrderId, y si el exchange no acepta ese filtro, entre las
+        órdenes abiertas y cerradas recientes.
+
+        Raises:
+            ExecutionUncertainError: error de red (se reintenta en el siguiente ciclo).
+            RuntimeError: configuración o error del exchange.
+        """
+        client = self._build_client(bot)
+        symbol_str = self._order_symbol(order)
+
+        try:
+            if order.exchange_order_id:
+                return client.fetch_order(order.exchange_order_id, symbol_str)
+            if not order.client_order_id:
+                return None
+            try:
+                return client.fetch_order(
+                    None, symbol_str, {"clientOrderId": order.client_order_id}
+                )
+            except (ccxt.ArgumentsRequired, ccxt.NotSupported, ccxt.BadRequest):
+                return self._find_by_client_id(client, symbol_str, order.client_order_id)
+        except ccxt.OrderNotFound:
+            return None
+        except (ccxt.RequestTimeout, ccxt.NetworkError) as e:
+            raise ExecutionUncertainError(f"Sin respuesta del exchange: {e}")
+        except ccxt.ExchangeError as e:
+            raise RuntimeError(f"Error del exchange al consultar la orden: {e}")
+
+    def cancel(self, order: Order, bot: Bot) -> bool:
+        """
+        Cancela una orden abierta. True si quedó cancelada; False si el
+        exchange ya no la tiene abierta (ejecutada o cancelada antes).
+
+        Raises:
+            ExecutionUncertainError: error de red.
+            RuntimeError: configuración o error del exchange.
+        """
+        if not order.exchange_order_id:
+            return False
+        client = self._build_client(bot)
+        try:
+            client.cancel_order(order.exchange_order_id, self._order_symbol(order))
+            return True
+        except ccxt.OrderNotFound:
+            return False
+        except (ccxt.RequestTimeout, ccxt.NetworkError) as e:
+            raise ExecutionUncertainError(f"Sin respuesta del exchange: {e}")
+        except ccxt.ExchangeError as e:
+            raise RuntimeError(f"Error del exchange al cancelar la orden: {e}")
+
+    # ==================================================================
+    # Lógica interna
+    # ==================================================================
+
+    def _build_client(self, bot: Bot):
+        """Cliente ccxt autenticado con las credenciales de la cuenta del bot."""
         # 1. Obtener cuenta del bot
         if bot.account_id is None:
             raise RuntimeError(
@@ -150,25 +305,17 @@ class LiveExecutor(ExecutorInterface):
                 "secret": api_secret,
                 "enableRateLimit": True,
             })
+            if settings.LIVE_USE_SANDBOX:
+                client.set_sandbox_mode(True)
         except Exception as e:
             raise RuntimeError(
                 f"No se pudo inicializar el cliente ccxt para '{ccxt_id}': {e}"
             )
+        return client
 
-        # 6. Construir parámetros de la orden para ccxt
-        # ccxt espera: symbol (str), type (str), side (str), amount (float), price (float|None)
-        ccxt_type = _ORDER_TYPE_MAP.get(order.type, order.type)
-        ccxt_price = float(order.price) if order.price is not None else None
-
-        params: dict = {}
-        if order.stop_price is not None:
-            params["stopPrice"] = float(order.stop_price)
-        if order.time_in_force is not None:
-            params["timeInForce"] = order.time_in_force
-
-        # Necesitamos el símbolo como string (ej: "BTC/USDT")
-        # Esto se resuelve via el símbolo asociado al bot
-        # Por ahora lo recuperamos desde meta de la orden si fue guardado
+    @staticmethod
+    def _order_symbol(order: Order) -> str:
+        """Símbolo unificado guardado en meta por CreateOrderService (solo spot)."""
         symbol_str = order.meta.get("symbol")
         if not symbol_str:
             raise RuntimeError(
@@ -180,22 +327,13 @@ class LiveExecutor(ExecutorInterface):
                 f"'{symbol_str}' es un perpetuo y solo se opera en paper: "
                 "la ejecución live no maneja contratos, apalancamiento ni cortos."
             )
+        return symbol_str
 
-        # Idempotencia: el exchange rechaza un segundo clientOrderId igual y
-        # permite buscar la orden si la respuesta se pierde por red.
-        if order.client_order_id:
-            params["clientOrderId"] = order.client_order_id
-
-        # 7. Enviar la orden al exchange
+    @staticmethod
+    def _send(call) -> dict[str, Any]:
+        """Envía al exchange traduciendo los errores de ccxt a los del dominio."""
         try:
-            response = client.create_order(
-                symbol=symbol_str,
-                type=ccxt_type,
-                side=order.side,
-                amount=float(order.qty),
-                price=ccxt_price,
-                params=params,
-            )
+            return call()
         except ccxt.InsufficientFunds as e:
             raise RuntimeError(f"Fondos insuficientes en el exchange: {e}")
         except ccxt.InvalidOrder as e:
@@ -208,11 +346,17 @@ class LiveExecutor(ExecutorInterface):
         except Exception as e:
             raise ExecutionUncertainError(f"Error inesperado al enviar la orden: {e}")
 
-        return self._to_result(order, response)
-
-    # ------------------------------------------------------------------
-    # Lógica interna
-    # ------------------------------------------------------------------
+    @staticmethod
+    def _find_by_client_id(client, symbol: str, client_order_id: str) -> dict[str, Any] | None:
+        for method in ("fetch_open_orders", "fetch_closed_orders"):
+            try:
+                orders = getattr(client, method)(symbol)
+            except (ccxt.NotSupported, ccxt.ArgumentsRequired):
+                continue
+            for item in orders or []:
+                if item.get("clientOrderId") == client_order_id:
+                    return item
+        return None
 
     @staticmethod
     def _to_result(order: Order, response: dict) -> ExecutionResult:
@@ -232,8 +376,9 @@ class LiveExecutor(ExecutorInterface):
             filled = Decimal(str(response.get("amount") or order.qty))
 
         if not filled or filled <= Decimal("0"):
-            # Aceptada pero sin ejecutar (límite/stop en el libro)
-            return ExecutionResult(status="sent", exchange_order_id=exchange_order_id)
+            # Sin ejecución: abierta en el libro, o cerrada sin ejecutarse
+            status = _CCXT_FINAL_STATUS.get(str(response.get("status") or ""), "sent")
+            return ExecutionResult(status=status, exchange_order_id=exchange_order_id)
 
         price_raw = response.get("average") or response.get("price")
         if price_raw:

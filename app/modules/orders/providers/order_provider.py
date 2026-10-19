@@ -46,7 +46,12 @@ from app.modules.orders.services.orders.get_order_service import GetOrderService
 from app.modules.orders.services.orders.list_orders_service import ListOrdersService
 from app.modules.orders.services.positions.list_positions_service import ListPositionsService
 from app.modules.orders.services.risk.risk_gate_service import RiskGateService
-from app.modules.orders.services.execution import ExecuteSignalService, ProtectPositionsService
+from app.modules.orders.services.execution import (
+    ExecuteSignalService,
+    NativeStopService,
+    ProtectPositionsService,
+    ReconcileOrdersService,
+)
 
 # Ejecutores (patrón Strategy)
 from app.modules.orders.execution.paper_executor import PaperExecutor
@@ -150,11 +155,30 @@ class OrderServiceFactory:
             paper_executor=self._paper_executor,
             live_executor=self._live_executor,
             evaluate_alerts=build_evaluate_alerts_service(self._session),
+            native_stop=self.native_stop(),
         )
 
     # ------------------------------------------------------------------
     # Ejecución de señales (modo approval / auto) y protección SL/TP
     # ------------------------------------------------------------------
+
+    def native_stop(self) -> NativeStopService:
+        return NativeStopService(
+            order_repo=self._order_repo,
+            position_repo=self._position_repo,
+            symbol_repo=self._symbol_repo,
+            live_executor=self._live_executor,
+        )
+
+    def reconcile_orders(self) -> ReconcileOrdersService:
+        return ReconcileOrdersService(
+            order_repo=self._order_repo,
+            fill_repo=self._fill_repo,
+            position_repo=self._position_repo,
+            bot_repo=self._bot_repo,
+            live_executor=self._live_executor,
+            evaluate_alerts=build_evaluate_alerts_service(self._session),
+        )
 
     def execute_signal(self) -> ExecuteSignalService:
         return ExecuteSignalService(
@@ -165,6 +189,7 @@ class OrderServiceFactory:
             position_repo=self._position_repo,
             create_order=self.create_order(),
             min_rr_ratio=settings.AGENT_MIN_RR_RATIO,
+            native_stop=self.native_stop() if settings.ORDER_NATIVE_STOP_LOSS else None,
         )
 
     def protect_positions(self) -> ProtectPositionsService:

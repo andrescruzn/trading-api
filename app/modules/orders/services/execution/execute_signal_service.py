@@ -20,14 +20,17 @@
 #   5. Cantidad: se recalcula para que el riesgo en dinero siga siendo el
 #      de la señal (1 % del capital) con la distancia actual al SL
 #   6. CreateOrderService (propiedad, RiskGate, idempotencia)
-#   7. BUY ejecutada → la posición guarda SL/TP para el scheduler
+#   7. BUY ejecutada → la posición guarda SL/TP para el scheduler; en live
+#      el SL además queda como orden nativa en el exchange (si lo soporta)
 #   8. executing → executed | failed (decision_reason = código)
 # ======================================================================
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from decimal import Decimal
+from typing import TYPE_CHECKING
 
 from app.common.contracts import ServiceResult
 from app.common.utils.datetime_utils import utc_now
@@ -41,6 +44,11 @@ from app.modules.market.domain.candle_repository import CandleRepository
 from app.modules.orders.domain.order_entity import Order
 from app.modules.orders.domain.position_repository import PositionRepository
 from app.modules.orders.services.orders.create_order_service import CreateOrderService
+
+if TYPE_CHECKING:
+    from app.modules.orders.services.execution.native_stop_service import NativeStopService
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -63,7 +71,9 @@ class ExecuteSignalService:
         position_repo: PositionRepository,
         create_order: CreateOrderService,
         min_rr_ratio: float,
+        native_stop: "NativeStopService | None" = None,
     ):
+        self._native_stop = native_stop
         self._signal_repo = signal_repo
         self._bot_repo = bot_repo
         self._account_repo = account_repo
@@ -123,6 +133,14 @@ class ExecuteSignalService:
         if side == "buy" and position is not None and not position.is_flat():
             position.set_protection(signal.stop_loss, signal.take_profit, signal.id)
             self._position_repo.update(position)
+            self._signal_repo.commit()
+            if bot.mode == "live" and self._native_stop is not None:
+                placed = self._native_stop.place(bot, position, signal.stop_loss)
+                if not placed.success:
+                    # El scheduler sigue vigilando el SL: la señal no falla
+                    logger.warning(
+                        "SL nativo no colocado — signal=%d code=%s", signal.id, placed.error.code
+                    )
 
         self._signal_repo.transition_decision(
             signal_id, from_statuses=("executing",), to_status="executed"

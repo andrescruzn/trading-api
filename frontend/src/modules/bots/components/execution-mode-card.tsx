@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { Bot, BotExecutionMode } from '@/modules/bots/api/bots.api';
+import { ApprovalTtlField } from '@/modules/bots/components/approval-ttl-field';
 import { ExecutionModePicker } from '@/modules/bots/components/execution-mode-picker';
 import { useUpdateBotMutation } from '@/modules/bots/hooks/use-bots-mutations';
 import { EXECUTION_MODE_LABELS } from '@/modules/bots/lib/bots-labels';
@@ -73,13 +74,19 @@ export function ExecutionModeCard({ bot }: { bot: Bot }) {
 					mínimo de 2:1 y los límites del servidor.
 				</CardDescription>
 			</CardHeader>
-			<CardContent>
+			<CardContent className="flex flex-col gap-6">
 				<ExecutionModePicker
 					value={bot.execution_mode}
 					onChange={handleChange}
 					accountMode={bot.mode}
 					disabled={mutation.isPending}
 				/>
+				{bot.execution_mode === 'approval' && (
+					<ApprovalTtlField
+						key={bot.approval_ttl_minutes ?? 'default'}
+						bot={bot}
+					/>
+				)}
 			</CardContent>
 
 			<AlertDialog open={pendingAuto} onOpenChange={setPendingAuto}>

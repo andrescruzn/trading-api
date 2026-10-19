@@ -14,11 +14,15 @@
 #   global (TRADING_ENABLED) sí lo detiene.
 # - Se mira la vela más reciente (también la que está en formación): su
 #   high/low ya refleja si el precio cruzó el nivel.
+# - Con stop loss NATIVO (live) el SL lo dispara el exchange: aquí solo se
+#   vigila el take profit; la venta cancela antes el SL nativo
+#   (CreateOrderService) y, si no se puede, no vende (evita doble venta).
 #
 # LIMITACIÓN:
-# - Es una protección "por ciclo" (cada SCHEDULER_INTERVAL_SECONDS), no una
-#   orden stop en el exchange: en live, un movimiento brusco puede cerrar
-#   más lejos del nivel. Mejora futura: órdenes stop/OCO nativas.
+# - Es una protección "por ciclo" (cada SCHEDULER_INTERVAL_SECONDS): en
+#   paper, y en live para el TP (o el SL si el exchange no soporta stop
+#   loss nativo), un movimiento brusco puede cerrar más lejos del nivel.
+#   No hay OCO: el TP no queda como orden en el exchange.
 # ======================================================================
 
 from __future__ import annotations
@@ -82,6 +86,8 @@ class ProtectPositionsService:
             )
             if hit is None:
                 continue
+            if hit == "stop_loss" and position.has_native_stop():
+                continue  # lo ejecuta el exchange; la reconciliación lo registra
 
             result = self._create_order.create(
                 bot_id=bot.id,

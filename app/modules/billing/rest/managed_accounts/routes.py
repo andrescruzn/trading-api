@@ -128,6 +128,10 @@ def get_managed_account(
     is_admin = role_id == int(settings.AUTH_ADMIN_ROLE_ID)
     is_investor = role_id == int(settings.AUTH_INVESTOR_ROLE_ID)
 
+    # Sin rol admin ni investor no hay cuentas gestionadas que ver
+    if not is_admin and not is_investor:
+        return send(msg="No tienes permiso para hacer esta acción.", status_code=403, data={})
+
     investor_id: int | None = None
     if is_investor:
         inv = factory._investor_repo.find_by_user_id(identity.get("user_id"))

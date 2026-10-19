@@ -32,6 +32,8 @@ class UpdateAlertRuleService:
             rule.rule_spec = rule_spec
         if channels is not None:
             rule.channels = channels
+            if not rule.has_valid_webhook():
+                return ServiceResult.fail(code="ALERT_RULE_INVALID_WEBHOOK", http_status=422)
         if is_active is not None:
             rule.is_active = is_active
 

@@ -66,6 +66,14 @@ class UpdateBotService:
             bot.mode = mode
             if not bot.is_valid_mode():
                 return ServiceResult.fail(code="BOT_INVALID_MODE", http_status=422)
+            # Mismo criterio que al crear: el modo del agente es el de su cuenta
+            account = self._account_repo.get_by_id(bot.account_id) if bot.account_id else None
+            if account is None or account.mode != mode:
+                return ServiceResult.fail(
+                    code="BOT_MODE_ACCOUNT_MISMATCH",
+                    http_status=422,
+                    meta={"account_mode": account.mode if account else None, "bot_mode": mode},
+                )
             if mode == "live":
                 symbol = self._symbol_repo.get_by_id(bot.symbol_id)
                 if symbol is not None and is_perpetual(symbol.symbol):

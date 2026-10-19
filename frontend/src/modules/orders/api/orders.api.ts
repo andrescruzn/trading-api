@@ -46,6 +46,10 @@ type Position = {
 	/** `true` si la posición está en cero (sin exposición). */
 	is_flat: boolean;
 	updated_at: string | null;
+	/** Niveles que vigila el scheduler (posición abierta desde una señal aprobada). */
+	stop_loss: number | null;
+	take_profit: number | null;
+	signal_id: number | null;
 };
 
 type Fill = {

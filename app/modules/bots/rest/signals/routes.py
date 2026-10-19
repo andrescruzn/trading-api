@@ -29,6 +29,10 @@ from app.extensions.db import get_db
 from app.modules.bots.domain.signal_entity import Signal
 from app.modules.bots.providers import BotServiceFactory, get_bot_factory
 
+from app.modules.orders.rest.signal_decisions.error_messages import (
+    SIGNAL_DECISION_ERROR_MESSAGES,
+)
+
 from .error_messages import SIGNAL_ERROR_MESSAGES
 from .schemas import GenerateSignalRequest
 
@@ -74,6 +78,11 @@ def _signal_to_dict(s: Signal) -> dict[str, Any]:
         "decided_at":         s.decided_at.isoformat() if s.decided_at else None,
         "decision_channel":   s.decision_channel,
         "decision_reason":    s.decision_reason,
+        # Texto de UI del fallo (los códigos se traducen en el backend)
+        "decision_reason_message": (
+            SIGNAL_DECISION_ERROR_MESSAGES.get(s.decision_reason, s.decision_reason)
+            if s.decision_reason else None
+        ),
         "candle_ts":          s.candle_ts.isoformat() if s.candle_ts else None,
     }
 

@@ -12,6 +12,14 @@ type CurrentUser = {
 	status: string;
 	last_login_at: string | null;
 	created_at: string | null;
+	/** Tiene un chat de Telegram vinculado (señales por aprobar con botones). */
+	telegram_linked: boolean;
+};
+
+/** Enlace de un solo uso para vincular Telegram (vence en 10 minutos). */
+type TelegramLink = {
+	link_url: string;
+	expires_at: string;
 };
 
 /** Login exitoso: la sesión viaja en la cookie HttpOnly, no en el body. */
@@ -48,5 +56,20 @@ function me() {
 	return api.get<CurrentUser>('/users/me');
 }
 
-export type { CurrentUser, LoginResult, OtpRequestResult };
-export { logout, me, requestOtp, verifyOtp };
+function createTelegramLink() {
+	return api.post<TelegramLink>('/users/me/telegram/link');
+}
+
+function unlinkTelegram() {
+	return api.delete<{ telegram_linked: boolean }>('/users/me/telegram');
+}
+
+export type { CurrentUser, LoginResult, OtpRequestResult, TelegramLink };
+export {
+	createTelegramLink,
+	logout,
+	me,
+	requestOtp,
+	unlinkTelegram,
+	verifyOtp,
+};

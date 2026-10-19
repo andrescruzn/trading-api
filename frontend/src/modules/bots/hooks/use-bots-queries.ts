@@ -3,11 +3,17 @@ import {
 	type BotFilters,
 	getBot,
 	listBots,
+	listPendingSignals,
 	listSignals,
 } from '@/modules/bots/api/bots.api';
 
 const BOTS_QUERY_KEY = ['bots'] as const;
 const SIGNALS_QUERY_KEY = ['signals'] as const;
+/** Bajo SIGNALS_QUERY_KEY: invalidar señales también refresca la cola. */
+const PENDING_SIGNALS_QUERY_KEY = [...SIGNALS_QUERY_KEY, 'pending'] as const;
+
+/** Cada 30 s: las señales automáticas llegan solas al cerrar cada vela. */
+const PENDING_REFETCH_MS = 30_000;
 
 /**
  * Sin filtros, un admin recibe los bots de todo el sistema: en pantallas de
@@ -49,11 +55,22 @@ function useSignalsQuery(botId: number | null, limit = 50) {
 	});
 }
 
+/** Cola de señales por aprobar de mis agentes. */
+function usePendingSignalsQuery() {
+	return useQuery({
+		queryKey: PENDING_SIGNALS_QUERY_KEY,
+		queryFn: listPendingSignals,
+		refetchInterval: PENDING_REFETCH_MS,
+	});
+}
+
 export {
 	BOTS_QUERY_KEY,
+	PENDING_SIGNALS_QUERY_KEY,
 	SIGNALS_QUERY_KEY,
 	useBotQuery,
 	useBotsQuery,
 	useMyBotsQuery,
+	usePendingSignalsQuery,
 	useSignalsQuery,
 };

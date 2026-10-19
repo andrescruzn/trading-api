@@ -17,7 +17,9 @@ import {
 	AgentStatusDot,
 	BotModeBadge,
 	BotStatusBadge,
+	ExecutionModeBadge,
 } from '@/modules/bots/components/bot-badges';
+import { ExecutionModeCard } from '@/modules/bots/components/execution-mode-card';
 import { SignalDetailSheet } from '@/modules/bots/components/signal-detail-sheet';
 import { SignalsTable } from '@/modules/bots/components/signals-table';
 import { useBotCatalogs } from '@/modules/bots/hooks/use-bot-catalogs';
@@ -333,6 +335,7 @@ function ConfigTab({ bot, accountName }: { bot: Bot; accountName: string }) {
 
 	return (
 		<div className="grid gap-4 lg:grid-cols-2">
+			<ExecutionModeCard bot={bot} />
 			<Card>
 				<CardHeader>
 					<CardTitle>Estrategia</CardTitle>
@@ -489,6 +492,7 @@ export function AgentDetailPage() {
 					<div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
 						<BotStatusBadge status={bot.status} />
 						<BotModeBadge mode={bot.mode} />
+						<ExecutionModeBadge mode={bot.execution_mode} />
 						<span className="font-mono font-medium text-foreground">
 							{describeBotMarket(bot, catalogs)}
 						</span>
@@ -529,6 +533,7 @@ export function AgentDetailPage() {
 
 			<SignalDetailSheet
 				signal={selectedSignal}
+				botMode={bot.mode}
 				onOpenChange={(open) => !open && setSelectedSignal(null)}
 			/>
 		</div>

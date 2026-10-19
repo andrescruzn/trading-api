@@ -180,6 +180,9 @@ class ExecuteSignalService:
         if not signal.is_actionable():
             return ServiceResult.fail(code="SIGNAL_NOT_ACTIONABLE", http_status=422)
 
+        if signal.decision_status == "expired":
+            return ServiceResult.fail(code="SIGNAL_EXPIRED", http_status=409)
+
         if not signal.is_pending():
             return ServiceResult.fail(
                 code="SIGNAL_ALREADY_DECIDED",

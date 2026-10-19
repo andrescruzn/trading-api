@@ -1,9 +1,12 @@
 import type {
 	Bot,
+	BotExecutionMode,
 	BotMode,
 	BotStatus,
 	BotTransition,
 	SignalAction,
+	SignalDecisionChannel,
+	SignalDecisionStatus,
 	SignalRejectionReason,
 } from '@/modules/bots/api/bots.api';
 import type { SelectOption } from '@/modules/shared/components/option-select';
@@ -43,6 +46,51 @@ const BOT_MODE_FORM_OPTIONS: SelectOption[] = [
 	{ value: 'paper', label: 'Paper (simulado, sin dinero real)' },
 	{ value: 'live', label: 'Live (dinero real)' },
 ];
+
+const EXECUTION_MODE_LABELS: Record<BotExecutionMode, string> = {
+	manual: 'Manual',
+	approval: 'Con aprobación',
+	auto: 'Automático',
+};
+
+/** Qué implica cada modo, para el selector del asistente y de Configuración. */
+const EXECUTION_MODE_DESCRIPTIONS: Record<BotExecutionMode, string> = {
+	manual:
+		'Analiza solo cuando pulsas «Analizar ahora». Tú decides si creas la orden.',
+	approval:
+		'Analiza cada vela cerrada. Si la IA aprueba, te pide confirmación en la app o en Telegram antes de enviar la orden.',
+	auto: 'Analiza cada vela cerrada y envía la orden sola si la IA la aprueba, con stop loss y take profit automáticos.',
+};
+
+const EXECUTION_MODE_OPTIONS: SelectOption[] = Object.entries(
+	EXECUTION_MODE_LABELS,
+).map(([value, label]) => ({ value, label }));
+
+const SIGNAL_DECISION_LABELS: Record<SignalDecisionStatus, string> = {
+	not_required: '—',
+	pending: 'Por aprobar',
+	executing: 'Enviando orden',
+	executed: 'Ejecutada',
+	rejected: 'Descartada',
+	expired: 'Vencida',
+	failed: 'No ejecutada',
+};
+
+const SIGNAL_DECISION_VARIANTS: Record<SignalDecisionStatus, BadgeVariant> = {
+	not_required: 'outline',
+	pending: 'default',
+	executing: 'secondary',
+	executed: 'secondary',
+	rejected: 'outline',
+	expired: 'outline',
+	failed: 'destructive',
+};
+
+const DECISION_CHANNEL_LABELS: Record<SignalDecisionChannel, string> = {
+	app: 'desde la app',
+	telegram: 'desde Telegram',
+	auto: 'en automático',
+};
 
 /** Transiciones que acepta el backend desde cada estado. */
 const BOT_TRANSITIONS: Record<BotStatus, BotTransition[]> = {
@@ -139,13 +187,19 @@ export {
 	BOT_STATUS_OPTIONS,
 	BOT_STATUS_VARIANTS,
 	canTransition,
+	DECISION_CHANNEL_LABELS,
 	describeBot,
 	describeBotMarket,
+	EXECUTION_MODE_DESCRIPTIONS,
+	EXECUTION_MODE_LABELS,
+	EXECUTION_MODE_OPTIONS,
 	formatLatency,
 	formatRiskReward,
 	getRiskPct,
 	llmProviderLabel,
 	rejectionLabel,
 	SIGNAL_ACTION_LABELS,
+	SIGNAL_DECISION_LABELS,
+	SIGNAL_DECISION_VARIANTS,
 	SIGNAL_REJECTION_LABELS,
 };

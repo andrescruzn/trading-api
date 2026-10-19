@@ -39,6 +39,8 @@ from typing import Callable, Dict, List, Optional
 
 from fastapi import Request
 
+from app.common.config import settings
+
 
 class RateLimitExceeded(Exception):
     """Se superó el límite de peticiones; `register_error_handlers` la responde como 429."""
@@ -89,14 +91,7 @@ class RateLimiter:
         - IP + path para limitar por endpoint específico.
         - Permite diferentes límites por endpoint.
         """
-        # Obtener IP real (considerando proxies)
-        forwarded = request.headers.get("X-Forwarded-For")
-        if forwarded:
-            client_ip = forwarded.split(",")[0].strip()
-        else:
-            client_ip = request.client.host if request.client else "unknown"
-
-        return f"{client_ip}:{request.url.path}"
+        return f"{client_ip(request)}:{request.url.path}"
 
     def _cleanup(self, key: str, now: float) -> None:
         """Elimina requests fuera de la ventana (y la llave si queda vacía)."""
@@ -180,6 +175,12 @@ auth_rate_limiter = RateLimiter(requests_per_minute=10, window_seconds=60)
 otp_request_rate_limiter = RateLimiter(requests_per_minute=3, window_seconds=600)
 otp_verify_rate_limiter = RateLimiter(requests_per_minute=5, window_seconds=600)
 
+# Análisis de la IA por usuario y minuto: cada uno es una llamada al LLM (coste)
+agent_analysis_rate_limiter = RateLimiter(
+    requests_per_minute=settings.AGENT_ANALYSES_PER_MINUTE,
+    window_seconds=60,
+)
+
 # Rate limiter moderado para endpoints generales
 default_rate_limiter = RateLimiter(requests_per_minute=60, window_seconds=60)
 
@@ -235,6 +236,25 @@ def check_auth_rate_limit(request: Request) -> None:
             ...
     """
     auth_rate_limiter.check(request)
+
+
+def client_ip(request: Request) -> str:
+    """
+    IP del cliente para rate limit y auditoría.
+
+    X-Forwarded-For solo se usa con TRUST_PROXY_HEADERS=true (API detrás de
+    un proxy propio): si no, cualquiera lo falsea y se salta el límite.
+    """
+    if settings.TRUST_PROXY_HEADERS:
+        forwarded = request.headers.get("X-Forwarded-For")
+        if forwarded:
+            return forwarded.split(",")[0].strip()[:64]
+    return request.client.host if request.client else "unknown"
+
+
+def check_user_rate_limit(limiter: RateLimiter, user_id: int) -> None:
+    """Rate limit por usuario autenticado (p. ej. análisis de la IA)."""
+    limiter.check_key(f"user:{int(user_id)}")
 
 
 def check_email_rate_limit(limiter: RateLimiter, email: str) -> None:

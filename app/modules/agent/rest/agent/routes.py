@@ -21,7 +21,8 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.common.http import build_error_response, build_success_response
-from app.common.security.jwt import token_required_actual
+from app.common.security.jwt import owner_scope, token_required_actual
+from app.common.security.rate_limiter import agent_analysis_rate_limiter, check_user_rate_limit
 from app.extensions.db import get_db
 from app.modules.agent.domain.analysis_result import AnalysisResult
 from app.modules.agent.providers import AgentServiceFactory
@@ -72,12 +73,16 @@ def analyze(
         4xx si faltan datos (candles, features, balance)
         502 si el LLM falla
     """
+    # Cada análisis es una llamada de pago al LLM: límite por usuario
+    check_user_rate_limit(agent_analysis_rate_limiter, identity["user_id"])
+
     result = factory.analyze().analyze(
         symbol_id=payload.symbol_id,
         timeframe_id=payload.timeframe_id,
         strategy_id=payload.strategy_id,
         account_id=payload.account_id,
         feature_set_id=payload.feature_set_id,
+        owner_id=owner_scope(identity),
     )
 
     if not result.success:

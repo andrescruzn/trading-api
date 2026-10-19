@@ -36,6 +36,8 @@ from __future__ import annotations
 
 import json
 import logging
+import math
+from decimal import Decimal
 from typing import Any
 
 from app.common.contracts import ServiceResult
@@ -80,6 +82,48 @@ _OPERATORS: dict[str, Any] = {
 }
 
 
+# Regla del 1 %: nunca arriesgar más del 1 % del capital por operación
+_MAX_RISK_PCT = 0.01
+
+
+def _effective_risk_pct(value: object) -> float:
+    """risk_pct pedido (bot o estrategia) acotado a (0, 1 %]; inválido → 1 %."""
+    try:
+        pct = float(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return _MAX_RISK_PCT
+    if not math.isfinite(pct) or pct <= 0:
+        return _MAX_RISK_PCT
+    return min(pct, _MAX_RISK_PCT)
+
+
+def _positive_price(value: object) -> float | None:
+    """Número finito y > 0, o None (el LLM puede devolver texto, null, NaN…)."""
+    if isinstance(value, bool):
+        return None
+    try:
+        number = float(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return None
+    return number if math.isfinite(number) and number > 0 else None
+
+
+def _confidence(value: object) -> float | None:
+    """Confianza del LLM acotada a [0, 1]; fuera de rango o inválida → None."""
+    if isinstance(value, bool):
+        return None
+    try:
+        number = float(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return None
+    return number if math.isfinite(number) and 0.0 <= number <= 1.0 else None
+
+
+def _reject_json_constant(name: str) -> None:
+    """json.loads acepta NaN/Infinity por defecto; aquí se rechazan."""
+    raise ValueError(f"Valor no permitido en la respuesta del LLM: {name}")
+
+
 class AnalyzeService:
     """
     Servicio principal del agente de trading (Prompt Maestro).
@@ -111,6 +155,7 @@ class AnalyzeService:
         llm_client: LLMClient,
         min_rr_ratio: float,
         master_prompt: str,
+        max_entry_atr_distance: float = 1.0,
     ):
         self._strategy_repo = strategy_repo
         self._account_repo = account_repo
@@ -121,6 +166,7 @@ class AnalyzeService:
         self._timeframe_repo = timeframe_repo
         self._llm = llm_client
         self._min_rr_ratio = min_rr_ratio
+        self._max_entry_atr_distance = max_entry_atr_distance
         self._system_prompt = master_prompt or _DEFAULT_SYSTEM_PROMPT
 
     # ==================================================================
@@ -134,9 +180,16 @@ class AnalyzeService:
         strategy_id: int,
         account_id: int,
         feature_set_id: int,
+        owner_id: int | None = None,
+        risk_pct: float | None = None,
     ) -> ServiceResult[AnalysisResult]:
         """
         Ejecuta el Prompt Maestro completo.
+
+        Args:
+            owner_id: si viene, la cuenta debe ser de ese usuario (None = admin).
+            risk_pct: riesgo por operación del bot; si no viene se usa el de la
+                      estrategia. En ambos casos se acota a la Regla del 1 %.
 
         Returns:
             ServiceResult[AnalysisResult] con la decisión final y todos
@@ -153,10 +206,15 @@ class AnalyzeService:
             )
 
         account = self._account_repo.get_by_id(account_id)
-        if account is None:
+        # Una cuenta ajena se trata como inexistente (no revela su saldo)
+        if account is None or (owner_id is not None and account.user_id != owner_id):
             return ServiceResult.fail(
                 code="AGENT_ACCOUNT_NOT_FOUND", http_status=404
             )
+
+        effective_risk_pct = _effective_risk_pct(
+            risk_pct if risk_pct is not None else strategy.parameters.get("risk_pct")
+        )
 
         symbol = self._symbol_repo.get_by_id(symbol_id)
         if symbol is None:
@@ -299,6 +357,7 @@ class AnalyzeService:
             regime=regime,
             features=features,
             rules_detail=rules_detail,
+            risk_pct=effective_risk_pct,
         )
 
         try:
@@ -340,13 +399,13 @@ class AnalyzeService:
                 data=AnalysisResult(
                     decision="REJECTED",
                     rejection_reason="LLM_REJECTED",
-                    entry=llm_data.get("entry"),
-                    stop_loss=llm_data.get("stop_loss"),
-                    take_profit=llm_data.get("take_profit"),
+                    entry=_positive_price(llm_data.get("entry")),
+                    stop_loss=_positive_price(llm_data.get("stop_loss")),
+                    take_profit=_positive_price(llm_data.get("take_profit")),
                     position_size=None,
                     rr_ratio=None,
-                    reasoning=llm_data.get("reasoning", ""),
-                    confidence=llm_data.get("confidence"),
+                    reasoning=str(llm_data.get("reasoning", ""))[:1000],
+                    confidence=_confidence(llm_data.get("confidence")),
                     regime_check_passed=True,
                     rules_check_passed=True,
                     rr_check_passed=False,
@@ -360,38 +419,83 @@ class AnalyzeService:
                 )
             )
 
-        # Extraer precios sugeridos por el LLM
-        try:
-            entry = float(llm_data["entry"])
-            stop_loss = float(llm_data["stop_loss"])
-            take_profit = float(llm_data["take_profit"])
-        except (KeyError, TypeError, ValueError):
+        # Extraer precios sugeridos por el LLM (números finitos y > 0)
+        entry = _positive_price(llm_data.get("entry"))
+        stop_loss = _positive_price(llm_data.get("stop_loss"))
+        take_profit = _positive_price(llm_data.get("take_profit"))
+        if entry is None or stop_loss is None or take_profit is None:
             return ServiceResult.fail(
                 code="AGENT_LLM_MISSING_PRICES",
                 http_status=502,
-                meta={"raw": str(llm_data), **llm_call},
+                meta={"raw": str(llm_data)[:500], **llm_call},
+            )
+
+        def _reject(reason: str, reasoning: str) -> ServiceResult[AnalysisResult]:
+            return ServiceResult.ok(
+                data=AnalysisResult(
+                    decision="REJECTED",
+                    rejection_reason=reason,
+                    entry=entry,
+                    stop_loss=stop_loss,
+                    take_profit=take_profit,
+                    position_size=None,
+                    rr_ratio=None,
+                    reasoning=reasoning,
+                    confidence=_confidence(llm_data.get("confidence")),
+                    regime_check_passed=True,
+                    rules_check_passed=True,
+                    rr_check_passed=False,
+                    rules_detail=rules_detail,
+                    meta=self._build_meta(
+                        symbol=symbol, timeframe=timeframe, strategy=strategy,
+                        account=account, capital=capital, current_price=current_price,
+                        features=features, regime=regime,
+                    ),
+                    **llm_call,
+                )
+            )
+
+        # Coherencia de niveles: compra → SL < entrada < TP; venta → TP < entrada < SL.
+        # Sin esto, un TP del lado equivocado pasaría el filtro R/R (usa distancias).
+        is_buy = stop_loss < entry
+        if not ((is_buy and entry < take_profit) or (not is_buy and take_profit < entry < stop_loss)):
+            return _reject(
+                "INCONSISTENT_LEVELS",
+                "Los niveles propuestos no son coherentes: el stop loss y el take profit "
+                "deben quedar a lados opuestos de la entrada.",
+            )
+
+        # La entrada no puede alejarse del precio actual más de N × ATR
+        max_distance = self._max_entry_distance(features, current_price)
+        if abs(entry - current_price) > max_distance:
+            return _reject(
+                "ENTRY_TOO_FAR",
+                f"La entrada {entry:.8g} está demasiado lejos del precio actual "
+                f"{current_price:.8g} (máximo {max_distance:.8g}).",
             )
 
         # ----------------------------------------------------------
-        # Cálculo de posición (Python, no el LLM)
+        # Cálculo de posición (Python, no el LLM) en Decimal
         # position_size = (capital × risk_pct) / |entry − stop_loss|
         # ----------------------------------------------------------
-        risk_pct = float(strategy.parameters.get("risk_pct", 0.01))
-        price_risk = abs(entry - stop_loss)
+        d_entry, d_sl, d_tp = Decimal(str(entry)), Decimal(str(stop_loss)), Decimal(str(take_profit))
+        price_risk = abs(d_entry - d_sl)
 
-        if price_risk < 1e-10:
+        if price_risk <= Decimal("0"):
             return ServiceResult.fail(
                 code="AGENT_INVALID_PRICE_RISK", http_status=422
             )
 
-        position_size = (capital * risk_pct) / price_risk
+        position_size = float(
+            Decimal(str(capital)) * Decimal(str(effective_risk_pct)) / price_risk
+        )
 
         # ----------------------------------------------------------
         # Fase 4: Filtro R/R (Python determinístico)
         # reward / risk >= min_rr_ratio
         # ----------------------------------------------------------
-        reward = abs(take_profit - entry)
-        rr_ratio = reward / price_risk
+        reward = abs(d_tp - d_entry)
+        rr_ratio = float(reward / price_risk)
         rr_check_passed = rr_ratio >= self._min_rr_ratio
 
         if not rr_check_passed:
@@ -408,7 +512,7 @@ class AnalyzeService:
                         f"R/R ratio {rr_ratio:.2f} es menor al mínimo "
                         f"requerido de {self._min_rr_ratio:.1f}."
                     ),
-                    confidence=llm_data.get("confidence"),
+                    confidence=_confidence(llm_data.get("confidence")),
                     regime_check_passed=True,
                     rules_check_passed=True,
                     rr_check_passed=False,
@@ -434,8 +538,8 @@ class AnalyzeService:
                 take_profit=take_profit,
                 position_size=round(position_size, 8),
                 rr_ratio=round(rr_ratio, 4),
-                reasoning=llm_data.get("reasoning", ""),
-                confidence=llm_data.get("confidence"),
+                reasoning=str(llm_data.get("reasoning", ""))[:1000],
+                confidence=_confidence(llm_data.get("confidence")),
                 regime_check_passed=True,
                 rules_check_passed=True,
                 rr_check_passed=True,
@@ -452,6 +556,16 @@ class AnalyzeService:
     # ==================================================================
     # Helpers privados
     # ==================================================================
+
+    def _max_entry_distance(self, features: dict, current_price: float) -> float:
+        """
+        Distancia máxima permitida entre la entrada y el precio actual:
+        N × ATR(14), o 2 % del precio si el conjunto no calcula ATR.
+        """
+        atr = _positive_price(features.get("atr_14"))
+        if atr is not None:
+            return self._max_entry_atr_distance * atr
+        return 0.02 * current_price
 
     @staticmethod
     def _check_regime(required_regime: str | None, current_regime: str) -> bool:
@@ -533,9 +647,15 @@ class AnalyzeService:
             cleaned = "\n".join(lines[1:-1]) if len(lines) > 2 else cleaned
 
         try:
-            data = json.loads(cleaned)
-        except json.JSONDecodeError as exc:
+            data = json.loads(cleaned, parse_constant=_reject_json_constant)
+        except (json.JSONDecodeError, ValueError) as exc:
             raise LLMParseError(raw_response=raw, detail=str(exc)) from exc
+
+        if not isinstance(data, dict):
+            raise LLMParseError(
+                raw_response=raw,
+                detail="La respuesta del LLM no es un objeto JSON.",
+            )
 
         # Validar campo mínimo requerido
         if "decision" not in data:
@@ -557,6 +677,7 @@ class AnalyzeService:
         regime: str,
         features: dict,
         rules_detail: list[RuleCheckDetail],
+        risk_pct: float,
     ) -> str:
         """Construye el mensaje de usuario para el LLM con todo el contexto de mercado."""
 
@@ -614,7 +735,7 @@ class AnalyzeService:
             f"{rules_text or '  (no rules defined)'}\n\n"
             f"=== ACCOUNT ===\n"
             f"Capital:    {_fmt(capital, 2)} {base_currency}\n"
-            f"Risk/Trade: {float(strategy.parameters.get('risk_pct', 0.01)) * 100:.1f}%\n\n"
+            f"Risk/Trade: {risk_pct * 100:.1f}%\n\n"
             f"Based on the above, provide entry, stop_loss, and take_profit levels.\n"
             f"Ensure your suggested levels make mathematical sense for this "
             f"symbol's current price range."

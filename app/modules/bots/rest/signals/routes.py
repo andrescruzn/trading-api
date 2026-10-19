@@ -24,6 +24,7 @@ from app.common.http import (
     send,
 )
 from app.common.security.jwt import owner_scope, token_required_actual
+from app.common.security.rate_limiter import agent_analysis_rate_limiter, check_user_rate_limit
 from app.extensions.db import get_db
 from app.modules.bots.domain.signal_entity import Signal
 from app.modules.bots.providers import BotServiceFactory, get_bot_factory
@@ -120,6 +121,9 @@ def generate_signal(
     El bot debe estar en estado 'running'.
     La señal se persiste siempre (aprobada o rechazada) para trazabilidad.
     """
+    # Cada análisis es una llamada de pago al LLM: límite por usuario
+    check_user_rate_limit(agent_analysis_rate_limiter, identity["user_id"])
+
     result = factory.generate_signal().generate(
         bot_id=payload.bot_id, owner_id=owner_scope(identity)
     )

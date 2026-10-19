@@ -33,6 +33,7 @@ from app.common.audit.audit_repository import AuditRepository
 from app.common.audit.audit_sanitizer import sanitize_request, sanitize_response
 from app.common.config import settings
 from app.common.security.jwt.jwt_utils import decode_access_token
+from app.common.security.rate_limiter import client_ip
 
 logger = logging.getLogger(__name__)
 
@@ -207,21 +208,10 @@ class AuditMiddleware(BaseHTTPMiddleware):
 
 
 # ======================================================================
-# Helper: IP real con soporte X-Forwarded-For
+# Helper: IP real (X-Forwarded-For solo con TRUST_PROXY_HEADERS)
 # ======================================================================
 
 def _get_client_ip(request: Request) -> str | None:
-    """
-    Extrae la IP del cliente.
-
-    Prioriza X-Forwarded-For (proxy/load balancer) sobre la IP directa.
-    """
-    forwarded_for = request.headers.get("x-forwarded-for")
-    if forwarded_for:
-        # Tomar la primera IP de la lista (la del cliente original)
-        return forwarded_for.split(",")[0].strip()
-
-    if request.client:
-        return request.client.host
-
-    return None
+    """Extrae la IP del cliente con la misma regla que el rate limiter."""
+    ip = client_ip(request)
+    return None if ip == "unknown" else ip

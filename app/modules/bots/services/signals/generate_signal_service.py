@@ -93,6 +93,7 @@ class GenerateSignalService:
             strategy_id=bot.strategy_id,
             account_id=bot.account_id,
             feature_set_id=bot.feature_set_id,
+            risk_pct=bot.effective_risk_pct,
         )
 
         if not analysis_result.success:

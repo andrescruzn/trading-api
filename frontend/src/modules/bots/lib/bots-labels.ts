@@ -66,6 +66,10 @@ const SIGNAL_REJECTION_LABELS: Record<SignalRejectionReason, string> = {
 	REGIME_MISMATCH: 'El régimen del mercado no es el que pide la estrategia.',
 	RULES_NOT_MET: 'No se cumplen todas las reglas de la estrategia.',
 	LLM_REJECTED: 'La IA descartó la operación.',
+	INCONSISTENT_LEVELS:
+		'Los niveles de la IA no son coherentes: el stop loss y el take profit deben quedar a lados opuestos de la entrada.',
+	ENTRY_TOO_FAR:
+		'La entrada que propuso la IA está demasiado lejos del precio actual.',
 	RR_RATIO_TOO_LOW: 'La operación no cumple el riesgo/beneficio mínimo de 2:1.',
 };
 

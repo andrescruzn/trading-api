@@ -40,6 +40,28 @@ Es la bolsa donde se compran y venden activos. Como Binance, Bybit, Kraken. El s
 
 Es lo que se negocia: BTC/USDT significa "compro Bitcoin pagando con USDT (dólar digital)". Cada symbol pertenece a un exchange.
 
+1.3.1 ¿Qué mercados puedo operar? (cripto, metales, materias primas, acciones)
+
+Además de cripto, la app trae **perpetuos TradFi** de Binance y Bybit. Un perpetuo es un contrato
+que sigue el precio de un activo real sin que lo compres de verdad: `XAU/USDT:USDT` sube y baja
+como el oro, y se paga en USDT. Se reconocen por el `:USDT` al final.
+
+| Clase | Ejemplos en la app | Qué sigue |
+|---|---|---|
+| Cripto | BTC/USDT, ETH/USDT, SOL/USDT… | La criptomoneda |
+| Metal | XAU (oro), XAG (plata), XPT (platino), XPD (paladio), PAXG/USDT | El metal (PAXG es oro tokenizado en spot) |
+| Materia prima | CL (petróleo WTI), NATGAS (gas natural), COPPER (cobre) | El precio del barril, del gas o del cobre |
+| ETF | SPY (S&P 500), QQQ (Nasdaq 100) | El índice de la bolsa de EE. UU. |
+| Acción | NVDA, TSLA, AAPL | La acción de la empresa |
+
+Ventajas: abren 24/7 como la cripto y se descargan igual, así que los agentes funcionan sin cambios.
+**Límite actual: los perpetuos solo se operan en modo paper.** En una cuenta real un perpetuo usa
+contratos, apalancamiento y posiciones cortas, y la app aún no maneja eso: no te deja crear un
+agente live sobre un perpetuo.
+
+Forex (EUR/USD, USD/JPY) y los índices "de verdad" no están conectados: necesitan otro proveedor
+de datos y un bróker. Ojo con `SPX/USDT:USDT` en Binance y Bybit: no es el S&P 500, es una memecoin.
+
 ---
 1.4 ¿Qué es un Timeframe?
 
@@ -339,11 +361,46 @@ Por seguridad solo hay una sesión abierta por persona: si entras desde otro nav
 sesión anterior se cierra y la web te muestra "Tu sesión expiró" y te lleva al login.
 
 Todo se navega desde el menú lateral: Inicio, Operar (mis agentes, órdenes, alertas, mis cuentas),
-Explorar (estrategias, indicadores, símbolos, velas) y, según tu rol, "Mi inversión" (inversores)
+Explorar (explorar mercados, estrategias, indicadores, símbolos, velas) y, según tu rol, "Mi inversión" (inversores)
 o "Administración" (administradores).
 
 El inicio muestra tus agentes. Si aún no tienes ninguno, te explica qué es un agente y te ofrece
 crear el primero.
+
+3.0.1 Módulo 2 — Explorar mercados (¿dónde crear un agente?)
+─────────────────────────────────────────────────────────────
+Las estrategias de tendencia ganan cuando el mercado se mueve con fuerza en una dirección y pierden
+en mercados que van de lado. "Explorar mercados" (menú Explorar, `/#/market/explorer`) ordena todos
+los mercados por la fuerza de su tendencia en velas diarias, para que elijas dónde vale la pena
+poner un agente.
+
+Qué mide cada columna:
+- **Tendencia:** Alcista, Bajista o Lateral. Alcista = el precio está sobre su media de 50 días y
+  esta sobre la de 200, con fuerza suficiente.
+- **ADX:** qué tan fuerte es la tendencia, sin importar la dirección. Menos de 20 = sin tendencia;
+  más de 25 = tendencia clara.
+- **Eficiencia:** qué tan "limpio" fue el movimiento de los últimos 30 días. 100 % sería una línea
+  recta; 10 % es puro zigzag.
+- **Fuerza (0–100):** combina ADX y eficiencia. Es la columna que ordena la tabla.
+- **30 días / 90 días:** cuánto subió o bajó el precio.
+- **Volatilidad:** cuánto se mueve el precio en un día normal (ATR). Más volatilidad = stop loss
+  más lejano = posición más pequeña con la regla del 1 %.
+
+Ejemplo: el oro con ADX 32, eficiencia 45 % y +12 % en 90 días tiene fuerza ≈ 29 y sale arriba.
+BTC con ADX 15 sale como Lateral aunque haya subido 3 %: no tiene fuerza.
+
+Cómo usarlo:
+1. Filtra por clase (metales, materias primas…) si quieres.
+2. Elige un mercado alcista con fuerza alta y pulsa "Crear agente": el asistente se abre con ese
+   mercado elegido. Para metales y TradFi hay una estrategia pensada para ellos: "Tendencia Metales" (4h).
+3. Los mercados bajistas dicen "Solo observación": la app solo abre compras.
+
+Los datos se actualizan solos una vez al día. Un administrador puede pulsar "Actualizar datos"
+para traerlos en el momento (tarda unos segundos por mercado la primera vez).
+
+Importante: que un mercado haya tenido tendencia no garantiza que siga. El explorador sirve para
+elegir dónde operar. Cada operación la sigue filtrando el agente con el régimen, la regla del 1 % y
+el riesgo/beneficio mínimo de 2:1.
 
 3.1 Módulo 5 — Strategies (Estrategias)
 
@@ -441,23 +498,36 @@ Internamente aplica el Prompt Maestro con 4 fases en secuencia:
 
   → APROBADA
 
-LLM multi-provider
-──────────────────
-El agente no está atado a un solo proveedor de IA. Soporta:
+Varias IAs que se turnan
+────────────────────────
+El agente no depende de una sola IA. Tiene una lista de servicios disponibles y los va
+turnando: el primer análisis lo responde Groq, el siguiente Gemini (Google), el tercero
+Nemotron 3 Ultra (en Ollama Cloud), y luego otra vez Groq…
+Así se reparte el trabajo y ninguno llega a su límite de uso.
 
-  LLM_PROVIDER  | Servicio              | Notas
-  ──────────────────────────────────────────────────────────
-  openai        | OpenAI (GPT-4o, etc.) | Default
-  anthropic     | Anthropic (Claude)    | Requiere API key
-  xai           | xAI (Grok)            | API key de xAI
-  deepseek      | DeepSeek              | Económico, bueno
-  gemini        | Google Gemini         | API key de Google
-  ollama        | Ollama local          | Sin costo, sin red
+Si al que le toca el turno no responde (está caído, saturado o tarda demasiado), el sistema
+le pasa la pregunta al siguiente sin que tú notes nada. Solo verás "No pudimos contactar a
+la IA" si fallan todos.
+
+Cada señal guarda qué IA la respondió, con qué modelo y cuánto tardó (por ejemplo
+"Gemini · gemini-3.5-flash-lite · 4,1 s"); se ve en el detalle de la señal, en "Consulta a
+la IA". El tiempo incluye la espera de los servicios que fallaron antes. Las señales que se
+rechazan por régimen o por reglas no llegan a consultar a la IA, así que no lo muestran.
+
+  Servicio    | Variables en .env
+  ──────────────────────────────────────────────────
+  groq        | GROQ_API_KEY, GROQ_MODEL
+  gemini      | GEMINI_API_KEY, GEMINI_MODEL          (Google AI Studio)
+  ollama      | OLLAMA_API_KEY, OLLAMA_MODEL          (Ollama Cloud; el más limitado: va de último)
 
   Configurar en .env:
-    LLM_PROVIDER=ollama
-    LLM_MODEL=gemma3:4b
-    LLM_API_KEY=           (vacío para ollama)
+    LLM_SERVICES=groq,gemini,ollama    (orden del turno)
+    GROQ_API_KEY=...
+    GEMINI_API_KEY=...
+    OLLAMA_API_KEY=...
+    LLM_TIMEOUT_SECONDS=60        (cuánto esperar antes de pasar al siguiente)
+
+  Un servicio sin API key simplemente no entra en el turno.
 
 Modelos ML (tabla `models`)
 ───────────────────────────
@@ -506,7 +576,8 @@ La página de cada agente:
     estrategia y qué mide cada indicador).
 
 "Analizar ahora" le pide a la IA que evalúe el mercado en ese momento. El resultado queda guardado
-como señal (aprobada o rechazada) y se abre su detalle con los filtros que pasó o no pasó.
+como señal (aprobada o rechazada) y se abre su detalle con los filtros que pasó o no pasó, y
+qué IA respondió y cuánto tardó.
 
 Estados de un agente:
 

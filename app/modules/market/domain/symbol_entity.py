@@ -18,10 +18,10 @@ class Symbol:
     Entidad de dominio: Symbol.
 
     Representa un par o activo negociable asociado a un exchange.
-    Clases válidas: crypto | metal | etf | stock | forex
+    Clases válidas: crypto | metal | commodity | index | etf | stock | forex
     """
 
-    VALID_ASSET_CLASSES = ("crypto", "metal", "etf", "stock", "forex")
+    VALID_ASSET_CLASSES = ("crypto", "metal", "commodity", "index", "etf", "stock", "forex")
 
     def __init__(
         self,

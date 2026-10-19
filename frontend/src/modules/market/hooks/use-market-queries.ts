@@ -1,10 +1,12 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import {
+	type AssetClass,
 	type CandleFilters,
 	listCandles,
 	listExchanges,
 	listSymbols,
 	listTimeframes,
+	listTrendExplorer,
 	type SymbolFilters,
 } from '@/modules/market/api/market.api';
 
@@ -12,6 +14,7 @@ const EXCHANGES_QUERY_KEY = ['exchanges'] as const;
 const SYMBOLS_QUERY_KEY = ['symbols'] as const;
 const TIMEFRAMES_QUERY_KEY = ['timeframes'] as const;
 const CANDLES_QUERY_KEY = ['candles'] as const;
+const EXPLORER_QUERY_KEY = ['explorer'] as const;
 
 // Catálogos casi estáticos: se cachean un rato para no repetir la petición en
 // cada página que los usa como opciones de un select.
@@ -58,13 +61,25 @@ function useCandlesQuery(filters: Partial<CandleFilters>) {
 	});
 }
 
+/** Las métricas salen de velas diarias: no cambian de un minuto a otro. */
+function useTrendExplorerQuery(filters: { asset_class?: AssetClass } = {}) {
+	return useQuery({
+		queryKey: [...EXPLORER_QUERY_KEY, filters],
+		queryFn: () => listTrendExplorer(filters),
+		placeholderData: keepPreviousData,
+		staleTime: CATALOG_STALE_TIME,
+	});
+}
+
 export {
 	CANDLES_QUERY_KEY,
 	EXCHANGES_QUERY_KEY,
+	EXPLORER_QUERY_KEY,
 	SYMBOLS_QUERY_KEY,
 	TIMEFRAMES_QUERY_KEY,
 	useCandlesQuery,
 	useExchangesQuery,
 	useSymbolsQuery,
 	useTimeframesQuery,
+	useTrendExplorerQuery,
 };

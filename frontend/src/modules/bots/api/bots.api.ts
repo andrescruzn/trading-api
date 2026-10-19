@@ -103,6 +103,11 @@ type Signal = {
 	take_profit: number | null;
 	position_size: number | null;
 	rr_ratio: number | null;
+	/** Servicio de IA que respondió (`groq`, `gemini`, `ollama`); `null` si se rechazó antes de consultarla. */
+	llm_provider: string | null;
+	llm_model: string | null;
+	/** Duración de la consulta a la IA en ms (incluye los servicios que fallaron antes). */
+	llm_latency_ms: number | null;
 	reasons: SignalReasons;
 	created_at: string | null;
 };

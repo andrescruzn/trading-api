@@ -26,11 +26,21 @@ from sqlalchemy.orm import Session
 
 import app.extensions.db.models_registry  # noqa: F401  (registra los modelos y sus FKs)
 from app.extensions.db import SessionLocal, SqlAlchemyRepository
-from database.seeds import accounts, feature_sets, market_data, roles, strategies, users
+from database.seeds import (
+    accounts,
+    alerts,
+    bots,
+    feature_sets,
+    market_data,
+    roles,
+    strategies,
+    users,
+)
 from database.seeds._helpers import SeedStats
 
 # Orden de dependencias: users necesita roles; accounts necesita exchanges
-# (market_data) y usuarios.
+# (market_data) y usuarios; bots necesita cuentas, estrategias y conjuntos;
+# alerts necesita bots.
 SEEDS: dict[str, Callable[[Session], SeedStats]] = {
     "roles": roles.run,
     "users": users.run,
@@ -38,6 +48,8 @@ SEEDS: dict[str, Callable[[Session], SeedStats]] = {
     "strategies": strategies.run,
     "feature_sets": feature_sets.run,
     "accounts": accounts.run,
+    "bots": bots.run,
+    "alerts": alerts.run,
 }
 
 

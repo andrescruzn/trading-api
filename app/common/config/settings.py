@@ -221,26 +221,45 @@ class Settings:
         )
 
         # --------------------------------------------------------------
-        # LLM — Proveedor de Inteligencia Artificial
+        # LLM — Pool de servicios de Inteligencia Artificial
         # --------------------------------------------------------------
-        # Providers soportados:
-        #   openai    → api.openai.com (GPT-4o, GPT-5, etc.)
-        #   anthropic → api.anthropic.com (Claude Opus, Sonnet, etc.)
-        #   gemini    → generativelanguage.googleapis.com (Gemini 2.5 Pro, etc.)
-        #   xai       → api.x.ai (Grok 4, etc.)
-        #   deepseek  → api.deepseek.com (DeepSeek R1, etc.)
-        #   ollama    → localhost:11434 (modelos locales)
+        # LLM_SERVICES: servicios en el orden de rotación (round-robin).
+        #   Cada análisis usa el siguiente servicio del turno; si falla,
+        #   se prueba el siguiente (failover) en la misma petición.
+        #   Los servicios sin API key se omiten.
         #
-        # NOTA: gemini, xai, deepseek y ollama usan la librería openai
-        #       con una base_url distinta (API compatible OpenAI).
+        # Servicios disponibles (catálogo en app/modules/agent/llm/llm_services.py):
+        #   groq       → Groq (SDK `groq`)
+        #   gemini     → Google AI Studio (SDK `google-genai`)
+        #   ollama     → Ollama Cloud (SDK `ollama`); va de último
+        #                porque su capa gratuita es la más limitada.
         # --------------------------------------------------------------
-        self.LLM_PROVIDER: str = os.getenv("LLM_PROVIDER", "openai").strip().lower()
-        self.LLM_MODEL: str = os.getenv("LLM_MODEL", "gpt-4o").strip()
-        self.LLM_API_KEY: str = os.getenv("LLM_API_KEY", "").strip()
+        llm_services_raw = os.getenv("LLM_SERVICES", "groq,gemini,ollama")
+        self.LLM_SERVICES: list[str] = [
+            name.strip().lower()
+            for name in llm_services_raw.split(",")
+            if name.strip()
+        ]
 
-        # Base URL personalizada (None = usa la URL por defecto del provider)
-        llm_base_url_raw = os.getenv("LLM_BASE_URL", "").strip()
-        self.LLM_BASE_URL: str | None = llm_base_url_raw or None
+        self.GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", "").strip()
+        self.GROQ_MODEL: str = (
+            os.getenv("GROQ_MODEL", "").strip() or "moonshotai/kimi-k2-instruct-0905"
+        )
+
+        self.GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "").strip()
+        self.GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "").strip() or "gemini-3.5-flash-lite"
+
+        # Ollama Cloud: el modelo va con el nombre de https://ollama.com/api/tags
+        # (sin el sufijo :cloud, que solo usa la app/CLI local).
+        self.OLLAMA_API_KEY: str = os.getenv("OLLAMA_API_KEY", "").strip()
+        self.OLLAMA_MODEL: str = os.getenv("OLLAMA_MODEL", "").strip() or "nemotron-3-ultra"
+
+        # Tiempo máximo por llamada; al vencer se pasa al siguiente servicio.
+        # 60 s porque nemotron-3-ultra (550B, con razonamiento) puede pasar de 30 s.
+        try:
+            self.LLM_TIMEOUT_SECONDS: float = float(os.getenv("LLM_TIMEOUT_SECONDS", "60"))
+        except ValueError:
+            self.LLM_TIMEOUT_SECONDS = 60.0
 
         # Temperatura: 0.0 (más determinístico) — 1.0 (más creativo)
         # 0.1 es el valor recomendado para análisis financiero reproducible.
@@ -249,11 +268,13 @@ class Settings:
         except ValueError:
             self.LLM_TEMPERATURE = 0.1
 
-        # Máximo de tokens en la respuesta del LLM
+        # Máximo de tokens en la respuesta del LLM. 4096 porque en los modelos
+        # con razonamiento (Gemini 3) los tokens de "thinking" cuentan aquí;
+        # con 1024 el JSON puede llegar vacío o cortado.
         try:
-            self.LLM_MAX_TOKENS: int = int(os.getenv("LLM_MAX_TOKENS", "1024"))
+            self.LLM_MAX_TOKENS: int = int(os.getenv("LLM_MAX_TOKENS", "4096"))
         except ValueError:
-            self.LLM_MAX_TOKENS = 1024
+            self.LLM_MAX_TOKENS = 4096
 
         # --------------------------------------------------------------
         # Agent — Configuración del Agente de Trading

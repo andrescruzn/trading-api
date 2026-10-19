@@ -4,7 +4,8 @@
 # app/modules/scheduler/scheduler_runner.py
 #
 # PROPÓSITO:
-# - Gestionar el hilo de fondo que ejecuta run_cycle() periódicamente.
+# - Gestionar el hilo de fondo que ejecuta run_cycle() periódicamente y,
+#   una vez al día, refresh_explorer() (velas 1d del explorador).
 # - Expone start() / stop() para integrarse con el lifespan de FastAPI.
 #
 # DISEÑO:
@@ -27,6 +28,9 @@ logger = logging.getLogger(__name__)
 _stop_event = threading.Event()
 _scheduler_thread: threading.Thread | None = None
 
+# Cada cuánto se refrescan las velas diarias del explorador
+_EXPLORER_REFRESH_SECONDS = 86400
+
 
 def _run_loop() -> None:
     """
@@ -37,7 +41,7 @@ def _run_loop() -> None:
     la espera de forma limpia.
     """
     # Import diferido para evitar importaciones circulares al arrancar
-    from app.modules.scheduler.scheduler_service import run_cycle
+    from app.modules.scheduler.scheduler_service import refresh_explorer, run_cycle
 
     logger.info(
         "[Scheduler] Iniciado — intervalo=%ds retención=%d velas",
@@ -45,7 +49,19 @@ def _run_loop() -> None:
         settings.SCHEDULER_RETENTION_CANDLES,
     )
 
+    # monotonic: no le afectan los cambios de hora del sistema.
+    # None = refrescar en la primera vuelta (al arrancar la API).
+    last_explorer_refresh: float | None = None
+
     while not _stop_event.is_set():
+        now = time.monotonic()
+        if (
+            last_explorer_refresh is None
+            or now - last_explorer_refresh >= _EXPLORER_REFRESH_SECONDS
+        ):
+            last_explorer_refresh = now
+            refresh_explorer()
+
         try:
             run_cycle()
         except Exception:

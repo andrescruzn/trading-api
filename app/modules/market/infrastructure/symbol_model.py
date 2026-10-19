@@ -32,7 +32,7 @@ class SymbolModel(Base):
         Index("idx_symbols_exchange", "exchange_id"),
         Index("idx_symbols_asset_class", "asset_class"),
         CheckConstraint(
-            "`asset_class` IN ('crypto', 'metal', 'etf', 'stock', 'forex')",
+            "`asset_class` IN ('crypto', 'metal', 'commodity', 'index', 'etf', 'stock', 'forex')",
             name="chk_symbols_asset_class",
         ),
         MYSQL_TABLE_OPTIONS,

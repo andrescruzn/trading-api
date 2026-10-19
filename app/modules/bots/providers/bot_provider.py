@@ -128,7 +128,11 @@ class BotServiceFactory:
         )
 
     def update_bot(self) -> UpdateBotService:
-        return UpdateBotService(repo=self._bot_repo, account_repo=self._account_repo)
+        return UpdateBotService(
+            repo=self._bot_repo,
+            account_repo=self._account_repo,
+            symbol_repo=self._symbol_repo,
+        )
 
     def update_bot_status(self) -> UpdateBotStatusService:
         return UpdateBotStatusService(repo=self._bot_repo, account_repo=self._account_repo)

@@ -14,6 +14,7 @@ from sqlalchemy import (
     DECIMAL,
     ForeignKey,
     Index,
+    Integer,
     JSON,
     String,
     text,
@@ -73,6 +74,12 @@ class SignalModel(Base):
     confidence    = Column(DECIMAL(6, 5), nullable=True)
     model_version = Column(String(64), nullable=True)
     features_hash = Column(String(128), nullable=True)
+
+    # Llamada a la IA — NULL si se rechazó antes de consultarla (régimen o reglas)
+    llm_provider   = Column(String(32), nullable=True, comment="Servicio LLM que respondió (groq, gemini, ollama)")
+    llm_model      = Column(String(128), nullable=True, comment="Modelo LLM que respondió")
+    llm_latency_ms = Column(Integer, nullable=True, comment="Duración de la consulta al LLM en ms (incluye el failover)")
+
     reasons       = Column(JSON, nullable=False)
     created_at    = Column(
         TIMESTAMP(fsp=6),

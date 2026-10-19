@@ -23,6 +23,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from app.modules.agent.llm.llm_client import LLMCompletion
 from app.modules.agent.services.agent.analyze_service import AnalyzeService
 
 
@@ -184,8 +185,11 @@ def make_service(
     timeframe_repo.get_by_id.return_value = timeframe or make_timeframe()
 
     llm_client = MagicMock()
-    llm_client.complete.return_value = (
-        llm_response if llm_response is not None else make_llm_response()
+    llm_client.complete.return_value = LLMCompletion(
+        text=llm_response if llm_response is not None else make_llm_response(),
+        provider="groq",
+        model="test-model",
+        latency_ms=1234,
     )
 
     return AnalyzeService(

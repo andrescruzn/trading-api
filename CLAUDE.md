@@ -10,7 +10,7 @@ Aplicación de **trading asistido por IA** (nombre temporal: **trading-app**). E
 3. **Tamaño de posición:** `capital × %riesgo / |entrada − stop_loss|`.
 4. **Riesgo/beneficio mínimo 2:1**; si no se cumple, la señal se rechaza (`approved = 0`).
 
-Stack backend: Python 3.12 · FastAPI 0.128 · SQLAlchemy 2 (**síncrono**, PyMySQL) · MySQL 8 · ccxt 4.4 · LLM multi-provider (`LLM_PROVIDER` = openai | anthropic | xai | deepseek | gemini | ollama) · uv. Jinja2 solo para las plantillas de correo.
+Stack backend: Python 3.12 · FastAPI 0.128 · SQLAlchemy 2 (**síncrono**, PyMySQL) · MySQL 8 · ccxt 4.4 · LLM en pool rotativo con failover (`LLM_SERVICES` = groq, gemini, ollama) · uv. Jinja2 solo para las plantillas de correo.
 
 Stack frontend: React 19 · Vite 8 · TypeScript 6 · TanStack Router (hash history) + TanStack Query · shadcn (`base-vega`, sobre Base UI) · Tailwind 4 · react-hook-form + zod 4 · **pnpm** (nunca npm/npx).
 

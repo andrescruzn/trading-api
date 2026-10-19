@@ -3,7 +3,9 @@ import type { ReactNode } from 'react';
 import type { Signal, SignalReasons } from '@/modules/bots/api/bots.api';
 import { SignalActionBadge } from '@/modules/bots/components/bot-badges';
 import {
+	formatLatency,
 	formatRiskReward,
+	llmProviderLabel,
 	rejectionLabel,
 } from '@/modules/bots/lib/bots-labels';
 import {
@@ -118,6 +120,26 @@ export function SignalDetailSheet({
 									{formatPercent(signal.confidence, 0)}
 								</DetailItem>
 							</dl>
+
+							{signal.llm_provider && (
+								<section className="flex flex-col gap-2">
+									<h3 className="text-sm font-medium">Consulta a la IA</h3>
+									<dl className="grid grid-cols-2 gap-4">
+										<DetailItem label="Servicio">
+											{llmProviderLabel(signal.llm_provider)}
+										</DetailItem>
+										<DetailItem label="Tiempo de respuesta">
+											{formatLatency(signal.llm_latency_ms)}
+										</DetailItem>
+										<DetailItem
+											label="Modelo"
+											className="font-mono text-xs break-all"
+										>
+											{signal.llm_model ?? '—'}
+										</DetailItem>
+									</dl>
+								</section>
+							)}
 
 							{rejection && (
 								<section className="flex flex-col gap-1">

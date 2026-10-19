@@ -3,35 +3,30 @@
 # ======================================================================
 # app/modules/agent/llm/llm_factory.py
 #
-# Factory que crea el cliente LLM correcto según LLM_PROVIDER en settings.
+# Factory que arma el pool de servicios LLM según LLM_SERVICES en settings.
 #
-# MAPA DE PROVIDERS:
-#   openai    → OpenAICompatibleClient (base_url=None)
-#   xai       → OpenAICompatibleClient (base_url="https://api.x.ai/v1")
-#   deepseek  → OpenAICompatibleClient (base_url="https://api.deepseek.com")
-#   gemini    → OpenAICompatibleClient (base_url="https://generativelanguage.googleapis.com/v1beta/openai/")
-#   ollama    → OpenAICompatibleClient (base_url settings o "http://localhost:11434/v1")
-#   anthropic → AnthropicLLMClient
+# - Cada nombre de LLM_SERVICES se busca en LLM_SERVICE_CATALOG.
+# - Se omiten (con warning) los nombres desconocidos y los servicios sin
+#   API key.
+# - Cada servicio se construye con su cliente (SDK oficial) del catálogo.
+# - Devuelve un RotatingLLMClient (round-robin + failover).
 # ======================================================================
 
 from __future__ import annotations
 
+import logging
+
 from app.common.config import settings as _settings
 from app.modules.agent.llm.llm_client import LLMClient
+from app.modules.agent.llm.llm_services import LLM_SERVICE_CATALOG, LLMServiceSpec
+from app.modules.agent.llm.rotating_client import RotatingLLMClient
 
-
-# URL por defecto de cada provider OpenAI-compatible (distinto de OpenAI)
-_PROVIDER_BASE_URLS: dict[str, str] = {
-    "xai":      "https://api.x.ai/v1",
-    "deepseek": "https://api.deepseek.com",
-    "gemini":   "https://generativelanguage.googleapis.com/v1beta/openai/",
-    "ollama":   "http://localhost:11434/v1",
-}
+logger = logging.getLogger(__name__)
 
 
 class LLMClientFactory:
     """
-    Factory para instanciar el cliente LLM según la configuración.
+    Factory para instanciar el pool de clientes LLM según la configuración.
 
     Uso:
         client = LLMClientFactory.create()
@@ -41,56 +36,51 @@ class LLMClientFactory:
     @staticmethod
     def create(settings=None) -> LLMClient:
         """
-        Crea y retorna el cliente LLM configurado en settings.
+        Crea el pool con los servicios configurados en settings.
 
         Args:
             settings: instancia de Settings (usa la global por defecto).
                       Inyectable en tests para usar distintas configs.
 
         Returns:
-            LLMClient listo para usar.
-
-        Raises:
-            ValueError: si el provider configurado no es reconocido.
+            RotatingLLMClient listo para usar. Si no hay servicios
+            configurados, el pool falla en `complete` con LLMCallError.
         """
         cfg = settings or _settings
-        provider = cfg.LLM_PROVIDER.lower()
+        services: list[tuple[str, LLMClient]] = []
 
-        if provider == "anthropic":
-            from app.modules.agent.llm.anthropic_client import AnthropicLLMClient
+        for spec in LLMClientFactory._configured_specs(cfg):
+            services.append((
+                spec.name,
+                spec.client_cls(
+                    api_key=getattr(cfg, spec.api_key_setting),
+                    model=getattr(cfg, spec.model_setting),
+                    temperature=cfg.LLM_TEMPERATURE,
+                    max_tokens=cfg.LLM_MAX_TOKENS,
+                    timeout=cfg.LLM_TIMEOUT_SECONDS,
+                ),
+            ))
 
-            return AnthropicLLMClient(
-                api_key=cfg.LLM_API_KEY,
-                model=cfg.LLM_MODEL,
-                temperature=cfg.LLM_TEMPERATURE,
-                max_tokens=cfg.LLM_MAX_TOKENS,
-            )
+        return RotatingLLMClient(services)
 
-        # ------------------------------------------------------------------
-        # Todos los demás providers son OpenAI-compatible
-        # ------------------------------------------------------------------
-        if provider not in ("openai", "xai", "deepseek", "gemini", "ollama"):
-            raise ValueError(
-                f"Provider LLM no reconocido: '{provider}'. "
-                "Valores válidos: openai, anthropic, gemini, xai, deepseek, ollama"
-            )
+    @staticmethod
+    def describe(settings=None) -> list[str]:
+        """Nombres de los servicios que entrarían en el pool (para logs de arranque)."""
+        cfg = settings or _settings
+        return [spec.name for spec in LLMClientFactory._configured_specs(cfg, warn=True)]
 
-        from app.modules.agent.llm.openai_compatible_client import OpenAICompatibleClient
-
-        # Prioridad de base_url:
-        # 1) LLM_BASE_URL en settings (override manual)
-        # 2) URL por defecto del provider (en _PROVIDER_BASE_URLS)
-        # 3) None → openai usa su URL interna
-        base_url = cfg.LLM_BASE_URL or _PROVIDER_BASE_URLS.get(provider)
-
-        # Ollama no requiere api_key real — usa "ollama" como placeholder
-        api_key = cfg.LLM_API_KEY or ("ollama" if provider == "ollama" else "")
-
-        return OpenAICompatibleClient(
-            api_key=api_key,
-            model=cfg.LLM_MODEL,
-            provider_name=provider,
-            base_url=base_url,
-            temperature=cfg.LLM_TEMPERATURE,
-            max_tokens=cfg.LLM_MAX_TOKENS,
-        )
+    @staticmethod
+    def _configured_specs(cfg, warn: bool = False) -> list[LLMServiceSpec]:
+        specs: list[LLMServiceSpec] = []
+        for name in cfg.LLM_SERVICES:
+            spec = LLM_SERVICE_CATALOG.get(name)
+            if spec is None:
+                if warn:
+                    logger.warning("[llm] servicio desconocido en LLM_SERVICES: '%s'", name)
+                continue
+            if not getattr(cfg, spec.api_key_setting, ""):
+                if warn:
+                    logger.warning("[llm] %s sin %s: se omite", name, spec.api_key_setting)
+                continue
+            specs.append(spec)
+        return specs

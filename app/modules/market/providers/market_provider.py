@@ -36,6 +36,10 @@ from app.modules.market.services.candles import (
     IngestCandlesService,
     FetchCandlesService,
 )
+from app.modules.market.services.explorer import (
+    ListTrendExplorerService,
+    RefreshExplorerCandlesService,
+)
 
 
 class MarketServiceFactory:
@@ -119,6 +123,25 @@ class MarketServiceFactory:
             symbol_repo=self._symbol_repo,
             timeframe_repo=self._timeframe_repo,
             exchange_repo=self._exchange_repo,
+        )
+
+    # ------------------------------------------------------------------
+    # Explorador de tendencia
+    # ------------------------------------------------------------------
+
+    def list_trend_explorer(self) -> ListTrendExplorerService:
+        return ListTrendExplorerService(
+            symbol_repo=self._symbol_repo,
+            timeframe_repo=self._timeframe_repo,
+            candle_repo=self._candle_repo,
+        )
+
+    def refresh_explorer_candles(self) -> RefreshExplorerCandlesService:
+        return RefreshExplorerCandlesService(
+            symbol_repo=self._symbol_repo,
+            timeframe_repo=self._timeframe_repo,
+            candle_repo=self._candle_repo,
+            fetch_service=self.fetch_candles(),
         )
 
 

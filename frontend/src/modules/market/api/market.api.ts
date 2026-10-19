@@ -5,7 +5,14 @@ import { api } from '@/modules/shared/lib/api-client';
 // ======================================================================
 
 type ExchangeType = 'crypto_exchange' | 'broker' | 'data_vendor';
-type AssetClass = 'crypto' | 'metal' | 'etf' | 'stock' | 'forex';
+type AssetClass =
+	| 'crypto'
+	| 'metal'
+	| 'commodity'
+	| 'index'
+	| 'etf'
+	| 'stock'
+	| 'forex';
 
 type Exchange = {
 	id: number;
@@ -56,6 +63,44 @@ type FetchCandlesResult = {
 	timeframe: string;
 	rows_fetched: number;
 	rows_affected?: number;
+};
+
+type TrendDirection = 'up' | 'down' | 'sideways';
+
+/**
+ * Fila del explorador de tendencia (velas 1d). Sin velas suficientes,
+ * `has_data` es `false` y las métricas llegan en `null`.
+ */
+type TrendExplorerRow = {
+	symbol_id: number;
+	symbol: string;
+	exchange_name: string | null;
+	asset_class: AssetClass;
+	/** Contrato perpetuo (`XAU/USDT:USDT`): solo se opera en paper. */
+	is_perpetual: boolean;
+	has_data: boolean;
+	candles: number;
+	last_close: number | null;
+	last_ts: string | null;
+	/** Rendimientos como fracción (`0.05` = 5 %). */
+	ret_30d: number | null;
+	ret_90d: number | null;
+	adx_14: number | null;
+	/** Eficiencia de Kaufman en 30 días, de 0 a 1. */
+	efficiency_30: number | null;
+	/** ATR de 14 días sobre el cierre, como fracción. */
+	atr_pct_14: number | null;
+	direction: TrendDirection | null;
+	/** Fuerza de tendencia de 0 a 100. */
+	strength: number | null;
+	/** Fuerza con signo según la dirección: ordena el ranking. */
+	score: number | null;
+};
+
+type RefreshExplorerResult = {
+	updated: string[];
+	skipped: string[];
+	failed: { symbol: string; code: string }[];
 };
 
 type ExchangeInput = { name: string; type: ExchangeType };
@@ -146,6 +191,19 @@ function fetchCandles(input: CandleFilters) {
 	return api.post<FetchCandlesResult>('/candles/fetch', input);
 }
 
+// ======================================================================
+// Explorador de tendencia
+// ======================================================================
+
+function listTrendExplorer(filters: { asset_class?: AssetClass } = {}) {
+	return api.get<TrendExplorerRow[]>('/explorer', filters);
+}
+
+/** Descarga las velas diarias de todos los símbolos. Solo admin. */
+function refreshExplorer() {
+	return api.post<RefreshExplorerResult>('/explorer/refresh');
+}
+
 export type {
 	AssetClass,
 	Candle,
@@ -156,11 +214,14 @@ export type {
 	ExchangeUpdate,
 	FetchCandlesResult,
 	MarketSymbol,
+	RefreshExplorerResult,
 	SymbolFilters,
 	SymbolInput,
 	SymbolUpdate,
 	Timeframe,
 	TimeframeInput,
+	TrendDirection,
+	TrendExplorerRow,
 };
 export {
 	createExchange,
@@ -171,6 +232,8 @@ export {
 	listExchanges,
 	listSymbols,
 	listTimeframes,
+	listTrendExplorer,
+	refreshExplorer,
 	updateExchange,
 	updateSymbol,
 };

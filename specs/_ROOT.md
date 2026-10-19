@@ -7,11 +7,11 @@ Una explicación simple de los 10 módulos del sistema, sin tecnicismos. Cada m�
 | Módulo | Estado | Alcance | Madurez | Descripción |
 |--------|--------|--------:|--------:|-------------|
 | [M1 — Auth & Frontend](M01-AUTH.md) | ✅ Completo | 100 % | 81 % | Login solo por código OTP, sesiones JWT, roles, frontend React (shell, dashboard) |
-| [M2 — Market Data](M02-MARKET-DATA.md) | ✅ Completo | 86 % | 65 % | Exchanges, símbolos, timeframes, velas OHLCV via ccxt + scheduler de ingesta |
+| [M2 — Market Data](M02-MARKET-DATA.md) | ✅ Completo | 86 % | 65 % | Exchanges, símbolos (cripto + perpetuos TradFi: metales, materias primas, ETFs, acciones), velas OHLCV via ccxt, scheduler de ingesta y explorador de tendencia |
 | [M3 — Feature Engineering](M03-FEATURE-ENGINEERING.md) | ✅ Completo | 100 % | 82 % | RSI, ATR, EMA, MACD, Bollinger Bands, régimen; conjuntos por enfoque (Completo/Tendencia/Rango) |
 | [M4 — Accounts & Portfolio](M04-ACCOUNTS-PORTFOLIO.md) | ✅ Completo | 100 % | 79 % | Cuentas de exchange (credenciales cifradas), balances, equity curve |
 | [M5 — Strategies](M05-STRATEGIES.md) | ✅ Completo | 86 % | 55 % | Reglas de entrada/salida, validación tipo/régimen, datasets |
-| [M6 — AI Agent / Models](M06-AI-AGENT.md) | ✅ Completo | 100 % | 76 % | Prompt Maestro multi-provider LLM, modelos ML y model runs |
+| [M6 — AI Agent / Models](M06-AI-AGENT.md) | ✅ Completo | 100 % | 78 % | Prompt Maestro con pool de LLMs rotativo (Groq + Gemini + Ollama Cloud, con failover), modelos ML y model runs |
 | [M7 — Bots & Signals](M07-BOTS-SIGNALS.md) | ✅ Completo | 100 % | 75 % | **Agentes** (bots en la UI): punto de entrada, asistente de creación, señales BUY/SELL/HOLD con entry/SL/TP |
 | [M8 — Orders & Execution](M08-ORDERS-EXECUTION.md) | ✅ Completo | 100 % | 50 % | Órdenes paper/live (ccxt), fills, posiciones |
 | [M9 — Alerts](M09-ALERTS.md) | ✅ Completo | 100 % | 50 % | Reglas de alerta, notificaciones email/Telegram/webhook/desktop |
@@ -130,7 +130,7 @@ Hash routing: la URL real es `/#/<ruta>`. Cada ruta vive en `frontend/src/routes
 | Rol | Páginas |
 |---|---|
 | Público | `/login` |
-| Usuario (y demás roles) | `/dashboard`, `/agents`, `/agents/new`, `/agents/:id`, `/orders`, `/alerts`, `/portfolio`, `/strategies`, `/features`, `/market/symbols`, `/market/candles` (`/bots` y `/agent` redirigen a `/agents`) |
+| Usuario (y demás roles) | `/dashboard`, `/agents`, `/agents/new`, `/agents/:id`, `/orders`, `/alerts`, `/portfolio`, `/strategies`, `/features`, `/market/explorer`, `/market/symbols`, `/market/candles` (`/bots` y `/agent` redirigen a `/agents`) |
 | Admin (`_app/admin/*`) | `/admin/exchanges`, `/admin/symbols`, `/admin/timeframes`, `/admin/candles/ingest`, `/admin/feature-sets`, `/admin/accounts`, `/admin/strategies`, `/admin/agents`, `/admin/orders`, `/admin/alerts`, `/admin/telegram`, `/admin/investors`, `/admin/managed-accounts`, `/admin/billing` |
 | Inversor (`_app/investor/*`) | `/investor/dashboard` |
 

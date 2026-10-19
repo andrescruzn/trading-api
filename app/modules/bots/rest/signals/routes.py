@@ -53,19 +53,22 @@ def _decimal_or_none(val: Decimal | None) -> float | None:
 
 def _signal_to_dict(s: Signal) -> dict[str, Any]:
     return {
-        "id":            s.id,
-        "bot_id":        s.bot_id,
-        "ts":            s.ts.isoformat() if s.ts else None,
-        "action":        s.action,
-        "approved":      s.approved,
-        "confidence":    _decimal_or_none(s.confidence),
-        "entry_price":   _decimal_or_none(s.entry_price),
-        "stop_loss":     _decimal_or_none(s.stop_loss),
-        "take_profit":   _decimal_or_none(s.take_profit),
-        "position_size": _decimal_or_none(s.position_size),
-        "rr_ratio":      _decimal_or_none(s.rr_ratio),
-        "reasons":       s.reasons,
-        "created_at":    s.created_at.isoformat() if s.created_at else None,
+        "id":             s.id,
+        "bot_id":         s.bot_id,
+        "ts":             s.ts.isoformat() if s.ts else None,
+        "action":         s.action,
+        "approved":       s.approved,
+        "confidence":     _decimal_or_none(s.confidence),
+        "entry_price":    _decimal_or_none(s.entry_price),
+        "stop_loss":      _decimal_or_none(s.stop_loss),
+        "take_profit":    _decimal_or_none(s.take_profit),
+        "position_size":  _decimal_or_none(s.position_size),
+        "rr_ratio":       _decimal_or_none(s.rr_ratio),
+        "llm_provider":   s.llm_provider,
+        "llm_model":      s.llm_model,
+        "llm_latency_ms": s.llm_latency_ms,
+        "reasons":        s.reasons,
+        "created_at":     s.created_at.isoformat() if s.created_at else None,
     }
 
 

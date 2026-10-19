@@ -34,6 +34,11 @@ class Signal:
     - take_profit    : nivel de take profit
     - position_size  : tamaño de la posición calculado (capital × risk_pct / |entry - SL|)
 
+    Llamada a la IA (None si se rechazó antes de consultarla):
+    - llm_provider   : servicio del pool que respondió (groq, gemini, ollama)
+    - llm_model      : modelo que respondió
+    - llm_latency_ms : duración de la consulta en ms (incluye el failover)
+
     Estado de aprobación:
     - approved = True  : pasó todos los filtros (régimen, reglas, R/R ≥ 2:1)
     - approved = False : fue rechazada en algún filtro
@@ -57,6 +62,9 @@ class Signal:
         rr_ratio: Decimal | None = None,
         model_version: str | None = None,
         features_hash: str | None = None,
+        llm_provider: str | None = None,
+        llm_model: str | None = None,
+        llm_latency_ms: int | None = None,
         created_at: datetime | None = None,
     ):
         self.id = id
@@ -73,6 +81,9 @@ class Signal:
         self.rr_ratio = rr_ratio
         self.model_version = model_version
         self.features_hash = features_hash
+        self.llm_provider = llm_provider
+        self.llm_model = llm_model
+        self.llm_latency_ms = llm_latency_ms
         self.created_at = created_at
 
     # ------------------------------------------------------------------

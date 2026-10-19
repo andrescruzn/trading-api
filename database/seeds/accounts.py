@@ -5,14 +5,17 @@
 #
 # PROPÓSITO:
 # - Cuentas paper de ejemplo del Módulo 4 (Binance y Bybit) con balances
-#   iniciales, para desarrollo y pruebas.
+#   iniciales, para desarrollo y pruebas. Una pareja por usuario demo:
+#   sin cuenta propia un usuario no puede crear agentes.
 #
 # NOTAS:
-# - Requiere que el usuario DEMO_USER_EMAIL ya exista (seed `users` o
-#   registrado desde la web) y el seed `market_data`. Si falta, se omite.
+# - Requiere los usuarios de DEMO_USER_EMAILS (seed `users` o registrados
+#   desde la web) y el seed `market_data`. El usuario que falte se omite.
 # - Clave natural: cuenta = (user_id, name); balance = (account_id, asset).
-#   La tabla no tiene UNIQUE para esto (en balances el UNIQUE incluye `ts`),
-#   por eso el .sql anterior con INSERT IGNORE duplicaba filas.
+# - `account_balances` es una serie temporal (UNIQUE incluye `ts`): un
+#   activo puede tener varias fotos. El balance inicial solo se inserta si
+#   el activo no tiene ninguna; `get_or_create` no sirve aquí porque
+#   espera una sola fila y fallaría con MultipleResultsFound.
 # ======================================================================
 
 from __future__ import annotations
@@ -28,7 +31,10 @@ from app.modules.market.infrastructure.exchange_model import ExchangeModel
 from app.modules.users.infrastructure.user_model import UserModel
 from database.seeds._helpers import SeedStats, get_or_create
 
-DEMO_USER_EMAIL = "andrescruznovoa@gmail.com"
+DEMO_USER_EMAILS: tuple[str, ...] = (
+    "andrescruznovoa@gmail.com",
+    "dayrondaza05@gmail.com",
+)
 
 # (exchange, nombre de la cuenta, nota, [(asset, free)])
 ACCOUNTS: list[tuple[str, str, str, list[tuple[str, Decimal]]]] = [
@@ -50,13 +56,17 @@ ACCOUNTS: list[tuple[str, str, str, list[tuple[str, Decimal]]]] = [
 def run(session: Session) -> SeedStats:
     stats = SeedStats()
 
-    user = session.execute(
-        select(UserModel).filter_by(email=DEMO_USER_EMAIL)
-    ).scalar_one_or_none()
-    if user is None:
-        stats.notes.append(f"omitido: no existe el usuario {DEMO_USER_EMAIL}")
-        return stats
+    for email in DEMO_USER_EMAILS:
+        user = session.execute(select(UserModel).filter_by(email=email)).scalar_one_or_none()
+        if user is None:
+            stats.notes.append(f"omitido: no existe el usuario {email}")
+            continue
+        _seed_user_accounts(session, user.id, stats)
 
+    return stats
+
+
+def _seed_user_accounts(session: Session, user_id: int, stats: SeedStats) -> None:
     for exchange_name, account_name, note, balances in ACCOUNTS:
         exchange = session.execute(
             select(ExchangeModel).filter_by(name=exchange_name)
@@ -68,7 +78,7 @@ def run(session: Session) -> SeedStats:
         account = get_or_create(
             session,
             AccountModel,
-            lookup={"user_id": user.id, "name": account_name},
+            lookup={"user_id": user_id, "name": account_name},
             values={
                 "exchange_id": exchange.id,
                 "mode": "paper",
@@ -81,12 +91,16 @@ def run(session: Session) -> SeedStats:
         )
 
         for asset, free in balances:
-            get_or_create(
-                session,
-                AccountBalanceModel,
-                lookup={"account_id": account.id, "asset": asset},
-                values={"free": free, "locked": Decimal("0")},
-                stats=stats,
-            )
-
-    return stats
+            has_balance = session.execute(
+                select(AccountBalanceModel.id)
+                .filter_by(account_id=account.id, asset=asset)
+                .limit(1)
+            ).first() is not None
+            if not has_balance:
+                session.add(
+                    AccountBalanceModel(
+                        account_id=account.id, asset=asset, free=free, locked=Decimal("0")
+                    )
+                )
+                session.flush()
+            stats.track(AccountBalanceModel.__tablename__, created=not has_balance)

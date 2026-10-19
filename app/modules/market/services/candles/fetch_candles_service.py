@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from decimal import Decimal
+from typing import Any
 
 import ccxt
 
@@ -41,7 +42,13 @@ class FetchCandlesService:
         symbol_id: int,
         timeframe_id: int,
         limit: int = 500,
+        client_cache: dict[str, Any] | None = None,
     ) -> ServiceResult[dict]:
+        """
+        `client_cache` (opcional) reutiliza un cliente ccxt por exchange entre
+        llamadas de un mismo lote: cada cliente nuevo vuelve a cargar todos
+        los mercados del exchange (varias peticiones lentas).
+        """
         # 1) Validar símbolo
         symbol = self._symbol_repo.get_by_id(symbol_id)
         if symbol is None:
@@ -67,8 +74,11 @@ class FetchCandlesService:
 
         # 4) Descargar velas de ccxt
         try:
-            exchange_cls = getattr(ccxt, ccxt_id)
-            client = exchange_cls({"enableRateLimit": True})
+            client = client_cache.get(ccxt_id) if client_cache is not None else None
+            if client is None:
+                client = getattr(ccxt, ccxt_id)({"enableRateLimit": True})
+                if client_cache is not None:
+                    client_cache[ccxt_id] = client
             raw: list[list] = client.fetch_ohlcv(
                 symbol.symbol,
                 timeframe=tf.code,

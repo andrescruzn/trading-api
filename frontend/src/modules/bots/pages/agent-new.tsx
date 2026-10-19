@@ -6,7 +6,7 @@ import {
 	IconLoader2,
 	IconRocket,
 } from '@tabler/icons-react';
-import { Link, useNavigate } from '@tanstack/react-router';
+import { getRouteApi, Link, useNavigate } from '@tanstack/react-router';
 import { type ReactNode, useState } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
@@ -33,6 +33,7 @@ import {
 	useSymbolsQuery,
 	useTimeframesQuery,
 } from '@/modules/market/hooks/use-market-queries';
+import { isPerpetualSymbol } from '@/modules/market/lib/market-labels';
 import { Stepper } from '@/modules/shared/components/stepper';
 import { formatPercent } from '@/modules/shared/lib/format';
 import { getErrorMessage } from '@/modules/shared/lib/get-error-message';
@@ -123,12 +124,15 @@ function SummaryRow({
 	);
 }
 
+const routeApi = getRouteApi('/_app/agents/new');
+
 export function AgentNewPage() {
 	usePageBreadcrumb([
 		{ label: 'Mis agentes', href: '/agents' },
 		{ label: 'Nuevo agente' },
 	]);
 	const navigate = useNavigate();
+	const search = routeApi.useSearch();
 	const { user } = useAuth();
 	const symbolsQuery = useSymbolsQuery({ is_active: true });
 	const timeframesQuery = useTimeframesQuery();
@@ -144,7 +148,7 @@ export function AgentNewPage() {
 	const form = useForm<AgentFormInput, unknown, AgentFormValues>({
 		resolver: zodResolver(agentSchema),
 		defaultValues: {
-			symbol_id: null,
+			symbol_id: search.symbol_id ? String(search.symbol_id) : null,
 			strategy_id: null,
 			feature_set_id: null,
 			account_id: null,
@@ -157,12 +161,17 @@ export function AgentNewPage() {
 	// Solo símbolos cuyas velas se descargan solas: si no, el agente nunca
 	// tendría datos para analizar.
 	const symbols = symbolsQuery.data?.filter((item) => item.supports_auto_fetch);
-	// Cuentas propias y activas (un admin ve todas en `/accounts`).
+	const symbol = symbols?.find((item) => String(item.id) === values.symbol_id);
+	// Cuentas propias y activas (un admin ve todas en `/accounts`). Los
+	// perpetuos solo se operan en paper: con uno elegido, se ocultan las live.
+	const perpetual = isPerpetualSymbol(symbol?.symbol);
 	const accounts = (accountsQuery.data ?? []).filter(
-		(account) => account.user_id === user?.id && account.status === 'active',
+		(account) =>
+			account.user_id === user?.id &&
+			account.status === 'active' &&
+			!(perpetual && account.mode === 'live'),
 	);
 
-	const symbol = symbols?.find((item) => String(item.id) === values.symbol_id);
 	const strategy = strategiesQuery.data?.find(
 		(item) => String(item.id) === values.strategy_id,
 	);

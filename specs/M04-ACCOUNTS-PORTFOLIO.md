@@ -14,7 +14,7 @@
 | Lo usan | [M6](M06-AI-AGENT.md) (capital disponible), [M7](M07-BOTS-SIGNALS.md) (cuenta del bot), [M8](M08-ORDERS-EXECUTION.md) (credenciales del `LiveExecutor`), [M10](M10-BILLING.md) (cuenta administrada) |
 | Prefijo API | `/api/accounts` (la página del front es `/#/portfolio`) |
 | Frontend | `frontend/src/modules/accounts` |
-| Última revisión | 2026-10-08 |
+| Última revisión | 2026-10-10 |
 
 ## Descripción
 
@@ -154,7 +154,8 @@ from app.modules.accounts.rest import accounts_router, balances_router
 - API: `api/accounts.api.ts`; hooks `use-accounts-queries.ts` (`useAccountsQuery`, reutilizado por dashboard, agent, bots y billing) y `use-accounts-mutations.ts`; etiquetas `lib/accounts-labels.ts`; badges `components/account-badges.tsx`.
 
 ### Seed
-- `database/seeds/accounts.py` — cuentas paper de ejemplo (Binance y Bybit) con balances, idempotente por (usuario, nombre). Requiere que exista el usuario demo.
+- `database/seeds/accounts.py` — cuentas paper de ejemplo (Binance y Bybit) con balances en USDT para **cada** usuario demo (Andrés y Dayron), idempotente por (usuario, nombre). El usuario que no exista se omite.
+- `account_balances` es una serie temporal (UNIQUE incluye `ts`): el balance inicial solo se inserta si el activo no tiene ninguna foto. Con `get_or_create` el seed fallaba (`MultipleResultsFound`) en cuanto alguien registraba un segundo balance.
 
 ## Gotchas críticos
 
@@ -177,3 +178,4 @@ from app.modules.accounts.rest import accounts_router, balances_router
 - **2026-03** — Módulo completado (CRUD cuentas, balances, cifrado Fernet, UI `/portfolio` y `/admin/accounts`, 36 tests).
 - **Posterior** — Es la base de las cuentas administradas de [M10](M10-BILLING.md).
 - **2026-10-08** — API headless (/api), páginas migradas a React (frontend/).
+- **2026-10-10** — Seed `accounts`: cuentas para Dayron y fix del re-run con varias fotos de balance.

@@ -22,6 +22,10 @@ BOT_ERROR_MESSAGES: dict[str, str] = {
     "BOT_MODE_ACCOUNT_MISMATCH":   "El modo del agente debe ser el mismo de la cuenta (paper o live).",
     "BOT_STRATEGY_NOT_FOUND":      "No encontramos esa estrategia.",
     "BOT_SYMBOL_NOT_FOUND":        "Ese símbolo no existe o está desactivado.",
+    "BOT_PERPETUAL_LIVE_NOT_SUPPORTED": (
+        "Los perpetuos (oro, petróleo, acciones…) solo se operan en paper por ahora. "
+        "Usa una cuenta paper o elige un par spot."
+    ),
     "BOT_TIMEFRAME_NOT_FOUND":     "No encontramos ese timeframe.",
     "BOT_FEATURE_SET_NOT_FOUND":   "No encontramos ese conjunto de indicadores.",
     "BOT_FEATURE_SET_INCOMPATIBLE": (

@@ -4,6 +4,7 @@ import {
 	IconBriefcase,
 	IconChartCandle,
 	IconChartLine,
+	IconCompass,
 	IconCpu,
 	IconDatabase,
 	IconHome,
@@ -50,6 +51,11 @@ const navSections: NavSectionData[] = [
 	{
 		label: 'Explorar',
 		items: [
+			{
+				title: 'Explorar mercados',
+				icon: IconCompass,
+				url: '/market/explorer',
+			},
 			{ title: 'Estrategias', icon: IconBook, url: '/strategies' },
 			{ title: 'Indicadores', icon: IconChartLine, url: '/features' },
 			{ title: 'Símbolos', icon: IconList, url: '/market/symbols' },

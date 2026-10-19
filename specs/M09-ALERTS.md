@@ -14,7 +14,7 @@
 | Lo usan | Es un consumidor: lo invocan [M7](M07-BOTS-SIGNALS.md) y [M8](M08-ORDERS-EXECUTION.md) |
 | Prefijo API | `/api/alert-rules`, `/api/alert-events`, `/api/alerts` |
 | Frontend | `frontend/src/modules/alerts` |
-| Última revisión | 2026-10-08 |
+| Última revisión | 2026-10-10 |
 
 ## Descripción
 
@@ -213,3 +213,4 @@ DESKTOP_NOTIFICATIONS_ENABLED=false
 - **2026-03** — Módulo completado: 4 canales, reglas y eventos, hooks en M7/M8, UI `/alerts`, `/admin/alerts`, `/admin/telegram`, plantilla `ALERT_TEMPLATE`.
 - **Dependencias:** `httpx` 0.28.1 ya instalado; `plyer` opcional.
 - **2026-10-08** — API headless (/api), páginas migradas a React (frontend/).
+- **2026-10-10** — Seed `alerts`: tres reglas demo (señal y drawdown del 5 % del agente de oro, error del agente de BTC), solo canal de escritorio, idempotente por (user_id, name).

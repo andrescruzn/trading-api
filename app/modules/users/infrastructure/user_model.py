@@ -18,6 +18,7 @@ from sqlalchemy import (
     Column,
     ForeignKey,
     Index,
+    Integer,
     String,
     UniqueConstraint,
     text,
@@ -90,6 +91,9 @@ class UserModel(Base):
     otp_code = Column(String(255), nullable=True)
     otp_created_at = Column(TIMESTAMP(fsp=6), nullable=True)
     otp_expires_at = Column(TIMESTAMP(fsp=6), nullable=True)
+    # Intentos fallidos del código vigente: al llegar a OTP_MAX_FAILED_ATTEMPTS
+    # se invalida (frena la fuerza bruta aunque haya varios workers).
+    otp_failed_attempts = Column(Integer, nullable=False, server_default=text("0"))
 
     # ------------------------------------------------------------------
     # Auditoría

@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.common.config import settings
@@ -81,7 +81,7 @@ def _is_investor(identity: dict) -> bool:
 @router.get("/billing-periods", status_code=200)
 def list_billing_periods(
     managed_account_id: int,
-    limit: int = 50,
+    limit: int = Query(default=50, ge=1, le=500),
     identity: dict = Depends(token_required_actual),
     factory: BillingServiceFactory = Depends(get_factory),
 ):
@@ -162,7 +162,7 @@ def close_billing_period(
 @router.get("/fee-transactions", status_code=200)
 def list_fee_transactions(
     managed_account_id: int,
-    limit: int = 50,
+    limit: int = Query(default=50, ge=1, le=500),
     identity: dict = Depends(token_required_actual),
     factory: BillingServiceFactory = Depends(get_factory),
 ):

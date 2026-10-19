@@ -43,6 +43,7 @@ class User:
         otp_code: Optional[str] = None,
         otp_created_at: Optional[datetime] = None,
         otp_expires_at: Optional[datetime] = None,
+        otp_failed_attempts: int = 0,
         created_at: Optional[datetime] = None,
         updated_at: Optional[datetime] = None,
     ):
@@ -71,6 +72,7 @@ class User:
         self.otp_code = otp_code
         self.otp_created_at = otp_created_at
         self.otp_expires_at = otp_expires_at
+        self.otp_failed_attempts = otp_failed_attempts
 
         # --------------------------------------------------------------
         # Auditoría

@@ -21,6 +21,7 @@ class CreateBotRequest(BaseModel):
     mode:           str            = Field(..., pattern="^(paper|live)$")
     risk_params:    dict[str, Any] = Field(
         ...,
+        max_length=20,
         description=(
             "Parámetros de riesgo del bot. "
             "Campo obligatorio: risk_pct (fracción > 0 y <= 0.01, regla del 1 %). "
@@ -32,4 +33,4 @@ class CreateBotRequest(BaseModel):
 class UpdateBotRequest(BaseModel):
     name:        str | None            = Field(default=None, min_length=1, max_length=80)
     mode:        str | None            = Field(default=None, pattern="^(paper|live)$")
-    risk_params: dict[str, Any] | None = Field(default=None)
+    risk_params: dict[str, Any] | None = Field(default=None, max_length=20)

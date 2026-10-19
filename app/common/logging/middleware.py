@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import re
 import time
 from typing import Callable
 
@@ -31,6 +32,9 @@ from .logger import (
 
 
 logger = get_logger(__name__)
+
+# X-Request-ID aceptado del cliente: corto y sin saltos de línea ni espacios
+_SAFE_REQUEST_ID = re.compile(r"[A-Za-z0-9._-]{1,64}")
 
 
 class LoggingMiddleware(BaseHTTPMiddleware):
@@ -50,7 +54,8 @@ class LoggingMiddleware(BaseHTTPMiddleware):
         # ------------------------------------------------------------------
         # 1) Generar o usar request_id existente
         # ------------------------------------------------------------------
-        request_id = request.headers.get("X-Request-ID") or generate_request_id()
+        incoming = request.headers.get("X-Request-ID", "")
+        request_id = incoming if _SAFE_REQUEST_ID.fullmatch(incoming) else generate_request_id()
         set_request_id(request_id)
 
         # ------------------------------------------------------------------

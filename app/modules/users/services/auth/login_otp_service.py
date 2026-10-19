@@ -126,6 +126,7 @@ class LoginOtpService:
         user.otp_code = hash_otp(otp_plain)
         user.otp_created_at = now
         user.otp_expires_at = expires_at
+        user.otp_failed_attempts = 0
 
         self._repo.update(user)
         self._repo.commit()

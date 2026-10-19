@@ -16,7 +16,7 @@ from pydantic import BaseModel, Field
 class CreateStrategyRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=120)
     version: str = Field(default="1.0.0", max_length=32)
-    description: str | None = Field(default=None)
+    description: str | None = Field(default=None, max_length=2000)
     parameters: dict[str, Any] = Field(
         ...,
         description=(
@@ -31,5 +31,5 @@ class CreateStrategyRequest(BaseModel):
 class UpdateStrategyRequest(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=120)
     version: str | None = Field(default=None, max_length=32)
-    description: str | None = Field(default=None)
+    description: str | None = Field(default=None, max_length=2000)
     parameters: dict[str, Any] | None = Field(default=None)

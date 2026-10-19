@@ -84,6 +84,7 @@ class SqlAlchemyUserRepository(SqlAlchemyRepository, UserRepository):
             otp_code=model.otp_code,
             otp_created_at=self._as_utc_aware(model.otp_created_at),
             otp_expires_at=self._as_utc_aware(model.otp_expires_at),
+            otp_failed_attempts=int(model.otp_failed_attempts or 0),
             created_at=self._as_utc_aware(model.created_at),
             updated_at=self._as_utc_aware(model.updated_at),
         )
@@ -111,6 +112,7 @@ class SqlAlchemyUserRepository(SqlAlchemyRepository, UserRepository):
         model.otp_code = user.otp_code
         model.otp_created_at = user.otp_created_at
         model.otp_expires_at = user.otp_expires_at
+        model.otp_failed_attempts = user.otp_failed_attempts
 
         return model
 

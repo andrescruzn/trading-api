@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any, Dict
 
 from fastapi import APIRouter, Depends, status
@@ -27,6 +28,8 @@ from app.common.config import settings
 from app.common.http import build_success_response
 from app.extensions.db import get_db
 
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/health", tags=["Health"])
 
@@ -46,14 +49,12 @@ def health_check():
     Retorna:
     - status: "ok"
     - version: versión de la API
-    - environment: ambiente actual
     - timestamp: fecha/hora UTC
     """
     return build_success_response(
         data={
             "status": "ok",
             "version": settings.API_VERSION,
-            "environment": settings.APP_ENV,
             "timestamp": utc_now().isoformat(),
         }
     )
@@ -114,10 +115,11 @@ def readiness_check(db: Session = Depends(get_db)):
             "type": "mysql",
         }
     except Exception as e:
+        # El detalle va al log, no a la respuesta (es pública)
+        logger.error("Health DB check failed: %s", type(e).__name__)
         checks["database"] = {
             "status": "error",
             "type": "mysql",
-            "error": str(e)[:100],  # Truncar por seguridad
         }
         overall_status = "degraded"
 

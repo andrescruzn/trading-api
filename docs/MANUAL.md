@@ -334,10 +334,10 @@ Ahora conectemos todo en una secuencia lógica:
 Cómo es hoy en la app (octubre 2026):
   - Los pasos 4 y 5 dependen del modo del agente (ver 3.6): en Manual tú creas la orden; en
     Con aprobación la apruebas tú (en la app o en Telegram); en Automático sale sola.
-  - Cuando la posición la abre una señal aprobada, el stop loss y el take profit no se dejan
-    como órdenes en el exchange: el sistema revisa el precio en cada ciclo (cada minuto por
-    defecto) y cierra la posición cuando la vela toca uno de los dos niveles. Las órdenes que
-    creas a mano no llevan esta protección.
+  - Cuando la posición la abre una señal aprobada, queda protegida. En live el stop loss se deja
+    como orden en el exchange y el take profit lo revisa el sistema cada minuto; en paper el
+    sistema revisa los dos cada minuto (ver 3.6). Las órdenes que creas a mano no llevan esta
+    protección.
   - El "portfolio snapshot" del paso 6 todavía no se guarda.
 
 ---
@@ -726,8 +726,9 @@ Paper mode vs Live mode:
 
   Qué pasa si el exchange no responde: la orden ya quedó guardada antes de enviarla. Si el
   exchange la rechaza, queda como "rechazada" en el historial. Si no llega respuesta (por
-  ejemplo, se cae la red), la orden queda "enviada" y la app te pide revisarla en el exchange
-  antes de reintentar, para no comprar dos veces.
+  ejemplo, se cae la red), la orden queda "enviada" y la app te pide no reintentarla, para no
+  comprar dos veces. En live, el sistema la busca solo en el exchange durante los minutos
+  siguientes y pone su estado al día (ver "La app se sincroniza con el exchange" en 3.6).
 
 Regla de oro: siempre correr al menos 3 meses en paper mode antes de pasar a live.
 Esto permite acumular 50-100+ operaciones y calcular métricas reales de la estrategia.
@@ -770,7 +771,8 @@ Cómo aprobar una señal
      tarjeta "Señales por aprobar" del inicio y en la pestaña Señales del agente (columna
      Ejecución: "Por aprobar"). Si conectaste Telegram, también te llega un mensaje.
   2. Abre la señal: ves entrada, stop loss, take profit, riesgo/beneficio y cuánto falta para que
-     venza ("Vence en 45 min"). Por defecto tienes 60 minutos.
+     venza ("Vence en 45 min"). Por defecto tienes 60 minutos; puedes cambiarlo en el campo
+     "Minutos para aprobar" (ver abajo).
   3. Pulsa Aprobar o Descartar (los mismos botones en la app y en Telegram). En una cuenta live
      la app te pide confirmar otra vez.
   4. Si nadie decide a tiempo, la señal queda "Vencida" y no se ejecuta nunca tarde.
@@ -801,6 +803,15 @@ Qué revisa el sistema justo al aprobar (ejemplo con números)
   Tampoco se ejecuta si el precio ya está por debajo del stop loss o por encima del take profit,
   ni si el agente ya tiene una posición abierta (no se suman compras sobre compras).
 
+Cuánto tiempo tienes para aprobar ("Minutos para aprobar")
+  1. Abre el agente y ve a la pestaña Configuración.
+  2. Con el modo Con aprobación elegido, aparece el campo "Minutos para aprobar".
+  3. Escribe un número entero entre 1 y 1.440 (24 horas) y pulsa Guardar.
+  4. Si lo dejas vacío y guardas, el agente vuelve a usar el valor por defecto del servidor
+     (60 minutos si el administrador no lo cambió).
+  El tiempo cuenta desde que se genera la señal. Si nadie la aprueba ni la descarta antes, la
+  señal vence y no se ejecuta.
+
 Conectar Telegram (para aprobar desde el celular)
   1. En el menú de tu usuario (al pie de la barra lateral), elige "Conectar Telegram".
   2. Pulsa "Generar enlace" y luego "Abrir Telegram". El enlace sirve una sola vez y vence en
@@ -817,7 +828,8 @@ Conectar Telegram (para aprobar desde el celular)
 
 Las protecciones (se aplican a toda orden: manual, aprobada o automática)
   - Interruptor general: el administrador puede detener el envío de todas las órdenes de golpe.
-    Mientras esté apagado no sale ninguna, ni siquiera los cierres por stop loss.
+    Mientras esté apagado no sale ninguna, ni siquiera los cierres por stop loss o take profit
+    (en live, el stop loss que ya está puesto en el exchange sí se ejecuta).
   - Live apagado por defecto: hasta que el administrador lo active, solo se ejecutan órdenes
     paper.
   - Máximo por orden: una compra no puede valer más de un tope (por defecto $10.000; cada agente
@@ -827,19 +839,76 @@ Las protecciones (se aplican a toda orden: manual, aprobada o automática)
     pasa a estado Error y deja de abrir operaciones hasta que lo revises.
   - Las ventas para cerrar o reducir una posición no se frenan por el máximo por orden ni por
     la pérdida máxima: reducir riesgo siempre se puede.
-  - Stop loss y take profit automáticos: cuando la posición la abre una señal, el sistema la
-    cierra a mercado al tocar uno de los dos niveles, aunque el agente esté pausado o detenido.
-    Si una misma vela toca los dos, se asume lo peor (el stop loss). En Posiciones verás
-    "Protección automática: SL … · TP …".
+  - Stop loss y take profit automáticos: cuando la posición la abre una señal, se cierra sola
+    al tocar uno de los dos niveles, aunque el agente esté pausado o detenido. En Posiciones
+    verás "Protección automática: SL … · TP …". Cómo funciona depende del modo:
+      · Live: el stop loss queda puesto en el exchange como una orden de venta que se activa
+        sola al llegar al nivel. Protege aunque la app o el servidor estén apagados. En
+        Posiciones verás además "El stop loss está como orden en el exchange.". El take profit
+        no queda en el exchange: el sistema revisa el precio cada minuto y vende cuando la vela
+        lo toca.
+      · Paper: el sistema revisa los dos niveles cada minuto. Si una misma vela toca los dos, se
+        asume lo peor (el stop loss).
+    Si el exchange no admite el stop loss como orden, la posición sigue protegida igual que en
+    paper: el sistema revisa el stop loss cada minuto.
+  - Para no vender dos veces: antes de cualquier otra venta de esa posición (el take profit, una
+    venta manual o una señal de venta) el sistema retira el stop loss del exchange. Si no puede
+    retirarlo (por ejemplo, porque ya se ejecutó), no vende y te dice: "El stop loss de esta
+    posición está en el exchange y no se pudo cancelar (puede que ya se haya ejecutado). Espera
+    unos minutos a que se sincronice."
   - Vencimiento de las señales: una señal por aprobar que nadie decide a tiempo vence y no se
     ejecuta.
   - Una señal = una orden: la misma señal no se puede ejecutar dos veces.
   - Regla del 1 %: la IA recibe el riesgo del agente, nunca más del 1 % del capital.
 
+  Ejemplo con números (live): compras 0,02 BTC a $60.000 con stop loss en $58.800 y take profit
+  en $62.400 (riesgo $24, beneficio $48: 2:1).
+    · Si el precio cae a $58.800, el exchange vende los 0,02 BTC él solo, aunque el servidor de
+      la app esté apagado. Cuando la app vuelve, registra la venta y la posición queda cerrada.
+    · Si el precio sube a $62.400, en el siguiente minuto la app retira el stop loss del
+      exchange y vende a mercado.
+
+  La app se sincroniza con el exchange (solo live)
+  Cada minuto la app consulta en el exchange las órdenes live que siguen abiertas y pone al día
+  su estado, sin que tengas que hacer nada:
+  - Órdenes que se ejecutaron después: por ejemplo, una orden límite que quedó esperando y se
+    llenó una hora más tarde, o el stop loss que disparó el exchange. La app registra la
+    ejecución y actualiza la posición.
+  - Ejecuciones parciales: si una orden se llena por partes, la app suma solo lo nuevo, sin
+    contar dos veces lo que ya tenía. Si el resto se cancela o vence en el exchange, la orden
+    queda cancelada con lo que sí se ejecutó.
+  - Órdenes que nunca llegaron: si al enviar una orden no hubo respuesta y, 10 minutos después,
+    el exchange no la conoce, la app la marca rechazada con el motivo "La orden no llegó al
+    exchange." (si el agente tiene una regla de alerta de tipo error, te avisa).
+  Revisa las órdenes de la última semana. Si falla la red, lo intenta otra vez al minuto
+  siguiente.
+
+  Probar en una testnet antes de usar dinero real
+  Una testnet es una copia del exchange con dinero de juguete: el exchange trata las órdenes
+  como reales, pero no se mueve dinero de verdad. Sirve para comprobar que todo el circuito live
+  funciona (compra, stop loss en el exchange, take profit, sincronización) antes de arriesgar
+  capital.
+  1. Crea una cuenta en la testnet del exchange (por ejemplo, la testnet de spot de Binance) y
+     genera allí una API key y su secret. Las claves de la testnet no sirven en el exchange
+     real, ni las reales en la testnet.
+  2. El administrador pone LIVE_USE_SANDBOX=true y activa live (TRADING_LIVE_ENABLED=true) en
+     el servidor. Ojo: mientras LIVE_USE_SANDBOX esté en true, todas las cuentas live van a la
+     testnet.
+  3. En Mis cuentas, crea una cuenta live del mismo exchange con las claves de la testnet.
+  4. Crea un agente con esa cuenta y opera como siempre. Revisa en la testnet que aparezca el
+     stop loss como orden y que la app registre lo que pase.
+  5. Para pasar a dinero real, el administrador vuelve a poner LIVE_USE_SANDBOX=false y tú usas
+     una cuenta con las claves reales.
+  No todos los exchanges tienen testnet: si el que eliges no la tiene, la orden queda
+  rechazada.
+
   Límites que hay que conocer:
-  - El stop loss y el take profit se revisan una vez por ciclo (cada minuto por defecto), no son
-    órdenes puestas en el exchange. En un movimiento brusco el cierre puede quedar más lejos del
-    nivel, y si el servidor está apagado nadie vigila la posición.
+  - El take profit (y, en paper, también el stop loss) se revisa una vez por minuto: no es una
+    orden puesta en el exchange. En un movimiento brusco el cierre puede quedar más lejos del
+    nivel, y si el servidor está apagado nadie lo vigila. En live, el stop loss sí sigue en el
+    exchange.
+  - Si en live compras a mano más cantidad sobre una posición protegida, el stop loss del
+    exchange cubre solo la cantidad que había cuando se puso.
   - En paper, el cierre por stop loss o take profit se simula al precio de cierre de la última
     vela, no al precio exacto del nivel.
 

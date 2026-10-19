@@ -212,7 +212,7 @@ from app.modules.market.rest import exchanges_router, symbols_router, timeframes
 | `scheduler_runner.py` | Hilo `trading-scheduler` (`daemon=True`) con `threading.Event` de parada; `start()` / `stop()` se enganchan al *lifespan* de FastAPI en `app_factory.py`. En cada vuelta: `lock.acquire()` → (si es líder) `refresh_explorer()` cada 24 h → `run_cycle()` → `run_execution_cycle()`; al parar, `lock.release()` |
 | `scheduler_service.py` | `run_cycle()`: un ciclo completo de actualización · `refresh_explorer()`: velas 1d del explorador |
 | `scheduler_lock.py` | `SchedulerLock`: `GET_LOCK('trading-app-scheduler', 0)` en una conexión propia que se mantiene abierta mientras el proceso sea líder; cada ciclo confirma `IS_USED_LOCK(...) = CONNECTION_ID()` (además mantiene viva la conexión); si falla la verificación, se omite el ciclo |
-| `execution_cycle.py` | `run_execution_cycle()`: señales automáticas por vela cerrada, caducidad de pendientes, protección SL/TP y polling de Telegram. Detalle en [M7](M07-BOTS-SIGNALS.md#ciclo-de-ejecución-del-scheduler-appmodulesschedulerexecution_cyclepy) |
+| `execution_cycle.py` | `run_execution_cycle()`, en este orden: señales automáticas por vela cerrada, caducidad de pendientes, reconciliación de órdenes live con el exchange, protección SL/TP y polling de Telegram. Detalle en [M7](M07-BOTS-SIGNALS.md#ciclo-de-ejecución-del-scheduler-appmodulesschedulerexecution_cyclepy) |
 
 Ciclo (`run_cycle`):
 1. Lee bots con `status IN ('running','paused')`; si no hay ninguno, omite el ciclo. Por eso **iniciar un agente es lo que pone a andar la descarga de datos** de su símbolo.
@@ -230,7 +230,7 @@ SCHEDULER_RETENTION_CANDLES=500     # velas a conservar por par (default: 500)
 ```
 Explorador: `scheduler_runner` llama a `refresh_explorer()` al arrancar y luego cada 24 h (`time.monotonic`), aparte de `run_cycle()` porque necesita datos de todos los símbolos aunque no haya agentes. Sin `force` solo descarga los símbolos cuya última vela 1d tiene un día o más.
 
-Desde 2026-10-19, después de `run_cycle()` el scheduler corre `run_execution_cycle()`: **genera señales** para los agentes en modo Con aprobación / Automático, ejecuta las automáticas, caduca las pendientes y cierra posiciones por stop loss / take profit ([M7](M07-BOTS-SIGNALS.md), [M8](M08-ORDERS-EXECUTION.md)). Los agentes en modo Manual siguen como antes: el scheduler solo les mantiene velas y features.
+Desde 2026-10-19, después de `run_cycle()` el scheduler corre `run_execution_cycle()`: **genera señales** para los agentes en modo Con aprobación / Automático, ejecuta las automáticas, caduca las pendientes, sincroniza con el exchange las órdenes live abiertas (reconciliación) y cierra posiciones por stop loss / take profit ([M7](M07-BOTS-SIGNALS.md), [M8](M08-ORDERS-EXECUTION.md)). Los agentes en modo Manual siguen como antes: el scheduler solo les mantiene velas y features.
 
 ## Gotchas críticos
 
@@ -260,7 +260,7 @@ Desde 2026-10-19, después de `run_cycle()` el scheduler corre `run_execution_cy
 
 - Datos de exchange incorrectos o incompletos alimentan a [M3](M03-FEATURE-ENGINEERING.md), [M6](M06-AI-AGENT.md) y [M8](M08-ORDERS-EXECUTION.md) (el `PaperExecutor` usa la última vela como precio de ejecución).
 - Límites de peticiones de los exchanges (ccxt) si hay muchos bots activos en pares distintos.
-- Scheduler dentro del proceso web: trabajo bloqueante en el mismo proceso (la duplicación con varios workers se resolvió con el lock). Si el líder cae, otro worker lo releva en su siguiente ciclo; mientras tanto no hay protección SL/TP ([M8](M08-ORDERS-EXECUTION.md)).
+- Scheduler dentro del proceso web: trabajo bloqueante en el mismo proceso (la duplicación con varios workers se resolvió con el lock). Si el líder cae, otro worker lo releva en su siguiente ciclo; mientras tanto no hay reconciliación ni protección por ciclo (en live el SL nativo sigue en el exchange, el TP no) ([M8](M08-ORDERS-EXECUTION.md)).
 
 ## Historial
 
@@ -272,3 +272,4 @@ Desde 2026-10-19, después de `run_cycle()` el scheduler corre `run_execution_cy
 - **2026-10-10** — Perpetuos TradFi (oro, plata, platino, paladio, petróleo, gas, cobre, SPY, QQQ, NVDA, TSLA, AAPL) en el seed; clases `commodity` e `index` (migración m02, que además desactiva TradingView y MATIC); `MATIC`→`POL` + TRX, NEAR, SUI, PAXG; explorador de tendencia (`/api/explorer`, página Explorar mercados, refresco diario en el scheduler); perpetuos bloqueados en live; mapa ccxt único (sin copia en `live_executor.py`).
 - **2026-10-19** — Scheduler con elección de líder por `GET_LOCK` de MySQL (`scheduler_lock.py`): corre una sola vez aunque haya varios workers. Tras cada ciclo de velas corre el ciclo de ejecución (`execution_cycle.py`: señales automáticas, caducidad, SL/TP, Telegram).
 - **2026-10-08** — Scheduler: recalcula features atrasadas aunque no haya velas nuevas. `CCXT_EXCHANGE_MAP` movido al dominio (`ccxt_exchanges.py`) y `supports_auto_fetch` en la respuesta de símbolos. Páginas de usuario movidas a la sección "Explorar" del menú.
+- **2026-10-19** — El ciclo de ejecución suma la **reconciliación de órdenes** ([M8](M08-ORDERS-EXECUTION.md)): señales automáticas → caducar → reconciliar → proteger posiciones → Telegram.

@@ -13,10 +13,10 @@ Una explicación simple de los 10 módulos del sistema, sin tecnicismos. Cada m�
 | [M5 — Strategies](M05-STRATEGIES.md) | ✅ Completo | 86 % | 55 % | Reglas de entrada/salida, validación tipo/régimen, datasets |
 | [M6 — AI Agent / Models](M06-AI-AGENT.md) | ✅ Completo | 100 % | 81 % | Prompt Maestro con pool de LLMs rotativo (Groq + Gemini + Ollama Cloud, con failover), salida del LLM validada, rate limit por usuario, modelos ML y model runs |
 | [M7 — Bots & Signals](M07-BOTS-SIGNALS.md) | ✅ Completo | 100 % | 81 % | **Agentes** (bots en la UI): punto de entrada, asistente, señales BUY/SELL/HOLD con entry/SL/TP y **modo de ejecución** Manual / Con aprobación / Automático (señales automáticas por vela cerrada) |
-| [M8 — Orders & Execution](M08-ORDERS-EXECUTION.md) | ✅ Completo | 100 % | 60 % | Órdenes paper/live (ccxt) con propiedad, RiskGate e idempotencia; señal → orden (aprobada o automática); SL/TP por ciclo del scheduler; fills, posiciones |
+| [M8 — Orders & Execution](M08-ORDERS-EXECUTION.md) | ✅ Completo | 100 % | 64 % | Órdenes paper/live (ccxt) con propiedad, RiskGate e idempotencia; señal → orden (aprobada o automática); SL nativo en el exchange en live + TP por ciclo del scheduler; reconciliación con el exchange; fills, posiciones |
 | [M9 — Alerts](M09-ALERTS.md) | ✅ Completo | 100 % | 58 % | Reglas de alerta, notificaciones email/Telegram/webhook (con guarda SSRF)/desktop; bot de Telegram por usuario para aprobar señales |
 | [M10 — Billing & Managed Accounts](M10-BILLING.md) | ✅ Completo | 100 % | 75 % | Inversores, cuentas administradas, performance fee con HWM |
-| **Promedio** | | **97 %** | **72 %** | |
+| **Promedio** | | **97 %** | **73 %** | |
 
 - **Alcance** = entregables del plan original hechos / planificados. Las dos filas por debajo del 100 % (M2 y M5) son por los tests de services que el plan original listaba y nunca se escribieron.
 - **Madurez** = estimación de qué tan lista para producción está cada pieza (rúbrica abajo). Es una opinión fundamentada en el repo, no una medición.
@@ -59,7 +59,8 @@ Más detalle:
                     ↓
          [Módulo 8: Orders & Execution]
          RiskGate → orden al exchange (paper o live)
-         Stop Loss / Take Profit vigilados por el scheduler
+         Stop Loss nativo en el exchange (live) / Take Profit por el scheduler
+         Reconciliación de órdenes con el exchange
                     ↓
          [Módulo 9: Alerts]
          Notificaciones por email, Telegram o webhook
@@ -79,9 +80,10 @@ El lazo está cerrado para los agentes que lo piden; **Manual sigue siendo el mo
   - **Con aprobación / Automático:** el scheduler genera **una señal por vela cerrada** para cada agente `running` (timeframe ≥ 15m, datos al día, tope diario por usuario). Una BUY/SELL aprobada por la IA queda **pendiente** hasta su vencimiento (60 min por defecto).
 - **Aprobación:** en Con aprobación la persona aprueba o descarta desde la app (detalle de la señal o tarjeta del dashboard) o desde **Telegram** con botones ([M9](M09-ALERTS.md)). Solo una decisión gana (UPDATE condicional). Al aprobar se revalida al precio actual (R/R ≥ 2:1) y se recalcula la cantidad para mantener el 1 %.
 - **Órdenes ([M8](M08-ORDERS-EXECUTION.md)):** en Automático la orden sale sola en el mismo ciclo; en Manual se crea con `POST /api/orders`. Toda orden pasa por el **RiskGate** (kill switch, live apagado por defecto, valor máximo por compra, drawdown máximo) y queda guardada antes de llamar al exchange.
-- **Stop Loss / Take Profit:** la posición abierta desde una señal guarda su SL/TP y el scheduler la cierra a mercado cuando una vela los toca (por ciclo, no orden nativa en el exchange). Las posiciones de órdenes manuales no tienen protección automática.
+- **Stop Loss / Take Profit:** la posición abierta desde una señal guarda su SL/TP. En **live** (con `ORDER_NATIVE_STOP_LOSS=true`, por defecto) el SL queda como **orden stop nativa en el exchange** (protege aunque la app esté caída) y el scheduler solo vigila el TP; antes de cualquier otra venta se cancela el SL nativo. En **paper**, o si el exchange no soporta el stop nativo, el scheduler cierra a mercado cuando una vela toca cualquiera de los dos. Sin OCO. Las posiciones de órdenes manuales no tienen protección automática.
+- **Reconciliación ([M8](M08-ORDERS-EXECUTION.md)):** en cada ciclo el scheduler sincroniza con el exchange las órdenes live `sent`/`partially_filled` de los últimos 7 días: registra lo ejecutado después (límites, SL nativo disparado, parciales), adopta el estado del exchange y marca rechazada a los 10 min una orden "sin respuesta" que el exchange no conoce. Orden del ciclo: señales automáticas → caducar → reconciliar → proteger → Telegram.
 - **Alertas ([M9](M09-ALERTS.md)):** se disparan solas con señales y órdenes (también rechazadas); las de precio solo con evaluación manual; `pnl` y `drawdown` no se evalúan.
-- **Pendiente:** reconciliación con el exchange de las órdenes inciertas o parciales, cancelación de órdenes y SL/TP nativos.
+- **Pendiente:** TP nativo / OCO en el exchange, cancelar órdenes desde la API/UI y probar todo el circuito live en una testnet (`LIVE_USE_SANDBOX`); lo nuevo solo se verificó con pruebas de humo con mocks.
 
 ---
 
@@ -114,10 +116,10 @@ Módulo 10 (Billing) ← necesita historial de orders + fills de M8
 
 | # | Prioridad | Qué | Módulos |
 |---|---|---|---|
-| 1 | ~~Alta~~ → Media | ~~Cerrar el lazo de automatización~~ **En gran parte resuelto (2026-10-19):** señales automáticas por vela cerrada, aprobación en app/Telegram, ejecución automática y SL/TP por ciclo del scheduler. **Queda:** SL/TP nativos en el exchange (stop/OCO) y job de reconciliación de órdenes | [M7](M07-BOTS-SIGNALS.md), [M8](M08-ORDERS-EXECUTION.md), [M2](M02-MARKET-DATA.md) (scheduler) |
-| 2 | **Alta** | **Tests de órdenes y ejecución** (lo más urgente: es donde se mueve el dinero y todo lo nuevo está sin cubrir): `CreateOrderService`, `RiskGateService`, `ExecuteSignalService`, `ProtectPositionsService`, `execution_cycle`, `execution_mode_rules`. Además, tests donde no hay ninguno: market, strategies, alerts | [M8](M08-ORDERS-EXECUTION.md), [M7](M07-BOTS-SIGNALS.md), [M2](M02-MARKET-DATA.md), [M5](M05-STRATEGIES.md), [M9](M09-ALERTS.md) |
+| 1 | ~~Alta~~ → Baja | ~~Cerrar el lazo de automatización~~ **Resuelto en lo esencial (2026-10-19):** señales automáticas por vela cerrada, aprobación en app/Telegram, ejecución automática, SL nativo en el exchange en live + TP por ciclo, y reconciliación de órdenes con el exchange. **Queda:** TP nativo / OCO | [M7](M07-BOTS-SIGNALS.md), [M8](M08-ORDERS-EXECUTION.md), [M2](M02-MARKET-DATA.md) (scheduler) |
+| 2 | **Alta** | **Tests de órdenes y ejecución** (lo más urgente: es donde se mueve el dinero y todo lo nuevo está sin cubrir): `CreateOrderService`, `RiskGateService`, `ExecuteSignalService`, `ProtectPositionsService`, `ReconcileOrdersService`, `NativeStopService`, `execution_cycle`, `execution_mode_rules`. Además, tests donde no hay ninguno: market, strategies, alerts | [M8](M08-ORDERS-EXECUTION.md), [M7](M07-BOTS-SIGNALS.md), [M2](M02-MARKET-DATA.md), [M5](M05-STRATEGIES.md), [M9](M09-ALERTS.md) |
 | 3 | ~~Alta~~ ✅ | ~~Seguridad: validar URL del webhook (SSRF) y ampliar el rate limit~~ **Resuelto (2026-10-19):** guarda SSRF del webhook y rate limit por usuario en las rutas de la IA (además: propiedad en órdenes y en `/agent/analyze`, CSRF por Origin, auditoría sin secretos) | [M9](M09-ALERTS.md), [M1](M01-AUTH.md), [M6](M06-AI-AGENT.md) |
-| 4 | Alta (parcial) | Salvaguardas para `live`. **Hecho:** tamaño máximo (`ORDER_MAX_NOTIONAL` / `max_notional`), kill switch, live apagado por defecto, drawdown máximo, idempotencia (`client_order_id`). **Pendiente:** cancelación de órdenes y reconciliación con el exchange | [M8](M08-ORDERS-EXECUTION.md) |
+| 4 | Alta (parcial) | Salvaguardas para `live`. **Hecho:** tamaño máximo (`ORDER_MAX_NOTIONAL` / `max_notional`), kill switch, live apagado por defecto, drawdown máximo, idempotencia (`client_order_id`), reconciliación con el exchange y SL nativo (2026-10-19). **Pendiente:** cancelar órdenes desde la API/UI y una prueba completa en testnet (`LIVE_USE_SANDBOX=true` con claves de testnet) antes del primer peso real | [M8](M08-ORDERS-EXECUTION.md) |
 | 5 | Media (parcial) | Scheduler: **lock hecho** (un solo líder con `GET_LOCK`); sigue recomendado sacarlo a un proceso aparte. Pendiente el relleno de huecos de velas | [M2](M02-MARKET-DATA.md) |
 | 6 | Media | Sincronizar balances con el exchange y derivar `closing_equity` de ellos; registrar cobros del fee | [M4](M04-ACCOUNTS-PORTFOLIO.md), [M10](M10-BILLING.md) |
 | 7 | Media | Backtesting para validar el edge antes de pasar a live | [M5](M05-STRATEGIES.md) |
@@ -159,7 +161,8 @@ Comprar/Vender vive en el [Módulo 8 — Orders & Execution](M08-ORDERS-EXECUTIO
 Sin rutas nuevas desde 2026-10-19, pero sí piezas nuevas dentro de páginas existentes:
 - `/dashboard`: tarjeta **Señales por aprobar** (aprobar/descartar; solo aparece si hay pendientes) — [M7](M07-BOTS-SIGNALS.md).
 - `/agents/new` (paso 4) y `/agents/:id` (pestaña Configuración): selector **Cuando la IA aprueba una operación** (Manual / Con aprobación / Automático); detalle de señal con Aprobar / Descartar y columna **Ejecución** en Señales — [M7](M07-BOTS-SIGNALS.md).
-- `/orders` → Posiciones: "Protección automática: SL · TP" — [M8](M08-ORDERS-EXECUTION.md).
+- `/orders` → Posiciones: "Protección automática: SL · TP" y, en live, "El stop loss está como orden en el exchange." — [M8](M08-ORDERS-EXECUTION.md).
+- `/agents/:id` → Configuración, en modo Con aprobación: campo **Minutos para aprobar** — [M7](M07-BOTS-SIGNALS.md).
 - Menú de usuario (todas las páginas): **Conectar Telegram** (diálogo) — [M1](M01-AUTH.md) / [M9](M09-ALERTS.md).
 
 En la UI los bots se llaman **agentes** y son el punto de entrada: el dashboard los muestra primero y el menú se organiza en **Operar** (Mis agentes, Órdenes, Alertas, Mis cuentas) y **Explorar** (Estrategias, Indicadores, Símbolos, Velas). En código, tablas y API siguen siendo `bot`.

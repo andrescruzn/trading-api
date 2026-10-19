@@ -11,7 +11,7 @@ Una explicación simple de los 10 módulos del sistema, sin tecnicismos. Cada m�
 | [M3 — Feature Engineering](M03-FEATURE-ENGINEERING.md) | ✅ Completo | 100 % | 82 % | RSI, ATR, EMA, MACD, Bollinger Bands, régimen; conjuntos por enfoque (Completo/Tendencia/Rango) |
 | [M4 — Accounts & Portfolio](M04-ACCOUNTS-PORTFOLIO.md) | ✅ Completo | 100 % | 79 % | Cuentas de exchange (credenciales cifradas), balances, equity curve |
 | [M5 — Strategies](M05-STRATEGIES.md) | ✅ Completo | 86 % | 55 % | Reglas de entrada/salida, validación tipo/régimen, datasets |
-| [M6 — AI Agent / Models](M06-AI-AGENT.md) | ✅ Completo | 100 % | 76 % | Prompt Maestro multi-provider LLM, modelos ML y model runs |
+| [M6 — AI Agent / Models](M06-AI-AGENT.md) | ✅ Completo | 100 % | 78 % | Prompt Maestro con pool de LLMs rotativo (Groq + Gemini + Ollama Cloud, con failover), modelos ML y model runs |
 | [M7 — Bots & Signals](M07-BOTS-SIGNALS.md) | ✅ Completo | 100 % | 75 % | **Agentes** (bots en la UI): punto de entrada, asistente de creación, señales BUY/SELL/HOLD con entry/SL/TP |
 | [M8 — Orders & Execution](M08-ORDERS-EXECUTION.md) | ✅ Completo | 100 % | 50 % | Órdenes paper/live (ccxt), fills, posiciones |
 | [M9 — Alerts](M09-ALERTS.md) | ✅ Completo | 100 % | 50 % | Reglas de alerta, notificaciones email/Telegram/webhook/desktop |

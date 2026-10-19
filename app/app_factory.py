@@ -20,7 +20,7 @@ from app.common.audit import AuditMiddleware
 from app.common.audit.audit_repository import AuditRepository
 from app.common.config import settings
 from app.common.errors import register_error_handlers
-from app.common.logging import configure_logging, LoggingMiddleware
+from app.common.logging import configure_logging, get_logger, LoggingMiddleware
 from app.common.security.security_headers import SecurityHeadersMiddleware
 from app.extensions.db.session import engine
 from app.modules.health import health_router
@@ -41,14 +41,25 @@ from app.modules.alerts.rest import alert_rules_router, alert_events_router, ale
 from app.modules.billing.rest import investors_router, managed_accounts_router, billing_periods_router
 from app.modules.users.rest import auth_router
 
+logger = get_logger(__name__)
+
 
 @asynccontextmanager
 async def _lifespan(app: FastAPI):
     """
     Lifespan de FastAPI: arranca el scheduler al iniciar el servidor
-    y lo detiene limpiamente al apagarlo.
+    y lo detiene limpiamente al apagarlo. También informa qué servicios
+    LLM quedaron en el pool (sin abortar: la app funciona sin IA).
     """
+    from app.modules.agent.llm import LLMClientFactory
     from app.modules.scheduler import start as start_scheduler, stop as stop_scheduler
+
+    llm_services = LLMClientFactory.describe(settings)
+    if llm_services:
+        logger.info("[llm] %d servicio(s) listos: %s", len(llm_services), ", ".join(llm_services))
+    else:
+        logger.warning("[llm] ningún servicio LLM configurado (revisa LLM_SERVICES y sus API keys)")
+
     start_scheduler()
     yield
     stop_scheduler()

@@ -147,6 +147,9 @@ class GenerateSignalService:
             position_size=Decimal(str(result.position_size)) if result.position_size is not None else None,
             rr_ratio=Decimal(str(result.rr_ratio)) if result.rr_ratio is not None else None,
             features_hash=features_hash,
+            llm_provider=result.llm_provider,
+            llm_model=result.llm_model,
+            llm_latency_ms=result.llm_latency_ms,
         )
 
         # ------------------------------------------------------------------

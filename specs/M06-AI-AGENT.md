@@ -8,13 +8,13 @@
 |---|---|
 | Estado | ✅ Completo |
 | Avance (alcance original) | 100 % — 13/13 entregables |
-| Madurez (estimada) | 76 % — ver [Avance](#avance) |
+| Madurez (estimada) | 78 % — ver [Avance](#avance) |
 | Tablas | `models`, `model_runs` (R/W); `strategies`, `accounts`, `account_balances`, `candles`, `candle_features`, `symbols`, `timeframes` (R) |
 | Depende de | [M2](M02-MARKET-DATA.md), [M3](M03-FEATURE-ENGINEERING.md), [M4](M04-ACCOUNTS-PORTFOLIO.md), [M5](M05-STRATEGIES.md) |
 | Lo usan | [M7](M07-BOTS-SIGNALS.md) (`GenerateSignalService` instancia el `AnalyzeService`) |
 | Prefijo API | `/api/agent`, `/api/models`, `/api/model-runs` |
 | Frontend | Sin módulo propio desde 2026-10-08: se usa desde el detalle de cada agente ([M7](M07-BOTS-SIGNALS.md), "Analizar ahora") |
-| Última revisión | 2026-10-08 |
+| Última revisión | 2026-10-19 (servicio/modelo/latencia por análisis) |
 
 ## Descripción
 
@@ -27,7 +27,7 @@
 4. Verifica que la ganancia proyectada sea al menos el doble del riesgo (ratio 2:1 configurable) — si no, cancela
 5. Da un veredicto final: **APROBADA** o **RECHAZADA**, con todos los detalles de la operación
 
-**Tecnología:** Soporta múltiples proveedores de LLM: OpenAI, Anthropic (Claude), xAI (Grok), DeepSeek, Gemini y Ollama (local). El proveedor se configura con la variable de entorno `LLM_PROVIDER`.
+**Tecnología:** Usa un **pool de servicios LLM** que se van rotando (hoy Groq, Gemini de Google AI Studio y Nemotron 3 Ultra en Ollama Cloud). Cada análisis lo atiende el servicio al que le toca el turno; si falla, se prueba el siguiente en la misma petición. Los servicios y su orden se configuran con `LLM_SERVICES`.
 
 ## Páginas
 
@@ -44,10 +44,10 @@ Hash routing: la URL real es `/#/<ruta>`.
 Tablas: `models`, `model_runs` (predictions → Module 7, requiere bot_id)
 
 Entregables:
-- ✅ Multi-provider LLM: openai, anthropic, gemini, xai (Grok), deepseek, ollama
-- ✅ LLMClientFactory: crea el cliente correcto según LLM_PROVIDER en settings
-- ✅ OpenAICompatibleClient: cubre openai, xai, deepseek, gemini, ollama (un solo cliente)
-- ✅ AnthropicLLMClient: cliente dedicado para Claude
+- ✅ Pool de servicios LLM (Groq, Gemini, Ollama Cloud) con rotación round-robin y failover — reemplaza el multi-provider de `LLM_PROVIDER` (2026-10-19)
+- ✅ LLMClientFactory: arma el pool según `LLM_SERVICES` (omite servicios sin API key)
+- ✅ Un cliente por servicio con el SDK oficial de cada proveedor: `GroqLLMClient` (`groq`), `GeminiLLMClient` (`google-genai`), `OllamaLLMClient` (`ollama`); con `timeout` y sin reintentos del SDK
+- ✅ RotatingLLMClient: turno compartido por proceso + failover al siguiente servicio
 - ✅ Prompt Maestro con 4 fases determinísticas + LLM para entry/SL/TP
 - ✅ Fórmula de posición en Python: Capital × risk_pct / |entry − SL|
 - ✅ Filtro R/R configurable (AGENT_MIN_RR_RATIO, default 2.0)
@@ -56,6 +56,7 @@ Entregables:
 - ✅ CRUD model_runs (tabla `model_runs`): list, create, finish
 - ✅ `POST /api/agent/analyze` — Prompt Maestro completo
 - ✅ Web UI: análisis desde el detalle de cada agente ("Analizar ahora"); la página `/#/agent` se retiró el 2026-10-08
+- ✅ Cada análisis registra qué servicio y modelo respondieron y cuánto tardó (`LLMCompletion` → `AnalysisResult.llm_*` → columnas `signals.llm_*`) (2026-10-19)
 - ✅ 20 tests unitarios pasando (LLM 100% mockeado, sin llamadas reales)
 
 ## Decisiones de diseño
@@ -64,8 +65,18 @@ Entregables:
 |---|---|---|
 | Prompt Maestro en **4 fases**: régimen → reglas → LLM → R/R; las fases 1, 2 y 4 son **determinísticas** en Python | El LLM no decide si se opera, solo propone niveles; los filtros son reproducibles y auditables | Dejar que el LLM decida todo |
 | El LLM solo propone **entry / SL / TP**; el tamaño de posición lo calcula Python: `Capital × risk_pct / \|entry − SL\|` | Los LLM fallan en aritmética; el riesgo (regla del 1 %) no puede depender de ellos | Pedir el tamaño de posición al LLM |
-| Un único `OpenAICompatibleClient` para openai, xai, deepseek, gemini y ollama; cliente dedicado `AnthropicLLMClient` para Claude | Esos cinco proveedores comparten la API de OpenAI; menos código y se cambia de proveedor con una variable | Un cliente por proveedor |
-| `LLMClientFactory.create(settings)` se llama **por request** | Respeta cambios de configuración en caliente | Cliente singleton al arrancar |
+| **Pool de servicios con rotación round-robin + failover** (`RotatingLLMClient`), con Groq, Gemini y Ollama Cloud | Reparte la carga entre capas gratuitas/baratas y sus rate limits; si un servicio cae o devuelve 429 el análisis no falla | Un solo proveedor con `LLM_PROVIDER` (esquema anterior, retirado el 2026-10-19) |
+| **SDK oficial por proveedor** (`groq`, `google-genai`, `ollama`), un `LLMClient` por servicio, registrado en el catálogo `LLM_SERVICE_CATALOG` (`client_cls`) | Cada SDK usa la API nativa: Gemini recibe el prompt como `system_instruction`, Ollama separa el razonamiento (`message.thinking`) del JSON; sin depender de capas de compatibilidad con OpenAI | Un único `OpenAICompatibleClient` con `base_url` por servicio (se usó al inicio del pool; retirado el 2026-10-19 junto con el paquete `openai`) |
+| Turno de rotación **a nivel de proceso** (contador de módulo con `threading.Lock`) | El cliente se crea por request y lo comparten endpoints sync (threadpool) y scheduler | Turno en la instancia (siempre empezaría por el primero) |
+| Pool por defecto `groq,gemini,ollama`; sin Cerebras ni OpenRouter | Cerebras dejó de tener capa gratuita; la de OpenRouter es muy limitada (~50 peticiones/día sin créditos) y `openrouter/free` cambia de modelo en cada llamada | Mantenerlos en el pool |
+| `GEMINI_MODEL=gemini-3.5-flash-lite` por defecto | Cuota gratuita suficiente (15 RPM, 250K tokens de entrada/min, 500 peticiones/día) y razona mejor que 3.1 Flash-Lite; con Groq alternando cubre ~1000 análisis/día | `gemini-3.6-flash` (poca cuota gratis), `gemini-3-flash-preview` (lo puede retirar Google), Gemma 4 31B (razona peor) |
+| Ollama Cloud con `nemotron-3-ultra`, de último en la rotación | Es el modelo gratuito más capaz de su catálogo (47.7 en el índice de Artificial Analysis frente a 36.0 de Nemotron 3 Super y 33.3 de gpt-oss-120b); va de último porque la capa gratuita es la más limitada (1 petición a la vez, cuota mensual por tiempo de GPU) | `nemotron-3-super` (gasta 4–5× menos cuota pero razona peor), `gpt-oss:120b` |
+| `LLM_TIMEOUT_SECONDS` por defecto 60 (antes 30) | `nemotron-3-ultra` (550B, razona antes de responder) puede pasar de 30 s; con 30 caducaría siempre y gastaría cuota sin respuesta | Timeout por servicio (más configuración) |
+| `LLM_MAX_TOKENS` por defecto 4096 (antes 1024) | En Gemini 3 los tokens de razonamiento cuentan contra `max_tokens`; con 1024 el JSON puede llegar vacío o cortado | Desactivar el razonamiento por servicio (requiere parámetros propios de Gemini) |
+| `max_retries=0` en el SDK + `LLM_TIMEOUT_SECONDS` (30 s) | El failover sustituye a los reintentos: ante un 429 se pasa al siguiente servicio en vez de esperar | Reintentos del SDK con backoff |
+| `complete()` devuelve un `LLMCompletion` (texto + `provider`, `model`, `latency_ms`, `failed_providers`), no un `str` | El servicio/modelo que respondió solo lo conoce el pool; así llega al `AnalysisResult` sin estado compartido en el cliente | Atributo `last_call` en el cliente (estado mutable) o medir solo en `AnalyzeService` (no sabría quién respondió) |
+| La latencia guardada es la de la **consulta completa** (incluye los servicios que fallaron antes); los que fallaron van en `failed_providers` | Es lo que esperó el usuario; con `failed_providers` se distingue un servicio lento de un failover | Solo la latencia del servicio que respondió |
+| `LLMClientFactory.create(settings)` se llama **por request** | Respeta cambios de configuración en caliente (el turno de rotación no se pierde: vive en el módulo) | Cliente singleton al arrancar |
 | Ratio R/R mínimo configurable (`AGENT_MIN_RR_RATIO`, 2.0 por defecto) | Cada despliegue ajusta su umbral sin tocar código | Constante en el código |
 | `AGENT_MASTER_PROMPT` configurable por variable de entorno, con un valor por defecto robusto | Iterar el prompt sin redeploy | Prompt embebido |
 | `POST /api/agent/analyze` devuelve **200 siempre** (APROBADA o RECHAZADA) | Un rechazo es un resultado de negocio válido, no un error HTTP | 4xx para rechazos |
@@ -79,12 +90,12 @@ Entregables:
 | Métrica | Valor | Evidencia |
 |---|---|---|
 | Alcance original | **100 %** (13/13) | Multi-provider, 4 fases, fórmula de posición, filtro R/R, CRUD de modelos/runs, endpoint y UI |
-| Madurez | **≈ 76 %** | Funcionalidad 85 · Tests 75 · Seguridad 75 · Operación 70 |
+| Madurez | **≈ 78 %** | Funcionalidad 85 · Tests 75 · Seguridad 75 · Operación 78 |
 
 - **Funcionalidad (85):** `models` / `model_runs` son un registro (CRUD); **no hay entrenamiento ni inferencia ML** y `predictions` no se usa.
-- **Tests (75):** 20 tests de `AnalyzeService` con LLM mockeado; sin tests de `LLMClientFactory`, clientes ni REST.
-- **Seguridad (75):** `LLM_API_KEY` solo por entorno; sin límite de uso sobre un endpoint que consume LLM de pago, y `POST /api/agent/analyze` **no verifica que `account_id` pertenezca al usuario** (cualquier usuario autenticado puede analizar con el capital de otra cuenta).
-- **Operación (70):** configurable por entorno; sin reintentos, *timeouts* ni *fallback* de proveedor documentados.
+- **Tests (75):** 20 tests de `AnalyzeService` con LLM mockeado; sin tests de `LLMClientFactory`, `RotatingLLMClient`, clientes ni REST.
+- **Seguridad (75):** las API keys (`GROQ_API_KEY`, `GEMINI_API_KEY`, `OLLAMA_API_KEY`) solo por entorno; sin límite de uso sobre un endpoint que consume LLM de pago, y `POST /api/agent/analyze` **no verifica que `account_id` pertenezca al usuario** (cualquier usuario autenticado puede analizar con el capital de otra cuenta).
+- **Operación (78):** pool con rotación, *failover* entre servicios y *timeout* por llamada; log de arranque con los servicios activos. Sin *circuit breaker* (un servicio caído se sigue probando en su turno) ni métricas por servicio.
 
 ## Posibles mejoras
 
@@ -94,9 +105,10 @@ Entregables:
 | Alta | Rate limit / cuota por usuario en `/api/agent/analyze` (cada llamada cuesta dinero y tiempo de LLM) | S |
 | Alta | Validar la coherencia numérica de la salida del LLM (valores positivos, SL del lado correcto de `entry`, `entry` cercano al último cierre) y cubrirlo con tests | S |
 | Alta | Persistir cada análisis (prompt, respuesta, versión del modelo) para auditoría y para medir el edge; la tabla `predictions` existe y no se usa | M |
-| Media | *Timeout*, reintentos con *backoff* y proveedor de *fallback* en `LLMClientFactory` | M |
+| Media | *Circuit breaker* en el pool: sacar temporalmente un servicio tras N fallos seguidos (hoy se reintenta en cada turno y suma su *timeout*) | S |
+| Media | Métricas por servicio (latencia media, tasa de fallos) a partir de `signals.llm_*` y `reasons.llm.failed_providers` | S |
 | Media | Cachear el análisis por `(símbolo, timeframe, vela, estrategia)` para no repetir llamadas dentro de la misma vela | S |
-| Media | Tests de `LLMClientFactory`, de los dos clientes (con HTTP mockeado) y de las rutas REST | M |
+| Media | Tests de `LLMClientFactory`, `RotatingLLMClient` (rotación y failover con clientes mock), los tres clientes (SDK mockeado) y rutas REST | M |
 | Baja | UI admin para `models` / `model_runs` (hoy solo API) | S |
 | Baja | Prompts versionados por estrategia | M |
 
@@ -151,17 +163,18 @@ Registrados en: `app/extensions/db/models_registry.py`
 ### LLM Clients (`app/modules/agent/llm/`)
 | Archivo | Clase | Cubre |
 |---------|-------|-------|
-| `llm_client.py` | `LLMClient` (ABC) | Interfaz: `complete(system, user) -> str` |
-| `openai_compatible_client.py` | `OpenAICompatibleClient` | openai, xai (Grok), deepseek, gemini, ollama |
-| `anthropic_client.py` | `AnthropicLLMClient` | anthropic (Claude) |
-| `llm_factory.py` | `LLMClientFactory` | Crea el cliente según `LLM_PROVIDER` en settings |
+| `llm_client.py` | `LLMClient` (ABC), `LLMCompletion`, `elapsed_ms` | Interfaz: `complete(system, user) -> LLMCompletion` (`text`, `provider`, `model`, `latency_ms`, `failed_providers`); cada cliente mide su llamada con `time.perf_counter()` |
+| `llm_services.py` | `LLMServiceSpec`, `LLM_SERVICE_CATALOG` | Catálogo: nombre, base_url y qué settings dan API key y modelo |
+| `groq_client.py` | `GroqLLMClient` | Groq con SDK `groq`: `chat.completions.create`, `max_completion_tokens`, `max_retries=0` |
+| `gemini_client.py` | `GeminiLLMClient` | Gemini con SDK `google-genai`: `models.generate_content`, prompt en `system_instruction`, `max_output_tokens`, timeout en ms, `HttpRetryOptions(attempts=1)` |
+| `ollama_client.py` | `OllamaLLMClient` | Ollama Cloud con SDK `ollama`: host `https://ollama.com` + `Authorization: Bearer`, `options={temperature, num_predict}`; devuelve `message.content` (el razonamiento va aparte en `message.thinking`) |
+| `rotating_client.py` | `RotatingLLMClient` | Pool: round-robin (turno por proceso) + failover; devuelve el `LLMCompletion` del que respondió con `latency_ms` de la consulta completa y `failed_providers`; si fallan todos, `LLMCallError(provider="pool")` |
+| `llm_factory.py` | `LLMClientFactory` | `create()` arma el pool según `LLM_SERVICES`; `describe()` lista los servicios activos (log de arranque en `app_factory._lifespan`) |
 
-**Tabla de base_url por provider:**
-- openai → `None` (usa default de la librería)
-- xai → `https://api.x.ai/v1`
-- deepseek → `https://api.deepseek.com`
-- gemini → `https://generativelanguage.googleapis.com/v1beta/openai/`
-- ollama → `http://localhost:11434/v1` (api_key="ollama")
+**Catálogo de servicios:**
+- groq → `GroqLLMClient` · `GROQ_API_KEY` · `GROQ_MODEL` (default `moonshotai/kimi-k2-instruct-0905`)
+- gemini → `GeminiLLMClient` · `GEMINI_API_KEY` · `GEMINI_MODEL` (default `gemini-3.5-flash-lite`)
+- ollama → `OllamaLLMClient` (host `https://ollama.com`) · `OLLAMA_API_KEY` · `OLLAMA_MODEL` (default `nemotron-3-ultra`)
 
 ### Servicios (`app/modules/agent/services/`)
 | Subdir | Servicios |
@@ -175,6 +188,8 @@ Registrados en: `app/extensions/db/models_registry.py`
 2. **Fase 2 — Reglas:** evalúa cada `{indicator, operator, value}` contra features. Si ALGUNA falla → RECHAZADA.
 3. **Fase 3 — LLM:** genera entry/SL/TP. Python calcula `position_size = (capital × risk_pct) / |entry − SL|`.
 4. **Fase 4 — R/R:** `(TP − entry) / (entry − SL) >= AGENT_MIN_RR_RATIO` (default 2.0). Si no → RECHAZADA.
+
+Los resultados posteriores a la fase 3 (`LLM_REJECTED`, `RR_RATIO_TOO_LOW`, `APPROVED`) llevan `llm_provider`, `llm_model`, `llm_latency_ms` y `llm_failed_providers`; `to_dict()` los expone en `"llm"` (`null` si no se llamó al LLM). Los errores `AGENT_LLM_PARSE_ERROR` y `AGENT_LLM_MISSING_PRICES` los incluyen en `meta`.
 
 ### Provider (`app/modules/agent/providers/agent_provider.py`)
 - `AgentServiceFactory` — instancia repos propios + borrowed de strategies, accounts, features, market
@@ -205,23 +220,36 @@ from app.modules.agent.rest import agent_router, models_router, model_runs_route
 
 ### Settings LLM/Agent (en `app/common/config/settings.py`)
 ```python
-LLM_PROVIDER      # openai | anthropic | xai | deepseek | gemini | ollama (default: openai)
-LLM_MODEL         # nombre del modelo (default: gpt-4o)
-LLM_API_KEY       # clave del provider
-LLM_BASE_URL      # override base_url (opcional)
-LLM_TEMPERATURE   # (default: 0.1)
-LLM_MAX_TOKENS    # (default: 1024)
+LLM_SERVICES        # orden de rotación, CSV (default: "groq,gemini,ollama")
+GROQ_API_KEY        # sin key → groq se omite del pool
+GROQ_MODEL          # default: moonshotai/kimi-k2-instruct-0905
+GEMINI_API_KEY      # Google AI Studio; sin key → gemini se omite del pool
+GEMINI_MODEL        # default: gemini-3.5-flash-lite
+OLLAMA_API_KEY      # Ollama Cloud; sin key → ollama se omite del pool
+OLLAMA_MODEL        # default: nemotron-3-ultra
+LLM_TIMEOUT_SECONDS # timeout por llamada antes del failover (default: 60)
+LLM_TEMPERATURE     # compartido por todos los servicios (default: 0.1)
+LLM_MAX_TOKENS      # compartido por todos los servicios (default: 4096)
 AGENT_MIN_RR_RATIO  # ratio R/R mínimo (default: 2.0)
 AGENT_MASTER_PROMPT # prompt del sistema configurable (env var)
 ```
 
 ## Gotchas críticos
 
-- **Defaults del proveedor:** `LLM_PROVIDER=openai` y `LLM_MODEL=gpt-4o` si no se configuran. Para usar IA local hay que fijar `LLM_PROVIDER=ollama` y el modelo (p. ej. `gemma3:4b`, como indica `CLAUDE.md`) en `.env`.
+- **Pool vacío:** si ningún servicio de `LLM_SERVICES` tiene API key, la app arranca igual (warning `[llm] ningún servicio LLM configurado`) y cada análisis devuelve `AGENT_LLM_CALL_FAILED` (502). Ya no existen `LLM_PROVIDER` / `LLM_MODEL` / `LLM_API_KEY` / `LLM_BASE_URL` ni los clientes de Anthropic/Ollama.
+- **Turno por proceso:** con varios workers de uvicorn cada uno lleva su propio turno; la rotación es aproximada, no estricta entre workers.
+- **Failover suma latencia:** si el servicio del turno se cuelga, el análisis espera hasta `LLM_TIMEOUT_SECONDS` (60 s) antes de probar el siguiente.
+- **El failover solo cubre errores de llamada** (red, 429, 5xx, timeout). Un JSON inválido sigue siendo `AGENT_LLM_PARSE_ERROR` y no pasa al siguiente servicio.
+- **Gemini y `LLM_MAX_TOKENS`:** Gemini 3.x razona antes de responder y esos tokens cuentan contra `max_tokens`. Síntoma: `AGENT_LLM_PARSE_ERROR` con respuesta vacía o JSON cortado solo cuando responde gemini → causa: `LLM_MAX_TOKENS` bajo (p. ej. 1024 de un `.env` antiguo) → solución: 4096 o más.
+- **Modelo de Gemini retirado o renombrado:** el síntoma es un 404 de gemini en el log y el failover pasando a groq → ajustar `GEMINI_MODEL`.
+- **Capa gratuita de Gemini:** 500 peticiones/día y 15 RPM con `gemini-3.5-flash-lite`; al agotarse responde 429 y el failover pasa a Groq. Además, Google puede usar el contenido enviado para mejorar sus productos (el capital y el contexto de mercado salen del sistema); en la capa de pago no.
+- **Ollama Cloud free:** una sola petición a la vez y una cuota mensual medida por tiempo de GPU; `nemotron-3-ultra` es de los modelos que más la gastan. Si dos análisis coinciden o se agota la cuota, Ollama responde con error y el failover pasa a Groq. Si la cuota se acaba muy rápido, cambiar a `OLLAMA_MODEL=nemotron-3-super`.
+- **Nombre del modelo en Ollama Cloud:** por API directa se usa el nombre de `https://ollama.com/api/tags` (`nemotron-3-ultra`), **sin** el sufijo `:cloud` de la app/CLI local; con `:cloud` da 404.
 - `POST /api/agent/analyze` responde 200 también cuando la operación es **RECHAZADA**: mirar el veredicto en `data`, no el código HTTP.
 - **Solo los indicadores del conjunto:** el prompt y `features_snapshot` incluyen solo las claves presentes en las features (las del conjunto del bot, ver [M3](M03-FEATURE-ENGINEERING.md)). Si a una regla de la estrategia le falta su indicador, el análisis falla con `AGENT_FEATURE_SET_INCOMPATIBLE` (422) en vez de rechazar la regla en silencio.
 - **Hueco de seguridad:** `POST /api/agent/analyze` no comprueba que la cuenta (`account_id`) pertenezca al usuario; el front solo ofrece las cuentas propias, pero la API acepta cualquier ID (ver Posibles mejoras).
 - `regime_required = None` acepta cualquier régimen (fase 1 no filtra).
+- **Mocks de `LLMClient`:** `complete()` devuelve un `LLMCompletion`, no un `str`. Un mock con `return_value = '{...}'` rompe con `AttributeError: 'str' object has no attribute 'text'` (ver `make_service` en `tests/agent/test_analyze_service.py`).
 - El `AnalyzeService` lo reutiliza [M7](M07-BOTS-SIGNALS.md) a través de `BotServiceFactory._build_analyze_service()`; un cambio de firma aquí rompe la generación de señales.
 
 ## Tests
@@ -229,13 +257,13 @@ AGENT_MASTER_PROMPT # prompt del sistema configurable (env var)
 - `tests/agent/test_analyze_service.py` — 20 tests unitarios, LLM 100% mockeado
   - `TestAnalyzeDataLoading` (6), `TestRegimeFilter` (3), `TestRulesValidation` (3)
   - `TestLLMIntegration` (4), `TestRRFilter` (2), `TestPositionSizing` (1), `TestFullApprovedPath` (1)
-- **Huecos:** `LLMClientFactory`, `OpenAICompatibleClient`, `AnthropicLLMClient`, servicios de `models` / `model_runs` y rutas REST.
+- **Huecos:** `LLMClientFactory`, `RotatingLLMClient`, `GroqLLMClient`, `GeminiLLMClient`, `OllamaLLMClient`, servicios de `models` / `model_runs` y rutas REST.
 
 ## Riesgos
 
-- **Coste y latencia:** cada análisis es una llamada a un LLM de pago (salvo Ollama).
+- **Coste y latencia:** cada análisis es una llamada a un LLM externo; los *rate limits* de las capas gratuitas de Groq, Gemini y Ollama Cloud son el motivo del pool.
 - **Salida no determinista:** el LLM propone niveles de precio; los filtros R/R y la fórmula de posición acotan el riesgo, pero un entry/SL absurdo pasaría si respeta el ratio.
-- **Privacidad:** el contexto de mercado y el capital se envían al proveedor externo configurado.
+- **Privacidad:** el contexto de mercado y el capital se envían a los servicios externos del pool.
 
 ## Historial
 
@@ -243,3 +271,5 @@ AGENT_MASTER_PROMPT # prompt del sistema configurable (env var)
 - **Posterior** — Panel de error y mejor manejo de errores en la página de análisis (commit `d8b2e43`).
 - **2026-10-08** — API headless (/api), páginas migradas a React (frontend/).
 - **2026-10-08** — El prompt usa solo los indicadores del conjunto; nuevo error `AGENT_FEATURE_SET_INCOMPATIBLE`. Se retira la página `/#/agent`: el análisis vive en cada agente ("Analizar ahora").
+- **2026-10-19** — Pool de servicios LLM con rotación round-robin y failover (Groq + Gemini + Ollama Cloud) reemplaza el multi-provider de `LLM_PROVIDER`; se retira `AnthropicLLMClient`; un cliente por proveedor con su SDK oficial (`groq`, `google-genai`, `ollama`; se retira `openai`), `LLM_TIMEOUT_SECONDS` (60 s), sin reintentos del SDK y `LLM_MAX_TOKENS` 4096. Cerebras (sin capa gratuita) y OpenRouter (capa gratuita muy limitada) se probaron y se quitaron el mismo día.
+- **2026-10-19** — `complete()` devuelve `LLMCompletion` (servicio, modelo, latencia, servicios fallidos); el `AnalysisResult` y la señal de [M7](M07-BOTS-SIGNALS.md) los guardan.

@@ -46,6 +46,9 @@ class SqlAlchemySignalRepository(SqlAlchemyRepository, SignalRepository):
             rr_ratio=Decimal(str(model.rr_ratio)) if model.rr_ratio is not None else None,
             model_version=model.model_version,
             features_hash=model.features_hash,
+            llm_provider=model.llm_provider,
+            llm_model=model.llm_model,
+            llm_latency_ms=model.llm_latency_ms,
             created_at=model.created_at,
         )
 
@@ -63,7 +66,10 @@ class SqlAlchemySignalRepository(SqlAlchemyRepository, SignalRepository):
         model.position_size = signal.position_size
         model.rr_ratio      = signal.rr_ratio
         model.model_version = signal.model_version
-        model.features_hash = signal.features_hash
+        model.features_hash  = signal.features_hash
+        model.llm_provider   = signal.llm_provider
+        model.llm_model      = signal.llm_model
+        model.llm_latency_ms = signal.llm_latency_ms
         return model
 
     # ------------------------------------------------------------------

@@ -74,6 +74,24 @@ function rejectionLabel(reason: string | null | undefined): string | null {
 	return SIGNAL_REJECTION_LABELS[reason as SignalRejectionReason] ?? reason;
 }
 
+const LLM_PROVIDER_LABELS: Record<string, string> = {
+	groq: 'Groq',
+	gemini: 'Gemini',
+	ollama: 'Ollama Cloud',
+};
+
+/** `groq` → `Groq`; un servicio nuevo sin etiqueta se muestra tal cual. */
+function llmProviderLabel(provider: string): string {
+	return LLM_PROVIDER_LABELS[provider] ?? provider;
+}
+
+/** `3240` → `3,2 s`; por debajo de un segundo, en ms. */
+function formatLatency(ms: number | null | undefined): string {
+	if (ms === null || ms === undefined) return '—';
+	if (ms < 1000) return `${formatNumber(ms, 0)} ms`;
+	return `${formatNumber(ms / 1000, 1)} s`;
+}
+
 /** `risk_params.risk_pct` como fracción (0.01 = 1 %), o `null` si falta. */
 function getRiskPct(bot: Bot): number | null {
 	const value = bot.risk_params?.risk_pct;
@@ -119,8 +137,10 @@ export {
 	canTransition,
 	describeBot,
 	describeBotMarket,
+	formatLatency,
 	formatRiskReward,
 	getRiskPct,
+	llmProviderLabel,
 	rejectionLabel,
 	SIGNAL_ACTION_LABELS,
 	SIGNAL_REJECTION_LABELS,

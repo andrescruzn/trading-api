@@ -14,7 +14,7 @@
 | Lo usan | [M8](M08-ORDERS-EXECUTION.md) (órdenes por bot), [M9](M09-ALERTS.md) (hooks de señal/error), [M10](M10-BILLING.md) (bot de la cuenta administrada), scheduler de [M2](M02-MARKET-DATA.md), dashboard de [M1](M01-AUTH.md) |
 | Prefijo API | `/api/bots`, `/api/signals` (ver [corrección de rutas](#corrección-de-rutas)) |
 | Frontend | `frontend/src/modules/bots` |
-| Última revisión | 2026-10-10 |
+| Última revisión | 2026-10-19 |
 
 ## Descripción
 
@@ -28,6 +28,7 @@
 - Al generar una señal ("Analizar ahora"): invoca el Agente (M6) con el contexto del bot y persiste el resultado.
 - Señales APROBADAS: BUY o SELL + entry, SL, TP, position_size, rr_ratio. RECHAZADAS: HOLD, `approved=False`; todas persisten.
 - `features_hash`: SHA-256 del contexto de mercado, fingerprint para auditoría.
+- Cada señal guarda qué servicio de IA respondió (`llm_provider`), con qué modelo (`llm_model`) y cuánto tardó (`llm_latency_ms`).
 
 ## Páginas
 
@@ -57,6 +58,7 @@ Entregables:
 - ✅ 55 tests unitarios pasando (bot entity, status transitions, signal generation)
 - ✅ **Agentes con nombre** (`bots.name`, migración `m07 add name to bots`)
 - ✅ **Propiedad** en todas las rutas de bots y señales (404 para bots ajenos)
+- ✅ **Servicio, modelo y latencia de la IA** por señal (`signals.llm_provider`, `llm_model`, `llm_latency_ms`; migración `m07 signals llm provider model latency`), visibles en el detalle de la señal
 - ✅ **Validaciones al crear** (referencias, cuenta propia y activa, modo = cuenta, compatibilidad estrategia/indicadores, regla del 1 %)
 
 ## Decisiones de diseño
@@ -78,6 +80,7 @@ Entregables:
 | `paused` **sí** es activo (`is_active() = True`) | Sigue con datos al día y puede generar señales | Pausa = inactivo |
 | Las señales rechazadas **también se persisten** con `approved=False` (acción `hold`) | Trazabilidad completa y base para medir el edge | Descartarlas |
 | `features_hash`: SHA-256 del contexto de mercado | Huella para auditar con qué datos se generó cada señal | Guardar el snapshot completo |
+| Servicio, modelo y latencia de la IA en **columnas propias** (`llm_provider`, `llm_model`, `llm_latency_ms`), además de `reasons.llm` | Con el pool rotativo cada señal la puede responder un servicio distinto; en columnas se puede filtrar y agregar por servicio sin leer JSON | Solo dentro de `reasons` (JSON) o reutilizar `model_version` (pensada para los modelos ML) |
 | Dirección buy/sell inferida: `entry > stop_loss` → buy; `entry < stop_loss` → sell | La señal no necesita un campo de dirección aparte | Pedirle la dirección al LLM |
 | `GenerateSignalService` invoca [M6](M06-AI-AGENT.md) vía `_build_analyze_service()` con repos propios y *prestados* | Reutiliza el agente sin duplicar su cableado | Llamar a `/api/agent/analyze` por HTTP |
 | Hook de alertas post-commit, siempre en `try/except` ([M9](M09-ALERTS.md)) | Una alerta nunca debe abortar el flujo de trading | Alertas dentro de la transacción |
@@ -121,7 +124,7 @@ Entregables:
 | Tabla | Acción | Nota |
 |-------|--------|------|
 | `bots` | WRITE | CRUD + state machine (stopped/running/paused/error); `name VARCHAR(80) NOT NULL` |
-| `signals` | WRITE | Señales generadas por bot (buy/sell/hold + precios) |
+| `signals` | WRITE | Señales generadas por bot (buy/sell/hold + precios + servicio/modelo/latencia de la IA) |
 | `strategies` | READ | Validar al crear y construir AnalyzeService (M5) |
 | `accounts` | READ | Propiedad, estado y modo; capital (M4) |
 | `account_balances` | READ | Balance más reciente (M4) |
@@ -142,6 +145,7 @@ Registrados en: `app/extensions/db/models_registry.py`
 ### Migraciones
 - Columnas de precio en `signals` y `bots.feature_set_id`: en la migración inicial de Alembic.
 - `bots.name`: revisión `m07 add name to bots` (columna nullable → backfill `CONCAT('Agente #', id)` → NOT NULL).
+- `signals.llm_provider VARCHAR(32)`, `llm_model VARCHAR(128)`, `llm_latency_ms INT` (nullable, después de `features_hash`): revisión `a4e81c5d27f9` `m07 signals llm provider model latency`, escrita a mano.
 
 ### Repositorios
 | Domain (interfaz) | Infrastructure (impl) |
@@ -209,6 +213,7 @@ Routers registrados en `app/app_factory.py` (dentro de `api_routers`, con `prefi
 - Dirección buy/sell se infiere: `entry > stop_loss` → buy; `entry < stop_loss` → sell.
 - **Admin y `GET /api/bots`:** sin filtros recibe **todos** los bots del sistema. En pantallas de usuario usar `useMyBotsQuery` (`?mine=true`), nunca `useBotsQuery()` a secas.
 - **Compatibilidad en dos lados:** el front filtra conjuntos con `isFeatureSetCompatible` y el backend valida con `indicator_catalog.is_compatible`. Si cambia el formato de las reglas, actualizar ambos.
+- **`llm_*` en NULL:** las señales rechazadas por régimen o reglas no consultan a la IA, y las anteriores al 2026-10-19 no lo tienen; el detalle oculta "Consulta a la IA" si `llm_provider` es `null`. `model_version` sigue sin usarse (reservada a modelos ML).
 - **Decimales como `float`:** `_signal_to_dict` serializa precios y `confidence` con `float(...)`; el front los tipa como `number`.
 
 ## Tests
@@ -230,3 +235,4 @@ Routers registrados en `app/app_factory.py` (dentro de `api_routers`, con `prefi
 - **2026-10-08** — API headless (/api), páginas migradas a React (frontend/).
 - **2026-10-08** — **Agentes:** los bots pasan a llamarse agentes en la UI y son el punto de entrada (dashboard, asistente, detalle). Nombre (`bots.name`), propiedad en todas las rutas, validaciones de creación, regla del 1 % en el backend, `?mine=true`. La página "Agente de IA" se integra como "Analizar ahora".
 - **2026-10-10** — Perpetuos TradFi bloqueados en live; `?symbol_id=` en `/agents/new`; seed `bots` con dos agentes demo.
+- **2026-10-19** — Cada señal guarda servicio, modelo y latencia de la IA (`signals.llm_*`); sección "Consulta a la IA" en `signal-detail-sheet.tsx` (`llmProviderLabel`, `formatLatency` en `bots-labels.ts`).

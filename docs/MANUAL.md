@@ -498,23 +498,36 @@ Internamente aplica el Prompt Maestro con 4 fases en secuencia:
 
   → APROBADA
 
-LLM multi-provider
-──────────────────
-El agente no está atado a un solo proveedor de IA. Soporta:
+Varias IAs que se turnan
+────────────────────────
+El agente no depende de una sola IA. Tiene una lista de servicios disponibles y los va
+turnando: el primer análisis lo responde Groq, el siguiente Gemini (Google), el tercero
+Nemotron 3 Ultra (en Ollama Cloud), y luego otra vez Groq…
+Así se reparte el trabajo y ninguno llega a su límite de uso.
 
-  LLM_PROVIDER  | Servicio              | Notas
-  ──────────────────────────────────────────────────────────
-  openai        | OpenAI (GPT-4o, etc.) | Default
-  anthropic     | Anthropic (Claude)    | Requiere API key
-  xai           | xAI (Grok)            | API key de xAI
-  deepseek      | DeepSeek              | Económico, bueno
-  gemini        | Google Gemini         | API key de Google
-  ollama        | Ollama local          | Sin costo, sin red
+Si al que le toca el turno no responde (está caído, saturado o tarda demasiado), el sistema
+le pasa la pregunta al siguiente sin que tú notes nada. Solo verás "No pudimos contactar a
+la IA" si fallan todos.
+
+Cada señal guarda qué IA la respondió, con qué modelo y cuánto tardó (por ejemplo
+"Gemini · gemini-3.5-flash-lite · 4,1 s"); se ve en el detalle de la señal, en "Consulta a
+la IA". El tiempo incluye la espera de los servicios que fallaron antes. Las señales que se
+rechazan por régimen o por reglas no llegan a consultar a la IA, así que no lo muestran.
+
+  Servicio    | Variables en .env
+  ──────────────────────────────────────────────────
+  groq        | GROQ_API_KEY, GROQ_MODEL
+  gemini      | GEMINI_API_KEY, GEMINI_MODEL          (Google AI Studio)
+  ollama      | OLLAMA_API_KEY, OLLAMA_MODEL          (Ollama Cloud; el más limitado: va de último)
 
   Configurar en .env:
-    LLM_PROVIDER=ollama
-    LLM_MODEL=gemma3:4b
-    LLM_API_KEY=           (vacío para ollama)
+    LLM_SERVICES=groq,gemini,ollama    (orden del turno)
+    GROQ_API_KEY=...
+    GEMINI_API_KEY=...
+    OLLAMA_API_KEY=...
+    LLM_TIMEOUT_SECONDS=60        (cuánto esperar antes de pasar al siguiente)
+
+  Un servicio sin API key simplemente no entra en el turno.
 
 Modelos ML (tabla `models`)
 ───────────────────────────
@@ -563,7 +576,8 @@ La página de cada agente:
     estrategia y qué mide cada indicador).
 
 "Analizar ahora" le pide a la IA que evalúe el mercado en ese momento. El resultado queda guardado
-como señal (aprobada o rechazada) y se abre su detalle con los filtros que pasó o no pasó.
+como señal (aprobada o rechazada) y se abre su detalle con los filtros que pasó o no pasó, y
+qué IA respondió y cuánto tardó.
 
 Estados de un agente:
 

@@ -302,7 +302,7 @@ class AnalyzeService:
         )
 
         try:
-            raw_response = self._llm.complete(
+            completion = self._llm.complete(
                 system_prompt=self._system_prompt,
                 user_message=user_message,
             )
@@ -314,14 +314,24 @@ class AnalyzeService:
                 meta={"detail": str(exc)},
             )
 
+        raw_response = completion.text
+        # Qué servicio/modelo respondió y cuánto tardó: va en cada resultado
+        # posterior a la fase 3 (y en el meta de los errores de respuesta).
+        llm_call = {
+            "llm_provider": completion.provider,
+            "llm_model": completion.model,
+            "llm_latency_ms": completion.latency_ms,
+            "llm_failed_providers": completion.failed_providers,
+        }
+
         try:
             llm_data = self._parse_llm_response(raw_response)
         except LLMParseError as exc:
-            logger.error("LLM parse error: %s", exc)
+            logger.error("LLM parse error (%s): %s", completion.provider, exc)
             return ServiceResult.fail(
                 code="AGENT_LLM_PARSE_ERROR",
                 http_status=502,
-                meta={"raw": raw_response[:500]},
+                meta={"raw": raw_response[:500], **llm_call},
             )
 
         # Si el LLM mismo rechazó la operación
@@ -346,6 +356,7 @@ class AnalyzeService:
                         account=account, capital=capital, current_price=current_price,
                         features=features, regime=regime,
                     ),
+                    **llm_call,
                 )
             )
 
@@ -358,7 +369,7 @@ class AnalyzeService:
             return ServiceResult.fail(
                 code="AGENT_LLM_MISSING_PRICES",
                 http_status=502,
-                meta={"raw": str(llm_data)},
+                meta={"raw": str(llm_data), **llm_call},
             )
 
         # ----------------------------------------------------------
@@ -407,6 +418,7 @@ class AnalyzeService:
                         account=account, capital=capital, current_price=current_price,
                         features=features, regime=regime,
                     ),
+                    **llm_call,
                 )
             )
 
@@ -433,6 +445,7 @@ class AnalyzeService:
                     account=account, capital=capital, current_price=current_price,
                     features=features, regime=regime,
                 ),
+                **llm_call,
             )
         )
 

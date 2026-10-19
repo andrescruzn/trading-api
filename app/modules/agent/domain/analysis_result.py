@@ -78,6 +78,14 @@ class AnalysisResult:
     meta: dict[str, Any] = field(default_factory=dict)
 
     # ------------------------------------------------------------------
+    # Llamada al LLM (None si se rechazó antes de la fase 3)
+    # ------------------------------------------------------------------
+    llm_provider: str | None = None         # servicio que respondió (groq, gemini, ollama)
+    llm_model: str | None = None            # modelo que respondió
+    llm_latency_ms: int | None = None       # duración de la consulta, con failover incluido
+    llm_failed_providers: list[str] = field(default_factory=list)  # servicios que fallaron antes
+
+    # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
 
@@ -111,4 +119,14 @@ class AnalysisResult:
                 for r in self.rules_detail
             ],
             "meta": self.meta,
+            "llm": (
+                {
+                    "provider": self.llm_provider,
+                    "model": self.llm_model,
+                    "latency_ms": self.llm_latency_ms,
+                    "failed_providers": self.llm_failed_providers,
+                }
+                if self.llm_provider is not None
+                else None
+            ),
         }

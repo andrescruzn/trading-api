@@ -36,3 +36,18 @@ def admin_required(identity: Dict[str, Any] = Depends(token_required_actual)) ->
         raise AuthException(code="AUTH_FORBIDDEN_ROLE", http_status=403, meta={"required": "admin"})
 
     return identity
+
+def is_admin(identity: Dict[str, Any]) -> bool:
+    """True si la identidad validada pertenece al rol admin."""
+    return int(identity.get("role_id", 0)) == int(settings.AUTH_ADMIN_ROLE_ID)
+
+
+def owner_scope(identity: Dict[str, Any]) -> int | None:
+    """
+    user_id del que llama, o None si es admin (sin restricción de propiedad).
+
+    Los servicios con propiedad reciben este valor como `owner_id`.
+    """
+    if is_admin(identity):
+        return None
+    return int(identity["user_id"])

@@ -3,4 +3,6 @@
 ALERT_RULE_ERROR_MESSAGES: dict[str, str] = {
     "ALERT_RULE_NOT_FOUND": "Regla de alerta no encontrada.",
     "ALERT_RULE_INVALID_TYPE": "El tipo de regla no es válido. Elige Señal, Precio, PnL, Drawdown o Error.",
+    "ALERT_RULE_INVALID_WEBHOOK": "La URL del webhook debe empezar por https:// y apuntar a un servicio público.",
+    "BOT_NOT_FOUND": "El agente no existe.",
 }

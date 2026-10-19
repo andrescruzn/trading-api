@@ -26,7 +26,7 @@ from app.common.http import (
     build_list_response,
     send,
 )
-from app.common.security.jwt import token_required_actual
+from app.common.security.jwt import owner_scope, token_required_actual
 from app.extensions.db import get_db
 from app.modules.alerts.domain.alert_rule_entity import AlertRule
 from app.modules.alerts.providers import AlertServiceFactory, get_alert_factory
@@ -93,6 +93,7 @@ def create_alert_rule(
         channels=payload.channels,
         user_id=user_id,
         bot_id=payload.bot_id,
+        owner_id=owner_scope(identity),
     )
 
     if not result.success:

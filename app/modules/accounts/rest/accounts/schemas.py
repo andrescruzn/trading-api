@@ -13,8 +13,8 @@ class CreateAccountRequest(BaseModel):
     mode: Literal["paper", "live"] = Field(description="Modo de operación")
     exchange_id: Optional[int] = Field(default=None, description="ID del exchange asociado")
     base_currency: str = Field(default="USD", max_length=16, description="Moneda base")
-    api_key: Optional[str] = Field(default=None, description="API key del exchange (se cifra)")
-    api_secret: Optional[str] = Field(default=None, description="API secret del exchange (se cifra)")
+    api_key: Optional[str] = Field(default=None, max_length=512, description="API key del exchange (se cifra)")
+    api_secret: Optional[str] = Field(default=None, max_length=1024, description="API secret del exchange (se cifra)")
     credentials_label: Optional[str] = Field(
         default=None, max_length=255, description="Etiqueta descriptiva de las credenciales"
     )
@@ -25,8 +25,8 @@ class UpdateAccountRequest(BaseModel):
     status: Optional[Literal["active", "suspended"]] = None
     exchange_id: Optional[int] = None
     base_currency: Optional[str] = Field(default=None, max_length=16)
-    api_key: Optional[str] = Field(default=None, description="Nueva API key (re-cifra las anteriores)")
-    api_secret: Optional[str] = Field(default=None, description="Nuevo API secret")
+    api_key: Optional[str] = Field(default=None, max_length=512, description="Nueva API key (re-cifra las anteriores)")
+    api_secret: Optional[str] = Field(default=None, max_length=1024, description="Nuevo API secret")
     credentials_label: Optional[str] = Field(default=None, max_length=255)
 
 

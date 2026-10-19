@@ -63,6 +63,8 @@ type SignalRejectionReason =
 	| 'REGIME_MISMATCH'
 	| 'RULES_NOT_MET'
 	| 'LLM_REJECTED'
+	| 'INCONSISTENT_LEVELS'
+	| 'ENTRY_TOO_FAR'
 	| 'RR_RATIO_TOO_LOW';
 
 type SignalRuleDetail = {

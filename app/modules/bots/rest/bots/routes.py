@@ -25,14 +25,13 @@ from typing import Any
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
-from app.common.config import settings
 from app.common.http import (
     build_created_response,
     build_error_response,
     build_list_response,
     build_success_response,
 )
-from app.common.security.jwt import token_required_actual
+from app.common.security.jwt import owner_scope, token_required_actual
 from app.extensions.db import get_db
 from app.modules.bots.domain.bot_entity import Bot
 from app.modules.bots.providers import BotServiceFactory, get_bot_factory
@@ -49,13 +48,6 @@ router = APIRouter(prefix="/bots", tags=["Bots"])
 
 def get_factory(db: Session = Depends(get_db)) -> BotServiceFactory:
     return get_bot_factory(db)
-
-
-def owner_scope(identity: dict) -> int | None:
-    """user_id del que llama, o None si es admin (sin restricción de propiedad)."""
-    if int(identity.get("role_id", 0)) == int(settings.AUTH_ADMIN_ROLE_ID):
-        return None
-    return int(identity["user_id"])
 
 
 # ======================================================================

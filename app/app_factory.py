@@ -21,6 +21,7 @@ from app.common.audit.audit_repository import AuditRepository
 from app.common.config import settings
 from app.common.errors import register_error_handlers
 from app.common.logging import configure_logging, get_logger, LoggingMiddleware
+from app.common.security.origin_guard import OriginGuardMiddleware
 from app.common.security.security_headers import SecurityHeadersMiddleware
 from app.extensions.db.session import engine
 from app.modules.health import health_router
@@ -74,15 +75,26 @@ def create_app() -> FastAPI:
         json_format=settings.APP_ENV != "development",
     )
 
+    # La documentación interactiva solo en desarrollo: en producción expone
+    # el mapa completo de la API sin necesidad de sesión.
+    show_docs = settings.APP_ENV == "development"
+
     app = FastAPI(
         title=settings.API_TITLE,
         version=settings.API_VERSION,
         lifespan=_lifespan,
+        docs_url="/docs" if show_docs else None,
+        redoc_url="/redoc" if show_docs else None,
+        openapi_url="/openapi.json" if show_docs else None,
     )
 
     # ------------------------------------------------------------------
     # Middlewares (orden importa: se ejecutan en orden inverso)
     # ------------------------------------------------------------------
+
+    # CSRF: escrituras con Origin ajeno → 403 (dentro de CORS para que el
+    # navegador reciba el 403 con sus cabeceras CORS)
+    app.add_middleware(OriginGuardMiddleware)
 
     # Security headers (CSP, HSTS, X-Frame-Options, etc.)
     app.add_middleware(SecurityHeadersMiddleware)

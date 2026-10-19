@@ -11,6 +11,7 @@ from __future__ import annotations
 from sqlalchemy.orm import Session
 
 from app.common.config import settings
+from app.modules.accounts.infrastructure import SqlAlchemyAccountRepository
 from app.modules.alerts.infrastructure import (
     SqlAlchemyAlertRuleRepository,
     SqlAlchemyAlertEventRepository,
@@ -58,7 +59,14 @@ class AlertServiceFactory:
         return ListAlertRulesService(repo=self._rule_repo)
 
     def create_alert_rule(self) -> CreateAlertRuleService:
-        return CreateAlertRuleService(repo=self._rule_repo)
+        # Import diferido: bots → alerts (hooks) importa este provider
+        from app.modules.bots.infrastructure import SqlAlchemyBotRepository
+
+        return CreateAlertRuleService(
+            repo=self._rule_repo,
+            bot_repo=SqlAlchemyBotRepository(self._session),
+            account_repo=SqlAlchemyAccountRepository(self._session),
+        )
 
     def update_alert_rule(self) -> UpdateAlertRuleService:
         return UpdateAlertRuleService(repo=self._rule_repo)

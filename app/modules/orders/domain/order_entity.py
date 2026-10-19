@@ -80,6 +80,7 @@ class Order:
         meta: dict[str, Any] | None = None,
         ts: datetime | None = None,
         created_at: datetime | None = None,
+        client_order_id: str | None = None,
     ):
         self.id = id
         self.bot_id = bot_id
@@ -95,6 +96,22 @@ class Order:
         self.meta = meta or {}
         self.ts = ts
         self.created_at = created_at
+        self.client_order_id = client_order_id
+
+    # ------------------------------------------------------------------
+    # Idempotencia con el exchange
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def build_client_order_id(order_id: int) -> str:
+        """
+        ID que enviamos al exchange como `clientOrderId`.
+
+        Es determinista a partir del ID interno: si una llamada se corta por
+        red, se puede buscar la orden en el exchange con este valor en vez de
+        reenviarla. Corto y con caracteres válidos en Binance/Bybit/OKX (≤ 36).
+        """
+        return f"ta-{order_id}"
 
     # ------------------------------------------------------------------
     # Validaciones de negocio

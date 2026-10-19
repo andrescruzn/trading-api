@@ -203,7 +203,7 @@ def build_otp_required_response(
         "otp_expires_at": otp_expires_at,
     }
 
-    if settings.APP_ENV == "development" and otp_code:
+    if settings.DEV_RETURN_OTP and otp_code:
         data["otp_code"] = otp_code
 
     return build_data_response(data=data, datetime_fields=["otp_expires_at"])

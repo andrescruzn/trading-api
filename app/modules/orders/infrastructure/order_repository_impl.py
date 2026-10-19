@@ -52,6 +52,7 @@ class SqlAlchemyOrderRepository(SqlAlchemyRepository, OrderRepository):
             meta=model.meta or {},
             ts=model.ts,
             created_at=model.created_at,
+            client_order_id=model.client_order_id,
         )
 
     @staticmethod
@@ -69,6 +70,7 @@ class SqlAlchemyOrderRepository(SqlAlchemyRepository, OrderRepository):
         model.time_in_force     = order.time_in_force
         model.meta              = order.meta
         model.ts                = order.ts
+        model.client_order_id   = order.client_order_id
         return model
 
     # ------------------------------------------------------------------
@@ -88,6 +90,17 @@ class SqlAlchemyOrderRepository(SqlAlchemyRepository, OrderRepository):
             .all()
         )
         return [self._to_domain(m) for m in models]
+
+    def has_active_order_for_signal(self, signal_id: int) -> bool:
+        return (
+            self._session.query(OrderModel.id)
+            .filter(
+                OrderModel.signal_id == signal_id,
+                OrderModel.status.notin_(("rejected", "canceled")),
+            )
+            .first()
+            is not None
+        )
 
     def list_all(self, limit: int = 200) -> list[Order]:
         models = (

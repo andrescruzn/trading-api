@@ -15,12 +15,13 @@ from typing import Any
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
-from app.common.config import settings
-from app.common.http import build_list_response, send
-from app.common.security.jwt import token_required_actual
+from app.common.http import build_error_response, build_list_response
+from app.common.security.jwt import owner_scope, token_required_actual
 from app.extensions.db import get_db
 from app.modules.orders.domain.position_entity import Position
 from app.modules.orders.providers import OrderServiceFactory, get_order_factory
+
+from .error_messages import POSITION_ERROR_MESSAGES
 
 router = APIRouter(prefix="/positions", tags=["Positions"])
 
@@ -69,12 +70,10 @@ def list_positions(
     - Admin: puede ver todas las posiciones del sistema.
     - Usuario: debe proveer bot_id para ver solo las de su bot.
     """
-    is_admin = int(identity.get("role_id", 0)) == int(settings.AUTH_ADMIN_ROLE_ID)
+    result = factory.list_positions().list(bot_id=bot_id, owner_id=owner_scope(identity))
 
-    if not is_admin and bot_id is None:
-        return send(msg="Elige un bot para ver sus posiciones.", status_code=400)
-
-    result = factory.list_positions().list(bot_id=bot_id)
+    if not result.success:
+        return build_error_response(result, POSITION_ERROR_MESSAGES)
 
     return build_list_response(
         items=[_position_to_dict(p) for p in (result.data or [])],

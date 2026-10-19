@@ -385,4 +385,5 @@ class TestSignalFields:
             strategy_id=bot.strategy_id,
             account_id=bot.account_id,
             feature_set_id=7,
+            risk_pct=bot.effective_risk_pct,
         )

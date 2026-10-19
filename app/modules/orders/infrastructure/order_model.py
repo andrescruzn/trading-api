@@ -19,6 +19,7 @@ from sqlalchemy import (
     JSON,
     NUMERIC,
     String,
+    UniqueConstraint,
     text,
 )
 from sqlalchemy.dialects.mysql import TIMESTAMP
@@ -35,6 +36,7 @@ class OrderModel(Base):
         Index("idx_orders_status", "status"),
         Index("idx_orders_signal", "signal_id"),
         Index("idx_orders_exchange_order_id", "exchange_order_id"),
+        UniqueConstraint("client_order_id", name="uq_orders_client_order_id"),
         CheckConstraint("json_valid(`meta`)", name="chk_orders_meta_json"),
         # market → sin precios; limit → price obligatorio; stop/stop_limit → stop_price obligatorio
         CheckConstraint(
@@ -72,6 +74,10 @@ class OrderModel(Base):
 
     # Identificador externo del exchange (ej: "1234567890" de Binance)
     exchange_order_id = Column(String(128), nullable=True)
+
+    # ID propio enviado al exchange como clientOrderId (idempotencia y
+    # reconciliación): "ta-{id}". NULL en órdenes anteriores a m08.
+    client_order_id = Column(String(64), nullable=True)
 
     # Timestamp de la orden (cuándo fue creada la intención de operar)
     ts = Column(

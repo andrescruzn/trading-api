@@ -12,6 +12,8 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
+from app.common.security.url_guard import is_allowed_webhook_url
+
 
 class AlertRule:
     """
@@ -75,7 +77,12 @@ class AlertRule:
 
     def wants_webhook(self) -> str | None:
         url = self.channels.get("webhook")
-        return url if isinstance(url, str) and url.startswith("http") else None
+        return url if is_allowed_webhook_url(url) else None
+
+    def has_valid_webhook(self) -> bool:
+        """Sin webhook es válido; si hay uno, debe ser https y no interno (SSRF)."""
+        url = self.channels.get("webhook")
+        return not url or is_allowed_webhook_url(url)
 
     def wants_desktop(self) -> bool:
         return bool(self.channels.get("desktop"))

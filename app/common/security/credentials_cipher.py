@@ -10,11 +10,14 @@
 # DECISIÓN:
 # - Las credenciales se cifran juntas como JSON antes de persistir.
 # - La clave Fernet se lee de CREDENTIALS_SECRET_KEY en settings.
-# - En desarrollo sin clave configurada se usa una clave fija de ejemplo
-#   (nunca usar en producción).
+# - Rotación con MultiFernet: se cifra siempre con la clave actual y se
+#   descifra con la actual o con cualquiera de CREDENTIALS_PREVIOUS_KEYS.
+#   `rotate(token)` re-cifra un token viejo con la clave actual.
+# - La clave fija de ejemplo solo se usa con APP_ENV=development/testing:
+#   fuera de ahí settings exige CREDENTIALS_SECRET_KEY (fail fast).
 #
 # USO:
-#   cipher = CredentialsCipher(settings.CREDENTIALS_SECRET_KEY)
+#   cipher = CredentialsCipher.from_settings()
 #   token = cipher.encrypt(api_key="abc", api_secret="xyz")
 #   creds = cipher.decrypt(token)
 #   # creds == {"api_key": "abc", "api_secret": "xyz"}
@@ -24,7 +27,7 @@ from __future__ import annotations
 
 import json
 
-from cryptography.fernet import Fernet
+from cryptography.fernet import Fernet, MultiFernet
 
 
 # Clave de desarrollo (solo para entornos locales sin .env configurado)
@@ -41,10 +44,28 @@ class CredentialsCipher:
     - Timestamp en el token (permite expiración si se necesita)
     """
 
-    def __init__(self, secret_key: str | None = None):
-        # Si no hay clave, usar dev key (solo development)
-        key_bytes = secret_key.encode() if secret_key else _DEV_KEY
-        self._fernet = Fernet(key_bytes)
+    def __init__(
+        self,
+        secret_key: str | None = None,
+        previous_keys: list[str] | None = None,
+    ):
+        if not secret_key:
+            # Lazy import para evitar ciclos
+            from app.common.config import settings
+
+            if settings.APP_ENV not in ("development", "testing"):
+                raise RuntimeError("CREDENTIALS_SECRET_KEY is required outside development")
+
+        current = Fernet(secret_key.encode() if secret_key else _DEV_KEY)
+        older = [Fernet(key.encode()) for key in (previous_keys or [])]
+        self._fernet = MultiFernet([current, *older])
+
+    @classmethod
+    def from_settings(cls) -> "CredentialsCipher":
+        """Construye el cipher con la clave actual y las anteriores de settings."""
+        from app.common.config import settings
+
+        return cls(settings.CREDENTIALS_SECRET_KEY, settings.CREDENTIALS_PREVIOUS_KEYS)
 
     def encrypt(self, api_key: str, api_secret: str) -> str:
         """
@@ -65,3 +86,7 @@ class CredentialsCipher:
         """
         raw = self._fernet.decrypt(token.encode())
         return json.loads(raw.decode())
+
+    def rotate(self, token: str) -> str:
+        """Re-cifra un token (de cualquier clave conocida) con la clave actual."""
+        return self._fernet.rotate(token.encode()).decode()

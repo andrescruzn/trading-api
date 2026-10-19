@@ -29,6 +29,20 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
+def _env_int(name: str, default: int) -> int:
+    try:
+        return int(os.getenv(name, str(default)))
+    except ValueError:
+        return default
+
+
+def _env_float(name: str, default: float) -> float:
+    try:
+        return float(os.getenv(name, str(default)))
+    except ValueError:
+        return default
+
+
 class Settings:
     """
     Settings base del sistema.
@@ -38,7 +52,9 @@ class Settings:
         # --------------------------------------------------------------
         # Entorno
         # --------------------------------------------------------------
-        self.APP_ENV: str = os.getenv("APP_ENV", "development").strip()
+        # Por defecto "production": si se olvida APP_ENV en un servidor, la app
+        # exige secretos reales (fail fast) en vez de arrancar con los de desarrollo.
+        self.APP_ENV: str = os.getenv("APP_ENV", "production").strip()
 
         # --------------------------------------------------------------
         # Base de datos
@@ -220,6 +236,50 @@ class Settings:
             os.getenv("CREDENTIALS_SECRET_KEY", "").strip() or None
         )
 
+        # Claves anteriores (separadas por comas) que solo se usan para
+        # DESCIFRAR mientras se rota la clave: la nueva va en
+        # CREDENTIALS_SECRET_KEY y la vieja aquí hasta re-cifrar las cuentas.
+        self.CREDENTIALS_PREVIOUS_KEYS: list[str] = [
+            key.strip()
+            for key in os.getenv("CREDENTIALS_PREVIOUS_KEYS", "").split(",")
+            if key.strip()
+        ]
+
+        if self.APP_ENV not in ("development", "testing") and not self.CREDENTIALS_SECRET_KEY:
+            raise RuntimeError(
+                "CREDENTIALS_SECRET_KEY is required in non-development environments"
+            )
+
+        # --------------------------------------------------------------
+        # OTP
+        # --------------------------------------------------------------
+        # OTP_HMAC_SECRET: secreto propio para hashear los OTP. Vacío → usa
+        #   JWT_SECRET_KEY (compatibilidad); conviene separarlos para que
+        #   filtrar uno no comprometa el otro.
+        # DEV_RETURN_OTP: devuelve el OTP en la respuesta del login para
+        #   probar sin correo. Solo tiene efecto con APP_ENV=development.
+        # OTP_MAX_FAILED_ATTEMPTS: intentos fallidos antes de invalidar el código.
+        # --------------------------------------------------------------
+        self.OTP_HMAC_SECRET: str = (
+            os.getenv("OTP_HMAC_SECRET", "").strip() or self.JWT_SECRET_KEY
+        )
+        self.DEV_RETURN_OTP: bool = (
+            self.APP_ENV == "development"
+            and os.getenv("DEV_RETURN_OTP", "true").lower() == "true"
+        )
+        self.OTP_MAX_FAILED_ATTEMPTS: int = _env_int("OTP_MAX_FAILED_ATTEMPTS", 5)
+
+        # --------------------------------------------------------------
+        # Proxies de confianza
+        # --------------------------------------------------------------
+        # Solo si la API corre detrás de un proxy propio (Nginx, Caddy) se
+        # confía en X-Forwarded-For para la IP del cliente; si no, cualquiera
+        # podría falsearla y saltarse el rate limit.
+        # --------------------------------------------------------------
+        self.TRUST_PROXY_HEADERS: bool = (
+            os.getenv("TRUST_PROXY_HEADERS", "false").lower() == "true"
+        )
+
         # --------------------------------------------------------------
         # LLM — Pool de servicios de Inteligencia Artificial
         # --------------------------------------------------------------
@@ -291,6 +351,28 @@ class Settings:
 
         agent_prompt_raw = os.getenv("AGENT_MASTER_PROMPT", "").strip()
         self.AGENT_MASTER_PROMPT: str = agent_prompt_raw or ""
+
+        # AGENT_MAX_ENTRY_ATR_DISTANCE: el entry que propone el LLM no puede
+        #   alejarse del último cierre más de N × ATR (evita precios inventados).
+        # AGENT_ANALYSES_PER_MINUTE: análisis por usuario y minuto (cada uno
+        #   cuesta una llamada al LLM).
+        self.AGENT_MAX_ENTRY_ATR_DISTANCE: float = _env_float("AGENT_MAX_ENTRY_ATR_DISTANCE", 1.0)
+        self.AGENT_ANALYSES_PER_MINUTE: int = _env_int("AGENT_ANALYSES_PER_MINUTE", 6)
+
+        # --------------------------------------------------------------
+        # Trading — Salvaguardas de ejecución (M8)
+        # --------------------------------------------------------------
+        # TRADING_ENABLED: kill switch global. false → no sale ninguna orden.
+        # TRADING_LIVE_ENABLED: false → solo se ejecutan órdenes paper.
+        # ORDER_MAX_NOTIONAL: valor máximo (qty × precio) de una orden, en la
+        #   moneda de cotización. 0 = sin tope global (el bot puede fijar
+        #   el suyo en risk_params.max_notional).
+        # --------------------------------------------------------------
+        self.TRADING_ENABLED: bool = os.getenv("TRADING_ENABLED", "true").lower() == "true"
+        self.TRADING_LIVE_ENABLED: bool = (
+            os.getenv("TRADING_LIVE_ENABLED", "false").lower() == "true"
+        )
+        self.ORDER_MAX_NOTIONAL: float = _env_float("ORDER_MAX_NOTIONAL", 10000.0)
 
         # --------------------------------------------------------------
         # Alerts — Canales de notificación

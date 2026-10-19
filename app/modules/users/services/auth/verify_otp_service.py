@@ -117,7 +117,19 @@ class VerifyOtpService:
         # 6) Validar OTP (HMAC-SHA256)
         # --------------------------------------------------------------
         if not verify_otp_hash(otp_clean, user.otp_code):
-            return ServiceResult.fail(code="OTP_INVALID", http_status=401)
+            # Contador persistente: al llegar al máximo el código deja de servir
+            user.otp_failed_attempts += 1
+            too_many = user.otp_failed_attempts >= self._settings.OTP_MAX_FAILED_ATTEMPTS
+            if too_many:
+                user.otp_code = None
+                user.otp_created_at = None
+                user.otp_expires_at = None
+            self._repo.update(user)
+            self._repo.commit()
+            return ServiceResult.fail(
+                code="OTP_TOO_MANY_ATTEMPTS" if too_many else "OTP_INVALID",
+                http_status=401,
+            )
 
         # --------------------------------------------------------------
         # 7) Estado de la cuenta
@@ -140,6 +152,7 @@ class VerifyOtpService:
         user.otp_code = None
         user.otp_created_at = None
         user.otp_expires_at = None
+        user.otp_failed_attempts = 0
 
         token_pack = create_access_token(
             subject={"user_id": user.id, "role_id": user.role_id},

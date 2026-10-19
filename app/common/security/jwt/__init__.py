@@ -14,7 +14,7 @@ from .jwt_utils import (
 )
 
 from .jwt_guard import token_required_actual
-from .role_guard import admin_required
+from .role_guard import admin_required, is_admin, owner_scope
 from .auth_exceptions import AuthException
 
 __all__ = [
@@ -24,5 +24,7 @@ __all__ = [
     "generate_jti",
     "token_required_actual",
     "admin_required",
+    "is_admin",
+    "owner_scope",
     "AuthException",
 ]

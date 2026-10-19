@@ -126,6 +126,7 @@ class LoginOtpService:
         user.otp_code = hash_otp(otp_plain)
         user.otp_created_at = now
         user.otp_expires_at = expires_at
+        user.otp_failed_attempts = 0
 
         self._repo.update(user)
         self._repo.commit()
@@ -147,7 +148,7 @@ class LoginOtpService:
         # --------------------------------------------------------------
         # 7) Respuesta (solo dev devuelve otp_code)
         # --------------------------------------------------------------
-        otp_for_debug = otp_plain if self._settings.APP_ENV == "development" else None
+        otp_for_debug = otp_plain if self._settings.DEV_RETURN_OTP else None
 
         return ServiceResult.ok(
             LoginOtpPayload(

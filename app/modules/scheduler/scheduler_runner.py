@@ -13,6 +13,8 @@
 #   terminar sin esperar al scheduler (stop() hace join explícito).
 # - threading.Event como señal de parada: permite que el sleep sea
 #   interrumpible (no bloquea el shutdown hasta que el sleep termine).
+# - Con varios workers, solo el que tiene el lock de MySQL (SchedulerLock)
+#   ejecuta los ciclos; los demás esperan su turno por si el líder cae.
 # ======================================================================
 
 from __future__ import annotations
@@ -41,7 +43,10 @@ def _run_loop() -> None:
     la espera de forma limpia.
     """
     # Import diferido para evitar importaciones circulares al arrancar
+    from app.modules.scheduler.scheduler_lock import SchedulerLock
     from app.modules.scheduler.scheduler_service import refresh_explorer, run_cycle
+
+    lock = SchedulerLock()
 
     logger.info(
         "[Scheduler] Iniciado — intervalo=%ds retención=%d velas",
@@ -54,6 +59,11 @@ def _run_loop() -> None:
     last_explorer_refresh: float | None = None
 
     while not _stop_event.is_set():
+        # Solo el líder trabaja; el resto vuelve a intentarlo en el siguiente ciclo
+        if not lock.acquire():
+            _stop_event.wait(timeout=settings.SCHEDULER_INTERVAL_SECONDS)
+            continue
+
         now = time.monotonic()
         if (
             last_explorer_refresh is None
@@ -71,6 +81,7 @@ def _run_loop() -> None:
         # antes de que expire el timeout y el loop termina limpiamente.
         _stop_event.wait(timeout=settings.SCHEDULER_INTERVAL_SECONDS)
 
+    lock.release()
     logger.info("[Scheduler] Detenido.")
 
 

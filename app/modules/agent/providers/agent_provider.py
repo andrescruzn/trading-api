@@ -96,6 +96,7 @@ class AgentServiceFactory:
             timeframe_repo=self._timeframe_repo,
             llm_client=llm_client,
             min_rr_ratio=settings.AGENT_MIN_RR_RATIO,
+            max_entry_atr_distance=settings.AGENT_MAX_ENTRY_ATR_DISTANCE,
             master_prompt=settings.AGENT_MASTER_PROMPT,
         )
 

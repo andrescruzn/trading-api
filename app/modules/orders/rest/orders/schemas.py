@@ -30,9 +30,9 @@ class CreateOrderRequest(BaseModel):
     bot_id:        int     = Field(..., gt=0)
     side:          str     = Field(..., pattern="^(buy|sell)$")
     type:          str     = Field(..., pattern="^(market|limit|stop|stop_limit)$")
-    qty:           Decimal = Field(..., gt=0)
-    price:         Decimal | None = Field(default=None, gt=0)
-    stop_price:    Decimal | None = Field(default=None, gt=0)
+    qty:           Decimal = Field(..., gt=0, max_digits=30, decimal_places=12)
+    price:         Decimal | None = Field(default=None, gt=0, max_digits=30, decimal_places=12)
+    stop_price:    Decimal | None = Field(default=None, gt=0, max_digits=30, decimal_places=12)
     time_in_force: str     | None = Field(default=None, pattern="^(GTC|IOC|FOK)$")
     signal_id:     int     | None = Field(default=None, gt=0)
 

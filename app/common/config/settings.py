@@ -375,10 +375,51 @@ class Settings:
         self.ORDER_MAX_NOTIONAL: float = _env_float("ORDER_MAX_NOTIONAL", 10000.0)
 
         # --------------------------------------------------------------
+        # Modo de ejecución de los agentes (manual / approval / auto)
+        # --------------------------------------------------------------
+        # TRADING_LIVE_AUTO_ENABLED: permite agentes `auto` en live (órdenes
+        #   reales sin aprobación humana). false por defecto.
+        # SIGNAL_APPROVAL_TTL_MINUTES: minutos para aprobar una señal si el
+        #   agente no fija los suyos (approval_ttl_minutes).
+        # SIGNALS_AUTO_MIN_TIMEFRAME_SECONDS: timeframe mínimo para señales
+        #   automáticas (por debajo, el coste de IA se dispara). 900 = 15m.
+        # AGENT_MAX_AUTO_ANALYSES_PER_DAY: análisis automáticos por usuario y día.
+        # --------------------------------------------------------------
+        self.TRADING_LIVE_AUTO_ENABLED: bool = (
+            os.getenv("TRADING_LIVE_AUTO_ENABLED", "false").lower() == "true"
+        )
+        self.SIGNAL_APPROVAL_TTL_MINUTES: int = _env_int("SIGNAL_APPROVAL_TTL_MINUTES", 60)
+        self.SIGNALS_AUTO_MIN_TIMEFRAME_SECONDS: int = _env_int(
+            "SIGNALS_AUTO_MIN_TIMEFRAME_SECONDS", 900
+        )
+        self.AGENT_MAX_AUTO_ANALYSES_PER_DAY: int = _env_int("AGENT_MAX_AUTO_ANALYSES_PER_DAY", 96)
+
+        # --------------------------------------------------------------
         # Alerts — Canales de notificación
         # --------------------------------------------------------------
         self.TELEGRAM_BOT_TOKEN: str = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
         self.TELEGRAM_DEFAULT_CHAT_ID: str = os.getenv("TELEGRAM_DEFAULT_CHAT_ID", "").strip()
+
+        # Telegram por usuario (vincular chat + aprobar señales con botones)
+        # TELEGRAM_BOT_USERNAME: @usuario del bot, sin @ (para el enlace t.me/...).
+        # TELEGRAM_UPDATES_MODE: cómo llegan las respuestas de Telegram:
+        #   off      → no se procesan (solo se envían avisos)
+        #   polling  → el scheduler consulta getUpdates (desarrollo, sin URL pública)
+        #   webhook  → Telegram llama POST /api/telegram/webhook (producción)
+        # TELEGRAM_WEBHOOK_SECRET: secret_token registrado con setWebhook; el
+        #   webhook rechaza toda petición sin esa cabecera.
+        self.TELEGRAM_BOT_USERNAME: str = (
+            os.getenv("TELEGRAM_BOT_USERNAME", "").strip().lstrip("@")
+        )
+        self.TELEGRAM_UPDATES_MODE: str = (
+            os.getenv("TELEGRAM_UPDATES_MODE", "off").strip().lower()
+        )
+        self.TELEGRAM_WEBHOOK_SECRET: str = os.getenv("TELEGRAM_WEBHOOK_SECRET", "").strip()
+
+        # URL del frontend (enlaces en Telegram y correos)
+        self.FRONTEND_URL: str = (
+            os.getenv("FRONTEND_URL", "http://localhost:5193").strip().rstrip("/")
+        )
         self.DESKTOP_NOTIFICATIONS_ENABLED: bool = (
             os.getenv("DESKTOP_NOTIFICATIONS_ENABLED", "false").lower() == "true"
         )

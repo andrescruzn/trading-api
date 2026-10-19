@@ -43,6 +43,7 @@ def _run_loop() -> None:
     la espera de forma limpia.
     """
     # Import diferido para evitar importaciones circulares al arrancar
+    from app.modules.scheduler.execution_cycle import run_execution_cycle
     from app.modules.scheduler.scheduler_lock import SchedulerLock
     from app.modules.scheduler.scheduler_service import refresh_explorer, run_cycle
 
@@ -76,6 +77,10 @@ def _run_loop() -> None:
             run_cycle()
         except Exception:
             logger.exception("[Scheduler] Error no controlado en ciclo.")
+
+        # Después de velas e indicadores: señales automáticas, caducidad,
+        # SL/TP y Telegram (cada paso aislado dentro del ciclo)
+        run_execution_cycle()
 
         # Espera interrumpible: si stop() activa el evento, wait() retorna
         # antes de que expire el timeout y el loop termina limpiamente.

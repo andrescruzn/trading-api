@@ -37,10 +37,20 @@ from app.modules.accounts.rest import accounts_router, balances_router
 from app.modules.strategies.rest import strategies_router, datasets_router
 from app.modules.agent.rest import agent_router, models_router, model_runs_router
 from app.modules.bots.rest import bots_router, signals_router
-from app.modules.orders.rest import orders_router, fills_router, positions_router
-from app.modules.alerts.rest import alert_rules_router, alert_events_router, alerts_admin_router
+from app.modules.orders.rest import (
+    orders_router,
+    fills_router,
+    positions_router,
+    signal_decisions_router,
+)
+from app.modules.alerts.rest import (
+    alert_rules_router,
+    alert_events_router,
+    alerts_admin_router,
+    telegram_webhook_router,
+)
 from app.modules.billing.rest import investors_router, managed_accounts_router, billing_periods_router
-from app.modules.users.rest import auth_router
+from app.modules.users.rest import auth_router, telegram_link_router
 
 logger = get_logger(__name__)
 
@@ -122,7 +132,7 @@ def create_app() -> FastAPI:
     app.include_router(health_router)
 
     api_routers = (
-        auth_router,
+        auth_router, telegram_link_router,
         # Market Data
         exchanges_router, symbols_router, timeframes_router, candles_router, explorer_router,
         # Feature Engineering
@@ -133,12 +143,12 @@ def create_app() -> FastAPI:
         strategies_router, datasets_router,
         # Agent (AI Agent + ML Models + Model Runs)
         agent_router, models_router, model_runs_router,
-        # Bots & Signals
+        # Bots & Signals (signals_router antes: GET /signals/pending)
         bots_router, signals_router,
-        # Orders & Execution
-        orders_router, fills_router, positions_router,
-        # Alerts
-        alert_rules_router, alert_events_router, alerts_admin_router,
+        # Orders & Execution (aprobar / rechazar señales)
+        orders_router, fills_router, positions_router, signal_decisions_router,
+        # Alerts (+ webhook de Telegram)
+        alert_rules_router, alert_events_router, alerts_admin_router, telegram_webhook_router,
         # Billing & Managed Accounts
         investors_router, managed_accounts_router, billing_periods_router,
     )

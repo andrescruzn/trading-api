@@ -111,7 +111,17 @@ class CreateOrderService:
         time_in_force: str | None = None,
         signal_id: int | None = None,
         owner_id: int | None = None,
+        require_running: bool = True,
+        reason: str | None = None,
     ) -> ServiceResult[Order]:
+        """
+        Args:
+            require_running: False solo para cerrar por stop loss / take profit:
+                             la protección actúa aunque el agente esté pausado
+                             o detenido (el kill switch global sigue aplicando).
+            reason:          origen de la orden para el historial (`meta.reason`):
+                             manual, signal, stop_loss, take_profit.
+        """
 
         # ------------------------------------------------------------------
         # 1. Cargar y validar el bot (un usuario solo opera los suyos)
@@ -120,7 +130,7 @@ class CreateOrderService:
         if bot is None:
             return ServiceResult.fail(code="BOT_NOT_FOUND", http_status=404)
 
-        if bot.status != "running":
+        if require_running and bot.status != "running":
             return ServiceResult.fail(
                 code="BOT_NOT_RUNNING",
                 http_status=409,
@@ -222,7 +232,11 @@ class CreateOrderService:
                 stop_price=stop_price,
                 time_in_force=time_in_force,
                 # Guardamos el símbolo en meta para que LiveExecutor pueda usarlo
-                meta={"symbol": symbol.symbol, "mode": bot.mode},
+                meta={
+                    "symbol": symbol.symbol,
+                    "mode": bot.mode,
+                    "reason": reason or ("signal" if signal_id else "manual"),
+                },
                 ts=utc_now(),
             )
         )

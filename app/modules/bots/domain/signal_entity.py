@@ -42,9 +42,24 @@ class Signal:
     Estado de aprobación:
     - approved = True  : pasó todos los filtros (régimen, reglas, R/R ≥ 2:1)
     - approved = False : fue rechazada en algún filtro
+
+    Decisión de ejecución (decision_status), solo para BUY/SELL aprobadas
+    de agentes en modo approval/auto:
+    - not_required : no espera decisión (HOLD, rechazada o agente manual)
+    - pending      : espera aprobación (o ejecución automática) hasta expires_at
+    - executing    : alguien la aprobó y se está enviando la orden
+    - executed     : la orden salió
+    - rejected     : la persona la rechazó
+    - expired      : nadie decidió a tiempo
+    - failed       : se aprobó pero no se pudo ejecutar (decision_reason)
     """
 
     VALID_ACTIONS = ("buy", "sell", "hold")
+
+    VALID_DECISION_STATUSES = (
+        "not_required", "pending", "executing", "executed", "rejected", "expired", "failed",
+    )
+    VALID_DECISION_CHANNELS = ("app", "telegram", "auto")
 
     def __init__(
         self,
@@ -66,6 +81,13 @@ class Signal:
         llm_model: str | None = None,
         llm_latency_ms: int | None = None,
         created_at: datetime | None = None,
+        decision_status: str = "not_required",
+        expires_at: datetime | None = None,
+        decided_at: datetime | None = None,
+        decided_by_user_id: int | None = None,
+        decision_channel: str | None = None,
+        decision_reason: str | None = None,
+        candle_ts: datetime | None = None,
     ):
         self.id = id
         self.bot_id = bot_id
@@ -85,6 +107,13 @@ class Signal:
         self.llm_model = llm_model
         self.llm_latency_ms = llm_latency_ms
         self.created_at = created_at
+        self.decision_status = decision_status
+        self.expires_at = expires_at
+        self.decided_at = decided_at
+        self.decided_by_user_id = decided_by_user_id
+        self.decision_channel = decision_channel
+        self.decision_reason = decision_reason
+        self.candle_ts = candle_ts
 
     # ------------------------------------------------------------------
     # Validaciones de negocio
@@ -92,6 +121,16 @@ class Signal:
 
     def is_valid_action(self) -> bool:
         return self.action in self.VALID_ACTIONS
+
+    def is_actionable(self) -> bool:
+        """BUY/SELL aprobada por la IA: la única que puede convertirse en orden."""
+        return self.approved and self.action in ("buy", "sell")
+
+    def is_pending(self) -> bool:
+        return self.decision_status == "pending"
+
+    def is_expired_at(self, now: datetime) -> bool:
+        return self.expires_at is not None and self.expires_at <= now
 
     def has_prices(self) -> bool:
         """Verifica que los precios estén completos para señales buy/sell."""

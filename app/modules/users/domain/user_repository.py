@@ -39,6 +39,16 @@ class UserRepository(TransactionalRepository, ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def get_by_telegram_chat_id(self, chat_id: int) -> Optional[User]:
+        """Usuario vinculado a ese chat de Telegram, o None."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_by_telegram_link_hash(self, link_hash: str) -> Optional[User]:
+        """Usuario con ese código de vinculación pendiente, o None."""
+        raise NotImplementedError
+
+    @abstractmethod
     def get_role_info(self, role_id: int) -> Optional[dict[str, str]]:
         """Retorna {"code", "name"} del rol, o None si no existe."""
         raise NotImplementedError

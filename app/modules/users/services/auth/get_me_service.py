@@ -40,6 +40,7 @@ class UserProfilePayload:
     status: str
     last_login_at: Optional[datetime]
     created_at: Optional[datetime]
+    telegram_linked: bool = False
 
 
 class GetMeService:
@@ -87,5 +88,6 @@ class GetMeService:
                 status=user.status,
                 last_login_at=user.last_login_at,
                 created_at=user.created_at,
+                telegram_linked=user.telegram_chat_id is not None,
             )
         )

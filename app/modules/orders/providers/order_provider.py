@@ -28,6 +28,8 @@ from __future__ import annotations
 
 from sqlalchemy.orm import Session
 
+from app.common.config import settings
+
 from app.common.security.credentials_cipher import CredentialsCipher
 
 # Repos propios del módulo
@@ -44,6 +46,7 @@ from app.modules.orders.services.orders.get_order_service import GetOrderService
 from app.modules.orders.services.orders.list_orders_service import ListOrdersService
 from app.modules.orders.services.positions.list_positions_service import ListPositionsService
 from app.modules.orders.services.risk.risk_gate_service import RiskGateService
+from app.modules.orders.services.execution import ExecuteSignalService, ProtectPositionsService
 
 # Ejecutores (patrón Strategy)
 from app.modules.orders.execution.paper_executor import PaperExecutor
@@ -147,6 +150,29 @@ class OrderServiceFactory:
             paper_executor=self._paper_executor,
             live_executor=self._live_executor,
             evaluate_alerts=build_evaluate_alerts_service(self._session),
+        )
+
+    # ------------------------------------------------------------------
+    # Ejecución de señales (modo approval / auto) y protección SL/TP
+    # ------------------------------------------------------------------
+
+    def execute_signal(self) -> ExecuteSignalService:
+        return ExecuteSignalService(
+            signal_repo=self._signal_repo,
+            bot_repo=self._bot_repo,
+            account_repo=self._account_repo,
+            candle_repo=self._candle_repo,
+            position_repo=self._position_repo,
+            create_order=self.create_order(),
+            min_rr_ratio=settings.AGENT_MIN_RR_RATIO,
+        )
+
+    def protect_positions(self) -> ProtectPositionsService:
+        return ProtectPositionsService(
+            position_repo=self._position_repo,
+            bot_repo=self._bot_repo,
+            candle_repo=self._candle_repo,
+            create_order=self.create_order(),
         )
 
     # ------------------------------------------------------------------

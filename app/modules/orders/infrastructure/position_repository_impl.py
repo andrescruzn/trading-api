@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.modules.orders.domain.position_entity import Position
@@ -38,6 +39,9 @@ class SqlAlchemyPositionRepository(SqlAlchemyRepository, PositionRepository):
             avg_price=Decimal(str(model.avg_price)),
             realized_pnl=Decimal(str(model.realized_pnl)),
             updated_at=model.updated_at,
+            stop_loss=Decimal(str(model.stop_loss)) if model.stop_loss is not None else None,
+            take_profit=Decimal(str(model.take_profit)) if model.take_profit is not None else None,
+            signal_id=model.signal_id,
         )
 
     @staticmethod
@@ -47,6 +51,9 @@ class SqlAlchemyPositionRepository(SqlAlchemyRepository, PositionRepository):
         model.qty           = position.qty
         model.avg_price     = position.avg_price
         model.realized_pnl  = position.realized_pnl
+        model.stop_loss     = position.stop_loss
+        model.take_profit   = position.take_profit
+        model.signal_id     = position.signal_id
         return model
 
     # ------------------------------------------------------------------
@@ -68,6 +75,17 @@ class SqlAlchemyPositionRepository(SqlAlchemyRepository, PositionRepository):
         models = (
             self._session.query(PositionModel)
             .filter(PositionModel.bot_id == bot_id)
+            .all()
+        )
+        return [self._to_domain(m) for m in models]
+
+    def list_protected(self) -> list[Position]:
+        models = (
+            self._session.query(PositionModel)
+            .filter(
+                PositionModel.qty > 0,
+                or_(PositionModel.stop_loss.isnot(None), PositionModel.take_profit.isnot(None)),
+            )
             .all()
         )
         return [self._to_domain(m) for m in models]

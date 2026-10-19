@@ -42,6 +42,8 @@ class SqlAlchemyBotRepository(SqlAlchemyRepository, BotRepository):
             started_at=model.started_at,
             stopped_at=model.stopped_at,
             created_at=model.created_at,
+            execution_mode=model.execution_mode or "manual",
+            approval_ttl_minutes=model.approval_ttl_minutes,
         )
 
     @staticmethod
@@ -57,6 +59,8 @@ class SqlAlchemyBotRepository(SqlAlchemyRepository, BotRepository):
         model.risk_params  = bot.risk_params
         model.started_at   = bot.started_at
         model.stopped_at   = bot.stopped_at
+        model.execution_mode = bot.execution_mode
+        model.approval_ttl_minutes = bot.approval_ttl_minutes
         return model
 
     # ------------------------------------------------------------------

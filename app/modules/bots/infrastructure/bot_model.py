@@ -15,6 +15,7 @@ from sqlalchemy import (
     Column,
     ForeignKey,
     Index,
+    Integer,
     JSON,
     SmallInteger,
     String,
@@ -41,6 +42,14 @@ class BotModel(Base):
             "`status` IN ('running', 'stopped', 'paused', 'error')",
             name="chk_bots_status",
         ),
+        CheckConstraint(
+            "`execution_mode` IN ('manual', 'approval', 'auto')",
+            name="chk_bots_execution_mode",
+        ),
+        CheckConstraint(
+            "`approval_ttl_minutes` IS NULL OR `approval_ttl_minutes` BETWEEN 1 AND 1440",
+            name="chk_bots_approval_ttl",
+        ),
         MYSQL_TABLE_OPTIONS,
     )
 
@@ -66,6 +75,17 @@ class BotModel(Base):
         nullable=False,
     )
     mode = Column(String(8), nullable=False)
+    execution_mode = Column(
+        String(16),
+        nullable=False,
+        server_default=text("'manual'"),
+        comment="manual | approval (aprobación humana) | auto (ejecución automática)",
+    )
+    approval_ttl_minutes = Column(
+        Integer,
+        nullable=True,
+        comment="Minutos para aprobar una señal antes de que caduque (NULL = valor global)",
+    )
     status = Column(String(16), nullable=False, server_default=text("'stopped'"))
     risk_params = Column(JSON, nullable=False)
     started_at = Column(TIMESTAMP(fsp=6), nullable=True)

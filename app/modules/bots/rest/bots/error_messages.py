@@ -32,4 +32,13 @@ BOT_ERROR_MESSAGES: dict[str, str] = {
         "Ese conjunto de indicadores no calcula todo lo que pide la estrategia. "
         "Elige uno compatible."
     ),
+    "BOT_INVALID_EXECUTION_MODE":  "Elige cómo actúa el agente: Manual, Con aprobación o Automático.",
+    "BOT_INVALID_APPROVAL_TTL":    "El tiempo para aprobar debe estar entre 1 minuto y 24 horas.",
+    "BOT_AUTO_LIVE_DISABLED": (
+        "El modo Automático no está habilitado para cuentas live. "
+        "Usa Con aprobación o una cuenta paper."
+    ),
+    "BOT_TIMEFRAME_TOO_SHORT_FOR_AUTOMATION": (
+        "Los modos Con aprobación y Automático necesitan un timeframe de 15 minutos o más."
+    ),
 }

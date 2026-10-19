@@ -37,6 +37,7 @@ from __future__ import annotations
 import json
 import logging
 import math
+from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
@@ -182,6 +183,7 @@ class AnalyzeService:
         feature_set_id: int,
         owner_id: int | None = None,
         risk_pct: float | None = None,
+        as_of: datetime | None = None,
     ) -> ServiceResult[AnalysisResult]:
         """
         Ejecuta el Prompt Maestro completo.
@@ -190,6 +192,9 @@ class AnalyzeService:
             owner_id: si viene, la cuenta debe ser de ese usuario (None = admin).
             risk_pct: riesgo por operación del bot; si no viene se usa el de la
                       estrategia. En ambos casos se acota a la Regla del 1 %.
+            as_of:    analiza la vela con ese ts (o la anterior) en vez de la
+                      última. El scheduler pasa la última vela CERRADA para no
+                      decidir con la vela en formación.
 
         Returns:
             ServiceResult[AnalysisResult] con la decisión final y todos
@@ -232,6 +237,7 @@ class AnalyzeService:
         candles = self._candle_repo.list_candles(
             symbol_id=symbol_id,
             timeframe_id=timeframe_id,
+            to_ts=as_of,
             limit=1,
         )
         if not candles:
@@ -245,6 +251,7 @@ class AnalyzeService:
             symbol_id=symbol_id,
             timeframe_id=timeframe_id,
             feature_set_id=feature_set_id,
+            to_ts=as_of,
             limit=1,
         )
         if not features_list:

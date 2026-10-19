@@ -32,6 +32,11 @@ class PositionRepository(TransactionalRepository, ABC):
         ...
 
     @abstractmethod
+    def list_protected(self) -> list[Position]:
+        """Posiciones abiertas con stop loss o take profit que vigilar."""
+        ...
+
+    @abstractmethod
     def list_all(self) -> list[Position]:
         """Lista todas las posiciones del sistema (uso admin)."""
         ...

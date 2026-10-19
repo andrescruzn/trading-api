@@ -41,8 +41,12 @@ logger = logging.getLogger(__name__)
 # Configuración
 # ======================================================================
 
-# Rutas excluidas de auditoría
-_SKIP_PREFIXES = ("/health", "/docs", "/redoc", "/openapi.json", "/favicon")
+# Rutas excluidas de auditoría. El webhook de Telegram trae el código de
+# vinculación en "/start <código>" y mensajes de terceros: no se guarda.
+_SKIP_PREFIXES = (
+    "/health", "/docs", "/redoc", "/openapi.json", "/favicon",
+    f"{settings.API_PREFIX}/telegram/webhook",
+)
 
 # Límite de body a auditar (10 KB) — evita memoria excesiva con uploads
 _MAX_BODY_BYTES = 10 * 1024

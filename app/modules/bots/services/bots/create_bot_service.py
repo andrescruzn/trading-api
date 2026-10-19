@@ -15,6 +15,7 @@ from app.common.contracts import ServiceResult
 from app.modules.accounts.domain.account_repository import AccountRepository
 from app.modules.bots.domain.bot_entity import Bot
 from app.modules.bots.domain.bot_repository import BotRepository
+from app.modules.bots.services.bots.execution_mode_rules import check_execution_mode
 from app.modules.features.domain.feature_set_repository import FeatureSetRepository
 from app.modules.features.domain.indicator_catalog import is_compatible, outputs_for
 from app.modules.market.domain.ccxt_exchanges import is_perpetual
@@ -68,6 +69,8 @@ class CreateBotService:
         mode: str,
         risk_params: dict[str, Any],
         owner_id: int | None = None,
+        execution_mode: str = "manual",
+        approval_ttl_minutes: int | None = None,
     ) -> ServiceResult[Bot]:
         """`owner_id=None` = admin: puede crear bots sobre cualquier cuenta."""
         name = name.strip()
@@ -85,6 +88,8 @@ class CreateBotService:
             mode=mode,
             status="stopped",
             risk_params=risk_params,
+            execution_mode=execution_mode,
+            approval_ttl_minutes=approval_ttl_minutes,
         )
 
         if not bot.is_valid_mode():
@@ -118,8 +123,13 @@ class CreateBotService:
         if mode == "live" and is_perpetual(symbol.symbol):
             return ServiceResult.fail(code="BOT_PERPETUAL_LIVE_NOT_SUPPORTED", http_status=422)
 
-        if self._timeframe_repo.get_by_id(timeframe_id) is None:
+        timeframe = self._timeframe_repo.get_by_id(timeframe_id)
+        if timeframe is None:
             return ServiceResult.fail(code="BOT_TIMEFRAME_NOT_FOUND", http_status=404)
+
+        execution_check = check_execution_mode(bot, timeframe.seconds)
+        if not execution_check.success:
+            return execution_check
 
         feature_set = self._feature_set_repo.get_by_id(feature_set_id)
         if feature_set is None:

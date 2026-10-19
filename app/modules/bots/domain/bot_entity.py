@@ -37,6 +37,13 @@ class Bot:
     VALID_STATUSES = ("running", "stopped", "paused", "error")
     VALID_MODES = ("paper", "live")
 
+    # Qué pasa cuando la IA aprueba una operación:
+    # - manual   : solo señales con "Analizar ahora"; la orden la crea la persona
+    # - approval : señales automáticas por vela; la orden espera aprobación humana
+    # - auto     : señales automáticas por vela; la orden sale sola
+    VALID_EXECUTION_MODES = ("manual", "approval", "auto")
+    AUTOMATED_EXECUTION_MODES = ("approval", "auto")
+
     # Regla del 1 %: nunca arriesgar más del 1 % del capital por operación
     MAX_RISK_PCT = 0.01
 
@@ -63,6 +70,8 @@ class Bot:
         started_at: datetime | None = None,
         stopped_at: datetime | None = None,
         created_at: datetime | None = None,
+        execution_mode: str = "manual",
+        approval_ttl_minutes: int | None = None,
     ):
         self.id = id
         self.name = name
@@ -77,6 +86,8 @@ class Bot:
         self.started_at = started_at
         self.stopped_at = stopped_at
         self.created_at = created_at
+        self.execution_mode = execution_mode
+        self.approval_ttl_minutes = approval_ttl_minutes
 
     # ------------------------------------------------------------------
     # Accessors sobre risk_params
@@ -116,6 +127,13 @@ class Bot:
 
     def is_valid_mode(self) -> bool:
         return self.mode in self.VALID_MODES
+
+    def is_valid_execution_mode(self) -> bool:
+        return self.execution_mode in self.VALID_EXECUTION_MODES
+
+    def is_automated(self) -> bool:
+        """True si el scheduler genera sus señales en cada vela cerrada."""
+        return self.execution_mode in self.AUTOMATED_EXECUTION_MODES
 
     @classmethod
     def is_valid_risk_pct(cls, value: object) -> bool:

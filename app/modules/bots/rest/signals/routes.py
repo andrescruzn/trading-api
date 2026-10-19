@@ -69,7 +69,44 @@ def _signal_to_dict(s: Signal) -> dict[str, Any]:
         "llm_latency_ms": s.llm_latency_ms,
         "reasons":        s.reasons,
         "created_at":     s.created_at.isoformat() if s.created_at else None,
+        "decision_status":    s.decision_status,
+        "expires_at":         s.expires_at.isoformat() if s.expires_at else None,
+        "decided_at":         s.decided_at.isoformat() if s.decided_at else None,
+        "decision_channel":   s.decision_channel,
+        "decision_reason":    s.decision_reason,
+        "candle_ts":          s.candle_ts.isoformat() if s.candle_ts else None,
     }
+
+
+# ======================================================================
+# GET /signals/pending  (antes de cualquier ruta /signals/{id})
+# ======================================================================
+
+@router.get("/pending", status_code=200)
+def list_pending_signals(
+    mine: bool = Query(default=True, description="Solo las de mis agentes (también para admin)."),
+    limit: int = Query(default=50, ge=1, le=200),
+    identity: dict = Depends(token_required_actual),
+    factory: BotServiceFactory = Depends(get_factory),
+):
+    """Señales que esperan aprobación, con el agente al que pertenecen."""
+    owner_id = int(identity["user_id"]) if mine else owner_scope(identity)
+    result = factory.list_pending_signals().list(owner_id=owner_id, limit=limit)
+
+    if not result.success:
+        return build_error_response(result, SIGNAL_ERROR_MESSAGES)
+
+    return build_list_response(
+        items=[
+            {
+                **_signal_to_dict(item.signal),
+                "bot_name": item.bot.name,
+                "bot_mode": item.bot.mode,
+            }
+            for item in result.data
+        ],
+        msg="OK",
+    )
 
 
 # ======================================================================

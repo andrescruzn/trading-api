@@ -66,6 +66,8 @@ def _bot_to_dict(b: Bot) -> dict[str, Any]:
         "mode":           b.mode,
         "status":         b.status,
         "risk_params":    b.risk_params,
+        "execution_mode": b.execution_mode,
+        "approval_ttl_minutes": b.approval_ttl_minutes,
         "started_at":     b.started_at.isoformat() if b.started_at else None,
         "stopped_at":     b.stopped_at.isoformat() if b.stopped_at else None,
         "created_at":     b.created_at.isoformat() if b.created_at else None,
@@ -117,6 +119,8 @@ def create_bot(
         mode=payload.mode,
         risk_params=payload.risk_params,
         owner_id=owner_scope(identity),
+        execution_mode=payload.execution_mode,
+        approval_ttl_minutes=payload.approval_ttl_minutes,
     )
 
     if not result.success:
@@ -158,13 +162,20 @@ def update_bot(
     identity: dict = Depends(token_required_actual),
     factory: BotServiceFactory = Depends(get_factory),
 ):
-    """Renombra un bot (en cualquier estado) o cambia su configuración (solo si 'stopped')."""
+    """
+    Renombra un bot o cambia su modo de ejecución (en cualquier estado), o
+    cambia su configuración de cuenta/riesgo (solo si 'stopped').
+    """
     result = factory.update_bot().update(
         bot_id=bot_id,
         name=payload.name,
         mode=payload.mode,
         risk_params=payload.risk_params,
         owner_id=owner_scope(identity),
+        execution_mode=payload.execution_mode,
+        approval_ttl_minutes=payload.approval_ttl_minutes,
+        clear_approval_ttl="approval_ttl_minutes" in payload.model_fields_set
+        and payload.approval_ttl_minutes is None,
     )
 
     if not result.success:

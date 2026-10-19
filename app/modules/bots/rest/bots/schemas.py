@@ -28,9 +28,13 @@ class CreateBotRequest(BaseModel):
             "Campo opcional: max_drawdown_pct (float entre 0 y 1)."
         ),
     )
+    execution_mode: str = Field(default="manual", pattern="^(manual|approval|auto)$")
+    approval_ttl_minutes: int | None = Field(default=None, ge=1, le=1440)
 
 
 class UpdateBotRequest(BaseModel):
     name:        str | None            = Field(default=None, min_length=1, max_length=80)
     mode:        str | None            = Field(default=None, pattern="^(paper|live)$")
     risk_params: dict[str, Any] | None = Field(default=None, max_length=20)
+    execution_mode: str | None = Field(default=None, pattern="^(manual|approval|auto)$")
+    approval_ttl_minutes: int | None = Field(default=None, ge=1, le=1440)

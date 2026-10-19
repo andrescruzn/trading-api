@@ -25,6 +25,8 @@ Una palabra por concepto. Si la app dice "cuenta" en un lado y "wallet" en otro,
 | **posición** | trade abierto | |
 | **agente** | bot, robot | Lo que la persona crea para operar: símbolo + estrategia + cuenta. En código y API sigue siendo `bot`. Estados: **Activo**, **Pausado**, **Detenido**. Acciones: **Iniciar** (**Reanudar** si está pausado), **Pausar**, **Detener**, **Analizar ahora** (pide una señal a la IA). "Mis agentes" para la lista. Excepción: el **bot de Telegram** conserva su nombre. |
 | **la IA** | agente de IA, modelo (para la IA) | El modelo de lenguaje que evalúa cada operación dentro de un agente. "Modelo" queda para los modelos de ML registrados. |
+| **modo de ejecución** | modo de operación, autopiloto | Qué hace el agente cuando la IA aprueba: **Manual**, **Con aprobación**, **Automático**. No confundir con modo paper/live. |
+| **señal por aprobar** | señal pendiente (en pantalla) | Señal de un agente Con aprobación que espera tu decisión. Acciones: **Aprobar** / **Descartar** (igual en la app y en Telegram). Estados: **Por aprobar**, **Ejecutada**, **Descartada**, **Vencida**, **No ejecutada**. |
 | **regla de alerta** | trigger, alarma | Historial = **eventos de alerta**. |
 | **inversor** | cliente, socio | |
 | **cuenta gestionada** | cuenta administrada, managed account | |

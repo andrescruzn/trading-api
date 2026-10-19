@@ -22,7 +22,7 @@ from app.common.utils import utc_to_bogota
 # y línea que se agrega al mensaje original (editMessageText).
 DECISION_MESSAGES: dict[str, str] = {
     "SIGNAL_EXECUTED":            "Aprobada: la orden se envió.",
-    "SIGNAL_REJECTED":            "Rechazada: no se abrió ninguna orden.",
+    "SIGNAL_REJECTED":            "Descartada: no se abrió ninguna orden.",
     "SIGNAL_ALREADY_DECIDED":     "Esta señal ya se decidió antes.",
     "SIGNAL_EXPIRED":             "La señal venció sin decisión; no se ejecutó.",
     "SIGNAL_NOT_FOUND":           "No encontramos esta señal en tu cuenta.",
@@ -54,7 +54,7 @@ LINK_MESSAGES: dict[str, str] = {
 }
 
 BUTTON_APPROVE = "Aprobar"
-BUTTON_REJECT = "Rechazar"
+BUTTON_REJECT = "Descartar"
 BUTTON_OPEN_APP = "Ver en Trading App"
 
 _ACTION_LINE = {

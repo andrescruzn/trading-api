@@ -14,7 +14,7 @@
 | Lo usan | Es el módulo final (modelo de negocio) |
 | Prefijo API | `/api/investors`, `/api/managed-accounts`, `/api/billing-periods`, `/api/fee-transactions` |
 | Frontend | `frontend/src/modules/billing` |
-| Última revisión | 2026-10-08 |
+| Última revisión | 2026-10-19 |
 
 ## Descripción
 
@@ -189,7 +189,7 @@ Provider: `app/modules/billing/providers/billing_provider.py` → `BillingServic
 | PUT | `/api/investors/{id}` | admin | Actualiza fee_pct y/o is_active |
 | GET | `/api/managed-accounts` | token | Admin ve todas; investor ve las suyas (find_by_user_id) |
 | POST | `/api/managed-accounts` | admin | Crea cuenta administrada (HWM = initial_capital) |
-| GET | `/api/managed-accounts/{id}` | token | Detalle con ownership check |
+| GET | `/api/managed-accounts/{id}` | admin · investor | Detalle con ownership check (el inversor solo las suyas); otros roles → 403 |
 | PUT | `/api/managed-accounts/{id}` | admin | Actualiza nombre, bot_id, period_type, is_active |
 | GET | `/api/billing-periods` | token | Filtro por managed_account_id |
 | POST | `/api/billing-periods/open` | admin | Abre período (valida que no haya uno abierto) |
@@ -246,3 +246,4 @@ AUTH_INVESTOR_ROLE_ID: int = 3  # leído de env AUTH_INVESTOR_ROLE_ID, default 3
 
 - **2026-03** — Módulo completado: migración `m10_billing.sql` + seed `seed_billing.sql` (rol `investor` id=3), dominio con HWM, servicios, REST, UI `/admin/investors`, `/admin/managed-accounts`, `/admin/billing` y `/investor/dashboard`.
 - **2026-10-08** — API headless (/api), páginas migradas a React (frontend/).
+- **2026-10-19** — Auditoría de seguridad: `GET /api/managed-accounts/{id}` responde 403 a quien no es admin ni inversor (antes cualquier usuario autenticado podía leer cualquier cuenta gestionada); `limit` de `/api/billing-periods` y `/api/fee-transactions` acotado a 1–500.

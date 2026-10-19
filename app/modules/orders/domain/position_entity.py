@@ -31,6 +31,11 @@ class Position:
     - qty = 0 significa posición cerrada (flat)
     - avg_price se recalcula en cada compra mediante weighted average
     - realized_pnl se acumula cada vez que se vende parte de la posición
+
+    Protección (stop loss / take profit de la señal que la abrió):
+    - Si la posición la abrió una señal aprobada, guarda su SL/TP y el
+      scheduler la cierra a mercado cuando una vela los toca.
+    - Al quedar flat se borra la protección.
     """
 
     def __init__(
@@ -42,6 +47,10 @@ class Position:
         avg_price: Decimal = Decimal("0"),
         realized_pnl: Decimal = Decimal("0"),
         updated_at: datetime | None = None,
+        stop_loss: Decimal | None = None,
+        take_profit: Decimal | None = None,
+        signal_id: int | None = None,
+        sl_order_id: int | None = None,
     ):
         self.id = id
         self.bot_id = bot_id
@@ -50,6 +59,11 @@ class Position:
         self.avg_price = avg_price
         self.realized_pnl = realized_pnl
         self.updated_at = updated_at
+        self.stop_loss = stop_loss
+        self.take_profit = take_profit
+        self.signal_id = signal_id
+        # Orden stop nativa en el exchange (live); None = la vigila el scheduler
+        self.sl_order_id = sl_order_id
 
     # ------------------------------------------------------------------
     # Cálculos financieros
@@ -103,10 +117,45 @@ class Position:
         self.realized_pnl += pnl
         self.qty -= fill_qty
 
-        # Si la posición queda flat, resetear el precio promedio
+        # Si la posición queda flat, resetear el precio promedio y la protección
         if self.qty <= Decimal("0"):
             self.qty = Decimal("0")
             self.avg_price = Decimal("0")
+            self.clear_protection()
+
+    def set_protection(
+        self,
+        stop_loss: Decimal | None,
+        take_profit: Decimal | None,
+        signal_id: int | None,
+    ) -> None:
+        self.stop_loss = stop_loss
+        self.take_profit = take_profit
+        self.signal_id = signal_id
+
+    def clear_protection(self) -> None:
+        self.stop_loss = None
+        self.take_profit = None
+        self.signal_id = None
+        self.sl_order_id = None
+
+    def has_native_stop(self) -> bool:
+        return self.sl_order_id is not None
+
+    def protection_hit(self, low: Decimal, high: Decimal) -> str | None:
+        """
+        Qué nivel tocó la vela (solo largos): "stop_loss", "take_profit" o None.
+
+        Si la misma vela toca los dos, gana el stop loss: sin datos intravela
+        no se sabe cuál llegó primero y se asume el peor caso.
+        """
+        if self.is_flat():
+            return None
+        if self.stop_loss is not None and low <= self.stop_loss:
+            return "stop_loss"
+        if self.take_profit is not None and high >= self.take_profit:
+            return "take_profit"
+        return None
 
     def is_flat(self) -> bool:
         """Retorna True si la posición está cerrada (sin activo en cartera)."""

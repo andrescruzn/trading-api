@@ -8,13 +8,13 @@
 |---|---|
 | Estado | ✅ Completo (tests de services pendientes) |
 | Avance (alcance original) | 86 % — 6/7 entregables (falta "Tests unitarios de los services") |
-| Madurez (estimada) | 65 % — ver [Avance](#avance) |
+| Madurez (estimada) | 67 % — ver [Avance](#avance) |
 | Tablas | `exchanges`, `symbols`, `timeframes`, `candles` (R/W) |
 | Depende de | [M1](M01-AUTH.md) (auth y roles) |
-| Lo usan | [M3](M03-FEATURE-ENGINEERING.md), [M5](M05-STRATEGIES.md), [M6](M06-AI-AGENT.md), [M7](M07-BOTS-SIGNALS.md), [M8](M08-ORDERS-EXECUTION.md) y el scheduler |
+| Lo usan | [M3](M03-FEATURE-ENGINEERING.md), [M5](M05-STRATEGIES.md), [M6](M06-AI-AGENT.md), [M7](M07-BOTS-SIGNALS.md), [M8](M08-ORDERS-EXECUTION.md) y el scheduler (que además corre el ciclo de ejecución de [M7](M07-BOTS-SIGNALS.md)/[M8](M08-ORDERS-EXECUTION.md)) |
 | Prefijo API | `/api/exchanges`, `/api/symbols`, `/api/timeframes`, `/api/candles`, `/api/explorer` |
 | Frontend | `frontend/src/modules/market` |
-| Última revisión | 2026-10-10 |
+| Última revisión | 2026-10-19 |
 
 ## Descripción
 
@@ -76,6 +76,8 @@ Entregables:
 | Datetimes de MySQL se normalizan a UTC con `_as_utc_aware()` | MySQL devuelve datetimes naive | Trabajar con naive y asumir UTC |
 | Ingesta manual (`/api/candles/ingest`, máx. 5000 filas) + descarga ccxt (`/api/candles/fetch`) + scheduler | Cubre cargas históricas, uso puntual y mantenimiento automático | Solo scheduler |
 | Scheduler deriva el trabajo de los bots activos, **sin tabla nueva** ("Opción B") | Menos esquema; solo se actualizan pares que alguien usa | Tabla de suscripciones por símbolo |
+| **Elección de líder con `GET_LOCK` de MySQL** (`SchedulerLock`, lock `trading-app-scheduler`): con varios workers solo el que tiene el lock corre los ciclos; el resto lo reintenta cada `SCHEDULER_INTERVAL_SECONDS` | Cada worker arranca su hilo en el *lifespan*; sin lock se descargarían velas y —con la ejecución automática— se generarían señales y órdenes duplicadas. MySQL libera el lock si el proceso o la conexión mueren | Proceso aparte (sigue recomendado) · lock en Redis (otra dependencia) |
+| El scheduler corre el **ciclo de ejecución** (`run_execution_cycle`) después de velas e indicadores | Las señales automáticas necesitan las velas y features de ese mismo ciclo | Un segundo hilo con su propio intervalo |
 | Rutas REST bajo `/api` (`settings.API_PREFIX`), como el resto de módulos | La API es headless desde el 2026-10-08; antes iban sin prefijo porque las páginas Jinja vivían en `/market/` y `/admin/` | Prefijo distinto por módulo |
 | Paginación en el cliente (`DataTable`) en las tablas de exchanges, symbols, timeframes y market/symbols | Simplicidad; los catálogos son pequeños | Paginación en servidor |
 
@@ -84,9 +86,9 @@ Entregables:
 | Métrica | Valor | Evidencia |
 |---|---|---|
 | Alcance original | **86 %** (6/7) | CRUD de exchanges/symbols/timeframes, ingesta manual y automática, `GET /api/candles` y UI completos; **no hay tests** en `tests/` para este módulo |
-| Madurez | **≈ 65 %** | Funcionalidad 100 · Tests 0 · Seguridad 80 · Operación 80 |
+| Madurez | **≈ 67 %** | Funcionalidad 100 · Tests 0 · Seguridad 80 · Operación 88 |
 
-- **Operación (80):** el scheduler automatiza fetch + features + retención; hay seed (`database/seeds/market_data.py`).
+- **Operación (88):** el scheduler automatiza fetch + features + retención y corre en un solo proceso aunque haya varios workers (lock de MySQL); hay seed (`database/seeds/market_data.py`). Sigue siendo un hilo dentro del proceso web.
 - **Seguridad (80):** escritura solo admin, validación OHLCV; sin rate limit propio.
 
 ## Posibles mejoras
@@ -95,7 +97,8 @@ Entregables:
 |---|---|---|
 | Alta | Tests de `ingest_candles`, `fetch_candles` (ccxt mockeado) y del scheduler (`_should_fetch`, `_cleanup_candles`) | M |
 | Baja | UI para la carga manual `POST /api/candles/ingest` (hoy solo por API; la página "Descargar velas" usa `/api/candles/fetch`) | S |
-| Alta | Ejecutar el scheduler en un proceso/worker dedicado o con *lock*: hoy es un hilo daemon dentro de la app, y con varios workers de uvicorn se ejecutaría varias veces | M |
+| Media | Ejecutar el scheduler en un proceso/worker dedicado: el *lock* ya evita que corra varias veces (2026-10-19), pero sigue siendo un hilo dentro del proceso web y comparte su CPU con las peticiones | M |
+| Media | Tests de `SchedulerLock` (con BD) y de `execution_cycle` | S |
 | Media | Detección y relleno de huecos: el ciclo incremental pide solo 3 velas, así que una caída del servidor de más de 3 timeframes deja velas faltantes | M |
 | Media | La retención por defecto (500 velas) limita el histórico disponible para datasets/backtesting de [M5](M05-STRATEGIES.md); separar retención operativa de histórico | M |
 | Media | Proveedor de datos no-ccxt (yfinance / Twelve Data) para forex e índices reales: capa de proveedores en `FetchCandlesService`, horario de mercado en el scheduler y `vol_rel` con volumen 0 | L |
@@ -206,8 +209,10 @@ from app.modules.market.rest import exchanges_router, symbols_router, timeframes
 
 | Archivo | Qué hace |
 |---|---|
-| `scheduler_runner.py` | Hilo `trading-scheduler` (`daemon=True`) con `threading.Event` de parada; `start()` / `stop()` se enganchan al *lifespan* de FastAPI en `app_factory.py` |
+| `scheduler_runner.py` | Hilo `trading-scheduler` (`daemon=True`) con `threading.Event` de parada; `start()` / `stop()` se enganchan al *lifespan* de FastAPI en `app_factory.py`. En cada vuelta: `lock.acquire()` → (si es líder) `refresh_explorer()` cada 24 h → `run_cycle()` → `run_execution_cycle()`; al parar, `lock.release()` |
 | `scheduler_service.py` | `run_cycle()`: un ciclo completo de actualización · `refresh_explorer()`: velas 1d del explorador |
+| `scheduler_lock.py` | `SchedulerLock`: `GET_LOCK('trading-app-scheduler', 0)` en una conexión propia que se mantiene abierta mientras el proceso sea líder; cada ciclo confirma `IS_USED_LOCK(...) = CONNECTION_ID()` (además mantiene viva la conexión); si falla la verificación, se omite el ciclo |
+| `execution_cycle.py` | `run_execution_cycle()`, en este orden: señales automáticas por vela cerrada, caducidad de pendientes, reconciliación de órdenes live con el exchange, protección SL/TP y polling de Telegram. Detalle en [M7](M07-BOTS-SIGNALS.md#ciclo-de-ejecución-del-scheduler-appmodulesschedulerexecution_cyclepy) |
 
 Ciclo (`run_cycle`):
 1. Lee bots con `status IN ('running','paused')`; si no hay ninguno, omite el ciclo. Por eso **iniciar un agente es lo que pone a andar la descarga de datos** de su símbolo.
@@ -225,11 +230,13 @@ SCHEDULER_RETENTION_CANDLES=500     # velas a conservar por par (default: 500)
 ```
 Explorador: `scheduler_runner` llama a `refresh_explorer()` al arrancar y luego cada 24 h (`time.monotonic`), aparte de `run_cycle()` porque necesita datos de todos los símbolos aunque no haya agentes. Sin `force` solo descarga los símbolos cuya última vela 1d tiene un día o más.
 
-El scheduler **no genera señales ni órdenes**: solo mantiene velas y features al día para los bots ([M7](M07-BOTS-SIGNALS.md)).
+Desde 2026-10-19, después de `run_cycle()` el scheduler corre `run_execution_cycle()`: **genera señales** para los agentes en modo Con aprobación / Automático, ejecuta las automáticas, caduca las pendientes, sincroniza con el exchange las órdenes live abiertas (reconciliación) y cierra posiciones por stop loss / take profit ([M7](M07-BOTS-SIGNALS.md), [M8](M08-ORDERS-EXECUTION.md)). Los agentes en modo Manual siguen como antes: el scheduler solo les mantiene velas y features.
 
 ## Gotchas críticos
 
 - **ccxt:** versión fijada en `pyproject.toml` (`ccxt==4.4.96`).
+- **Scheduler que "no hace nada" con varios workers:** es lo esperado en los que no son líder (solo uno tiene el lock). Si **ninguno** trabaja, buscar en el log `[Scheduler] No se pudo verificar el lock` (conexión a MySQL) y comprobar que nadie más tenga `trading-app-scheduler` (`SELECT IS_USED_LOCK('trading-app-scheduler')`).
+- **Dos entornos sobre la misma BD** (p. ej. dos máquinas de desarrollo) comparten el lock: solo uno de los dos corre el scheduler.
 - **Símbolos sin descarga automática:** solo los exchanges de `domain/ccxt_exchanges.py` (`CCXT_EXCHANGE_MAP`: binance, bybit, kraken, coinbase, bitget, okx) se descargan solos. `GET /api/symbols` devuelve `supports_auto_fetch` y el asistente de agentes ([M7](M07-BOTS-SIGNALS.md)) solo ofrece esos símbolos. Los de TradingView (`data_vendor`) nunca reciben velas: por eso el seed ya no los crea y la migración m02 los desactiva.
 - **`SPX/USDT:USDT` no es el S&P 500:** en Binance y Bybit es la memecoin SPX6900. Para el índice usar `SPY` (o `US500`/`SP500` en otros exchanges).
 - **`MATIC/USDT` ya no existe** (renombrado a `POL/USDT`): ccxt responde `BadSymbol`.
@@ -253,7 +260,7 @@ El scheduler **no genera señales ni órdenes**: solo mantiene velas y features 
 
 - Datos de exchange incorrectos o incompletos alimentan a [M3](M03-FEATURE-ENGINEERING.md), [M6](M06-AI-AGENT.md) y [M8](M08-ORDERS-EXECUTION.md) (el `PaperExecutor` usa la última vela como precio de ejecución).
 - Límites de peticiones de los exchanges (ccxt) si hay muchos bots activos en pares distintos.
-- Scheduler dentro del proceso web: duplicación con varios workers y trabajo bloqueante en el mismo proceso.
+- Scheduler dentro del proceso web: trabajo bloqueante en el mismo proceso (la duplicación con varios workers se resolvió con el lock). Si el líder cae, otro worker lo releva en su siguiente ciclo; mientras tanto no hay reconciliación ni protección por ciclo (en live el SL nativo sigue en el exchange, el TP no) ([M8](M08-ORDERS-EXECUTION.md)).
 
 ## Historial
 
@@ -263,4 +270,6 @@ El scheduler **no genera señales ni órdenes**: solo mantiene velas y features 
 - **2026-10-07** — El scheduler deja de usar SQL crudo y modelos ORM: usa `BotRepository.list_by_statuses`, `CandleRepository.get_latest_ts` / `delete_beyond_retention` y `CandleFeatureRepository.delete_beyond_retention`; el commit lo hace el repositorio.
 - **2026-10-08** — API headless (/api), páginas migradas a React (frontend/).
 - **2026-10-10** — Perpetuos TradFi (oro, plata, platino, paladio, petróleo, gas, cobre, SPY, QQQ, NVDA, TSLA, AAPL) en el seed; clases `commodity` e `index` (migración m02, que además desactiva TradingView y MATIC); `MATIC`→`POL` + TRX, NEAR, SUI, PAXG; explorador de tendencia (`/api/explorer`, página Explorar mercados, refresco diario en el scheduler); perpetuos bloqueados en live; mapa ccxt único (sin copia en `live_executor.py`).
+- **2026-10-19** — Scheduler con elección de líder por `GET_LOCK` de MySQL (`scheduler_lock.py`): corre una sola vez aunque haya varios workers. Tras cada ciclo de velas corre el ciclo de ejecución (`execution_cycle.py`: señales automáticas, caducidad, SL/TP, Telegram).
 - **2026-10-08** — Scheduler: recalcula features atrasadas aunque no haya velas nuevas. `CCXT_EXCHANGE_MAP` movido al dominio (`ccxt_exchanges.py`) y `supports_auto_fetch` en la respuesta de símbolos. Páginas de usuario movidas a la sección "Explorar" del menú.
+- **2026-10-19** — El ciclo de ejecución suma la **reconciliación de órdenes** ([M8](M08-ORDERS-EXECUTION.md)): señales automáticas → caducar → reconciliar → proteger posiciones → Telegram.

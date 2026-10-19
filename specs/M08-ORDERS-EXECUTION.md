@@ -7,36 +7,42 @@
 | Campo | Valor |
 |---|---|
 | Estado | ✅ Completo (sin tests) |
-| Avance (alcance original) | 100 % — 10/10 entregables |
-| Madurez (estimada) | 50 % — ver [Avance](#avance) |
-| Tablas | `orders`, `fills`, `positions` (R/W); `bots`, `candles`, `symbols`, `exchanges`, `accounts` (R) |
-| Depende de | [M2](M02-MARKET-DATA.md), [M4](M04-ACCOUNTS-PORTFOLIO.md) (credenciales Fernet), [M7](M07-BOTS-SIGNALS.md) |
-| Lo usan | [M9](M09-ALERTS.md) (hook de orden), [M10](M10-BILLING.md) (historial de órdenes y fills) |
-| Prefijo API | `/api/orders`, `/api/fills`, `/api/positions` |
-| Frontend | `frontend/src/modules/orders` |
-| Última revisión | 2026-10-10 |
+| Avance (alcance original) | 100 % — 10/10 entregables del plan original (+ 11 nuevos de 2026-10-19) |
+| Madurez (estimada) | 64 % — ver [Avance](#avance) |
+| Tablas | `orders`, `fills`, `positions` (R/W); `signals` (R/W: decisión de ejecución); `bots` (R, y `status` → `error` por drawdown); `candles`, `symbols`, `exchanges`, `accounts`, `account_balances` (R) |
+| Depende de | [M2](M02-MARKET-DATA.md), [M4](M04-ACCOUNTS-PORTFOLIO.md) (credenciales Fernet, saldo para el drawdown), [M7](M07-BOTS-SIGNALS.md) (bots, señales, propiedad) |
+| Lo usan | [M9](M09-ALERTS.md) (hook de orden; Telegram aprueba/rechaza vía `ExecuteSignalService`), [M10](M10-BILLING.md) (historial de órdenes y fills), scheduler de [M2](M02-MARKET-DATA.md) (ejecución automática, reconciliación y SL/TP) |
+| Prefijo API | `/api/orders`, `/api/fills`, `/api/positions`, `/api/signals/{id}/approve`, `/api/signals/{id}/reject` |
+| Frontend | `frontend/src/modules/orders` (aprobar/descartar vive en `frontend/src/modules/bots`) |
+| Última revisión | 2026-10-19 |
 
 ## Descripción
 
-**En palabras simples:** Es quien aprieta el botón de comprar/vender. Cuando el bot genera una señal aprobada, este módulo ejecuta la orden real en el exchange.
+**En palabras simples:** Es quien aprieta el botón de comprar/vender. Cuando un agente tiene una señal aprobada, este módulo envía la orden al exchange (o la simula en paper), y después protege la posición: en live deja el stop loss como orden en el exchange y vigila el take profit; en paper vigila los dos.
 
 **Qué hace:**
-- Crea **órdenes** para un bot: market (precio actual), limit (precio fijo), stop y stop-limit
-- Ejecuta la orden según el modo del bot:
-  - **Paper mode:** simula el fill usando el precio de cierre de la última vela (fee = 0)
-  - **Live mode:** envía la orden real al exchange vía ccxt, recibe precio y fee reales
-- Registra las **ejecuciones** (fills): cuánto se ejecutó realmente, a qué precio y con qué comisión
-- Gestiona las **posiciones abiertas**: recalcula el precio promedio (WAP) en cada compra, acumula el P&L realizado en cada venta
-- Máquina de estados de la orden: `new → sent → filled / partially_filled / canceled / rejected`
+- Crea **órdenes** para un agente: market (precio actual), limit (precio fijo), stop y stop-limit. Solo para agentes del usuario (el admin puede todos).
+- Antes de enviar, pasa toda orden por el **RiskGate**: kill switch global, live apagado por defecto, valor máximo por compra y pérdida máxima del agente.
+- **Guarda la orden antes de llamar al exchange** (con un `client_order_id` propio) y luego registra lo que el exchange respondió de verdad: ejecutada, ejecutada en parte, enviada sin ejecutar, rechazada o "sin respuesta" (la reconciliación la resuelve después en live).
+- Ejecuta según el modo del agente:
+  - **Paper:** simula la ejecución total con el cierre de la última vela (fee = 0).
+  - **Live:** envía la orden real con ccxt y registra precio, cantidad y comisión reales.
+- **Convierte señales en órdenes** (`ExecuteSignalService`): cuando la persona aprueba una señal pendiente (app o Telegram) o cuando el agente está en modo Automático. Revalida al precio actual (R/R ≥ 2:1) y recalcula la cantidad para mantener el mismo riesgo en dinero.
+- **Protege posiciones** (`ProtectPositionsService`): una posición abierta desde una señal guarda su stop loss y take profit; el scheduler la cierra a mercado cuando una vela los toca.
+- **Stop loss nativo en live** (`NativeStopService`): tras la compra de una señal en live, el SL queda como orden stop en el exchange (`positions.sl_order_id`), así protege aunque la app esté caída; el scheduler solo vigila el TP. Antes de cualquier otra venta de esa posición se cancela el SL nativo. Sin OCO: el TP no es una orden en el exchange.
+- **Reconcilia con el exchange** (`ReconcileOrdersService`, paso del scheduler): pone al día las órdenes live abiertas (límites que se ejecutaron después, ejecuciones parciales, el SL nativo que disparó el exchange y las órdenes "sin respuesta" que nunca llegaron).
+- Registra las **ejecuciones** (fills) y gestiona las **posiciones**: precio medio ponderado (WAP) en cada compra y P&L realizado en cada venta. En spot no hay cortos: no se vende más de lo que hay.
+- Máquina de estados de la orden: `new → sent → filled / partially_filled / canceled / rejected`.
 
-**Importante:** Las cuentas "paper" simulan las órdenes sin tocar dinero real. Las cuentas "live" operan con dinero real.
+**Importante:** Las cuentas "paper" simulan las órdenes sin tocar dinero real. Las cuentas "live" operan con dinero real y, por defecto, están **desactivadas en el servidor** (`TRADING_LIVE_ENABLED=false`).
 
 ## Páginas
 
 Hash routing: la URL real es `/#/<ruta>`.
 
 **Páginas — Usuario (cualquier usuario autenticado):**
-- `/#/orders` — Libro de órdenes: selector de bot (bots de tus cuentas, por nombre), pestañas Órdenes / Posiciones / Ejecuciones, diálogo para crear nueva orden
+- `/#/orders` — Libro de órdenes: selector de agente (agentes de tus cuentas, por nombre), pestañas Órdenes / Posiciones / Ejecuciones, diálogo para crear nueva orden. Las posiciones con protección muestran "Protección automática: SL … · TP …" y, si el SL está en el exchange (live), "El stop loss está como orden en el exchange."
+- Aprobar / descartar una señal pendiente: en el detalle de la señal del agente y en la tarjeta "Señales por aprobar" del dashboard ([M7](M07-BOTS-SIGNALS.md)); llaman a `POST /api/signals/{id}/approve|reject` de este módulo.
 
 **Páginas — Administrador (solo admin):**
 - `/#/admin/orders` — Vista global de todas las órdenes del sistema con filtros por lado, estado y tipo, y diálogo con los fills de cada orden
@@ -50,12 +56,23 @@ Entregables:
 - ✅ Infrastructure: ORM models + repository impls para orders, fills, positions
 - ✅ Execution (Strategy Pattern): PaperExecutor (simula con última vela) + LiveExecutor (ccxt real)
 - ✅ Services: list_orders, get_order, create_order, list_fills, list_positions
-- ✅ CreateOrderService: valida bot, selecciona executor según bot.mode, crea order+fill+position en transacción atómica
+- ✅ CreateOrderService: valida bot, selecciona executor según bot.mode, crea order+fill+position
 - ✅ Provider: OrderServiceFactory con repos propios + borrowed de M7/M2/M4
 - ✅ REST: `POST /api/orders`, `GET /api/orders`, `GET /api/orders/{id}`, `GET /api/fills`, `GET /api/positions`
 - ✅ Web UI usuario: `/#/orders` con tabs Órdenes/Posiciones/Ejecuciones + diálogo crear orden (React desde 2026-10-08)
 - ✅ Web UI admin: `/#/admin/orders` con filtros por lado/estado/tipo + diálogo de fills
 - ✅ LiveExecutor: integración completa ccxt + Fernet credentials
+- ✅ (2026-10-19) **Propiedad** en `POST/GET /api/orders`, `GET /api/orders/{id}`, `/api/fills` y `/api/positions` vía `find_accessible_bot`
+- ✅ (2026-10-19) **RiskGateService**: kill switch, live apagado, notional máximo, drawdown máximo
+- ✅ (2026-10-19) **Idempotencia y estado real**: `orders.client_order_id` (`ta-{id}`), orden confirmada antes de llamar al exchange, `ExecutionResult` con el estado reportado, rechazos guardados como `rejected`, `ORDER_EXECUTION_UNCERTAIN` + `meta.needs_reconciliation`
+- ✅ (2026-10-19) **Señal vinculada validada** (mismo agente, aprobada, misma dirección, una sola orden activa) y regla spot sin cortos
+- ✅ (2026-10-19) **ExecuteSignalService**: aprobar/rechazar señales pendientes con reclamo atómico y revalidación al precio actual
+- ✅ (2026-10-19) **ProtectPositionsService**: SL/TP automáticos por ciclo del scheduler (`positions.stop_loss`, `take_profit`, `signal_id`)
+- ✅ (2026-10-19) REST `POST /api/signals/{id}/approve` y `/reject` (router `signal_decisions`)
+- ✅ (2026-10-19) **LiveExecutor ampliado:** cliente ccxt compartido (`_build_client`, `LIVE_USE_SANDBOX` → testnet), `fetch` (por `exchange_order_id` o `clientOrderId`), `cancel` y `place_stop_loss`
+- ✅ (2026-10-19) **ReconcileOrdersService:** paso del scheduler que sincroniza estado y fills de las órdenes live `sent`/`partially_filled` (incluidas las `needs_reconciliation`); `position_updater.apply_fill` compartido con `CreateOrderService`
+- ✅ (2026-10-19) **NativeStopService:** SL nativo en live tras la BUY de una señal (`positions.sl_order_id`, migración `3ac9fef574cb`, `ORDER_NATIVE_STOP_LOSS`), cancelación antes de cualquier otra venta (`ORDER_NATIVE_STOP_ACTIVE`) y scheduler solo para el TP
+- ✅ (2026-10-19) UI: `GET /api/positions` devuelve `sl_order_id` y Posiciones muestra "El stop loss está como orden en el exchange."
 
 ## Decisiones de diseño
 
@@ -63,47 +80,73 @@ Entregables:
 |---|---|---|
 | **Strategy Pattern** para la ejecución: `ExecutorInterface` → `PaperExecutor` / `LiveExecutor` | Mismo flujo para simular y operar con dinero real; añadir un broker no toca el servicio | `if mode == ...` repartido por el código |
 | El executor lo elige `bot.mode` (`paper` → `PaperExecutor`, `live` → `LiveExecutor`) en `CreateOrderService` | El modo vive en el bot; no se puede ejecutar *live* por error desde una cuenta paper | Parámetro `mode` en cada request |
-| `PaperExecutor` rellena con el cierre de la última vela y `fee = 0` | Simulación simple y determinista, sin red | Simular *slippage* y comisiones |
+| `PaperExecutor` rellena con el cierre de la última vela y `fee = 0`, siempre `filled` | Simulación simple y determinista, sin red | Simular *slippage* y comisiones |
 | `LiveExecutor` descifra las credenciales con Fernet ([M4](M04-ACCOUNTS-PORTFOLIO.md)) y envía la orden con ccxt | Las claves nunca viajan ni se guardan en claro | Credenciales en variables de entorno |
-| **Transacción atómica:** orden + fill + upsert de posición en un solo `order_repo.commit()` (repos con sesión compartida); `order_repo.rollback()` si falla el executor | Nunca queda una orden sin su fill/posición | Commits separados |
-| Posición con **precio medio ponderado (WAP)**: `apply_buy_fill()` recalcula `avg_price`; `apply_sell_fill()` acumula `realized_pnl` | Cálculo estándar de coste medio y P&L realizado | FIFO / lotes |
-| `positions` único por `(bot_id, symbol_id)` y `qty >= 0` (CHECK) | Una posición abierta por bot y símbolo; **no admite posiciones cortas** | Cantidades negativas |
+| **Persistir antes de enviar:** la orden se crea (`new`), se le asigna `client_order_id = "ta-{id}"` y se hace `commit()` **antes** de llamar al exchange; después se actualiza con el resultado | Si la llamada se corta por red, la orden puede existir en el exchange: revertirla dejaría una orden viva que el sistema no conoce. Los rechazos quedan como historial auditable | Transacción única orden + fill con `rollback()` si falla el executor (esquema anterior a 2026-10-19) |
+| `client_order_id` determinista (`Order.build_client_order_id`), UNIQUE en BD y enviado como `clientOrderId` | El exchange rechaza un segundo envío con el mismo ID y permite buscar la orden si se pierde la respuesta; ≤ 36 caracteres válidos en Binance/Bybit/OKX | UUID aleatorio (no se puede reconstruir) |
+| El executor devuelve `ExecutionResult(status, exchange_order_id, fill \| None)` con el estado **que reporta el exchange** (`filled` / `partially_filled` / `sent`) | Una límite lejos del precio queda `sent` sin fill; no se asume ejecución total ni se inventa precio 0 | Devolver siempre un `Fill` (antes) |
+| Dos tipos de error: `RuntimeError` → orden `rejected` (no existe en el exchange) · `ExecutionUncertainError` (timeout/red/error inesperado o ejecución sin precio) → queda `sent` con `meta.needs_reconciliation` | Distinguir "seguro que no se envió" de "no sabemos" evita reenviar una orden duplicada | Tratar todo fallo como rechazo |
+| **RiskGate** como última barrera, para órdenes manuales, aprobadas o automáticas: `TRADING_ENABLED` → `TRADING_LIVE_ENABLED` → solo en compras: notional ≤ min(`ORDER_MAX_NOTIONAL`, `risk_params.max_notional`) y drawdown < `risk_params.max_drawdown_pct` | Las reglas del servidor no dependen del front ni de la IA | Validar solo en el front o en el agente |
+| Las **ventas** no se bloquean por notional ni drawdown (sí por el kill switch y por live apagado) | Reducir o cerrar riesgo siempre debe poder hacerse | Mismo filtro para compras y ventas |
+| Drawdown alcanzado → el agente pasa a `error` (`BOT_MAX_DRAWDOWN_REACHED`) | Frena al agente hasta que una persona lo revise | Solo rechazar la orden y seguir operando |
+| Drawdown = pérdida realizada acumulada / (saldo libre en la moneda base + esa pérdida) | Aproxima el capital inicial sin snapshots | `portfolio_snapshots` (tiene modelo ORM, pero ningún servicio la escribe) |
+| **Spot sin cortos:** `side=sell` solo hasta la cantidad de la posición (`ORDER_SELL_EXCEEDS_POSITION`); una señal SELL ejecutada cierra la posición abierta | El esquema (`chk_positions_qty`, `qty ≥ 0`) y los executors no manejan cortos | Representar cortos con `qty` negativa |
+| **Una señal = una orden:** `signal_id` debe ser del mismo agente, aprobada, con la misma dirección y sin otra orden que no esté `rejected`/`canceled` | No ejecutar dos veces la misma decisión | Permitir varias órdenes por señal |
+| Aprobar una señal = crear la orden, por eso `POST /signals/{id}/approve|reject` vive en `orders` (router `signal_decisions`) y no en `bots` | `orders` ya depende de `bots`; al revés habría ciclo | Endpoint en `bots` que importe `orders` |
+| **Reclamo atómico** `pending → executing` con UPDATE condicional (`SignalRepository.transition_decision`) y `commit()` antes de crear la orden | Si la app y Telegram aprueban a la vez, solo uno gana; el otro recibe `SIGNAL_ALREADY_DECIDED` | Bloqueo de fila o comprobación en Python |
+| **Revalidar al precio actual** al aprobar: precio sobre el SL, bajo el TP y R/R ≥ `AGENT_MIN_RR_RATIO` desde el cierre actual (`SIGNAL_PRICE_MOVED`); sin piramidar (`SIGNAL_POSITION_ALREADY_OPEN`) | Entre la señal y la aprobación puede pasar una hora: la operación tiene que seguir cumpliendo el 2:1 | Ejecutar con los niveles originales |
+| Cantidad recalculada: `riesgo_en_dinero = position_size × \|entry − SL\|` de la señal; `qty = riesgo_en_dinero / (precio_actual − SL)` | Mantiene la regla del 1 % aunque el precio se haya movido | Usar `position_size` tal cual |
+| **Protección híbrida:** en live (con `ORDER_NATIVE_STOP_LOSS=true`, por defecto) el SL es una orden stop nativa en el exchange (`create_stop_loss_order`, a mercado) y el TP lo vigila el scheduler; en paper, o si el exchange no soporta `createStopLossOrder` o rechaza el stop, el scheduler vigila los dos. **Sin OCO** | El SL es lo que protege el capital: debe funcionar aunque la app o el scheduler estén caídos. El TP puede esperar al siguiente ciclo. OCO no está en la API unificada de ccxt para la mayoría de exchanges | Todo por ciclo del scheduler (esquema anterior: si el proceso cae nadie vigila) · OCO / TP nativo (mejora futura) |
+| Con SL nativo, **toda otra venta de la posición cancela antes el SL** (`NativeStopService.cancel` dentro de `CreateOrderService`); si no se puede cancelar o ya se ejecutó → `ORDER_NATIVE_STOP_ACTIVE` (409) y no se vende | Sin OCO, el SL y la otra venta podrían ejecutarse los dos y vender dos veces la misma posición | Vender y cancelar el SL después |
+| El SL nativo se guarda como `Order` propia (`type=stop`, `side=sell`, `meta.reason=stop_loss_native`) con `client_order_id`, persistida **antes** de enviarla; si la respuesta se pierde queda `sent` + `needs_reconciliation` y se vincula igual | Mismo esquema de idempotencia que el resto de órdenes; la reconciliación decide si llegó | Guardar solo el id del exchange en la posición |
+| Si el SL nativo no se coloca (no soportado / rechazado → `NATIVE_STOP_FAILED`), **la señal no falla** | La posición ya está abierta y sigue protegida por el scheduler | Marcar la señal `failed` |
+| **Reconciliación por ciclo del scheduler** (`ReconcileOrdersService`): órdenes live `sent`/`partially_filled` de los últimos 7 días; registra solo lo ejecutado nuevo (ejecutado en el exchange − fills guardados, y la diferencia de comisión), adopta el estado del exchange y da por perdida (`rejected`, "La orden no llegó al exchange.") a los 10 min una orden `needs_reconciliation` que el exchange no conoce | Las límites, el SL nativo y las respuestas perdidas se resuelven solas sin duplicar fills; 10 min de gracia evitan marcar perdida una orden que el exchange aún no indexa | Revisión manual en el exchange (esquema anterior) · webhooks/websockets del exchange |
+| Reconciliación: un `commit()` por orden y errores de red se reintentan en el siguiente ciclo | Un fallo en una orden no deshace las demás | Un commit por ciclo |
+| Ejecutada en parte y luego cerrada en el exchange (cancelada/vencida) → `canceled`; cerrada sin ejecutar → `canceled` o `rejected` (`_to_result`) | Estado final real en vez de quedar `partially_filled`/`sent` para siempre | Mantener el último estado conocido |
+| Si una vela toca SL y TP a la vez, **gana el SL** (`Position.protection_hit`) | Sin datos intravela no se sabe cuál llegó primero: se asume el peor caso | Asumir el TP |
+| La protección actúa aunque el agente esté pausado o detenido (`require_running=False`); el kill switch sí la detiene | Proteger el capital no depende de que el agente siga buscando entradas | Exigir agente `running` |
+| Al quedar flat, `apply_sell_fill` borra SL/TP/`signal_id` de la posición | Una posición nueva no hereda la protección de la anterior | Limpiarlo a mano |
+| `meta.reason` en cada orden: `manual`, `signal`, `stop_loss`, `take_profit`, `stop_loss_native` | Historial legible de por qué salió cada orden | Inferirlo de `signal_id` |
+| Mensaje de éxito según el estado real (`Orden ejecutada.` / `Orden ejecutada en parte…` / `Orden enviada…`) | La persona sabe si la orden quedó abierta | Un único "Orden ejecutada exitosamente." |
+| `positions` único por `(bot_id, symbol_id)` y `qty >= 0` (CHECK) | Una posición abierta por agente y símbolo | Cantidades negativas |
 | El símbolo para ccxt se guarda en `order.meta["symbol"]` | `LiveExecutor` no tiene que re-resolver el símbolo | Resolverlo en cada llamada |
 | Máquina de estados de la orden en la entidad: `new → sent → filled / partially_filled / canceled / rejected` | Transiciones válidas centralizadas y testeables | Estado libre |
-| Solo se crean órdenes para bots `running` | Un bot parado o en error no opera | Permitirlo y avisar |
-| Prefijo `/api/` | Originalmente porque las páginas Jinja `/orders` y `/admin/orders` quedaban tapadas por el router REST; desde 2026-10-08 todo el REST va bajo `settings.API_PREFIX` y la UI es React con hash routing | Cambiar las páginas de ruta |
-| Hook de alertas post-commit en `try/except` ([M9](M09-ALERTS.md)) | Una alerta no aborta el flujo de trading | Alertas dentro de la transacción |
+| Solo se crean órdenes para agentes `running` (salvo cierres por SL/TP) | Un agente parado o en error no abre operaciones | Permitirlo y avisar |
+| Hook de alertas post-commit en `try/except` ([M9](M09-ALERTS.md)), **también para órdenes rechazadas** | Una alerta no aborta el flujo de trading; un rechazo es justo lo que conviene avisar | Alertas dentro de la transacción |
 
 ## Avance
 
 | Métrica | Valor | Evidencia |
 |---|---|---|
-| Alcance original | **100 %** (10/10) | Dominio, infraestructura, executors paper/live, servicios, REST y UI usuario + admin |
-| Madurez | **≈ 50 %** | Funcionalidad 80 · Tests 0 · Seguridad 70 · Operación 50 |
+| Alcance original | **100 %** (10/10) | Dominio, infraestructura, executors paper/live, servicios, REST y UI usuario + admin. Además, 11 entregables nuevos (2026-10-19) |
+| Madurez | **≈ 64 %** | Funcionalidad 90 · Tests 0 · Seguridad 90 · Operación 75 |
 
-- **Funcionalidad (80):** no hay gestión automática de Stop Loss / Take Profit tras la entrada (no aparecen en `CreateOrderService` ni en los executors), ni endpoint de cancelación, ni sincronización del estado de órdenes abiertas con el exchange.
-- **Tests (0):** **ningún test** cubre este módulo, que es donde se mueve el dinero.
-- **Seguridad (70):** credenciales cifradas y listados por bot (el admin puede listar todo); sin límites de tamaño de orden ni confirmación para `live`.
-- **Operación (50):** sin reconciliación con el exchange ni reintentos.
+- **Funcionalidad (90):** señal → orden (aprobación o automático), SL nativo en el exchange en live + TP por ciclo, y reconciliación automática de las órdenes live abiertas (fills tardíos, parciales, órdenes que nunca llegaron). Faltan: cancelar órdenes desde la API/UI (el executor ya sabe cancelar, solo lo usa el SL nativo), TP nativo / OCO, ajustar el SL nativo si la posición crece con una compra manual, y un paper realista (comisión, *slippage*, fill en el nivel del SL/TP).
+- **Tests (0):** **ningún test** cubre este módulo, que es donde se mueve el dinero (ni `RiskGateService`, ni `ExecuteSignalService`, ni `ProtectPositionsService`, ni `ReconcileOrdersService` / `NativeStopService`). Lo nuevo solo se verificó con pruebas de humo con mocks (fuera del repo), **sin correr contra un exchange real ni una testnet**.
+- **Seguridad (90):** propiedad en todas las rutas (404 para agentes ajenos), RiskGate en el servidor, live apagado por defecto, `client_order_id` UNIQUE, una orden por señal, reclamo atómico de la señal, cancelación obligatoria del SL nativo antes de otra venta (evita doble venta), precios con `max_digits=30, decimal_places=12` en el esquema.
+- **Operación (75):** kill switch y límites configurables por entorno; reconciliación y protección corren solas en el scheduler (proceso líder), con reintento en el siguiente ciclo ante errores de red; testnet con `LIVE_USE_SANDBOX`; SL nativo desactivable (`ORDER_NATIVE_STOP_LOSS`). Sin métricas ni avisos cuando la reconciliación falla seguido.
 
 ## Posibles mejoras
 
 | Prioridad | Mejora | Esfuerzo |
 |---|---|---|
-| Alta | **Tests** de `CreateOrderService` (paper y live con ccxt mockeado), `Position.apply_buy_fill/apply_sell_fill` (WAP y P&L) y la máquina de estados de `Order` | M |
-| Alta | **SL/TP automáticos:** crear órdenes de protección (OCO/`stop`) al abrir una posición o monitorizar precio y cerrar; hoy la señal de [M7](M07-BOTS-SIGNALS.md) los calcula pero nadie los ejecuta | L |
-| Alta | Cancelar órdenes (`DELETE`/`POST .../cancel`) y **sincronizar estado y fills** con el exchange (`fetch_order`), para `limit`/`stop` y ejecuciones parciales | L |
-| Alta | Salvaguardas para `live`: tamaño máximo de orden, saldo mínimo, límite diario y confirmación explícita | M |
-| Alta | **Control de propiedad:** `POST /api/orders` y los listados por `bot_id` (`/api/orders`, `/api/positions`, `/api/fills`) solo exigen token; no comprueban que el bot sea del usuario (con `live`, cualquiera podría operar el bot de otro) | S |
-| Media | Soporte de posiciones cortas (`qty` negativa o campo `side`): una señal SELL de [M7](M07-BOTS-SIGNALS.md) implica corto y el esquema hoy lo impide (`chk_positions_qty`) | L |
-| Media | `PaperExecutor` realista: comisión y *slippage* configurables | S |
-| Media | Idempotencia con `client_order_id` para no duplicar órdenes al reintentar | M |
+| Alta | **Tests** de `CreateOrderService` (paper y live con ccxt mockeado: `filled`/`sent`/rechazo/incierto, cancelación del SL nativo), `RiskGateService`, `ExecuteSignalService` (carrera app/Telegram, precio movido, cantidad recalculada, SL nativo que falla), `ProtectPositionsService` (con y sin SL nativo), `ReconcileOrdersService` (fill tardío, parcial, delta de comisión, perdida a los 10 min, desvincular SL), `NativeStopService`, `LiveExecutor.fetch`/`_to_result`, `Position.apply_*_fill`/`protection_hit` y la máquina de estados de `Order` | M |
+| Alta | Probar el circuito live completo en una **testnet** (`LIVE_USE_SANDBOX=true`) con cada exchange que se vaya a usar: compra, SL nativo, TP, reconciliación y cancelación | S |
+| Alta | Cancelar órdenes (`POST /api/orders/{id}/cancel`) para `limit`/`stop` abiertas (`LiveExecutor.cancel` ya existe) | S |
+| Media | **TP nativo / OCO** en los exchanges que lo soporten (`create_take_profit_order` o OCO propia del exchange): hoy el TP se vigila por ciclo y un hueco de precio cierra más lejos del nivel | L |
+| Media | Ajustar la cantidad del SL nativo si la posición cambia (compra manual sobre una posición protegida: hoy el SL cubre solo la cantidad que había al colocarlo) | S |
+| Media | `PaperExecutor` realista: comisión y *slippage* configurables, y cierre por SL/TP al precio del nivel (hoy usa el cierre de la última vela) | S |
+| Media | Métricas/avisos de la reconciliación (órdenes que siguen abiertas días, errores seguidos del exchange) | S |
+| Media | Saldo mínimo y límite diario de pérdidas/operaciones por agente en el RiskGate | S |
+| Media | Soporte de posiciones cortas (`qty` negativa o campo `side`) para perpetuos | L |
 | Baja | Cálculo de P&L no realizado de la posición abierta en `/api/positions` | S |
 
 ## Fuera de alcance y pendientes conocidos
 
-- Stop Loss / Take Profit automáticos (el flujo de [`_ROOT.md`](_ROOT.md) los describe como objetivo, no están implementados).
-- Cancelación de órdenes y reconciliación con el exchange.
+- **Paper:** fill siempre total al cierre de la última vela (también los cierres por SL/TP), sin comisión ni *slippage*.
+- **SL/TP:** en live el SL es una orden stop nativa (si el exchange soporta `createStopLossOrder`), pero el **TP** se vigila una vez por ciclo del scheduler (`SCHEDULER_INTERVAL_SECONDS`, 60 s); no hay OCO. En paper, y en live sin SL nativo, los dos van por ciclo. Las posiciones de órdenes manuales no tienen protección.
+- **Reconciliación:** solo órdenes **live** `sent`/`partially_filled` de los **últimos 7 días** (hasta 50 por ciclo); una más vieja que siga abierta hay que revisarla en el exchange.
+- Cancelación de órdenes desde la API/UI (internamente solo se cancela el SL nativo).
 - Posiciones cortas y apalancamiento / futuros. Por eso los perpetuos TradFi de [M2](M02-MARKET-DATA.md) (`XAU/USDT:USDT`) solo se operan en paper: `LiveExecutor` rechaza cualquier símbolo con `:` (ccxt leería `amount` como contratos).
 - Tests (el roadmap original no los listaba).
 
@@ -112,14 +155,21 @@ Entregables:
 ### Tablas en BD
 | Tabla | Acción | Nota |
 |-------|--------|------|
-| `orders` | WRITE | Órdenes por bot (market/limit/stop/stop_limit) |
-| `fills` | WRITE | Ejecuciones de órdenes (CASCADE delete) |
-| `positions` | WRITE | Posición abierta por bot+symbol (UNIQUE uq_positions_bot_symbol) |
-| `bots` | READ | Para validar bot existe y está running |
-| `candles` | READ | PaperExecutor usa última vela para precio |
+| `orders` | WRITE | Órdenes por bot (market/limit/stop/stop_limit). `client_order_id VARCHAR(64) NULL` + `uq_orders_client_order_id` (NULL en las anteriores a m08). `meta`: `symbol`, `mode`, `reason` (`stop_loss_native` para el SL nativo), y si aplica `error`, `needs_reconciliation` |
+| `fills` | WRITE | Ejecuciones de órdenes (CASCADE delete); la reconciliación añade un fill por cada tramo nuevo ejecutado |
+| `positions` | WRITE | Posición por bot+symbol (UNIQUE `uq_positions_bot_symbol`). `stop_loss`, `take_profit` `DECIMAL(30,12) NULL` y `signal_id BIGINT NULL` (FK `fk_positions_signal` → `signals`): protección que vigila el scheduler. `sl_order_id BIGINT NULL` (FK `fk_positions_sl_order` → `orders`): orden stop loss nativa en el exchange (NULL = la vigila el scheduler) |
+| `signals` | WRITE | `ExecuteSignalService` cambia `decision_status` y los campos de decisión (columnas de [M7](M07-BOTS-SIGNALS.md)) |
+| `bots` | READ / WRITE | Validar propiedad y estado; el RiskGate lo pasa a `error` por drawdown |
+| `candles` | READ | Precio de referencia, PaperExecutor, revalidación de la señal y SL/TP |
 | `symbols` | READ | Para resolver símbolo del bot |
 | `exchanges` | READ | Para resolver exchange en LiveExecutor |
-| `accounts` | READ | Para obtener credenciales cifradas en LiveExecutor |
+| `accounts` | READ | Propiedad y credenciales cifradas en LiveExecutor |
+| `account_balances` | READ | Saldo libre para el drawdown del RiskGate |
+
+### Migraciones
+- `218d50385270` — `m08 orders client_order_id and otp failed attempts`: `orders.client_order_id` + UNIQUE (y `users.otp_failed_attempts` de [M1](M01-AUTH.md)). Escrita a mano (`AFTER exchange_order_id`).
+- `f51e2dad9c13` — `m07 execution mode and signal decisions`: entre otras, `positions.stop_loss`, `take_profit`, `signal_id` + FK. Ver [M7](M07-BOTS-SIGNALS.md#migraciones).
+- `3ac9fef574cb` — `m08 positions native stop order` (`down_revision = f51e2dad9c13`): `positions.sl_order_id BIGINT NULL` + FK `fk_positions_sl_order` → `orders`. Escrita a mano (`AFTER signal_id`); el downgrade quita la FK, su índice y la columna.
 
 ### Modelos ORM (`app/modules/orders/infrastructure/`)
 | Archivo | Clase | Tabla |
@@ -130,41 +180,100 @@ Entregables:
 
 Registrados en: `app/extensions/db/models_registry.py`
 
+Repos: `OrderRepository.has_active_order_for_signal(signal_id)` (orden que no está `rejected`/`canceled`) · `OrderRepository.list_open_live(since, limit=50)` (`sent`/`partially_filled` desde `since`, más antiguas primero; el modo `live` se filtra en Python desde `meta` para no depender de la sintaxis JSON de MySQL, por eso lee `limit × 4` filas) · `PositionRepository.list_protected()` (`qty > 0` y SL o TP no nulos).
+
+### Dominio
+- `Order.build_client_order_id(order_id)` → `"ta-{id}"`.
+- `Position.set_protection(sl, tp, signal_id)`, `clear_protection()` (también borra `sl_order_id`), `has_native_stop()` (`sl_order_id` no nulo), `protection_hit(low, high)` → `"stop_loss"` / `"take_profit"` / `None` (solo largos; SL gana si se tocan los dos).
+
 ### Execution layer (`app/modules/orders/execution/`)
 | Archivo | Clase | Qué hace |
 |---------|-------|---------|
-| `executor_interface.py` | `ExecutorInterface` (ABC) | Interfaz: `execute(order, bot) -> Fill` |
-| `paper_executor.py` | `PaperExecutor` | Simula fill con precio de última vela, fee=0 |
-| `live_executor.py` | `LiveExecutor` | Envía orden real al exchange via ccxt + Fernet decrypt |
+| `executor_interface.py` | `ExecutorInterface` (ABC), `ExecutionResult`, `ExecutionUncertainError` | `execute(order, bot) -> ExecutionResult(status, exchange_order_id, fill \| None)`. `RuntimeError` = rechazada; `ExecutionUncertainError` = no se sabe si llegó |
+| `paper_executor.py` | `PaperExecutor` | Fill total con el cierre de la última vela (market), `price` (limit/stop_limit) o `stop_price` (stop); fee = 0 |
+| `live_executor.py` | `LiveExecutor` | ccxt + Fernet. `_build_client(bot)`: cliente autenticado compartido por todos los métodos (`LIVE_USE_SANDBOX=true` → `set_sandbox_mode(True)`). `execute`: envía `params.clientOrderId`. `place_stop_loss(order, bot)`: exige `client.has['createStopLossOrder']` (si no → `RuntimeError`) y llama `create_stop_loss_order(symbol, 'market', 'sell', qty, None, stop_price, {'clientOrderId'})`. `fetch(order, bot)`: por `exchange_order_id`; sin él, `fetch_order(None, symbol, {'clientOrderId': cid})` y, si el exchange no acepta ese filtro, busca en `fetch_open_orders`/`fetch_closed_orders`; `OrderNotFound` → `None`. `cancel(order, bot)`: `True` si canceló, `False` si `OrderNotFound` o no hay `exchange_order_id`. `_to_result` usa `filled` y `average` (o `cost / filled`); sin ejecución, estado ccxt `canceled`/`cancelled` → `canceled`, `rejected`/`expired` → `rejected`, si no `sent`; sin precio → `ExecutionUncertainError`. Errores al enviar: `InsufficientFunds`/`InvalidOrder`/`ExchangeError` → `RuntimeError`; `RequestTimeout`/`NetworkError`/otro → `ExecutionUncertainError` |
 
 **Selector de executor en `CreateOrderService`:** `bot.mode == "paper"` → PaperExecutor; `"live"` → LiveExecutor
 
 ### Servicios (`app/modules/orders/services/`)
 | Subdir | Servicios |
 |--------|-----------|
-| `orders/` | `create_order_service.py`, `get_order_service.py`, `list_orders_service.py` |
+| `orders/` | `create_order_service.py`, `get_order_service.py`, `list_orders_service.py`, `position_updater.py` (`apply_fill(position_repo, bot, position, fill_qty, fill_price, side)`: crea la posición o aplica `apply_buy_fill`/`apply_sell_fill`; sin commit. Lo comparten `CreateOrderService` y `ReconcileOrdersService`) |
 | `fills/` | `list_fills_service.py` |
 | `positions/` | `list_positions_service.py` |
+| `risk/` | `risk_gate_service.py` (`RiskGateService.check(bot, side, qty, reference_price)`) |
+| `execution/` | `execute_signal_service.py` (`ExecuteSignalService.execute` / `reject` → `SignalDecision(signal, order)`), `protect_positions_service.py` (`ProtectPositionsService.run()` → `ProtectionReport(checked, closed, failed)`), `reconcile_orders_service.py` (`ReconcileOrdersService.run(limit=50)` → `ReconcileReport(checked, updated)`), `native_stop_service.py` (`NativeStopService.place(bot, position, stop_price)` / `cancel(bot, position)`) |
+
+**Flujo de `CreateOrderService.create(...)`** (params nuevos: `owner_id`, `require_running=True`, `reason`):
+1. `find_accessible_bot` (si no → `BOT_NOT_FOUND` 404) y `running` (salvo `require_running=False`).
+2. Validar lado, tipo, cantidad y precios.
+3. `signal_id` (si viene): `SIGNAL_NOT_FOUND` 404 · `ORDER_SIGNAL_MISMATCH` 422 · `ORDER_SIGNAL_ALREADY_USED` 409.
+4. Precio de referencia (`price` / `stop_price` / último cierre; sin velas → `ORDER_NO_MARKET_PRICE`); venta > posición → `ORDER_SELL_EXCEEDS_POSITION` 422.
+5. `RiskGateService.check`.
+5b. Venta de una posición con SL nativo → `NativeStopService.cancel` (sin commit propio: se confirma con la orden en el paso 6); si falla → `ORDER_NATIVE_STOP_ACTIVE` (409) y no se crea la orden.
+6. Crear orden `new` + `client_order_id` + `commit()`.
+7. Ejecutar: `ExecutionUncertainError` → `sent` + `needs_reconciliation` → `ORDER_EXECUTION_UNCERTAIN` (502) · `RuntimeError` → `rejected` + `meta.error` + hook de alertas → `ORDER_EXECUTION_FAILED` (502) · éxito → estado real, fill (si hay) y posición (`apply_fill`).
+8. `commit()` + hook de alertas.
+
+**Flujo de `ExecuteSignalService.execute(signal_id, owner_id, decided_by_user_id, channel)`:**
+1. Señal y agente accesibles (`SIGNAL_NOT_FOUND`), BUY/SELL aprobada (`SIGNAL_NOT_ACTIONABLE`), `pending` (`SIGNAL_ALREADY_DECIDED`), no vencida (`SIGNAL_EXPIRED`; si venció la marca `expired`).
+2. `transition_decision(pending → executing)` + `commit()`; si otro ganó → `SIGNAL_ALREADY_DECIDED` 409.
+3. Plan: SELL → vende toda la posición (`SIGNAL_NO_POSITION` si no hay); BUY → sin posición abierta, revalida R/R al cierre actual (`SIGNAL_PRICE_MOVED`) y recalcula la cantidad.
+4. `CreateOrderService.create(order_type="market", reason="signal", signal_id=...)`.
+5. BUY con posición abierta → `set_protection(signal.stop_loss, signal.take_profit, signal.id)` + `commit()`; si el agente es `live` y `ORDER_NATIVE_STOP_LOSS=true` → `NativeStopService.place(bot, position, signal.stop_loss)`. Si falla (`NATIVE_STOP_FAILED`, `SYMBOL_NOT_FOUND`) solo se registra un warning: la señal sigue y el scheduler vigila el SL.
+6. `executing → executed`; cualquier fallo → `failed` con `decision_reason` = código (≤ 64).
+
+`reject(...)`: `pending → rejected` con el mismo UPDATE condicional.
+
+**Flujo de `NativeStopService.place(bot, position, stop_price)`:**
+1. Crea `Order(type="stop", side="sell", qty=position.qty, stop_price, meta.reason="stop_loss_native")` + `client_order_id` + `commit()` **antes** de enviarla.
+2. `LiveExecutor.place_stop_loss`: éxito → estado y `exchange_order_id` reales, vincula `positions.sl_order_id` · `ExecutionUncertainError` → `sent` + `needs_reconciliation` y **se vincula igual** (la reconciliación decide) · `RuntimeError` (no soportado / rechazado) → `rejected` + `meta.error` → `NATIVE_STOP_FAILED` (502), sin vincular.
+
+`cancel(bot, position)`: sin `sl_order_id` → ok · orden inexistente, `canceled` o `rejected` → desvincula · `filled` → `ORDER_NATIVE_STOP_ACTIVE` (409) · `LiveExecutor.cancel` con error o `False` (ya no está abierta) → `ORDER_NATIVE_STOP_ACTIVE` · cancelada → `canceled` y desvincula. No hace commit (lo hace el llamador).
+
+**Flujo de `ReconcileOrdersService.run(limit=50)`** (paso del scheduler):
+1. `list_open_live(since=ahora − 7 días)`; por cada orden, `LiveExecutor.fetch`.
+2. Error de red (`ExecutionUncertainError`) o del exchange (`RuntimeError`) → se salta; se reintenta en el siguiente ciclo.
+3. El exchange no la conoce (`None`): si tiene `needs_reconciliation` y más de **10 min** → `rejected` con `meta.error = "La orden no llegó al exchange."`; si no, se espera.
+4. Si la conoce: `_to_result` → completa `exchange_order_id`; fill nuevo = ejecutado en el exchange − suma de fills guardados (comisión = total − comisiones ya guardadas, mínimo 0); adopta el estado del exchange; `partially_filled` con estado ccxt `canceled`/`expired`/`rejected` → `canceled`; quita `needs_reconciliation`. Sin cambios → no escribe nada.
+5. `_finish`: guarda el fill y lo aplica a la posición (`apply_fill`); si la orden era el SL nativo de la posición y terminó (`filled`/`canceled`/`rejected`) → `sl_order_id = None`; `commit()` **por orden**; si quedó `rejected` → hook de alertas ([M9](M09-ALERTS.md)).
+6. Cualquier excepción inesperada → `rollback()` de esa orden y sigue con las demás.
+
+**`ProtectPositionsService` con SL nativo:** si la vela toca el SL y la posición `has_native_stop()`, no hace nada (lo ejecuta el exchange y la reconciliación lo registra); solo vende por TP, y esa venta pasa por el paso 5b de `CreateOrderService`.
 
 Provider: `app/modules/orders/providers/order_provider.py` → `OrderServiceFactory`
 - Repos propios: order, fill, position
-- Repos borrowed: M7 (bot), M2 (candle/symbol/exchange), M4 (account + CredentialsCipher)
+- Repos borrowed: M7 (bot, signal), M2 (candle/symbol/exchange), M4 (account, account_balance + `CredentialsCipher.from_settings()`)
+- `risk_gate()`, `execute_signal()` (con `AGENT_MIN_RR_RATIO`; recibe `native_stop()` solo si `ORDER_NATIVE_STOP_LOSS=true`), `protect_positions()`, `native_stop()`, `reconcile_orders()` (con el hook de alertas)
+- `create_order()` siempre recibe `native_stop()`: aunque se apague `ORDER_NATIVE_STOP_LOSS`, los SL nativos ya colocados se cancelan antes de vender
 
 ### Endpoints REST
 | Método | Ruta | Auth | Nota |
 |--------|------|------|------|
-| POST | `/api/orders` | token | Crea y ejecuta orden (paper o live) |
-| GET | `/api/orders` | token | Lista por bot_id; sin `bot_id` solo admin (los demás reciben 400 "Elige un bot para ver sus órdenes.") |
-| GET | `/api/orders/{id}` | token | Detalle de una orden |
-| GET | `/api/fills` | token | Lista por order_id o bot_id |
-| GET | `/api/positions` | token | Lista por bot_id; sin `bot_id` solo admin (400 para los demás) |
+| POST | `/api/orders` | token | Crea y ejecuta orden (paper o live); bot propio (404 si no). 201 con `msg` según estado real |
+| GET | `/api/orders` | token | Lista por `bot_id` (propio); sin `bot_id` solo admin (`ORDERS_MISSING_BOT` 400 para los demás) |
+| GET | `/api/orders/{id}` | token | Detalle; orden de un agente ajeno → `ORDER_NOT_FOUND` 404 |
+| GET | `/api/fills` | token | Por `order_id` o `bot_id`, del usuario (`FILLS_MISSING_FILTER` sin filtro) |
+| GET | `/api/positions` | token | Por `bot_id` (propio); sin `bot_id` solo admin (`POSITIONS_MISSING_BOT` 400). Devuelve `stop_loss`, `take_profit`, `signal_id`, `sl_order_id` (orden stop loss nativa; `null` = la vigila el scheduler) |
+| POST | `/api/signals/{id}/approve` | token | Aprueba una señal pendiente: revalida y envía la orden (`channel="app"`). Devuelve `signal_id`, `decision_status`, `decision_channel`, `decided_at`, `order_id`, `order_status` |
+| POST | `/api/signals/{id}/reject` | token | Descarta una señal pendiente |
 
-Los routers declaran `prefix="/orders"`, `"/fills"`, `"/positions"`; el `/api` lo añade `app_factory.py` (`settings.API_PREFIX`).
+Los routers declaran `prefix="/orders"`, `"/fills"`, `"/positions"`, `"/signals"` (`signal_decisions`); el `/api` lo añade `app_factory.py` (`settings.API_PREFIX`). Textos: `rest/orders/error_messages.py` (`ORDER_ERROR_MESSAGES`), `rest/signal_decisions/error_messages.py` (`SIGNAL_DECISION_ERROR_MESSAGES` = los de órdenes + los de decisión; [M7](M07-BOTS-SIGNALS.md) lo usa para `decision_reason_message`).
 
 Routers registrados en `app/app_factory.py` (dentro de `api_routers`):
 ```python
-from app.modules.orders.rest import orders_router, fills_router, positions_router
+from app.modules.orders.rest import orders_router, fills_router, positions_router, signal_decisions_router
 ```
+
+### Settings (`app/common/config/settings.py`)
+```
+TRADING_ENABLED=true          # kill switch global: false → no sale ninguna orden (paper ni live)
+TRADING_LIVE_ENABLED=false    # false → solo paper (TRADING_LIVE_DISABLED 403)
+ORDER_MAX_NOTIONAL=10000      # tope de qty × precio por compra; 0 = sin tope global
+ORDER_NATIVE_STOP_LOSS=true   # live: el SL de una posición abierta desde una señal queda como orden en el exchange; false = solo el scheduler
+LIVE_USE_SANDBOX=false        # true = testnet del exchange (set_sandbox_mode); necesita claves de testnet en la cuenta
+```
+Por agente: `risk_params.max_notional` (tope propio; se aplica el menor) y `risk_params.max_drawdown_pct`.
 
 ### Frontend (`frontend/src/modules/orders/`)
 | Ruta | Archivo de ruta | Página / componentes |
@@ -172,30 +281,44 @@ from app.modules.orders.rest import orders_router, fills_router, positions_route
 | `/#/orders` | `routes/_app/orders.lazy.tsx` | `pages/orders.tsx` (`OrdersPage`) + `components/orders-table.tsx` + `components/positions-grid.tsx` + `components/fills-table.tsx` + `components/order-form-dialog.tsx` |
 | `/#/admin/orders` | `routes/_app/admin/orders.lazy.tsx` | `pages/admin-orders.tsx` + `components/order-fills-dialog.tsx` |
 
-- API: `api/orders.api.ts` (`listOrders`, `getOrder`, `createOrder`, `listPositions`, `listFills`); hooks `use-orders-queries.ts` / `use-orders-mutations.ts`; etiquetas `lib/orders-labels.ts`; badges `components/order-badges.tsx`.
-- El selector de bot de `/#/orders` usa `useBotsByAccountsQuery` de [M7](M07-BOTS-SIGNALS.md) (una petición `GET /api/bots?account_id=` por cuenta, porque la API exige `account_id` a los no admin); la página admin usa `useBotsQuery()` sin filtro.
+- API: `api/orders.api.ts` (`listOrders`, `getOrder`, `createOrder`, `listPositions`, `listFills`; `Position` con `stop_loss`, `take_profit`, `signal_id`, `sl_order_id`); hooks `use-orders-queries.ts` / `use-orders-mutations.ts`; etiquetas `lib/orders-labels.ts`; badges `components/order-badges.tsx`.
+- `positions-grid.tsx` muestra "Protección automática: SL … · TP …" cuando la posición la tiene y, si `sl_order_id` no es `null`, "El stop loss está como orden en el exchange."
+- Aprobar/descartar: `bots/components/signal-decision-actions.tsx` ([M7](M07-BOTS-SIGNALS.md)).
+- El selector de bot de `/#/orders` usa `useBotsByAccountsQuery` de [M7](M07-BOTS-SIGNALS.md); la página admin usa `useBotsQuery()` sin filtro.
 
 ## Gotchas críticos
 
 - ~~Prefijo `/api/` obligatorio por colisión con la página web~~ — resuelto el 2026-10-08: ya no hay páginas servidas por FastAPI.
-- **Decimales como `float`:** los serializadores de órdenes, fills y posiciones (`_decimal_or_none` → `float(...)`) devuelven `qty`, `price`, `fee`, `avg_price`, `realized_pnl`… como números, no como string `DECIMAL(30,12)`; el front los tipa como `number`. Puede perder precisión en cantidades con muchos decimales.
+- **La orden se confirma antes de ejecutar:** ya no hay `rollback()` si falla el executor. Un fallo deja la orden en BD como `rejected` (con `meta.error`) o `sent` (con `meta.needs_reconciliation`). Quien lea el historial debe filtrar por estado.
+- **`ORDER_EXECUTION_UNCERTAIN` no es "falló":** la orden puede estar viva en el exchange. No reintentar: en live la reconciliación la busca por `client_order_id` en los ciclos siguientes y, si a los 10 min el exchange no la conoce, la marca `rejected`.
+- **La venta por TP cancela antes el SL nativo:** sin OCO, el SL y la venta podrían ejecutarse los dos. Si la cancelación falla (red, error del exchange) o el SL ya se ejecutó, **el scheduler no vende** (`ORDER_NATIVE_STOP_ACTIVE`) y lo reintenta en el siguiente ciclo; la reconciliación registra el SL ejecutado y deja la posición flat. Lo mismo para una venta manual o una señal SELL (409 con el mensaje de `error_messages.py`).
+- **SL nativo "incierto" bloquea las ventas un rato:** si `place_stop_loss` se quedó sin respuesta, la orden queda `sent` + `needs_reconciliation` sin `exchange_order_id`; `cancel` devuelve `False` → `ORDER_NATIVE_STOP_ACTIVE` hasta que la reconciliación la encuentre (y complete el id) o la dé por perdida a los 10 min (se desvincula y el scheduler vuelve a vigilar el SL).
+- **Venta rechazada después de cancelar el SL nativo:** el SL ya se canceló (se confirma con la orden nueva); la posición conserva `stop_loss`/`take_profit` sin `sl_order_id`, así que el scheduler vuelve a vigilar el SL. No se vuelve a colocar el nativo.
+- **El SL nativo cubre la cantidad que había al colocarlo:** una compra manual posterior sobre la misma posición no amplía la orden stop, y mientras haya SL nativo el scheduler no vigila el SL. La cantidad extra solo se vende por ciclo **después** de que la reconciliación registre el SL nativo ejecutado y lo desvincule (un ciclo o más de retraso). Evitar compras manuales sobre posiciones protegidas en live.
+- **Testnet:** `LIVE_USE_SANDBOX=true` cambia **todos** los clientes live a la testnet del exchange (`set_sandbox_mode`); la cuenta del agente necesita claves creadas **en la testnet** (las de producción no sirven allí y viceversa). Algunos exchanges de ccxt no tienen testnet: `set_sandbox_mode` falla y la orden queda `rejected` ("No se pudo inicializar el cliente ccxt…").
+- **SL nativo depende del exchange:** solo si `client.has['createStopLossOrder']` es verdadero en ccxt; si no, `NATIVE_STOP_FAILED` (orden `rejected` en el historial con `meta.error`) y la protección sigue por ciclo.
+- **Órdenes del SL nativo en el libro de órdenes:** aparecen como órdenes `stop` de venta con `meta.reason = stop_loss_native`; cuando el exchange las dispara, la reconciliación registra el fill y la posición queda flat (`clear_protection` borra también `sl_order_id`).
+- **Paper y SL/TP:** el cierre por stop loss o take profit sale a mercado y en paper se ejecuta al **cierre de la última vela**, no al nivel tocado; el P&L simulado puede ser mejor o peor que el del nivel.
+- **Protección y vela en formación:** `ProtectPositionsService` mira la vela más reciente (también la que no ha cerrado); su `high`/`low` ya refleja si se cruzó el nivel.
+- **Kill switch y protección:** con `TRADING_ENABLED=false` tampoco salen los cierres por SL/TP del scheduler. Un SL nativo ya colocado sí lo ejecuta el exchange (el kill switch no lo cancela) y la reconciliación, que no pasa por el RiskGate, lo registra.
+- **Señal SELL ejecutada = vender toda la posición** del agente, no abrir un corto.
+- **Decimales como `float`:** los serializadores de órdenes, fills y posiciones (`_decimal_or_none` → `float(...)`) devuelven `qty`, `price`, `fee`, `avg_price`, `realized_pnl`, `stop_loss`… como números; el front los tipa como `number`. Puede perder precisión en cantidades con muchos decimales.
 - **PaperExecutor:** usa `candle_repo.list_candles(symbol_id, timeframe_id, limit=1)` — método se llama `list_candles`, NO `list_by_symbol_and_timeframe`.
 - **symbol string para ccxt:** se guarda en `order.meta["symbol"]` en `CreateOrderService` para que `LiveExecutor` lo use.
-- **Transacción atómica:** order + fill + upsert position en un solo `order_repo.commit()`; si el executor lanza `RuntimeError`, `order_repo.rollback()` explícito.
-- **WAP:** `Position.apply_buy_fill()` recalcula avg_price. `apply_sell_fill()` acumula `realized_pnl`.
-- **Esquema M7 requerido:** columnas de precio en `signals` y `bots.feature_set_id` (incluidas en el esquema inicial de Alembic).
+- **WAP:** `Position.apply_buy_fill()` recalcula avg_price. `apply_sell_fill()` acumula `realized_pnl` y, si queda flat, borra la protección.
+- **Esquema requerido:** aplicar `218d50385270`, `f51e2dad9c13` y `3ac9fef574cb` antes de usar esta versión (columnas `client_order_id`, `positions.stop_loss/take_profit/signal_id` y `positions.sl_order_id`).
 
 ## Tests
 
-- **No hay tests** para este módulo en `tests/`.
-- Recomendado: `tests/orders/test_position_entity.py`, `test_order_entity.py`, `test_create_order_service.py` (paper + live mockeado).
+- **No hay tests** para este módulo en `tests/`. La reconciliación y el SL nativo (2026-10-19) solo se verificaron con pruebas de humo con mocks, no guardadas en el repo ni corridas contra un exchange o una testnet.
+- Recomendado: `tests/orders/test_position_entity.py` (WAP, P&L, `protection_hit`, `has_native_stop`), `test_order_entity.py`, `test_create_order_service.py` (paper + live mockeado, rechazo e incierto, cancelación del SL nativo), `test_risk_gate_service.py`, `test_execute_signal_service.py`, `test_protect_positions_service.py`, `test_reconcile_orders_service.py`, `test_native_stop_service.py`, `test_live_executor.py` (`fetch`, `_to_result`).
 
 ## Riesgos
 
-- **Dinero real:** el modo `live` envía órdenes reales con un módulo sin tests y sin salvaguardas de tamaño.
-- Una orden aceptada por el exchange pero con fallo posterior en BD (o al revés) deja estado inconsistente: no hay reconciliación.
-- Sin SL/TP automáticos, una posición abierta no está protegida si el sistema se detiene.
-- Una señal SELL de [M7](M07-BOTS-SIGNALS.md) (corto) no se puede representar en `positions`.
+- **Dinero real:** el modo `live` envía órdenes reales con un módulo sin tests y sin pruebas en testnet. Mitigado por `TRADING_LIVE_ENABLED=false` por defecto, el notional máximo y el kill switch.
+- Reconciliación por ciclo: mientras el scheduler esté caído, las órdenes abiertas y los SL nativos ejecutados no se registran (la posición en la app va por detrás del exchange); las órdenes de más de 7 días que sigan abiertas no se revisan.
+- TP por ciclo (y SL en paper o sin SL nativo): si el proceso del scheduler se detiene, el TP no se vigila; en live un hueco de precio cierra lejos del nivel. El SL nativo sí sigue protegiendo en el exchange.
+- El drawdown se calcula con la pérdida **realizada**: una posición abierta con pérdida grande no lo dispara hasta cerrarse.
 
 ## Historial
 
@@ -205,3 +328,6 @@ from app.modules.orders.rest import orders_router, fills_router, positions_route
 - **2026-10-07** — `commit()` movido a la capa repositorio; rollback explícito cuando falla el executor. Las rutas admin devolvían 500 en vez de 403 (`send()` sin `data`): corregido.
 - **2026-10-08** — API headless (/api), páginas migradas a React (frontend/).
 - **2026-10-10** — `LiveExecutor` usa el `CCXT_EXCHANGE_MAP` de M2 (sin copia propia) y rechaza perpetuos.
+- **2026-10-19** — Auditoría de seguridad: propiedad en órdenes, fills y posiciones (antes cualquier usuario podía operar el agente de otro, incluso en live); `RiskGateService` (kill switch, live apagado por defecto, notional máximo, drawdown → `error`); orden confirmada antes de llamar al exchange con `client_order_id` (migración `218d50385270`), estado real del exchange, rechazos guardados y `ORDER_EXECUTION_UNCERTAIN`; señal vinculada validada y spot sin cortos.
+- **2026-10-19** — Modo de ejecución: `ExecuteSignalService` (aprobar/rechazar con reclamo atómico, revalidación al precio actual), `ProtectPositionsService` (SL/TP por ciclo del scheduler, columnas en `positions` de la migración `f51e2dad9c13`), `POST /api/signals/{id}/approve|reject`, protección visible en Posiciones.
+- **2026-10-19** — Reconciliación y SL nativo: `LiveExecutor` con cliente compartido, `fetch`/`cancel`/`place_stop_loss` y `LIVE_USE_SANDBOX`; `ReconcileOrdersService` en el ciclo del scheduler (fills tardíos y parciales, órdenes perdidas a los 10 min); `NativeStopService` (SL como orden en el exchange en live, `positions.sl_order_id`, migración `3ac9fef574cb`, `ORDER_NATIVE_STOP_LOSS`, `ORDER_NATIVE_STOP_ACTIVE`); TP sigue por ciclo, sin OCO; `position_updater.apply_fill` compartido; aviso en Posiciones. Verificado solo con pruebas de humo con mocks.

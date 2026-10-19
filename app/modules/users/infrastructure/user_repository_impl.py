@@ -85,6 +85,9 @@ class SqlAlchemyUserRepository(SqlAlchemyRepository, UserRepository):
             otp_created_at=self._as_utc_aware(model.otp_created_at),
             otp_expires_at=self._as_utc_aware(model.otp_expires_at),
             otp_failed_attempts=int(model.otp_failed_attempts or 0),
+            telegram_chat_id=model.telegram_chat_id,
+            telegram_link_hash=model.telegram_link_hash,
+            telegram_link_expires_at=self._as_utc_aware(model.telegram_link_expires_at),
             created_at=self._as_utc_aware(model.created_at),
             updated_at=self._as_utc_aware(model.updated_at),
         )
@@ -113,6 +116,9 @@ class SqlAlchemyUserRepository(SqlAlchemyRepository, UserRepository):
         model.otp_created_at = user.otp_created_at
         model.otp_expires_at = user.otp_expires_at
         model.otp_failed_attempts = user.otp_failed_attempts
+        model.telegram_chat_id = user.telegram_chat_id
+        model.telegram_link_hash = user.telegram_link_hash
+        model.telegram_link_expires_at = user.telegram_link_expires_at
 
         return model
 
@@ -129,6 +135,22 @@ class SqlAlchemyUserRepository(SqlAlchemyRepository, UserRepository):
             self._session.query(UserModel)
             .filter(UserModel.email == email)
             .one_or_none()
+        )
+        return None if model is None else self._to_domain(model)
+
+    def get_by_telegram_chat_id(self, chat_id: int) -> Optional[User]:
+        model: Optional[UserModel] = (
+            self._session.query(UserModel)
+            .filter(UserModel.telegram_chat_id == chat_id)
+            .one_or_none()
+        )
+        return None if model is None else self._to_domain(model)
+
+    def get_by_telegram_link_hash(self, link_hash: str) -> Optional[User]:
+        model: Optional[UserModel] = (
+            self._session.query(UserModel)
+            .filter(UserModel.telegram_link_hash == link_hash)
+            .first()
         )
         return None if model is None else self._to_domain(model)
 

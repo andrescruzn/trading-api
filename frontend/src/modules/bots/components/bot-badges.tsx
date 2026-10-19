@@ -1,13 +1,18 @@
 import type {
+	BotExecutionMode,
 	BotMode,
 	BotStatus,
 	SignalAction,
+	SignalDecisionStatus,
 } from '@/modules/bots/api/bots.api';
 import {
 	BOT_MODE_LABELS,
 	BOT_STATUS_LABELS,
 	BOT_STATUS_VARIANTS,
+	EXECUTION_MODE_LABELS,
 	SIGNAL_ACTION_LABELS,
+	SIGNAL_DECISION_LABELS,
+	SIGNAL_DECISION_VARIANTS,
 } from '@/modules/bots/lib/bots-labels';
 import { Badge } from '@/modules/ui/components/badge';
 
@@ -24,6 +29,29 @@ export function BotModeBadge({ mode }: { mode: BotMode }) {
 	return (
 		<Badge variant={mode === 'live' ? 'destructive' : 'secondary'}>
 			{BOT_MODE_LABELS[mode] ?? mode}
+		</Badge>
+	);
+}
+
+/** Automático resaltado: envía órdenes sin pedir confirmación. */
+export function ExecutionModeBadge({ mode }: { mode: BotExecutionMode }) {
+	return (
+		<Badge variant={mode === 'auto' ? 'default' : 'outline'}>
+			{EXECUTION_MODE_LABELS[mode] ?? mode}
+		</Badge>
+	);
+}
+
+/** Estado de la decisión de ejecución; nada para las que no la necesitan. */
+export function SignalDecisionBadge({
+	status,
+}: {
+	status: SignalDecisionStatus;
+}) {
+	if (status === 'not_required') return null;
+	return (
+		<Badge variant={SIGNAL_DECISION_VARIANTS[status] ?? 'outline'}>
+			{SIGNAL_DECISION_LABELS[status] ?? status}
 		</Badge>
 	);
 }

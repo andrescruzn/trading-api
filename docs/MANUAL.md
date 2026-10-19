@@ -331,6 +331,15 @@ Ahora conectemos todo en una secuencia lógica:
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 
+Cómo es hoy en la app (octubre 2026):
+  - Los pasos 4 y 5 dependen del modo del agente (ver 3.6): en Manual tú creas la orden; en
+    Con aprobación la apruebas tú (en la app o en Telegram); en Automático sale sola.
+  - Cuando la posición la abre una señal aprobada, queda protegida. En live el stop loss se deja
+    como orden en el exchange y el take profit lo revisa el sistema cada minuto; en paper el
+    sistema revisa los dos cada minuto (ver 3.6). Las órdenes que creas a mano no llevan esta
+    protección.
+  - El "portfolio snapshot" del paso 6 todavía no se guarda.
+
 ---
 PARTE 3 — Módulos implementados y cómo usarlos
 
@@ -351,7 +360,8 @@ Para iniciar sesión no hay contraseña: escribes tu correo, te llega un código
 y lo escribes antes de que venza (10 minutos). Si no te llegó o se venció, pide uno nuevo;
 el código anterior deja de servir. Para frenar a quien intente adivinar códigos, cada correo
 puede pedir 3 códigos y probar 5 cada 10 minutos; si se pasa, la pantalla dice cuánto esperar.
-Tu cuenta nunca se bloquea por esto.
+Además, después de 5 intentos fallidos con el mismo código, ese código deja de servir y hay que
+pedir otro. Tu cuenta nunca se bloquea por esto.
 
 Por seguridad, la pantalla nunca dice si un correo está registrado: siempre pasa al paso del
 código y te avisa que, si el correo tiene una cuenta, te llegó un código. Así nadie puede
@@ -443,7 +453,8 @@ La IA es el motor de decisión del sistema. Recibe una combinación de símbolo 
 devuelve un veredicto: APROBADA o RECHAZADA. Solo ve los indicadores del conjunto del agente.
 
 No tiene una página propia: se usa desde el detalle de cada agente con el botón "Analizar ahora"
-(ver 3.4).
+(ver 3.4), o sola en cada vela cerrada para los agentes en modo Con aprobación o Automático
+(ver 3.6). Para controlar el costo, cada persona puede pedir como máximo 6 análisis por minuto.
 
 Internamente aplica el Prompt Maestro con 4 fases en secuencia:
 
@@ -487,6 +498,14 @@ Internamente aplica el Prompt Maestro con 4 fases en secuencia:
     position_size = ($10,000 × 0.01) / |$95,500 − $94,250|
                   = $100 / $1,250
                   = 0.08 BTC
+
+  Antes de calcular, Python revisa que los niveles de la IA tengan sentido. Si no, RECHAZADA:
+    - En una compra el stop loss va por debajo de la entrada y el take profit por encima (en una
+      venta, al revés). Si quedan del mismo lado → "Los niveles de la IA no son coherentes".
+    - La entrada no puede alejarse del precio actual más de 1 ATR (si el conjunto no calcula
+      ATR, más de 2 % del precio) → "La entrada que propuso la IA está demasiado lejos del
+      precio actual". Así la IA no puede inventar un precio.
+    - El riesgo usado nunca pasa del 1 %, aunque la estrategia o el agente pidan más.
 
   FASE 4 — Filtro Ratio R/R
   ──────────────────────────
@@ -560,8 +579,10 @@ Cómo crear un agente (menú "Mis agentes" → "Nuevo agente", o "Crear agente" 
     práctica (paper) con un capital inicial, por ejemplo 10.000 USDT.
 
   Paso 4 — Revisa y crea
-    El sistema propone un nombre ("BTC/USDT · EMA Trend Follower") que puedes cambiar. Con
-    "Iniciarlo al crear" marcado, el agente empieza a trabajar de inmediato.
+    El sistema propone un nombre ("BTC/USDT · EMA Trend Follower") que puedes cambiar. Eliges
+    qué hace el agente cuando la IA aprueba una operación: Manual (por defecto), Con aprobación
+    o Automático (ver 3.6). Con "Iniciarlo al crear" marcado, el agente empieza a trabajar de
+    inmediato.
 
 Ejemplo con números: cuenta de práctica de 10.000 USDT y estrategia con riesgo de 1 % → cada
 operación puede perder como máximo 100 USDT. Si la IA propone entrada en 95.500 y stop loss en
@@ -601,8 +622,9 @@ Reglas que el sistema hace cumplir al crear un agente:
   - El conjunto de indicadores tiene que calcular todo lo que pide la estrategia.
   - Nunca más del 1 % del capital por operación.
 
-Cada persona solo ve y opera sus propios agentes. El nombre se puede cambiar en cualquier momento;
-el resto de la configuración no (si quieres otra, crea otro agente).
+Cada persona solo ve y opera sus propios agentes. El nombre y el modo de ejecución se pueden
+cambiar en cualquier momento (el modo, en la pestaña Configuración); el resto de la configuración
+no (si quieres otra, crea otro agente).
 
 Señales y cómo se generan:
 
@@ -613,13 +635,17 @@ Señales y cómo se generan:
   4. Si RECHAZADA → la señal tiene acción HOLD, approved=False
   5. TODAS las señales se guardan, incluidas las rechazadas (trazabilidad completa)
 
-Hoy las señales se generan a mano con "Analizar ahora"; la generación automática por vela es la
-siguiente mejora prevista.
+Cuándo se generan:
+  - Agente en modo Manual: solo cuando pulsas "Analizar ahora".
+  - Agente en modo Con aprobación o Automático: solas, una por cada vela que cierra (ver 3.6).
 
 ¿Cómo se infiere BUY vs SELL?
 
   entry > stop_loss → BUY  (compra: ganas si el precio sube)
-  entry < stop_loss → SELL (short: ganas si el precio baja)
+  entry < stop_loss → SELL (venta)
+
+  Ojo: la app opera en spot, sin ventas en corto. Una señal SELL que se ejecuta vende lo que el
+  agente tiene comprado (cierra la posición); si no tiene nada, no se ejecuta.
 
 features_hash:
 
@@ -695,6 +721,14 @@ Paper mode vs Live mode:
     · La orden se envía al exchange real vía la librería ccxt
     · El fill contiene el precio y comisión reales del exchange
     · Usa las credenciales cifradas con Fernet almacenadas en la cuenta
+    · Viene APAGADO en el servidor: hasta que el administrador lo active, toda orden live se
+      rechaza con "Las órdenes en modo live están desactivadas".
+
+  Qué pasa si el exchange no responde: la orden ya quedó guardada antes de enviarla. Si el
+  exchange la rechaza, queda como "rechazada" en el historial. Si no llega respuesta (por
+  ejemplo, se cae la red), la orden queda "enviada" y la app te pide no reintentarla, para no
+  comprar dos veces. En live, el sistema la busca solo en el exchange durante los minutos
+  siguientes y pone su estado al día (ver "La app se sincroniza con el exchange" en 3.6).
 
 Regla de oro: siempre correr al menos 3 meses en paper mode antes de pasar a live.
 Esto permite acumular 50-100+ operaciones y calcular métricas reales de la estrategia.
@@ -703,6 +737,188 @@ Páginas de la UI:
   /#/orders       → Panel de usuario: elige un agente y verás las pestañas Órdenes/Posiciones/Ejecuciones;
                     el botón de nueva orden abre un formulario para crear una orden manual
   /#/admin/orders → Vista admin: todas las órdenes del sistema con filtros de lado, estado y tipo
+
+---
+3.6 Modos de ejecución: Manual, Con aprobación y Automático (Módulos 7 y 8)
+─────────────────────────────────────────────────────────────────────────────
+Cada agente tiene un modo que decide qué pasa cuando la IA aprueba una operación. Lo eliges al
+crear el agente (paso 4 del asistente) y lo puedes cambiar cuando quieras en la pestaña
+Configuración del agente, aunque esté activo.
+
+  Modo             Cuándo analiza                       Qué pasa si la IA aprueba
+  ──────────────────────────────────────────────────────────────────────────────────────────
+  Manual           Solo cuando pulsas "Analizar ahora"  Nada más: tú decides si creas la orden
+  (por defecto)                                         desde la pestaña Órdenes
+  Con aprobación   Solo, cada vez que cierra una vela   La señal queda "Por aprobar". Te avisa
+                                                        en la app y en Telegram; tú la apruebas
+                                                        o la descartas antes de que venza
+  Automático       Solo, cada vez que cierra una vela   La orden sale sola, con stop loss y take
+                                                        profit automáticos
+
+Cosas que conviene saber de los modos automáticos (Con aprobación y Automático):
+  - El agente tiene que estar Activo. Pausado conserva sus datos, pero no busca entradas solo.
+  - Analizan la última vela CERRADA, nunca la que todavía se está formando.
+  - Una sola señal por vela: aunque pasen varios ciclos, no se repite.
+  - Necesitan un timeframe de 15 minutos o más (analizar cada minuto saldría muy caro en IA).
+  - Si las velas vienen atrasadas (más de dos velas sin datos), el agente no decide con datos
+    viejos: espera.
+  - Hay un tope de análisis automáticos por persona y día (96 por defecto), por el costo de la IA.
+  - Automático con dinero real (cuenta live) viene apagado: solo funciona si el administrador lo
+    habilita. Al elegir Automático, la app siempre te pide confirmar.
+
+Cómo aprobar una señal
+  1. Cuando la IA aprueba una operación de un agente Con aprobación, la señal aparece en la
+     tarjeta "Señales por aprobar" del inicio y en la pestaña Señales del agente (columna
+     Ejecución: "Por aprobar"). Si conectaste Telegram, también te llega un mensaje.
+  2. Abre la señal: ves entrada, stop loss, take profit, riesgo/beneficio y cuánto falta para que
+     venza ("Vence en 45 min"). Por defecto tienes 60 minutos; puedes cambiarlo en el campo
+     "Minutos para aprobar" (ver abajo).
+  3. Pulsa Aprobar o Descartar (los mismos botones en la app y en Telegram). En una cuenta live
+     la app te pide confirmar otra vez.
+  4. Si nadie decide a tiempo, la señal queda "Vencida" y no se ejecuta nunca tarde.
+  5. Si apruebas desde la app y desde Telegram a la vez, solo cuenta la primera decisión.
+
+Qué revisa el sistema justo al aprobar (ejemplo con números)
+  Entre que se genera la señal y la apruebas puede pasar un rato y el precio se mueve. Por eso,
+  al aprobar, el sistema vuelve a hacer las cuentas con el último precio conocido (el cierre de
+  la última vela):
+
+  Señal original:   entrada $100 · stop loss $95 · take profit $115
+  Cuenta:           $1.000 → riesgo 1 % = $10 por operación
+  Tamaño original:  $10 / ($100 − $95) = $10 / $5 = 2 unidades
+  Riesgo/beneficio: ($115 − $100) / ($100 − $95) = 15 / 5 = 3:1
+
+  Caso A — al aprobar el precio está en $101:
+    Nuevo tamaño:      $10 / ($101 − $95) = $10 / $6 ≈ 1,67 unidades
+                       (compra un poco menos para que el riesgo siga siendo $10)
+    Riesgo/beneficio:  ($115 − $101) / ($101 − $95) = 14 / 6 ≈ 2,33:1  → cumple el 2:1
+    Resultado:         la orden se envía con 1,67 unidades
+
+  Caso B — al aprobar el precio ya está en $112:
+    Riesgo/beneficio:  ($115 − $112) / ($112 − $95) = 3 / 17 ≈ 0,18:1  → no cumple el 2:1
+    Resultado:         NO se ejecuta. La señal queda "No ejecutada" y su detalle dice "Por qué
+                       no se ejecutó": el precio se movió y la operación ya no cumple el
+                       riesgo/beneficio mínimo de 2:1.
+
+  Tampoco se ejecuta si el precio ya está por debajo del stop loss o por encima del take profit,
+  ni si el agente ya tiene una posición abierta (no se suman compras sobre compras).
+
+Cuánto tiempo tienes para aprobar ("Minutos para aprobar")
+  1. Abre el agente y ve a la pestaña Configuración.
+  2. Con el modo Con aprobación elegido, aparece el campo "Minutos para aprobar".
+  3. Escribe un número entero entre 1 y 1.440 (24 horas) y pulsa Guardar.
+  4. Si lo dejas vacío y guardas, el agente vuelve a usar el valor por defecto del servidor
+     (60 minutos si el administrador no lo cambió).
+  El tiempo cuenta desde que se genera la señal. Si nadie la aprueba ni la descarta antes, la
+  señal vence y no se ejecuta.
+
+Conectar Telegram (para aprobar desde el celular)
+  1. En el menú de tu usuario (al pie de la barra lateral), elige "Conectar Telegram".
+  2. Pulsa "Generar enlace" y luego "Abrir Telegram". El enlace sirve una sola vez y vence en
+     10 minutos.
+  3. En Telegram, pulsa Iniciar en el chat del bot. El bot te confirma que el chat quedó
+     vinculado.
+  4. Vuelve a la app y pulsa "Ya lo vinculé". El menú dirá "Telegram conectado".
+  Para dejar de recibir mensajes, abre el mismo diálogo y pulsa "Desvincular".
+  Si el administrador no ha configurado el bot de Telegram, la app te lo dice al generar el enlace.
+
+  Cada mensaje trae la acción, el símbolo, entrada, stop loss, take profit, riesgo/beneficio,
+  tamaño, el agente y la hora límite para decidir (hora de Bogotá), con los botones Aprobar y
+  Descartar. Al pulsar uno, el mensaje se actualiza con el resultado.
+
+Las protecciones (se aplican a toda orden: manual, aprobada o automática)
+  - Interruptor general: el administrador puede detener el envío de todas las órdenes de golpe.
+    Mientras esté apagado no sale ninguna, ni siquiera los cierres por stop loss o take profit
+    (en live, el stop loss que ya está puesto en el exchange sí se ejecuta).
+  - Live apagado por defecto: hasta que el administrador lo active, solo se ejecutan órdenes
+    paper.
+  - Máximo por orden: una compra no puede valer más de un tope (por defecto $10.000; cada agente
+    puede fijar uno menor). Si lo supera: "La orden supera el valor máximo permitido por
+    operación".
+  - Pérdida máxima del agente: si el agente tiene configurado un drawdown máximo y lo alcanza,
+    pasa a estado Error y deja de abrir operaciones hasta que lo revises.
+  - Las ventas para cerrar o reducir una posición no se frenan por el máximo por orden ni por
+    la pérdida máxima: reducir riesgo siempre se puede.
+  - Stop loss y take profit automáticos: cuando la posición la abre una señal, se cierra sola
+    al tocar uno de los dos niveles, aunque el agente esté pausado o detenido. En Posiciones
+    verás "Protección automática: SL … · TP …". Cómo funciona depende del modo:
+      · Live: el stop loss queda puesto en el exchange como una orden de venta que se activa
+        sola al llegar al nivel. Protege aunque la app o el servidor estén apagados. En
+        Posiciones verás además "El stop loss está como orden en el exchange.". El take profit
+        no queda en el exchange: el sistema revisa el precio cada minuto y vende cuando la vela
+        lo toca.
+      · Paper: el sistema revisa los dos niveles cada minuto. Si una misma vela toca los dos, se
+        asume lo peor (el stop loss).
+    Si el exchange no admite el stop loss como orden, la posición sigue protegida igual que en
+    paper: el sistema revisa el stop loss cada minuto.
+  - Para no vender dos veces: antes de cualquier otra venta de esa posición (el take profit, una
+    venta manual o una señal de venta) el sistema retira el stop loss del exchange. Si no puede
+    retirarlo (por ejemplo, porque ya se ejecutó), no vende y te dice: "El stop loss de esta
+    posición está en el exchange y no se pudo cancelar (puede que ya se haya ejecutado). Espera
+    unos minutos a que se sincronice."
+  - Vencimiento de las señales: una señal por aprobar que nadie decide a tiempo vence y no se
+    ejecuta.
+  - Una señal = una orden: la misma señal no se puede ejecutar dos veces.
+  - Regla del 1 %: la IA recibe el riesgo del agente, nunca más del 1 % del capital.
+
+  Ejemplo con números (live): compras 0,02 BTC a $60.000 con stop loss en $58.800 y take profit
+  en $62.400 (riesgo $24, beneficio $48: 2:1).
+    · Si el precio cae a $58.800, el exchange vende los 0,02 BTC él solo, aunque el servidor de
+      la app esté apagado. Cuando la app vuelve, registra la venta y la posición queda cerrada.
+    · Si el precio sube a $62.400, en el siguiente minuto la app retira el stop loss del
+      exchange y vende a mercado.
+
+  La app se sincroniza con el exchange (solo live)
+  Cada minuto la app consulta en el exchange las órdenes live que siguen abiertas y pone al día
+  su estado, sin que tengas que hacer nada:
+  - Órdenes que se ejecutaron después: por ejemplo, una orden límite que quedó esperando y se
+    llenó una hora más tarde, o el stop loss que disparó el exchange. La app registra la
+    ejecución y actualiza la posición.
+  - Ejecuciones parciales: si una orden se llena por partes, la app suma solo lo nuevo, sin
+    contar dos veces lo que ya tenía. Si el resto se cancela o vence en el exchange, la orden
+    queda cancelada con lo que sí se ejecutó.
+  - Órdenes que nunca llegaron: si al enviar una orden no hubo respuesta y, 10 minutos después,
+    el exchange no la conoce, la app la marca rechazada con el motivo "La orden no llegó al
+    exchange." (si el agente tiene una regla de alerta de tipo error, te avisa).
+  Revisa las órdenes de la última semana. Si falla la red, lo intenta otra vez al minuto
+  siguiente.
+
+  Probar en una testnet antes de usar dinero real
+  Una testnet es una copia del exchange con dinero de juguete: el exchange trata las órdenes
+  como reales, pero no se mueve dinero de verdad. Sirve para comprobar que todo el circuito live
+  funciona (compra, stop loss en el exchange, take profit, sincronización) antes de arriesgar
+  capital.
+  1. Crea una cuenta en la testnet del exchange (por ejemplo, la testnet de spot de Binance) y
+     genera allí una API key y su secret. Las claves de la testnet no sirven en el exchange
+     real, ni las reales en la testnet.
+  2. El administrador pone LIVE_USE_SANDBOX=true y activa live (TRADING_LIVE_ENABLED=true) en
+     el servidor. Ojo: mientras LIVE_USE_SANDBOX esté en true, todas las cuentas live van a la
+     testnet.
+  3. En Mis cuentas, crea una cuenta live del mismo exchange con las claves de la testnet.
+  4. Crea un agente con esa cuenta y opera como siempre. Revisa en la testnet que aparezca el
+     stop loss como orden y que la app registre lo que pase.
+  5. Para pasar a dinero real, el administrador vuelve a poner LIVE_USE_SANDBOX=false y tú usas
+     una cuenta con las claves reales.
+  No todos los exchanges tienen testnet: si el que eliges no la tiene, la orden queda
+  rechazada.
+
+  Límites que hay que conocer:
+  - El take profit (y, en paper, también el stop loss) se revisa una vez por minuto: no es una
+    orden puesta en el exchange. En un movimiento brusco el cierre puede quedar más lejos del
+    nivel, y si el servidor está apagado nadie lo vigila. En live, el stop loss sí sigue en el
+    exchange.
+  - Si en live compras a mano más cantidad sobre una posición protegida, el stop loss del
+    exchange cubre solo la cantidad que había cuando se puso.
+  - En paper, el cierre por stop loss o take profit se simula al precio de cierre de la última
+    vela, no al precio exacto del nivel.
+
+Nota de seguridad
+  - Cada persona solo puede ver y operar sus propios agentes, órdenes y posiciones.
+  - Quien tenga tu celular con Telegram abierto puede aprobar tus señales: si lo pierdes,
+    desvincula Telegram desde la app.
+  - Empieza siempre en paper. Usa Automático en live solo después de meses de historial paper
+    que muestren que la estrategia tiene edge (ver Parte 4). El sistema aplica reglas; no
+    garantiza ganancias.
 
 ---
 PARTE 4 — Viabilidad del negocio: Edge y Capital
@@ -833,8 +1049,10 @@ El sistema soporta 4 canales simultáneos:
   Canal     Cómo funciona
   ──────────────────────────────────────────────────────────────────────────────
   Email     Envía un correo HTML usando el servidor SMTP configurado
-  Telegram  Manda un mensaje a tu bot Telegram personal (requiere TELEGRAM_BOT_TOKEN)
-  Webhook   Hace un HTTP POST a una URL externa (Slack, Discord, IFTTT, etc.)
+  Telegram  Manda un mensaje al chat de Telegram del sistema (requiere TELEGRAM_BOT_TOKEN).
+            Aparte, cada persona puede conectar su propio chat para aprobar señales (ver 3.6).
+  Webhook   Hace un HTTP POST a una URL externa (Slack, Discord, IFTTT, etc.). Por seguridad
+            la URL tiene que empezar por https:// y apuntar a un servicio público de internet.
   Desktop   Notificación nativa del sistema operativo (macOS, Windows, Linux)
 
 4.5.4 Disparadores automáticos (hooks)
@@ -844,7 +1062,8 @@ Las alertas se disparan automáticamente desde los módulos clave:
   Evento                             Qué evalúa
   ──────────────────────────────────────────────────────────────────────────────
   GenerateSignalService (M7)         Evalúa reglas tipo 'signal' post-señal aprobada
-  CreateOrderService (M8)            Evalúa reglas tipo 'error' si la orden fue rechazada
+  CreateOrderService (M8)            Evalúa reglas de orden tras cada orden, también si el
+                                     exchange la rechazó
   POST /api/alerts/evaluate (manual) Evalúa reglas tipo 'price' para un símbolo
 
 El despacho es fire-and-forget: si falla una alerta, NO se cancela la señal u orden.
@@ -907,8 +1126,11 @@ El Módulo 10 automatiza todo esto:
      - Aplica el High-Water Mark: solo hay fee si hay nuevos máximos
      - Calcula el fee: PnL_positivo × fee_pct
      - Registra la transacción en el historial
-     - Envía el estado de cuenta por email al inversor
+     - (Pendiente, todavía no implementado: enviar el estado de cuenta por correo al inversor)
   5. El inversor puede ver su dashboard: capital, rendimiento, historial de fees
+
+  Hoy el cierre del período lo hace el administrador a mano desde /#/admin/billing, escribiendo
+  el capital final (closing_equity); el sistema no lo calcula solo ni envía ningún correo.
 
 5.4 Roles del sistema (con M10)
 ─────────────────────────────────

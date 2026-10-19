@@ -1,5 +1,8 @@
 import type { Signal } from '@/modules/bots/api/bots.api';
-import { SignalActionBadge } from '@/modules/bots/components/bot-badges';
+import {
+	SignalActionBadge,
+	SignalDecisionBadge,
+} from '@/modules/bots/components/bot-badges';
 import { useSignalsQuery } from '@/modules/bots/hooks/use-bots-queries';
 import { formatRiskReward } from '@/modules/bots/lib/bots-labels';
 import {
@@ -33,6 +36,11 @@ const columns: DataTableColumn<Signal>[] = [
 				{row.approved ? 'Aprobada' : 'Rechazada'}
 			</Badge>
 		),
+	},
+	{
+		id: 'decision',
+		header: 'Ejecución',
+		cell: (row) => <SignalDecisionBadge status={row.decision_status} />,
 	},
 	{
 		id: 'entry',

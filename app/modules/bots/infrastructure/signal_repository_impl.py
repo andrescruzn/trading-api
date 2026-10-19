@@ -10,7 +10,9 @@ from __future__ import annotations
 
 from datetime import datetime
 from decimal import Decimal
+from typing import Any
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.modules.bots.domain.signal_entity import Signal
@@ -50,6 +52,13 @@ class SqlAlchemySignalRepository(SqlAlchemyRepository, SignalRepository):
             llm_model=model.llm_model,
             llm_latency_ms=model.llm_latency_ms,
             created_at=model.created_at,
+            decision_status=model.decision_status or "not_required",
+            expires_at=model.expires_at,
+            decided_at=model.decided_at,
+            decided_by_user_id=model.decided_by_user_id,
+            decision_channel=model.decision_channel,
+            decision_reason=model.decision_reason,
+            candle_ts=model.candle_ts,
         )
 
     @staticmethod
@@ -70,6 +79,13 @@ class SqlAlchemySignalRepository(SqlAlchemyRepository, SignalRepository):
         model.llm_provider   = signal.llm_provider
         model.llm_model      = signal.llm_model
         model.llm_latency_ms = signal.llm_latency_ms
+        model.decision_status = signal.decision_status
+        model.expires_at = signal.expires_at
+        model.decided_at = signal.decided_at
+        model.decided_by_user_id = signal.decided_by_user_id
+        model.decision_channel = signal.decision_channel
+        model.decision_reason = signal.decision_reason
+        model.candle_ts = signal.candle_ts
         return model
 
     # ------------------------------------------------------------------
@@ -105,6 +121,77 @@ class SqlAlchemySignalRepository(SqlAlchemyRepository, SignalRepository):
 
         models = query.order_by(SignalModel.ts.desc()).limit(safe_limit).all()
         return [self._to_domain(m) for m in models]
+
+    def exists_for_candle(self, bot_id: int, candle_ts: datetime) -> bool:
+        return (
+            self._session.query(SignalModel.id)
+            .filter(SignalModel.bot_id == bot_id, SignalModel.candle_ts == candle_ts)
+            .first()
+            is not None
+        )
+
+    def count_created_since(self, bot_ids: list[int], since: datetime) -> int:
+        if not bot_ids:
+            return 0
+        return (
+            self._session.query(func.count(SignalModel.id))
+            .filter(SignalModel.bot_id.in_(bot_ids), SignalModel.created_at >= since)
+            .scalar()
+            or 0
+        )
+
+    def list_by_decision_status(
+        self,
+        decision_status: str,
+        bot_ids: list[int] | None = None,
+        limit: int = 100,
+    ) -> list[Signal]:
+        query = self._session.query(SignalModel).filter(
+            SignalModel.decision_status == decision_status
+        )
+        if bot_ids is not None:
+            if not bot_ids:
+                return []
+            query = query.filter(SignalModel.bot_id.in_(bot_ids))
+        models = query.order_by(SignalModel.ts.desc()).limit(min(limit, 500)).all()
+        return [self._to_domain(m) for m in models]
+
+    def transition_decision(
+        self,
+        signal_id: int,
+        from_statuses: tuple[str, ...],
+        to_status: str,
+        **fields: Any,
+    ) -> bool:
+        # UPDATE condicional: si dos personas (o la app y Telegram) deciden a
+        # la vez, solo una fila cambia y solo esa decisión gana.
+        values = {"decision_status": to_status, **fields}
+        updated = (
+            self._session.query(SignalModel)
+            .filter(
+                SignalModel.id == signal_id,
+                SignalModel.decision_status.in_(from_statuses),
+            )
+            .update(values, synchronize_session=False)
+        )
+        return updated == 1
+
+    def expire_pending(self, now: datetime) -> list[int]:
+        ids = [
+            row.id
+            for row in self._session.query(SignalModel.id).filter(
+                SignalModel.decision_status == "pending",
+                SignalModel.expires_at.isnot(None),
+                SignalModel.expires_at <= now,
+            )
+        ]
+        if ids:
+            (
+                self._session.query(SignalModel)
+                .filter(SignalModel.id.in_(ids), SignalModel.decision_status == "pending")
+                .update({"decision_status": "expired"}, synchronize_session=False)
+            )
+        return ids
 
     def create(self, signal: Signal) -> Signal:
         model = SignalModel()

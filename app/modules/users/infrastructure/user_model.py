@@ -36,6 +36,8 @@ class UserModel(Base):
     __tablename__ = "users"
     __table_args__ = (
         UniqueConstraint("email", name="uq_users_email"),
+        UniqueConstraint("telegram_chat_id", name="uq_users_telegram_chat"),
+        Index("idx_users_telegram_link", "telegram_link_hash"),
         Index("idx_users_status", "status"),
         Index("idx_users_token_jti", "token_current_jti"),
         Index("idx_users_otp_expires", "otp_expires_at"),
@@ -94,6 +96,13 @@ class UserModel(Base):
     # Intentos fallidos del código vigente: al llegar a OTP_MAX_FAILED_ATTEMPTS
     # se invalida (frena la fuerza bruta aunque haya varios workers).
     otp_failed_attempts = Column(Integer, nullable=False, server_default=text("0"))
+
+    # ------------------------------------------------------------------
+    # Telegram (aprobación de señales y avisos por usuario)
+    # ------------------------------------------------------------------
+    telegram_chat_id = Column(BigInteger, nullable=True, comment="Chat privado vinculado con el bot de Telegram")
+    telegram_link_hash = Column(String(64), nullable=True, comment="SHA-256 del código de vinculación de un solo uso")
+    telegram_link_expires_at = Column(TIMESTAMP(fsp=6), nullable=True)
 
     # ------------------------------------------------------------------
     # Auditoría

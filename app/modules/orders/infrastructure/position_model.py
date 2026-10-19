@@ -69,6 +69,22 @@ class PositionModel(Base):
         server_default=text("'0.000000000000'"),
     )
 
+    # Protección de la señal que abrió la posición (NULL = sin SL/TP automáticos)
+    stop_loss = Column(NUMERIC(30, 12), nullable=True, comment="Stop loss vigilado por el scheduler")
+    take_profit = Column(NUMERIC(30, 12), nullable=True, comment="Take profit vigilado por el scheduler")
+    signal_id = Column(
+        BigInteger,
+        ForeignKey("signals.id", name="fk_positions_signal"),
+        nullable=True,
+        comment="Señal que abrió la posición",
+    )
+    sl_order_id = Column(
+        BigInteger,
+        ForeignKey("orders.id", name="fk_positions_sl_order"),
+        nullable=True,
+        comment="Orden stop loss nativa en el exchange (live)",
+    )
+
     updated_at = Column(
         TIMESTAMP(fsp=6),
         nullable=False,

@@ -11,6 +11,7 @@ import { usePageBreadcrumb } from '@/modules/app-shell/hooks/use-page-breadcrumb
 import { useAuth } from '@/modules/auth/hooks/use-auth';
 import { AgentCard } from '@/modules/bots/components/agent-card';
 import { AgentsEmptyState } from '@/modules/bots/components/agents-empty-state';
+import { PendingSignalsCard } from '@/modules/bots/components/pending-signals-card';
 import { useBotCatalogs } from '@/modules/bots/hooks/use-bot-catalogs';
 import { useMyBotsQuery } from '@/modules/bots/hooks/use-bots-queries';
 import { PriceChart } from '@/modules/dashboard/components/price-chart';
@@ -195,6 +196,8 @@ export function DashboardPage() {
 					</Button>
 				)}
 			</div>
+
+			{hasBots && <PendingSignalsCard />}
 
 			{botsQuery.isLoading ? (
 				<div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">

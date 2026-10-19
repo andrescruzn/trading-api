@@ -96,6 +96,24 @@ export function PositionsGrid({
 								{'P&L realizado: '}
 								<PnlValue value={position.realized_pnl} />
 							</span>
+							{(position.stop_loss !== null ||
+								position.take_profit !== null) && (
+								<span>
+									{'Protección automática: SL '}
+									<span className="font-medium text-destructive tabular-nums">
+										{formatPrice(position.stop_loss)}
+									</span>
+									{' · TP '}
+									<span className="font-medium text-chart-1 tabular-nums">
+										{formatPrice(position.take_profit)}
+									</span>
+									{position.sl_order_id !== null && (
+										<span className="block text-xs">
+											El stop loss está como orden en el exchange.
+										</span>
+									)}
+								</span>
+							)}
 							<span className="text-xs">
 								Actualizada: {formatDateTime(position.updated_at)}
 							</span>

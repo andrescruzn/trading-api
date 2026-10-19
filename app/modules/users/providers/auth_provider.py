@@ -34,6 +34,7 @@ from app.modules.users.services.auth import (
     VerifyOtpService,
     GetMeService,
 )
+from app.modules.users.services.telegram import TelegramLinkService
 
 
 class AuthServiceFactory:
@@ -150,6 +151,11 @@ class AuthServiceFactory:
         - Alimenta el dashboard con datos reales del rol desde BD
         """
         return GetMeService(repo=self._repo)
+
+
+    def telegram_link(self) -> TelegramLinkService:
+        """Vincular / desvincular el chat de Telegram del usuario."""
+        return TelegramLinkService(repo=self._repo, settings=self._config)
 
 
 # ======================================================================

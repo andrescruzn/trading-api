@@ -1,5 +1,11 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { logout, requestOtp, verifyOtp } from '@/modules/auth/api/auth.api';
+import {
+	createTelegramLink,
+	logout,
+	requestOtp,
+	unlinkTelegram,
+	verifyOtp,
+} from '@/modules/auth/api/auth.api';
 import { useAuth } from '@/modules/auth/hooks/use-auth';
 
 function useRequestOtpMutation() {
@@ -31,4 +37,23 @@ function useLogoutMutation() {
 	});
 }
 
-export { useLogoutMutation, useRequestOtpMutation, useVerifyOtpMutation };
+function useCreateTelegramLinkMutation() {
+	return useMutation({ mutationFn: createTelegramLink });
+}
+
+/** Tras desvincular se recarga el perfil (`telegram_linked`). */
+function useUnlinkTelegramMutation() {
+	const { refreshUser } = useAuth();
+	return useMutation({
+		mutationFn: unlinkTelegram,
+		onSuccess: () => refreshUser(),
+	});
+}
+
+export {
+	useCreateTelegramLinkMutation,
+	useLogoutMutation,
+	useRequestOtpMutation,
+	useUnlinkTelegramMutation,
+	useVerifyOtpMutation,
+};

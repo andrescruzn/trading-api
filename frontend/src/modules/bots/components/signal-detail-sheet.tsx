@@ -1,8 +1,17 @@
 import { IconCircleCheck, IconCircleX } from '@tabler/icons-react';
 import type { ReactNode } from 'react';
-import type { Signal, SignalReasons } from '@/modules/bots/api/bots.api';
-import { SignalActionBadge } from '@/modules/bots/components/bot-badges';
+import type {
+	BotMode,
+	Signal,
+	SignalReasons,
+} from '@/modules/bots/api/bots.api';
 import {
+	SignalActionBadge,
+	SignalDecisionBadge,
+} from '@/modules/bots/components/bot-badges';
+import { SignalDecisionActions } from '@/modules/bots/components/signal-decision-actions';
+import {
+	DECISION_CHANNEL_LABELS,
 	formatLatency,
 	formatRiskReward,
 	llmProviderLabel,
@@ -28,6 +37,8 @@ type SignalDetailSheetProps = {
 	/** `null` = cerrado. */
 	signal: Signal | null;
 	onOpenChange: (open: boolean) => void;
+	/** Modo del agente: en live, aprobar pide confirmación. */
+	botMode?: BotMode;
 };
 
 function DetailItem({
@@ -78,6 +89,7 @@ function formatRuleValue(value: unknown): string {
 export function SignalDetailSheet({
 	signal,
 	onOpenChange,
+	botMode,
 }: SignalDetailSheetProps) {
 	const reasons: SignalReasons = signal?.reasons ?? {};
 	const rejection = rejectionLabel(reasons.rejection_reason);
@@ -98,7 +110,41 @@ export function SignalDetailSheet({
 								<Badge variant={signal.approved ? 'secondary' : 'destructive'}>
 									{signal.approved ? 'Aprobada' : 'Rechazada'}
 								</Badge>
+								<SignalDecisionBadge status={signal.decision_status} />
 							</div>
+
+							{signal.decision_status === 'pending' && (
+								<section className="flex flex-col gap-2 rounded-lg border p-3">
+									<h3 className="text-sm font-medium">¿Envías esta orden?</h3>
+									<p className="text-sm text-muted-foreground">
+										Al aprobarla se revisa el precio actual: si ya no cumple el
+										stop loss o el riesgo/beneficio mínimo, no se envía.
+									</p>
+									<SignalDecisionActions
+										signal={signal}
+										botMode={botMode}
+										onDecided={() => onOpenChange(false)}
+									/>
+								</section>
+							)}
+
+							{signal.decided_at && signal.decision_status !== 'pending' && (
+								<p className="text-sm text-muted-foreground">
+									Decidida {formatDateTime(signal.decided_at)}
+									{signal.decision_channel &&
+										` ${DECISION_CHANNEL_LABELS[signal.decision_channel]}`}
+									.
+								</p>
+							)}
+
+							{signal.decision_reason_message && (
+								<section className="flex flex-col gap-1">
+									<h3 className="text-sm font-medium">Por qué no se ejecutó</h3>
+									<p className="text-sm text-destructive">
+										{signal.decision_reason_message}
+									</p>
+								</section>
+							)}
 
 							<dl className="grid grid-cols-2 gap-4">
 								<DetailItem label="Entrada">

@@ -7,14 +7,14 @@
 | Campo | Valor |
 |---|---|
 | Estado | ✅ Completo |
-| Avance (alcance original) | 100 % — 13/13 entregables |
-| Madurez (estimada) | 78 % — ver [Avance](#avance) |
+| Avance (alcance original) | 100 % — 13/13 entregables (+ 4 de la auditoría de 2026-10-19) |
+| Madurez (estimada) | 81 % — ver [Avance](#avance) |
 | Tablas | `models`, `model_runs` (R/W); `strategies`, `accounts`, `account_balances`, `candles`, `candle_features`, `symbols`, `timeframes` (R) |
 | Depende de | [M2](M02-MARKET-DATA.md), [M3](M03-FEATURE-ENGINEERING.md), [M4](M04-ACCOUNTS-PORTFOLIO.md), [M5](M05-STRATEGIES.md) |
-| Lo usan | [M7](M07-BOTS-SIGNALS.md) (`GenerateSignalService` instancia el `AnalyzeService`) |
+| Lo usan | [M7](M07-BOTS-SIGNALS.md) (`GenerateSignalService` instancia el `AnalyzeService`; también el scheduler para las señales automáticas) |
 | Prefijo API | `/api/agent`, `/api/models`, `/api/model-runs` |
 | Frontend | Sin módulo propio desde 2026-10-08: se usa desde el detalle de cada agente ([M7](M07-BOTS-SIGNALS.md), "Analizar ahora") |
-| Última revisión | 2026-10-19 (servicio/modelo/latencia por análisis) |
+| Última revisión | 2026-10-19 (propiedad, rate limit y validación de la salida del LLM) |
 
 ## Descripción
 
@@ -23,7 +23,7 @@
 **Qué hace:**
 1. Revisa en qué régimen está el mercado (tendencia o rango) — si no coincide con la estrategia, cancela
 2. Valida que se cumplan todas las reglas de la estrategia — si falta una, cancela
-3. Consulta al LLM para calcular los niveles de entrada, Stop Loss y Take Profit; Python ejecuta la fórmula de posición: `Capital × risk_pct / |entrada − SL|`
+3. Consulta al LLM para calcular los niveles de entrada, Stop Loss y Take Profit; Python comprueba que tengan sentido (SL y TP a lados opuestos de la entrada, entrada cerca del precio actual) y ejecuta la fórmula de posición: `Capital × risk_pct / |entrada − SL|`, con `risk_pct` nunca mayor al 1 %
 4. Verifica que la ganancia proyectada sea al menos el doble del riesgo (ratio 2:1 configurable) — si no, cancela
 5. Da un veredicto final: **APROBADA** o **RECHAZADA**, con todos los detalles de la operación
 
@@ -58,6 +58,10 @@ Entregables:
 - ✅ Web UI: análisis desde el detalle de cada agente ("Analizar ahora"); la página `/#/agent` se retiró el 2026-10-08
 - ✅ Cada análisis registra qué servicio y modelo respondieron y cuánto tardó (`LLMCompletion` → `AnalysisResult.llm_*` → columnas `signals.llm_*`) (2026-10-19)
 - ✅ 20 tests unitarios pasando (LLM 100% mockeado, sin llamadas reales)
+- ✅ (2026-10-19) **Propiedad de la cuenta** en `POST /api/agent/analyze` (`owner_id`; cuenta ajena → `AGENT_ACCOUNT_NOT_FOUND`)
+- ✅ (2026-10-19) **Rate limit por usuario** (`AGENT_ANALYSES_PER_MINUTE`) en `/api/agent/analyze` y `/api/signals/generate`
+- ✅ (2026-10-19) **Validación de la salida del LLM**: niveles coherentes (`INCONSISTENT_LEVELS`), entrada cerca del precio (`ENTRY_TOO_FAR`), JSON estricto, `confidence` en [0, 1], precios finitos y > 0
+- ✅ (2026-10-19) Parámetros `risk_pct` (acotado al 1 %) y `as_of` (analizar una vela concreta); tamaño de posición y R/R en `Decimal`
 
 ## Decisiones de diseño
 
@@ -78,6 +82,15 @@ Entregables:
 | La latencia guardada es la de la **consulta completa** (incluye los servicios que fallaron antes); los que fallaron van en `failed_providers` | Es lo que esperó el usuario; con `failed_providers` se distingue un servicio lento de un failover | Solo la latencia del servicio que respondió |
 | `LLMClientFactory.create(settings)` se llama **por request** | Respeta cambios de configuración en caliente (el turno de rotación no se pierde: vive en el módulo) | Cliente singleton al arrancar |
 | Ratio R/R mínimo configurable (`AGENT_MIN_RR_RATIO`, 2.0 por defecto) | Cada despliegue ajusta su umbral sin tocar código | Constante en el código |
+| `risk_pct` del análisis = el del **agente** si se pasa ([M7](M07-BOTS-SIGNALS.md) pasa `effective_risk_pct`), si no el de la estrategia; siempre acotado a (0, 1 %] (`_effective_risk_pct`; inválido, NaN o ≤ 0 → 1 %) | Regla del 1 % aplicada en el servidor aunque la estrategia o el agente digan otra cosa | Usar siempre el de la estrategia (antes) |
+| **Coherencia de niveles** tras el LLM: compra → SL < entrada < TP; venta → TP < entrada < SL; si no, `REJECTED` con `INCONSISTENT_LEVELS` | El filtro R/R usa distancias: un TP del lado equivocado lo pasaba | Confiar en el LLM |
+| **Entrada cerca del precio:** distancia entre entrada y último cierre ≤ `AGENT_MAX_ENTRY_ATR_DISTANCE` × ATR(14) (1,0 por defecto), o 2 % del precio si el conjunto no calcula ATR; si no, `REJECTED` con `ENTRY_TOO_FAR` | Evita precios inventados por el LLM | Sin límite |
+| Estos rechazos son resultados de negocio (200 + `REJECTED`), no errores HTTP | Igual que régimen, reglas y R/R; la señal queda guardada | 4xx |
+| **JSON estricto:** `json.loads(parse_constant=...)` rechaza `NaN`/`Infinity`; la respuesta debe ser un objeto; precios finitos y > 0 (`_positive_price`); `confidence` fuera de [0, 1] → `null`; `reasoning` ≤ 1000 caracteres | Un `NaN` o un texto donde va un número no debe llegar al cálculo de la posición | Aceptar lo que devuelva `json.loads` |
+| Tamaño de posición y R/R calculados con `Decimal` (se devuelven como `float`) | Sin errores de coma flotante en la fórmula del riesgo | `float` en todo el cálculo |
+| Cuenta ajena → `AGENT_ACCOUNT_NOT_FOUND` (404), igual que una inexistente | No revela saldos ni qué cuentas existen | 403 |
+| Rate limit **por usuario** (`user:<id>`, en memoria) en las dos rutas que llaman al LLM | Cada análisis es una llamada de pago; el scheduler no pasa por las rutas y tiene su propio tope diario ([M7](M07-BOTS-SIGNALS.md)) | Por IP (se comparte detrás de un NAT) |
+| Parámetro `as_of`: analiza la vela (y sus features) con `ts ≤ as_of` | El scheduler decide con la última vela **cerrada**, no con la que está en formación | Analizar siempre la última |
 | `AGENT_MASTER_PROMPT` configurable por variable de entorno, con un valor por defecto robusto | Iterar el prompt sin redeploy | Prompt embebido |
 | `POST /api/agent/analyze` devuelve **200 siempre** (APROBADA o RECHAZADA) | Un rechazo es un resultado de negocio válido, no un error HTTP | 4xx para rechazos |
 | `regime_required = null` acepta cualquier régimen | Estrategias agnósticas al régimen | Régimen siempre obligatorio |
@@ -90,24 +103,23 @@ Entregables:
 | Métrica | Valor | Evidencia |
 |---|---|---|
 | Alcance original | **100 %** (13/13) | Multi-provider, 4 fases, fórmula de posición, filtro R/R, CRUD de modelos/runs, endpoint y UI |
-| Madurez | **≈ 78 %** | Funcionalidad 85 · Tests 75 · Seguridad 75 · Operación 78 |
+| Madurez | **≈ 81 %** | Funcionalidad 85 · Tests 70 · Seguridad 90 · Operación 80 |
 
 - **Funcionalidad (85):** `models` / `model_runs` son un registro (CRUD); **no hay entrenamiento ni inferencia ML** y `predictions` no se usa.
-- **Tests (75):** 20 tests de `AnalyzeService` con LLM mockeado; sin tests de `LLMClientFactory`, `RotatingLLMClient`, clientes ni REST.
-- **Seguridad (75):** las API keys (`GROQ_API_KEY`, `GEMINI_API_KEY`, `OLLAMA_API_KEY`) solo por entorno; sin límite de uso sobre un endpoint que consume LLM de pago, y `POST /api/agent/analyze` **no verifica que `account_id` pertenezca al usuario** (cualquier usuario autenticado puede analizar con el capital de otra cuenta).
-- **Operación (78):** pool con rotación, *failover* entre servicios y *timeout* por llamada; log de arranque con los servicios activos. Sin *circuit breaker* (un servicio caído se sigue probando en su turno) ni métricas por servicio.
+- **Tests (70):** 20 tests de `AnalyzeService` con LLM mockeado; sin tests de las validaciones nuevas (`INCONSISTENT_LEVELS`, `ENTRY_TOO_FAR`, JSON estricto, propiedad, tope de `risk_pct`) ni de `LLMClientFactory`, `RotatingLLMClient`, clientes o REST.
+- **Seguridad (90):** las API keys (`GROQ_API_KEY`, `GEMINI_API_KEY`, `OLLAMA_API_KEY`) solo por entorno; `POST /api/agent/analyze` comprueba que la cuenta sea del usuario (antes exponía el saldo de cuentas ajenas); rate limit por usuario; salida del LLM validada antes de calcular la posición. El rate limit vive en memoria (por proceso).
+- **Operación (80):** pool con rotación, *failover* entre servicios y *timeout* por llamada; log de arranque con los servicios activos; umbrales configurables (`AGENT_MAX_ENTRY_ATR_DISTANCE`, `AGENT_ANALYSES_PER_MINUTE`). Sin *circuit breaker* (un servicio caído se sigue probando en su turno) ni métricas por servicio.
 
 ## Posibles mejoras
 
 | Prioridad | Mejora | Esfuerzo |
 |---|---|---|
-| Alta | Control de propiedad en `POST /api/agent/analyze`: rechazar (403/404) si `account_id` no es del usuario y no es admin (hoy la ruta solo exige token y `AnalyzeService` no recibe `user_id`) | S |
-| Alta | Rate limit / cuota por usuario en `/api/agent/analyze` (cada llamada cuesta dinero y tiempo de LLM) | S |
-| Alta | Validar la coherencia numérica de la salida del LLM (valores positivos, SL del lado correcto de `entry`, `entry` cercano al último cierre) y cubrirlo con tests | S |
+| Alta | Tests de las validaciones de la salida del LLM (`INCONSISTENT_LEVELS`, `ENTRY_TOO_FAR`, `NaN`/`Infinity`, `confidence`), de la propiedad de la cuenta y del tope de `risk_pct` | S |
 | Alta | Persistir cada análisis (prompt, respuesta, versión del modelo) para auditoría y para medir el edge; la tabla `predictions` existe y no se usa | M |
 | Media | *Circuit breaker* en el pool: sacar temporalmente un servicio tras N fallos seguidos (hoy se reintenta en cada turno y suma su *timeout*) | S |
 | Media | Métricas por servicio (latencia media, tasa de fallos) a partir de `signals.llm_*` y `reasons.llm.failed_providers` | S |
-| Media | Cachear el análisis por `(símbolo, timeframe, vela, estrategia)` para no repetir llamadas dentro de la misma vela | S |
+| Media | Cachear el análisis por `(símbolo, timeframe, vela, estrategia)` para no repetir llamadas dentro de la misma vela (las automáticas ya son una por vela; "Analizar ahora" no) | S |
+| Media | Rate limit compartido entre procesos (Redis): hoy cada worker cuenta por separado | S |
 | Media | Tests de `LLMClientFactory`, `RotatingLLMClient` (rotación y failover con clientes mock), los tres clientes (SDK mockeado) y rutas REST | M |
 | Baja | UI admin para `models` / `model_runs` (hoy solo API) | S |
 | Baja | Prompts versionados por estrategia | M |
@@ -186,10 +198,12 @@ Registrados en: `app/extensions/db/models_registry.py`
 ### Prompt Maestro — 4 fases (`AnalyzeService.analyze`)
 1. **Fase 1 — Régimen:** `strategy.parameters.regime_required` vs `features.regime`. Si no coincide → RECHAZADA. `None` = acepta cualquier régimen.
 2. **Fase 2 — Reglas:** evalúa cada `{indicator, operator, value}` contra features. Si ALGUNA falla → RECHAZADA.
-3. **Fase 3 — LLM:** genera entry/SL/TP. Python calcula `position_size = (capital × risk_pct) / |entry − SL|`.
+3. **Fase 3 — LLM:** genera entry/SL/TP. Python valida que sean números finitos y > 0 (`AGENT_LLM_MISSING_PRICES` 502 si no), que sean coherentes (`INCONSISTENT_LEVELS`) y que la entrada esté a ≤ `AGENT_MAX_ENTRY_ATR_DISTANCE` × ATR(14) del último cierre, o a ≤ 2 % sin ATR (`ENTRY_TOO_FAR`); después calcula en `Decimal` `position_size = (capital × risk_pct) / |entry − SL|`, con `risk_pct` acotado al 1 %.
 4. **Fase 4 — R/R:** `(TP − entry) / (entry − SL) >= AGENT_MIN_RR_RATIO` (default 2.0). Si no → RECHAZADA.
 
-Los resultados posteriores a la fase 3 (`LLM_REJECTED`, `RR_RATIO_TOO_LOW`, `APPROVED`) llevan `llm_provider`, `llm_model`, `llm_latency_ms` y `llm_failed_providers`; `to_dict()` los expone en `"llm"` (`null` si no se llamó al LLM). Los errores `AGENT_LLM_PARSE_ERROR` y `AGENT_LLM_MISSING_PRICES` los incluyen en `meta`.
+Firma: `analyze(symbol_id, timeframe_id, strategy_id, account_id, feature_set_id, owner_id=None, risk_pct=None, as_of=None)`. `owner_id` lo pasa la ruta (`owner_scope`); `risk_pct` y `as_of` los pasa [M7](M07-BOTS-SIGNALS.md).
+
+Los resultados posteriores a la fase 3 (`LLM_REJECTED`, `INCONSISTENT_LEVELS`, `ENTRY_TOO_FAR`, `RR_RATIO_TOO_LOW`, `APPROVED`) llevan `llm_provider`, `llm_model`, `llm_latency_ms` y `llm_failed_providers`; `to_dict()` los expone en `"llm"` (`null` si no se llamó al LLM). Los errores `AGENT_LLM_PARSE_ERROR` y `AGENT_LLM_MISSING_PRICES` los incluyen en `meta`.
 
 ### Provider (`app/modules/agent/providers/agent_provider.py`)
 - `AgentServiceFactory` — instancia repos propios + borrowed de strategies, accounts, features, market
@@ -198,7 +212,7 @@ Los resultados posteriores a la fase 3 (`LLM_REJECTED`, `RR_RATIO_TOO_LOW`, `APP
 ### Endpoints REST
 | Método | Ruta | Auth | Nota |
 |--------|------|------|------|
-| POST | `/api/agent/analyze` | token (sin control de propiedad de `account_id`) | Prompt Maestro — retorna 200 siempre (APPROVED o REJECTED) |
+| POST | `/api/agent/analyze` | token (la cuenta debe ser del usuario; admin: cualquiera) | Prompt Maestro — retorna 200 siempre (APPROVED o REJECTED); rate limit `AGENT_ANALYSES_PER_MINUTE` por usuario (429) |
 | GET | `/api/models` | token | Lista modelos ML; filtro: `?status=active` |
 | POST | `/api/models` | admin | Crea modelo ML |
 | GET | `/api/models/{id}` | token | Detalle de modelo |
@@ -232,6 +246,8 @@ LLM_TEMPERATURE     # compartido por todos los servicios (default: 0.1)
 LLM_MAX_TOKENS      # compartido por todos los servicios (default: 4096)
 AGENT_MIN_RR_RATIO  # ratio R/R mínimo (default: 2.0)
 AGENT_MASTER_PROMPT # prompt del sistema configurable (env var)
+AGENT_MAX_ENTRY_ATR_DISTANCE # N × ATR(14) máximo entre entrada y último cierre (default: 1.0)
+AGENT_ANALYSES_PER_MINUTE    # análisis por usuario y minuto en /agent/analyze y /signals/generate (default: 6)
 ```
 
 ## Gotchas críticos
@@ -247,7 +263,10 @@ AGENT_MASTER_PROMPT # prompt del sistema configurable (env var)
 - **Nombre del modelo en Ollama Cloud:** por API directa se usa el nombre de `https://ollama.com/api/tags` (`nemotron-3-ultra`), **sin** el sufijo `:cloud` de la app/CLI local; con `:cloud` da 404.
 - `POST /api/agent/analyze` responde 200 también cuando la operación es **RECHAZADA**: mirar el veredicto en `data`, no el código HTTP.
 - **Solo los indicadores del conjunto:** el prompt y `features_snapshot` incluyen solo las claves presentes en las features (las del conjunto del bot, ver [M3](M03-FEATURE-ENGINEERING.md)). Si a una regla de la estrategia le falta su indicador, el análisis falla con `AGENT_FEATURE_SET_INCOMPATIBLE` (422) en vez de rechazar la regla en silencio.
-- **Hueco de seguridad:** `POST /api/agent/analyze` no comprueba que la cuenta (`account_id`) pertenezca al usuario; el front solo ofrece las cuentas propias, pero la API acepta cualquier ID (ver Posibles mejoras).
+- ~~**Hueco de seguridad:** `POST /api/agent/analyze` no comprobaba la propiedad de `account_id`~~ — resuelto el 2026-10-19 (`owner_id` → `AGENT_ACCOUNT_NOT_FOUND`).
+- **El prompt dice el riesgo real:** la línea `Risk/Trade` del mensaje al LLM usa el `risk_pct` efectivo (acotado), no el de la estrategia.
+- **`ENTRY_TOO_FAR` en mercados muy tranquilos:** con un ATR pequeño y `AGENT_MAX_ENTRY_ATR_DISTANCE=1.0`, una entrada razonable pero algo alejada se rechaza; subir el multiplicador si pasa seguido.
+- **Llamada desde M7:** `GenerateSignalService` llama a `analyze` con `risk_pct` y `as_of`; los mocks deben esperarlos (ver `tests/bots/test_generate_signal_service.py`).
 - `regime_required = None` acepta cualquier régimen (fase 1 no filtra).
 - **Mocks de `LLMClient`:** `complete()` devuelve un `LLMCompletion`, no un `str`. Un mock con `return_value = '{...}'` rompe con `AttributeError: 'str' object has no attribute 'text'` (ver `make_service` en `tests/agent/test_analyze_service.py`).
 - El `AnalyzeService` lo reutiliza [M7](M07-BOTS-SIGNALS.md) a través de `BotServiceFactory._build_analyze_service()`; un cambio de firma aquí rompe la generación de señales.
@@ -262,7 +281,7 @@ AGENT_MASTER_PROMPT # prompt del sistema configurable (env var)
 ## Riesgos
 
 - **Coste y latencia:** cada análisis es una llamada a un LLM externo; los *rate limits* de las capas gratuitas de Groq, Gemini y Ollama Cloud son el motivo del pool.
-- **Salida no determinista:** el LLM propone niveles de precio; los filtros R/R y la fórmula de posición acotan el riesgo, pero un entry/SL absurdo pasaría si respeta el ratio.
+- **Salida no determinista:** el LLM propone niveles de precio; la coherencia de niveles, la distancia máxima al precio, el filtro R/R y la fórmula de posición acotan el riesgo, pero dentro de esos márgenes el LLM sigue eligiendo dónde poner el SL y el TP.
 - **Privacidad:** el contexto de mercado y el capital se envían a los servicios externos del pool.
 
 ## Historial
@@ -273,3 +292,4 @@ AGENT_MASTER_PROMPT # prompt del sistema configurable (env var)
 - **2026-10-08** — El prompt usa solo los indicadores del conjunto; nuevo error `AGENT_FEATURE_SET_INCOMPATIBLE`. Se retira la página `/#/agent`: el análisis vive en cada agente ("Analizar ahora").
 - **2026-10-19** — Pool de servicios LLM con rotación round-robin y failover (Groq + Gemini + Ollama Cloud) reemplaza el multi-provider de `LLM_PROVIDER`; se retira `AnthropicLLMClient`; un cliente por proveedor con su SDK oficial (`groq`, `google-genai`, `ollama`; se retira `openai`), `LLM_TIMEOUT_SECONDS` (60 s), sin reintentos del SDK y `LLM_MAX_TOKENS` 4096. Cerebras (sin capa gratuita) y OpenRouter (capa gratuita muy limitada) se probaron y se quitaron el mismo día.
 - **2026-10-19** — `complete()` devuelve `LLMCompletion` (servicio, modelo, latencia, servicios fallidos); el `AnalysisResult` y la señal de [M7](M07-BOTS-SIGNALS.md) los guardan.
+- **2026-10-19** — Auditoría de seguridad: propiedad de la cuenta en `/agent/analyze` (antes exponía saldos ajenos), rate limit por usuario (`AGENT_ANALYSES_PER_MINUTE`) en `/agent/analyze` y `/signals/generate`, `risk_pct` acotado al 1 %, rechazos `INCONSISTENT_LEVELS` y `ENTRY_TOO_FAR` (`AGENT_MAX_ENTRY_ATR_DISTANCE`), JSON estricto, `confidence` en [0, 1], posición y R/R en `Decimal`, parámetro `as_of` para las señales automáticas.

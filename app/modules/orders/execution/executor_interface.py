@@ -39,7 +39,9 @@ class ExecutionUncertainError(RuntimeError):
 
 @dataclass
 class ExecutionResult:
-    status: str                       # filled | partially_filled | sent
+    # filled | partially_filled | sent; al consultar una orden (reconciliación)
+    # también canceled | rejected si se cerró sin ejecutarse
+    status: str
     exchange_order_id: str | None = None
     fill: Fill | None = None
 

@@ -18,6 +18,7 @@ import { AccountStep } from '@/modules/bots/components/agent-wizard/account-step
 import { StrategyStep } from '@/modules/bots/components/agent-wizard/strategy-step';
 import { SymbolStep } from '@/modules/bots/components/agent-wizard/symbol-step';
 import { BotModeBadge } from '@/modules/bots/components/bot-badges';
+import { ExecutionModePicker } from '@/modules/bots/components/execution-mode-picker';
 import {
 	useCreateBotMutation,
 	useTransitionBotMutation,
@@ -75,6 +76,7 @@ const agentSchema = z.object({
 		.min(1, 'Escribe un nombre para el agente')
 		.max(80, 'Máximo 80 caracteres'),
 	start_now: z.boolean(),
+	execution_mode: z.enum(['manual', 'approval', 'auto']),
 });
 
 type AgentFormInput = z.input<typeof agentSchema>;
@@ -154,6 +156,7 @@ export function AgentNewPage() {
 			account_id: null,
 			name: '',
 			start_now: true,
+			execution_mode: 'manual',
 		},
 	});
 	const values = useWatch({ control: form.control });
@@ -220,6 +223,7 @@ export function AgentNewPage() {
 				// El modo del agente es siempre el de su cuenta.
 				mode: account.mode as BotMode,
 				risk_params: { risk_pct: riskFraction },
+				execution_mode: formValues.execution_mode,
 			},
 			{
 				onSuccess: (bot) => {
@@ -405,6 +409,24 @@ export function AgentNewPage() {
 											Lo define la estrategia (máximo 1 %).
 										</span>
 									</SummaryRow>
+									<div className="flex flex-col gap-3 py-3">
+										<dt className="text-sm text-muted-foreground">
+											Cuando la IA aprueba una operación
+										</dt>
+										<dd>
+											<Controller
+												name="execution_mode"
+												control={form.control}
+												render={({ field }) => (
+													<ExecutionModePicker
+														value={field.value}
+														onChange={field.onChange}
+														accountMode={account?.mode}
+													/>
+												)}
+											/>
+										</dd>
+									</div>
 								</dl>
 
 								<div className="flex flex-col gap-5">

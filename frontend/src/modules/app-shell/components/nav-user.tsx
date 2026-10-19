@@ -1,5 +1,11 @@
-import { IconLogout, IconSelector } from '@tabler/icons-react';
+import {
+	IconBrandTelegram,
+	IconLogout,
+	IconSelector,
+} from '@tabler/icons-react';
 import { useNavigate } from '@tanstack/react-router';
+import { useState } from 'react';
+import { TelegramLinkDialog } from '@/modules/app-shell/components/telegram-link-dialog';
 import { useAuth } from '@/modules/auth/hooks/use-auth';
 import { useLogoutMutation } from '@/modules/auth/hooks/use-auth-mutations';
 import { Avatar, AvatarFallback } from '@/modules/ui/components/avatar';
@@ -55,6 +61,7 @@ export function NavUser() {
 	const navigate = useNavigate();
 	const { user } = useAuth();
 	const logoutMutation = useLogoutMutation();
+	const [telegramOpen, setTelegramOpen] = useState(false);
 
 	if (!user) return null;
 
@@ -105,12 +112,23 @@ export function NavUser() {
 							</DropdownMenuLabel>
 						</DropdownMenuGroup>
 						<DropdownMenuSeparator />
+						<DropdownMenuItem onClick={() => setTelegramOpen(true)}>
+							<IconBrandTelegram />
+							{user.telegram_linked
+								? 'Telegram conectado'
+								: 'Conectar Telegram'}
+						</DropdownMenuItem>
+						<DropdownMenuSeparator />
 						<DropdownMenuItem onClick={handleLogout}>
 							<IconLogout />
 							Cerrar sesión
 						</DropdownMenuItem>
 					</DropdownMenuContent>
 				</DropdownMenu>
+				<TelegramLinkDialog
+					open={telegramOpen}
+					onOpenChange={setTelegramOpen}
+				/>
 			</SidebarMenuItem>
 		</SidebarMenu>
 	);

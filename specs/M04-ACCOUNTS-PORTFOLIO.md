@@ -14,7 +14,7 @@
 | Lo usan | [M6](M06-AI-AGENT.md) (capital disponible), [M7](M07-BOTS-SIGNALS.md) (cuenta del bot), [M8](M08-ORDERS-EXECUTION.md) (credenciales del `LiveExecutor`), [M10](M10-BILLING.md) (cuenta administrada) |
 | Prefijo API | `/api/accounts` (la página del front es `/#/portfolio`) |
 | Frontend | `frontend/src/modules/accounts` |
-| Última revisión | 2026-10-10 |
+| Última revisión | 2026-10-19 |
 
 ## Descripción
 
@@ -39,7 +39,7 @@ Hash routing: la URL real es `/#/<ruta>`.
 
 ## Entregables
 
-Tablas: `accounts`, `account_balances` (`portfolio_snapshots` → Módulo 7, requiere bot_id)
+Tablas: `accounts`, `account_balances` (`portfolio_snapshots` es por bot: tiene modelo ORM aquí, pero ningún servicio la escribe)
 
 Entregables:
 - ✅ CRUD cuentas (exchange + API key/secret cifrada con Fernet → `meta['enc_creds']`)
@@ -58,11 +58,13 @@ Entregables:
 | Decisión | Motivo | Alternativa descartada |
 |---|---|---|
 | API key/secret cifradas con **Fernet** (`CredentialsCipher`, clave `CREDENTIALS_SECRET_KEY`) y guardadas en `meta['enc_creds']` | Nunca se persisten credenciales en claro; la clave vive fuera de la BD | Guardar en claro / en una tabla aparte sin cifrar |
+| `CredentialsCipher.from_settings()` arma un **MultiFernet**: cifra con `CREDENTIALS_SECRET_KEY` y descifra con ella o con cualquiera de `CREDENTIALS_PREVIOUS_KEYS` (lista separada por comas); `rotate(token)` re-cifra con la clave actual | Permite rotar la clave sin dejar ilegibles las cuentas existentes | Una sola clave Fernet (cambiarla rompía todas las `enc_creds`) |
+| `api_key` ≤ 512 y `api_secret` ≤ 1024 caracteres en los schemas de crear/editar | Acota la entrada antes de cifrar y guardar en el JSON `meta` | Sin límite |
 | Balances como **snapshots inmutables** (`UNIQUE (account_id, asset, ts)`) | La equity curve se obtiene como serie temporal sin recalcular ni mutar histórico | Un saldo único actualizable por activo |
 | Cuenta `paper` o `live` (`accounts.mode`) y `status` `active`/`suspended` | Mismo modelo para simulación y dinero real; el modo del bot decide el *executor* en [M8](M08-ORDERS-EXECUTION.md) | Tablas separadas por modo |
 | Propiedad: un usuario solo ve/edita sus cuentas; el admin ve todas (`belongs_to` + `is_admin`) | Aislamiento entre usuarios | Filtrar solo en la UI |
 | La cuenta valida el exchange (`EXCHANGE_NOT_FOUND`) y el modo (`ACCOUNT_INVALID_MODE`) al crear | Errores claros con códigos estables | Dejar que fallen los `CHECK` de MySQL |
-| `portfolio_snapshots` diferida: requiere `bot_id` ([M7](M07-BOTS-SIGNALS.md)) | La tabla es por bot, no por cuenta | Snapshots por cuenta |
+| `portfolio_snapshots` diferida: el modelo ORM existe (`infrastructure/portfolio_snapshot_model.py`, registrado en `models_registry.py` para que Alembic gestione el esquema completo), pero no hay entidad, repositorio ni servicio que la escriba | La tabla es por bot (`bot_id`, [M7](M07-BOTS-SIGNALS.md)), no por cuenta | Snapshots por cuenta |
 | Ruta REST `/api/accounts` y página en `/#/portfolio` | Desde 2026-10-08 toda la API vive bajo `/api` y la UI usa hash routing, así que ya no hay colisión; se mantuvo `/portfolio` por continuidad de URLs | Página en `/accounts` |
 
 ## Avance
@@ -74,8 +76,8 @@ Entregables:
 
 - **Funcionalidad (85):** los balances se registran **a mano** (`POST /api/accounts/{id}/balances`); no se sincronizan desde el exchange.
 - **Tests (80):** 6 suites en `tests/accounts/` (list/get/create/update de cuentas, list/record de balances).
-- **Seguridad (90):** cifrado Fernet y control de propiedad.
-- **Operación (60):** sin rotación de clave ni validación de credenciales contra el exchange.
+- **Seguridad (90):** cifrado Fernet (MultiFernet con claves anteriores), control de propiedad y longitud máxima de las credenciales en los schemas.
+- **Operación (60):** la clave se puede rotar (`CREDENTIALS_PREVIOUS_KEYS`), pero no hay herramienta que re-cifre las cuentas; sin validación de credenciales contra el exchange.
 
 ## Posibles mejoras
 
@@ -83,15 +85,15 @@ Entregables:
 |---|---|---|
 | Alta | Sincronizar balances desde el exchange con ccxt `fetch_balance` (hoy son manuales) — además alimentaría la `closing_equity` de [M10](M10-BILLING.md) | M |
 | Alta | "Probar conexión": validar API key/secret y permisos (solo lectura/trading, sin retiro) antes de guardar la cuenta | S |
-| Media | Rotación de `CREDENTIALS_SECRET_KEY` con re-cifrado de `enc_creds` (cambiar la clave hoy deja las cuentas sin poder descifrar) | M |
+| Media | Script o job que re-cifre todas las `enc_creds` con la clave nueva (`CredentialsCipher.rotate`) para poder retirar la vieja de `CREDENTIALS_PREVIOUS_KEYS` (hoy la rotación solo descifra con las claves anteriores; nada llama a `rotate`) | S |
 | Media | Equity total valorada en la moneda base (conversión de activos) y gráfico de equity curve en `/#/portfolio` (hoy el panel de balances es una tabla) | M |
-| Media | Usar `portfolio_snapshots` (tabla creada y sin código asociado) para equity por bot | M |
+| Media | Usar `portfolio_snapshots` (tabla y modelo ORM creados; falta entidad, repositorio y un servicio que la escriba) para equity por bot | M |
 | Baja | Borrado lógico / archivado de cuentas | S |
 
 ## Fuera de alcance y pendientes conocidos
 
 - Sincronización automática de balances con el exchange.
-- `portfolio_snapshots` (la tabla existe, no hay modelo ORM ni servicio).
+- `portfolio_snapshots`: la tabla y su modelo ORM (`PortfolioSnapshotModel`) existen, pero ningún servicio la escribe ni la lee.
 - Multi-moneda con conversión a una divisa base.
 - Retiros/depósitos: el sistema no mueve fondos entre cuentas.
 
@@ -111,6 +113,7 @@ Entregables:
 |---------|-------|-------|
 | `account_model.py` | `AccountModel` | `accounts` |
 | `account_balance_model.py` | `AccountBalanceModel` | `account_balances` |
+| `portfolio_snapshot_model.py` | `PortfolioSnapshotModel` | `portfolio_snapshots` (por bot: `equity`, `cash`, `unrealized_pnl`, `realized_pnl`; sin repositorio ni servicio) |
 
 ### Dominio y repositorios
 | Domain | Infrastructure |
@@ -126,9 +129,11 @@ Entregables:
 | `accounts/` | `list_accounts_service.py`, `get_account_service.py`, `create_account_service.py`, `update_account_service.py` |
 | `balances/` | `list_balances_service.py`, `record_balance_service.py` |
 
-Provider: `app/modules/accounts/providers/account_provider.py` → `AccountServiceFactory` + `get_account_factory(session)`
+Provider: `app/modules/accounts/providers/account_provider.py` → `AccountServiceFactory` + `get_account_factory(session)`; construye el cifrado con `CredentialsCipher.from_settings()` (clave actual + `CREDENTIALS_PREVIOUS_KEYS`).
 
-Cifrado: `app/common/security/credentials_cipher.py` → `CredentialsCipher` (Fernet). Lo reutilizan [M8](M08-ORDERS-EXECUTION.md) (`LiveExecutor`, `OrderServiceFactory`).
+Cifrado: `app/common/security/credentials_cipher.py` → `CredentialsCipher` (MultiFernet: `encrypt`, `decrypt`, `rotate`). Lo reutilizan [M8](M08-ORDERS-EXECUTION.md) (`LiveExecutor`, `OrderServiceFactory`, también con `from_settings()`).
+
+Schemas (`rest/accounts/schemas.py`): `api_key` `max_length=512`, `api_secret` `max_length=1024` (crear y editar); `name` 1–120, `base_currency` ≤ 16, `credentials_label` ≤ 255.
 
 ### Endpoints REST
 | Método | Ruta | Auth | Nota |
@@ -159,7 +164,7 @@ from app.modules.accounts.rest import accounts_router, balances_router
 
 ## Gotchas críticos
 
-- **`CREDENTIALS_SECRET_KEY` es obligatoria** para cifrar/descifrar credenciales (`CredentialsCipher`); perderla o cambiarla deja las `enc_creds` existentes ilegibles.
+- **`CREDENTIALS_SECRET_KEY` es obligatoria** fuera de `development`/`testing` (settings falla al arrancar sin ella). Perderla deja las `enc_creds` ilegibles; para **cambiarla**, poner la nueva en `CREDENTIALS_SECRET_KEY` y la vieja en `CREDENTIALS_PREVIOUS_KEYS` hasta re-cifrar las cuentas (si se quita la vieja antes, las cuentas cifradas con ella dejan de descifrarse).
 - Las cuentas `live` guardan credenciales reales: nunca registrarlas en logs ni devolverlas en las respuestas.
 - Los balances son inmutables: para "corregir" uno se registra un snapshot nuevo.
 
@@ -179,3 +184,4 @@ from app.modules.accounts.rest import accounts_router, balances_router
 - **Posterior** — Es la base de las cuentas administradas de [M10](M10-BILLING.md).
 - **2026-10-08** — API headless (/api), páginas migradas a React (frontend/).
 - **2026-10-10** — Seed `accounts`: cuentas para Dayron y fix del re-run con varias fotos de balance.
+- **2026-10-19** — Auditoría de seguridad: `api_key` ≤ 512 y `api_secret` ≤ 1024 en los schemas; `CredentialsCipher.from_settings()` con MultiFernet y `CREDENTIALS_PREVIOUS_KEYS` (rotación de clave sin perder las cuentas). Spec corregida: `portfolio_snapshots` sí tiene modelo ORM (`portfolio_snapshot_model.py`, registrado), aunque nadie la escribe.

@@ -278,6 +278,7 @@ def get_me(
             "status": profile.status,
             "last_login_at": profile.last_login_at.isoformat() if profile.last_login_at else None,
             "created_at": profile.created_at.isoformat() if profile.created_at else None,
+            "telegram_linked": profile.telegram_linked,
         },
         msg="OK",
     )

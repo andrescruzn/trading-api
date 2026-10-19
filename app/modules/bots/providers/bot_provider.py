@@ -34,7 +34,11 @@ from app.modules.bots.services.bots import (
     UpdateBotService,
     UpdateBotStatusService,
 )
-from app.modules.bots.services.signals import GenerateSignalService, ListSignalsService
+from app.modules.bots.services.signals import (
+    GenerateSignalService,
+    ListPendingSignalsService,
+    ListSignalsService,
+)
 
 # Repos tomados de otros módulos (borrowing)
 from app.modules.strategies.infrastructure import SqlAlchemyStrategyRepository
@@ -52,6 +56,7 @@ from app.modules.market.infrastructure import (
     SqlAlchemyTimeframeRepository,
 )
 from app.modules.alerts.providers.alert_provider import build_evaluate_alerts_service
+from app.modules.alerts.providers.telegram_provider import build_signal_approval_notifier
 
 
 class BotServiceFactory:
@@ -133,6 +138,7 @@ class BotServiceFactory:
             repo=self._bot_repo,
             account_repo=self._account_repo,
             symbol_repo=self._symbol_repo,
+            timeframe_repo=self._timeframe_repo,
         )
 
     def update_bot_status(self) -> UpdateBotStatusService:
@@ -149,6 +155,13 @@ class BotServiceFactory:
             account_repo=self._account_repo,
         )
 
+    def list_pending_signals(self) -> ListPendingSignalsService:
+        return ListPendingSignalsService(
+            repo=self._signal_repo,
+            bot_repo=self._bot_repo,
+            account_repo=self._account_repo,
+        )
+
     def generate_signal(self) -> GenerateSignalService:
         return GenerateSignalService(
             bot_repo=self._bot_repo,
@@ -156,6 +169,8 @@ class BotServiceFactory:
             analyze_service=self._build_analyze_service(),
             account_repo=self._account_repo,
             evaluate_alerts=build_evaluate_alerts_service(self._session),
+            notify_pending=build_signal_approval_notifier(self._session).notify,
+            approval_ttl_minutes=settings.SIGNAL_APPROVAL_TTL_MINUTES,
         )
 
 

@@ -386,4 +386,5 @@ class TestSignalFields:
             account_id=bot.account_id,
             feature_set_id=7,
             risk_pct=bot.effective_risk_pct,
+            as_of=None,
         )

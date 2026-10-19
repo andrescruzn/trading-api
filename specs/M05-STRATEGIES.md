@@ -14,7 +14,7 @@
 | Lo usan | [M6](M06-AI-AGENT.md) (Prompt Maestro), [M7](M07-BOTS-SIGNALS.md) (cada bot referencia una estrategia) |
 | Prefijo API | `/api/strategies`, `/api/datasets` |
 | Frontend | `frontend/src/modules/strategies` |
-| Última revisión | 2026-10-10 |
+| Última revisión | 2026-10-19 |
 
 ## Descripción
 
@@ -64,6 +64,7 @@ Entregables:
 | Prefijo API `/api/strategies` | Originalmente para no colisionar con la página Jinja `/strategies`; desde 2026-10-08 todas las rutas REST viven bajo `/api` (`settings.API_PREFIX`) y la UI usa hash routing (`/#/strategies`), así que la colisión ya no existe | Cambiar la ruta de la página |
 | Lectura para cualquier usuario autenticado, escritura solo admin | El trader ve las estrategias disponibles pero no las altera | Estrategias por usuario |
 | Seed de estrategias con `get_or_create` por (name, version); una corrección es una **versión nueva** | Arranque rápido e idempotente; no cambia estrategias que ya usan agentes | Crearlas a mano / actualizar la fila existente |
+| `description` limitada a **2000 caracteres** en `CreateStrategyRequest` y `UpdateStrategyRequest` (además `name` 1–120 y `version` ≤ 32) | Acota la entrada del usuario (se guarda en la BD y se muestra en la UI): evita textos enormes | Sin límite |
 
 ## Avance
 
@@ -131,6 +132,8 @@ Provider: `app/modules/strategies/providers/strategy_provider.py` → `StrategyS
 | GET | `/api/datasets` | token | Lista datasets |
 | POST | `/api/datasets` | admin | Crea dataset |
 
+Schemas (`rest/strategies/schemas.py`): `name` 1–120, `version` ≤ 32 (por defecto `1.0.0`), `description` ≤ 2000 (crear y editar), `parameters` obligatorio al crear. Una descripción más larga → 422 de validación.
+
 El router declara `prefix="/strategies"` / `"/datasets"` (sin `/api`); el `/api` lo añade `app_factory.py` con `settings.API_PREFIX`.
 
 Routers registrados en `app/app_factory.py` (dentro de `api_routers`):
@@ -194,3 +197,4 @@ from app.modules.strategies.rest import strategies_router, datasets_router
 - **2026-03** — Fix de colisión de rutas: el API pasa a `/api/strategies`.
 - **2026-10-08** — API headless (/api), páginas migradas a React (frontend/).
 - **2026-10-10** — Seed: RSI Mean Reversion 1.1.0 y Bollinger Band Reversion 1.1.0 (reglas de bandas corregidas) y Tendencia Metales 1.0.0 para perpetuos TradFi.
+- **2026-10-19** — Auditoría de seguridad (límites de entrada): `description` de la estrategia ≤ 2000 caracteres al crear y al editar.

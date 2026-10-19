@@ -15,8 +15,10 @@ from app.modules.accounts.domain.account_repository import AccountRepository
 from app.modules.bots.domain.bot_entity import Bot
 from app.modules.bots.domain.bot_repository import BotRepository
 from app.modules.bots.services.bots.bot_access import find_accessible_bot
+from app.modules.bots.services.bots.execution_mode_rules import check_execution_mode
 from app.modules.market.domain.ccxt_exchanges import is_perpetual
 from app.modules.market.domain.symbol_repository import SymbolRepository
+from app.modules.market.domain.timeframe_repository import TimeframeRepository
 
 
 class UpdateBotService:
@@ -36,10 +38,12 @@ class UpdateBotService:
         repo: BotRepository,
         account_repo: AccountRepository,
         symbol_repo: SymbolRepository,
+        timeframe_repo: TimeframeRepository,
     ):
         self._repo = repo
         self._account_repo = account_repo
         self._symbol_repo = symbol_repo
+        self._timeframe_repo = timeframe_repo
 
     def update(
         self,
@@ -48,6 +52,9 @@ class UpdateBotService:
         mode: str | None = None,
         risk_params: dict[str, Any] | None = None,
         owner_id: int | None = None,
+        execution_mode: str | None = None,
+        approval_ttl_minutes: int | None = None,
+        clear_approval_ttl: bool = False,
     ) -> ServiceResult[Bot]:
         bot = find_accessible_bot(self._repo, self._account_repo, bot_id, owner_id)
         if bot is None:
@@ -85,6 +92,18 @@ class UpdateBotService:
             if not Bot.is_valid_risk_pct(risk_params.get("risk_pct")):
                 return ServiceResult.fail(code="BOT_INVALID_RISK_PCT", http_status=422)
             bot.risk_params = risk_params
+
+        # El modo de ejecución se cambia en cualquier estado: pasar de auto a
+        # approval (o manual) es un freno que no debe esperar a detener el agente
+        if execution_mode is not None:
+            bot.execution_mode = execution_mode
+        if approval_ttl_minutes is not None or clear_approval_ttl:
+            bot.approval_ttl_minutes = approval_ttl_minutes
+
+        timeframe = self._timeframe_repo.get_by_id(bot.timeframe_id)
+        execution_check = check_execution_mode(bot, timeframe.seconds if timeframe else None)
+        if not execution_check.success:
+            return execution_check
 
         updated = self._repo.update(bot)
         self._repo.commit()

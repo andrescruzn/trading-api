@@ -11,6 +11,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from datetime import datetime
 
 from app.modules.orders.domain.order_entity import Order
 from app.common.contracts import TransactionalRepository
@@ -31,6 +32,11 @@ class OrderRepository(TransactionalRepository, ABC):
     @abstractmethod
     def has_active_order_for_signal(self, signal_id: int) -> bool:
         """True si la señal ya tiene una orden que no fue rechazada ni cancelada."""
+        ...
+
+    @abstractmethod
+    def list_open_live(self, since: datetime, limit: int = 50) -> list[Order]:
+        """Órdenes live sent/partially_filled desde `since` (reconciliación)."""
         ...
 
     @abstractmethod

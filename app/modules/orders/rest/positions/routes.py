@@ -51,6 +51,10 @@ def _position_to_dict(p: Position) -> dict[str, Any]:
         "avg_price":     _decimal_or_none(p.avg_price),
         "realized_pnl":  _decimal_or_none(p.realized_pnl),
         "is_flat":       p.is_flat(),
+        "stop_loss":     _decimal_or_none(p.stop_loss),
+        "take_profit":   _decimal_or_none(p.take_profit),
+        "signal_id":     p.signal_id,
+        "sl_order_id":   p.sl_order_id,
         "updated_at":    p.updated_at.isoformat() if p.updated_at else None,
     }
 

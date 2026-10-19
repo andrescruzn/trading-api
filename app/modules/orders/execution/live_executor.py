@@ -10,7 +10,7 @@
 # 2. Descifrar credenciales API (Fernet, de account.meta['enc_creds'])
 # 3. Inicializar cliente ccxt con api_key + api_secret
 # 4. Enviar la orden al exchange
-# 5. Parsear la respuesta y construir el Fill con datos reales
+# 5. Traducir la respuesta al estado real (sin asumir ejecución total)
 #
 # Exchanges soportados: los de CCXT_EXCHANGE_MAP (M2, ccxt_exchanges.py).
 # Solo spot: los perpetuos (`XAU/USDT:USDT`) se rechazan, porque ccxt
@@ -31,7 +31,11 @@ from app.modules.market.domain.ccxt_exchanges import CCXT_EXCHANGE_MAP, ccxt_id_
 from app.modules.market.domain.exchange_repository import ExchangeRepository
 from app.modules.orders.domain.fill_entity import Fill
 from app.modules.orders.domain.order_entity import Order
-from app.modules.orders.execution.executor_interface import ExecutorInterface
+from app.modules.orders.execution.executor_interface import (
+    ExecutionResult,
+    ExecutionUncertainError,
+    ExecutorInterface,
+)
 
 
 # Mapeo tipo de orden del dominio → tipo ccxt
@@ -52,7 +56,7 @@ class LiveExecutor(ExecutorInterface):
     2. Descifra las credenciales API (Fernet).
     3. Crea el cliente ccxt con las credenciales.
     4. Envía la orden al exchange.
-    5. Construye el Fill con datos reales (precio, cantidad, comisión).
+    5. Traduce la respuesta al estado real (filled / partially_filled / sent).
 
     Raises RuntimeError si:
     - La cuenta no existe o no tiene credenciales configuradas.
@@ -70,12 +74,13 @@ class LiveExecutor(ExecutorInterface):
         self._exchange_repo = exchange_repo
         self._cipher = cipher
 
-    def execute(self, order: Order, bot: Bot) -> Fill:
+    def execute(self, order: Order, bot: Bot) -> ExecutionResult:
         """
-        Envía la orden al exchange real y retorna el Fill con
-        precio, cantidad y comisión reales.
+        Envía la orden al exchange real y retorna su resultado, con el Fill
+        (precio, cantidad y comisión reales) si se ejecutó algo.
 
         Raises:
+            ExecutionUncertainError: timeout o error de red tras enviarla.
             RuntimeError: ante cualquier error de configuración,
                           credenciales o rechazo del exchange.
         """
@@ -176,6 +181,11 @@ class LiveExecutor(ExecutorInterface):
                 "la ejecución live no maneja contratos, apalancamiento ni cortos."
             )
 
+        # Idempotencia: el exchange rechaza un segundo clientOrderId igual y
+        # permite buscar la orden si la respuesta se pierde por red.
+        if order.client_order_id:
+            params["clientOrderId"] = order.client_order_id
+
         # 7. Enviar la orden al exchange
         try:
             response = client.create_order(
@@ -190,33 +200,63 @@ class LiveExecutor(ExecutorInterface):
             raise RuntimeError(f"Fondos insuficientes en el exchange: {e}")
         except ccxt.InvalidOrder as e:
             raise RuntimeError(f"Orden inválida rechazada por el exchange: {e}")
-        except ccxt.NetworkError as e:
-            raise RuntimeError(f"Error de red al conectar con el exchange: {e}")
+        except (ccxt.RequestTimeout, ccxt.NetworkError) as e:
+            # La petición pudo llegar: no se puede asumir que la orden no existe.
+            raise ExecutionUncertainError(f"Sin respuesta del exchange: {e}")
         except ccxt.ExchangeError as e:
             raise RuntimeError(f"Error del exchange: {e}")
         except Exception as e:
-            raise RuntimeError(f"Error inesperado al enviar la orden: {e}")
+            raise ExecutionUncertainError(f"Error inesperado al enviar la orden: {e}")
 
-        # 8. Parsear respuesta y construir Fill con datos reales
-        # ccxt retorna un dict con: id, price, amount, cost, fee, etc.
-        exec_price = Decimal(str(response.get("price") or response.get("average") or 0))
-        exec_qty = Decimal(str(response.get("filled") or response.get("amount") or order.qty))
+        return self._to_result(order, response)
+
+    # ------------------------------------------------------------------
+    # Lógica interna
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _to_result(order: Order, response: dict) -> ExecutionResult:
+        """
+        Traduce la respuesta de ccxt al resultado de dominio.
+
+        Solo se registra un Fill con lo que el exchange dice que se ejecutó
+        (`filled`) y a un precio conocido (`average`, o `cost / filled`).
+        Nunca se inventa precio 0 ni se asume ejecución total.
+        """
+        exchange_order_id = str(response.get("id") or "") or None
+
+        filled_raw = response.get("filled")
+        filled = Decimal(str(filled_raw)) if filled_raw is not None else None
+
+        if response.get("status") == "closed" and filled is None:
+            filled = Decimal(str(response.get("amount") or order.qty))
+
+        if not filled or filled <= Decimal("0"):
+            # Aceptada pero sin ejecutar (límite/stop en el libro)
+            return ExecutionResult(status="sent", exchange_order_id=exchange_order_id)
+
+        price_raw = response.get("average") or response.get("price")
+        if price_raw:
+            exec_price = Decimal(str(price_raw))
+        elif response.get("cost"):
+            exec_price = Decimal(str(response["cost"])) / filled
+        else:
+            raise ExecutionUncertainError(
+                "El exchange reportó la ejecución sin precio; hay que reconciliar la orden."
+            )
 
         fee_info = response.get("fee") or {}
-        exec_fee = Decimal(str(fee_info.get("cost", 0)))
-        fee_asset = fee_info.get("currency")
-
-        exchange_trade_id = str(response.get("id", ""))
         now = utc_now()
-
-        return Fill(
+        fill = Fill(
             id=0,
             order_id=order.id,
-            exchange_trade_id=exchange_trade_id or None,
-            qty=exec_qty,
+            exchange_trade_id=exchange_order_id,
+            qty=filled,
             price=exec_price,
-            fee=exec_fee,
-            fee_asset=fee_asset,
+            fee=Decimal(str(fee_info.get("cost") or 0)),
+            fee_asset=fee_info.get("currency"),
             ts=now,
             created_at=now,
         )
+        status = "filled" if filled >= order.qty else "partially_filled"
+        return ExecutionResult(status=status, exchange_order_id=exchange_order_id, fill=fill)

@@ -11,7 +11,6 @@ from __future__ import annotations
 
 from sqlalchemy.orm import Session
 
-from app.common.config import settings
 from app.common.security.credentials_cipher import CredentialsCipher
 from app.modules.accounts.infrastructure import (
     SqlAlchemyAccountRepository,
@@ -50,7 +49,7 @@ class AccountServiceFactory:
         self._exchange_repo = SqlAlchemyExchangeRepository(session)
 
         # Cipher para credenciales
-        self._cipher = CredentialsCipher(settings.CREDENTIALS_SECRET_KEY)
+        self._cipher = CredentialsCipher.from_settings()
 
     # ------------------------------------------------------------------
     # Accounts

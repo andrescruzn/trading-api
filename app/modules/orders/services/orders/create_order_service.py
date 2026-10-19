@@ -6,43 +6,53 @@
 # Crea y ejecuta una orden de trading — lógica central del Módulo 8.
 #
 # FLUJO COMPLETO:
-#   1. Validar bot (existe, está running, tiene cuenta)
+#   1. Validar bot (existe, es del usuario, está running)
 #   2. Validar parámetros de la orden (side, type, qty, price)
-#   3. Crear la entidad Order (status="new")
-#   4. Persistir la orden en BD (para obtener order.id)
-#   5. Seleccionar executor según bot.mode (paper o live)
-#   6. executor.execute(order, bot) → Fill
-#   7. Persistir el Fill
-#   8. Actualizar order.status = "filled"
-#   9. Upsert Position (crear si no existe, actualizar si ya existe)
-#  10. Commit único (order_repo.commit()) — todo o nada
-#  11. Retornar ServiceResult.ok(data=order)
+#   3. Validar la señal vinculada (del mismo bot, aprobada, misma dirección
+#      y sin otra orden activa)
+#   4. Precio de referencia y regla de spot: no vender más de lo que hay
+#   5. RiskGate: kill switch, live apagado, notional máximo, drawdown
+#   6. Persistir la Order (status="new") con su client_order_id y COMMIT:
+#      la intención queda registrada antes de hablar con el exchange
+#   7. Ejecutar (paper o live) y registrar el resultado REAL:
+#      filled / partially_filled → Fill + Position; sent → solo la orden;
+#      rechazo → rejected; sin respuesta → sent + needs_reconciliation
+#   8. Commit y hook de alertas
 #
-# DECISIÓN DE DISEÑO — Atomicidad:
-#   Todo ocurre en una sola transacción. Si el executor falla
-#   (ej: exchange rechaza la orden), se descarta todo con
-#   order_repo.rollback() antes de retornar el error.
-#   Así nunca queda una Order en BD sin su Fill correspondiente.
+# DECISIÓN DE DISEÑO — Persistir antes de enviar:
+#   Si se revierte la orden cuando la llamada al exchange falla por red,
+#   puede quedar una orden viva en el exchange que el sistema no conoce.
+#   Por eso la orden se confirma primero y luego se actualiza con lo que
+#   responda el exchange; los rechazos quedan como historial auditable.
 # ======================================================================
 
 from __future__ import annotations
 
 from decimal import Decimal
+from typing import TYPE_CHECKING
 
 from app.common.contracts import ServiceResult
 from app.common.utils.datetime_utils import utc_now
+from app.modules.accounts.domain.account_repository import AccountRepository
+from app.modules.bots.domain.bot_entity import Bot
 from app.modules.bots.domain.bot_repository import BotRepository
+from app.modules.bots.domain.signal_repository import SignalRepository
+from app.modules.bots.services.bots.bot_access import find_accessible_bot
+from app.modules.market.domain.candle_repository import CandleRepository
 from app.modules.market.domain.symbol_repository import SymbolRepository
 from app.modules.orders.domain.fill_repository import FillRepository
 from app.modules.orders.domain.order_entity import Order
 from app.modules.orders.domain.order_repository import OrderRepository
 from app.modules.orders.domain.position_entity import Position
 from app.modules.orders.domain.position_repository import PositionRepository
-from app.modules.orders.execution.executor_interface import ExecutorInterface
+from app.modules.orders.execution.executor_interface import (
+    ExecutionUncertainError,
+    ExecutorInterface,
+)
 from app.modules.orders.execution.live_executor import LiveExecutor
 from app.modules.orders.execution.paper_executor import PaperExecutor
+from app.modules.orders.services.risk.risk_gate_service import RiskGateService
 
-from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from app.modules.alerts.services.evaluation.evaluate_alerts_service import EvaluateAlertsService
 
@@ -52,12 +62,14 @@ class CreateOrderService:
     Crea y ejecuta una orden de trading.
 
     Reglas de negocio:
-    - El bot debe estar en estado 'running' para aceptar órdenes.
+    - El bot debe ser del usuario (owner_id) y estar en estado 'running'.
     - side debe ser 'buy' o 'sell' (no 'hold' — hold = no operar).
     - type 'limit' y 'stop_limit' requieren price > 0.
     - type 'stop' y 'stop_limit' requieren stop_price > 0.
-    - qty debe ser > 0.
-    - La ejecución es atómica: order + fill + position en un commit.
+    - qty debe ser > 0. En spot no hay cortos: no se vende más de la posición.
+    - signal_id, si viene: señal del mismo bot, aprobada, con la misma
+      dirección y sin otra orden activa (una señal = una orden).
+    - Toda orden pasa por el RiskGate antes de ejecutarse.
     """
 
     def __init__(
@@ -66,7 +78,11 @@ class CreateOrderService:
         fill_repo: FillRepository,
         position_repo: PositionRepository,
         bot_repo: BotRepository,
+        account_repo: AccountRepository,
+        signal_repo: SignalRepository,
         symbol_repo: SymbolRepository,
+        candle_repo: CandleRepository,
+        risk_gate: RiskGateService,
         paper_executor: PaperExecutor,
         live_executor: LiveExecutor,
         evaluate_alerts: "EvaluateAlertsService | None" = None,
@@ -75,7 +91,11 @@ class CreateOrderService:
         self._fill_repo = fill_repo
         self._position_repo = position_repo
         self._bot_repo = bot_repo
+        self._account_repo = account_repo
+        self._signal_repo = signal_repo
         self._symbol_repo = symbol_repo
+        self._candle_repo = candle_repo
+        self._risk_gate = risk_gate
         self._paper_executor = paper_executor
         self._live_executor = live_executor
         self._evaluate_alerts = evaluate_alerts
@@ -90,12 +110,13 @@ class CreateOrderService:
         stop_price: Decimal | None = None,
         time_in_force: str | None = None,
         signal_id: int | None = None,
+        owner_id: int | None = None,
     ) -> ServiceResult[Order]:
 
         # ------------------------------------------------------------------
-        # 1. Cargar y validar el bot
+        # 1. Cargar y validar el bot (un usuario solo opera los suyos)
         # ------------------------------------------------------------------
-        bot = self._bot_repo.get_by_id(bot_id)
+        bot = find_accessible_bot(self._bot_repo, self._account_repo, bot_id, owner_id)
         if bot is None:
             return ServiceResult.fail(code="BOT_NOT_FOUND", http_status=404)
 
@@ -143,149 +164,201 @@ class CreateOrderService:
             )
 
         # ------------------------------------------------------------------
-        # 3. Obtener el símbolo para guardar en meta (necesario para LiveExecutor)
+        # 3. Señal vinculada
+        # ------------------------------------------------------------------
+        if signal_id is not None:
+            signal_check = self._check_signal(signal_id, bot_id, side)
+            if not signal_check.success:
+                return signal_check
+
+        # ------------------------------------------------------------------
+        # 4. Símbolo, precio de referencia y regla de spot (sin cortos)
         # ------------------------------------------------------------------
         symbol = self._symbol_repo.get_by_id(bot.symbol_id)
         if symbol is None:
             return ServiceResult.fail(code="SYMBOL_NOT_FOUND", http_status=404)
 
-        now = utc_now()
+        reference_price = price or stop_price or self._last_close(bot)
+        if reference_price is None:
+            return ServiceResult.fail(code="ORDER_NO_MARKET_PRICE", http_status=422)
 
-        # ------------------------------------------------------------------
-        # 4. Construir y persistir la Order (status="new", obtener order.id)
-        # ------------------------------------------------------------------
-        order = Order(
-            id=0,
+        position = self._position_repo.get_by_bot_and_symbol(
             bot_id=bot_id,
-            signal_id=signal_id,
-            side=side,
-            type=order_type,
-            qty=qty,
-            status="new",
-            price=price,
-            stop_price=stop_price,
-            time_in_force=time_in_force,
-            # Guardamos el símbolo en meta para que LiveExecutor pueda usarlo
-            meta={"symbol": symbol.symbol, "mode": bot.mode},
-            ts=now,
+            symbol_id=bot.symbol_id,
         )
-
-        order = self._order_repo.create(order)
+        if side == "sell":
+            held = position.qty if position is not None else Decimal("0")
+            if qty > held:
+                return ServiceResult.fail(
+                    code="ORDER_SELL_EXCEEDS_POSITION",
+                    http_status=422,
+                    meta={"held": str(held)},
+                )
 
         # ------------------------------------------------------------------
-        # 5. Seleccionar executor según el modo del bot (patrón Strategy)
+        # 5. Salvaguardas del servidor
+        # ------------------------------------------------------------------
+        gate = self._risk_gate.check(bot=bot, side=side, qty=qty, reference_price=reference_price)
+        if not gate.success:
+            return ServiceResult.fail(
+                code=gate.error.code,
+                http_status=gate.error.http_status,
+                meta=gate.error.meta,
+            )
+
+        # ------------------------------------------------------------------
+        # 6. Persistir la intención antes de hablar con el exchange
+        # ------------------------------------------------------------------
+        order = self._order_repo.create(
+            Order(
+                id=0,
+                bot_id=bot_id,
+                signal_id=signal_id,
+                side=side,
+                type=order_type,
+                qty=qty,
+                status="new",
+                price=price,
+                stop_price=stop_price,
+                time_in_force=time_in_force,
+                # Guardamos el símbolo en meta para que LiveExecutor pueda usarlo
+                meta={"symbol": symbol.symbol, "mode": bot.mode},
+                ts=utc_now(),
+            )
+        )
+        order.client_order_id = Order.build_client_order_id(order.id)
+        order = self._order_repo.update(order)
+        self._order_repo.commit()
+
+        # ------------------------------------------------------------------
+        # 7. Ejecutar (patrón Strategy) y registrar el resultado real
         # ------------------------------------------------------------------
         executor: ExecutorInterface = (
             self._paper_executor if bot.mode == "paper" else self._live_executor
         )
 
-        # ------------------------------------------------------------------
-        # 6. Ejecutar la orden → produce un Fill
-        #    Si falla, RuntimeError se propaga como error 502
-        # ------------------------------------------------------------------
         try:
-            fill = executor.execute(order, bot)
+            result = executor.execute(order, bot)
+        except ExecutionUncertainError as exc:
+            order.status = "sent"
+            order.meta = {**order.meta, "needs_reconciliation": True, "error": str(exc)}
+            self._order_repo.update(order)
+            self._order_repo.commit()
+            return ServiceResult.fail(
+                code="ORDER_EXECUTION_UNCERTAIN",
+                http_status=502,
+                meta={"order_id": order.id},
+            )
         except RuntimeError as exc:
-            self._order_repo.rollback()
+            order.status = "rejected"
+            order.meta = {**order.meta, "error": str(exc)}
+            order = self._order_repo.update(order)
+            self._order_repo.commit()
+            self._fire_order_alerts(order, bot_id)
             return ServiceResult.fail(
                 code="ORDER_EXECUTION_FAILED",
                 http_status=502,
-                meta={"detail": str(exc)},
+                meta={"order_id": order.id},
             )
 
-        # Actualizar el order_id del fill (el executor crea el fill con id=0)
-        fill.order_id = order.id
+        order.status = result.status
+        order.exchange_order_id = result.exchange_order_id
 
-        # ------------------------------------------------------------------
-        # 7. Persistir el Fill
-        # ------------------------------------------------------------------
-        fill = self._fill_repo.create(fill)
+        if result.fill is not None:
+            fill = result.fill
+            fill.order_id = order.id
+            fill = self._fill_repo.create(fill)
+            if order.exchange_order_id is None:
+                order.exchange_order_id = fill.exchange_trade_id
+            self._apply_fill(
+                position=position,
+                bot=bot,
+                fill_qty=fill.qty,
+                fill_price=fill.price,
+                side=side,
+            )
 
-        # ------------------------------------------------------------------
-        # 8. Actualizar el estado de la orden a "filled"
-        #    (En esta versión asumimos ejecución total inmediata)
-        # ------------------------------------------------------------------
-        order.status = "filled"
-        order.exchange_order_id = fill.exchange_trade_id
         order = self._order_repo.update(order)
 
         # ------------------------------------------------------------------
-        # 9. Upsert Position: crear si no existe, actualizar si ya existe
-        # ------------------------------------------------------------------
-        self._upsert_position(
-            bot_id=bot_id,
-            symbol_id=bot.symbol_id,
-            fill_qty=fill.qty,
-            fill_price=fill.price,
-            side=side,
-        )
-
-        # ------------------------------------------------------------------
-        # 10. Commit único — confirma order + fill + position en la BD
+        # 8. Commit — confirma estado + fill + position en la BD
         # ------------------------------------------------------------------
         self._order_repo.commit()
-
-        # ------------------------------------------------------------------
-        # 11. Hook de alertas (fire-and-forget — no revierte si falla)
-        # ------------------------------------------------------------------
-        if self._evaluate_alerts is not None:
-            try:
-                self._evaluate_alerts.evaluate_order_alerts(
-                    order=order, bot_id=bot_id
-                )
-            except Exception:
-                pass  # Las alertas nunca bloquean la operación principal
+        self._fire_order_alerts(order, bot_id)
 
         return ServiceResult.ok(data=order)
 
     # ------------------------------------------------------------------
-    # Helper privado
+    # Helpers privados
     # ------------------------------------------------------------------
 
-    def _upsert_position(
+    def _check_signal(self, signal_id: int, bot_id: int, side: str) -> ServiceResult[None]:
+        signal = self._signal_repo.get_by_id(signal_id)
+        if signal is None or signal.bot_id != bot_id:
+            return ServiceResult.fail(code="SIGNAL_NOT_FOUND", http_status=404)
+
+        if not signal.approved or signal.action != side:
+            return ServiceResult.fail(
+                code="ORDER_SIGNAL_MISMATCH",
+                http_status=422,
+                meta={"signal_action": signal.action, "approved": signal.approved},
+            )
+
+        if self._order_repo.has_active_order_for_signal(signal_id):
+            return ServiceResult.fail(code="ORDER_SIGNAL_ALREADY_USED", http_status=409)
+
+        return ServiceResult.ok(data=None)
+
+    def _last_close(self, bot: Bot) -> Decimal | None:
+        candles = self._candle_repo.list_candles(
+            symbol_id=bot.symbol_id,
+            timeframe_id=bot.timeframe_id,
+            limit=1,
+        )
+        return candles[0].close if candles else None
+
+    def _apply_fill(
         self,
-        bot_id: int,
-        symbol_id: int,
+        position: Position | None,
+        bot: Bot,
         fill_qty: Decimal,
         fill_price: Decimal,
         side: str,
     ) -> None:
         """
-        Crea o actualiza la posición del bot para un símbolo.
+        Crea o actualiza la posición del bot para su símbolo.
 
         - Si no existe posición: la crea con qty y avg_price del fill.
         - Si ya existe: aplica apply_buy_fill o apply_sell_fill según el side,
           recalculando el precio promedio ponderado (WAP) y el P&L realizado.
-
-        Esta operación usa la lógica de negocio pura definida en Position entity.
         """
-        position = self._position_repo.get_by_bot_and_symbol(
-            bot_id=bot_id,
-            symbol_id=symbol_id,
-        )
-
+        is_new = position is None
         if position is None:
             # Primera operación del bot en este símbolo — crear posición nueva
             position = Position(
                 id=0,
-                bot_id=bot_id,
-                symbol_id=symbol_id,
+                bot_id=bot.id,
+                symbol_id=bot.symbol_id,
                 qty=Decimal("0"),
                 avg_price=Decimal("0"),
                 realized_pnl=Decimal("0"),
             )
 
-            if side == "buy":
-                position.apply_buy_fill(fill_qty, fill_price)
-            else:
-                position.apply_sell_fill(fill_qty, fill_price)
+        if side == "buy":
+            position.apply_buy_fill(fill_qty, fill_price)
+        else:
+            position.apply_sell_fill(fill_qty, fill_price)
 
+        if is_new:
             self._position_repo.create(position)
         else:
-            # Posición existente — aplicar el fill y actualizar
-            if side == "buy":
-                position.apply_buy_fill(fill_qty, fill_price)
-            else:
-                position.apply_sell_fill(fill_qty, fill_price)
-
             self._position_repo.update(position)
+
+    def _fire_order_alerts(self, order: Order, bot_id: int) -> None:
+        """Hook de alertas (fire-and-forget — nunca bloquea la operación)."""
+        if self._evaluate_alerts is None:
+            return
+        try:
+            self._evaluate_alerts.evaluate_order_alerts(order=order, bot_id=bot_id)
+        except Exception:
+            pass

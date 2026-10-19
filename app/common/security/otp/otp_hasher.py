@@ -38,7 +38,7 @@ def hash_otp(otp: str, secret_key: str | None = None) -> str:
 
     Parámetros:
     - otp: código OTP en texto plano
-    - secret_key: clave secreta (usa JWT_SECRET_KEY si no se proporciona)
+    - secret_key: clave secreta (usa OTP_HMAC_SECRET si no se proporciona)
 
     Retorna:
     - Hash HMAC-SHA256 en hexadecimal (64 caracteres)
@@ -63,7 +63,7 @@ def verify_otp_hash(otp: str, stored_hash: str, secret_key: str | None = None) -
     Parámetros:
     - otp: código OTP ingresado por usuario
     - stored_hash: hash almacenado en DB (64 caracteres hex)
-    - secret_key: clave secreta (usa JWT_SECRET_KEY si no se proporciona)
+    - secret_key: clave secreta (usa OTP_HMAC_SECRET si no se proporciona)
 
     Retorna:
     - True si el OTP es válido
@@ -98,4 +98,4 @@ def _get_secret_key(secret_key: str | None = None) -> str:
 
     # Lazy import para evitar ciclos
     from app.common.config import settings
-    return settings.JWT_SECRET_KEY
+    return settings.OTP_HMAC_SECRET

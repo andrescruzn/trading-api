@@ -147,7 +147,7 @@ class LoginOtpService:
         # --------------------------------------------------------------
         # 7) Respuesta (solo dev devuelve otp_code)
         # --------------------------------------------------------------
-        otp_for_debug = otp_plain if self._settings.APP_ENV == "development" else None
+        otp_for_debug = otp_plain if self._settings.DEV_RETURN_OTP else None
 
         return ServiceResult.ok(
             LoginOtpPayload(

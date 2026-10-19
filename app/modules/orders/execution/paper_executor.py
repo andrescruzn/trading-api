@@ -23,7 +23,7 @@ from app.modules.bots.domain.bot_entity import Bot
 from app.modules.market.domain.candle_repository import CandleRepository
 from app.modules.orders.domain.fill_entity import Fill
 from app.modules.orders.domain.order_entity import Order
-from app.modules.orders.execution.executor_interface import ExecutorInterface
+from app.modules.orders.execution.executor_interface import ExecutionResult, ExecutorInterface
 
 
 class PaperExecutor(ExecutorInterface):
@@ -42,9 +42,9 @@ class PaperExecutor(ExecutorInterface):
     def __init__(self, candle_repo: CandleRepository):
         self._candle_repo = candle_repo
 
-    def execute(self, order: Order, bot: Bot) -> Fill:
+    def execute(self, order: Order, bot: Bot) -> ExecutionResult:
         """
-        Simula la ejecución de la orden y retorna el Fill resultante.
+        Simula la ejecución de la orden (siempre total e inmediata).
 
         El precio de ejecución depende del tipo de orden:
         - market: precio de la última vela close (más realista)
@@ -58,7 +58,7 @@ class PaperExecutor(ExecutorInterface):
         execution_price = self._resolve_price(order, bot)
         now = utc_now()
 
-        return Fill(
+        fill = Fill(
             id=0,                            # el repo asignará el ID real
             order_id=order.id,
             exchange_trade_id=None,          # no existe en modo paper
@@ -69,6 +69,7 @@ class PaperExecutor(ExecutorInterface):
             ts=now,
             created_at=now,
         )
+        return ExecutionResult(status="filled", fill=fill)
 
     # ------------------------------------------------------------------
     # Lógica interna

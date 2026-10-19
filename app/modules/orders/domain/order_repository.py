@@ -29,6 +29,11 @@ class OrderRepository(TransactionalRepository, ABC):
         ...
 
     @abstractmethod
+    def has_active_order_for_signal(self, signal_id: int) -> bool:
+        """True si la señal ya tiene una orden que no fue rechazada ni cancelada."""
+        ...
+
+    @abstractmethod
     def list_all(self, limit: int = 200) -> list[Order]:
         """Lista las órdenes más recientes del sistema (uso admin)."""
         ...

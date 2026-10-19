@@ -88,10 +88,24 @@ class Bot:
         return float(self.risk_params.get("risk_pct", 0.01))
 
     @property
+    def effective_risk_pct(self) -> float:
+        """risk_pct acotado por la Regla del 1 % (nunca más de MAX_RISK_PCT)."""
+        return min(self.risk_pct, self.MAX_RISK_PCT) if self.risk_pct > 0 else self.MAX_RISK_PCT
+
+    @property
     def max_drawdown_pct(self) -> float | None:
         """Máximo drawdown permitido antes de detener el bot automáticamente."""
         val = self.risk_params.get("max_drawdown_pct")
         return float(val) if val is not None else None
+
+    @property
+    def max_notional(self) -> float | None:
+        """Valor máximo (qty × precio) por orden que fija el bot, si lo fija."""
+        val = self.risk_params.get("max_notional")
+        try:
+            return float(val) if val is not None and float(val) > 0 else None
+        except (TypeError, ValueError):
+            return None
 
     # ------------------------------------------------------------------
     # Validaciones de negocio

@@ -10,6 +10,8 @@
 # - Borrow de repos de otros módulos para construir el AnalyzeService.
 # - El AnalyzeService (M6) se construye aquí y se inyecta en
 #   GenerateSignalService, que no conoce sus dependencias internas.
+# - Igual con la descarga de velas (M2) y el cálculo de indicadores (M3)
+#   que usa SyncBotMarketDataService.
 # ======================================================================
 
 from __future__ import annotations
@@ -31,6 +33,7 @@ from app.modules.bots.services.bots import (
     CreateBotService,
     GetBotService,
     ListBotsService,
+    SyncBotMarketDataService,
     UpdateBotService,
     UpdateBotStatusService,
 )
@@ -52,9 +55,12 @@ from app.modules.features.infrastructure import (
 )
 from app.modules.market.infrastructure import (
     SqlAlchemyCandleRepository,
+    SqlAlchemyExchangeRepository,
     SqlAlchemySymbolRepository,
     SqlAlchemyTimeframeRepository,
 )
+from app.modules.features.services.calculations import CalculateFeaturesService
+from app.modules.market.services.candles import FetchCandlesService
 from app.modules.alerts.providers.alert_provider import build_evaluate_alerts_service
 from app.modules.alerts.providers.telegram_provider import build_signal_approval_notifier
 
@@ -85,6 +91,7 @@ class BotServiceFactory:
         self._candle_repo = SqlAlchemyCandleRepository(session)
         self._symbol_repo = SqlAlchemySymbolRepository(session)
         self._timeframe_repo = SqlAlchemyTimeframeRepository(session)
+        self._exchange_repo = SqlAlchemyExchangeRepository(session)
 
     # ------------------------------------------------------------------
     # Helper privado: construye AnalyzeService con todas sus dependencias
@@ -143,6 +150,25 @@ class BotServiceFactory:
 
     def update_bot_status(self) -> UpdateBotStatusService:
         return UpdateBotStatusService(repo=self._bot_repo, account_repo=self._account_repo)
+
+    def sync_bot_market_data(self) -> SyncBotMarketDataService:
+        return SyncBotMarketDataService(
+            bot_repo=self._bot_repo,
+            account_repo=self._account_repo,
+            fetch_candles=FetchCandlesService(
+                candle_repo=self._candle_repo,
+                symbol_repo=self._symbol_repo,
+                timeframe_repo=self._timeframe_repo,
+                exchange_repo=self._exchange_repo,
+            ),
+            calculate_features=CalculateFeaturesService(
+                candle_repo=self._candle_repo,
+                feature_set_repo=self._feature_set_repo,
+                candle_feature_repo=self._candle_feature_repo,
+                symbol_repo=self._symbol_repo,
+                timeframe_repo=self._timeframe_repo,
+            ),
+        )
 
     # ------------------------------------------------------------------
     # Signals

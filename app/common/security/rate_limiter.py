@@ -181,6 +181,10 @@ agent_analysis_rate_limiter = RateLimiter(
     window_seconds=60,
 )
 
+# Actualizar los datos de un agente por usuario y minuto: cada uno descarga
+# velas del exchange (ccxt) y recalcula indicadores.
+market_sync_rate_limiter = RateLimiter(requests_per_minute=3, window_seconds=60)
+
 # Rate limiter moderado para endpoints generales
 default_rate_limiter = RateLimiter(requests_per_minute=60, window_seconds=60)
 

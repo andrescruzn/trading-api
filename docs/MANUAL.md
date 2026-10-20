@@ -370,9 +370,13 @@ averiguar quién usa la app probando correos.
 Por seguridad solo hay una sesión abierta por persona: si entras desde otro navegador, la
 sesión anterior se cierra y la web te muestra "Tu sesión expiró" y te lleva al login.
 
-Todo se navega desde el menú lateral: Inicio, Operar (mis agentes, órdenes, alertas, mis cuentas),
-Explorar (explorar mercados, estrategias, indicadores, símbolos, velas) y, según tu rol, "Mi inversión" (inversores)
+Todo se navega desde el menú lateral: Inicio, Operar (mis agentes, alertas, mis cuentas),
+Explorar (explorar mercados, estrategias) y, según tu rol, "Mi inversión" (inversores)
 o "Administración" (administradores).
+
+Todo lo que pertenece a un agente se ve dentro del agente: sus señales, sus órdenes, sus
+posiciones y los precios e indicadores de su mercado. No hay páginas sueltas de órdenes, velas o
+indicadores porque esos datos solo existen para los agentes que creaste y están activos.
 
 El inicio muestra tus agentes. Si aún no tienes ninguno, te explica qué es un agente y te ofrece
 crear el primero.
@@ -593,8 +597,11 @@ La página de cada agente:
     "Analizar ahora".
   - "Preparando datos": aparece mientras se descargan las primeras velas y se calculan los
     indicadores (uno o dos minutos). La página se actualiza sola.
-  - Pestañas: Señales, Órdenes (con "Nueva orden"), Posiciones y Configuración (reglas de la
-    estrategia y qué mide cada indicador).
+  - Pestañas: Señales, Órdenes (con "Nueva orden"), Posiciones (con las ejecuciones debajo),
+    Mercado y Configuración (reglas de la estrategia y qué mide cada indicador).
+  - Mercado: las últimas velas del símbolo y timeframe del agente y, en "Indicadores", lo que la
+    IA lee de cada vela (RSI, EMA, MACD, régimen…). Puedes elegir cuántas velas ver (50 a 500).
+    Si el agente está detenido no hay datos: inícialo y aparecen en uno o dos minutos.
 
 "Analizar ahora" le pide a la IA que evalúe el mercado en ese momento. El resultado queda guardado
 como señal (aprobada o rechazada) y se abre su detalle con los filtros que pasó o no pasó, y
@@ -734,8 +741,8 @@ Regla de oro: siempre correr al menos 3 meses en paper mode antes de pasar a liv
 Esto permite acumular 50-100+ operaciones y calcular métricas reales de la estrategia.
 
 Páginas de la UI:
-  /#/orders       → Panel de usuario: elige un agente y verás las pestañas Órdenes/Posiciones/Ejecuciones;
-                    el botón de nueva orden abre un formulario para crear una orden manual
+  /#/agents/12    → Pestañas Órdenes y Posiciones del agente 12; "Nueva orden" abre un formulario
+                    para crear una orden manual (/#/orders ahora lleva a Mis agentes)
   /#/admin/orders → Vista admin: todas las órdenes del sistema con filtros de lado, estado y tipo
 
 ---

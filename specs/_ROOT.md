@@ -152,20 +152,21 @@ Hash routing: la URL real es `/#/<ruta>`. Cada ruta vive en `frontend/src/routes
 | Rol | Páginas |
 |---|---|
 | Público | `/login` |
-| Usuario (y demás roles) | `/dashboard`, `/agents`, `/agents/new`, `/agents/:id`, `/orders`, `/alerts`, `/portfolio`, `/strategies`, `/features`, `/market/explorer`, `/market/symbols`, `/market/candles` (`/bots` y `/agent` redirigen a `/agents`) |
-| Admin (`_app/admin/*`) | `/admin/exchanges`, `/admin/symbols`, `/admin/timeframes`, `/admin/candles/ingest`, `/admin/feature-sets`, `/admin/accounts`, `/admin/strategies`, `/admin/agents`, `/admin/orders`, `/admin/alerts`, `/admin/telegram`, `/admin/investors`, `/admin/managed-accounts`, `/admin/billing` |
+| Usuario (y demás roles) | `/dashboard`, `/agents`, `/agents/new`, `/agents/:id`, `/alerts`, `/portfolio`, `/strategies`, `/market/explorer` (`/bots`, `/agent`, `/orders`, `/features` y `/market/candles` redirigen a `/agents`; `/market/symbols` a `/market/explorer`) |
+| Admin (`_app/admin/*`) | `/admin/exchanges`, `/admin/symbols`, `/admin/timeframes`, `/admin/candles/ingest`, `/admin/candles/view`, `/admin/indicators`, `/admin/feature-sets`, `/admin/accounts`, `/admin/strategies`, `/admin/agents`, `/admin/orders`, `/admin/alerts`, `/admin/telegram`, `/admin/investors`, `/admin/managed-accounts`, `/admin/billing` |
 | Inversor (`_app/investor/*`) | `/investor/dashboard` |
 
 Comprar/Vender vive en el [Módulo 8 — Orders & Execution](M08-ORDERS-EXECUTION.md).
 
-Sin rutas nuevas desde 2026-10-19, pero sí piezas nuevas dentro de páginas existentes:
+Cambios del 2026-10-19 (nuevas piezas dentro de páginas existentes y reorganización del menú):
+- `/agents/:id`: pestaña **Mercado** (velas e indicadores del agente). Órdenes, Velas e Indicadores dejan de ser páginas del usuario; los visores genéricos de velas e indicadores pasan a admin (`/admin/candles/view`, `/admin/indicators`) — [M7](M07-BOTS-SIGNALS.md), [M2](M02-MARKET-DATA.md), [M3](M03-FEATURE-ENGINEERING.md), [M8](M08-ORDERS-EXECUTION.md).
 - `/dashboard`: tarjeta **Señales por aprobar** (aprobar/descartar; solo aparece si hay pendientes) — [M7](M07-BOTS-SIGNALS.md).
 - `/agents/new` (paso 4) y `/agents/:id` (pestaña Configuración): selector **Cuando la IA aprueba una operación** (Manual / Con aprobación / Automático); detalle de señal con Aprobar / Descartar y columna **Ejecución** en Señales — [M7](M07-BOTS-SIGNALS.md).
-- `/orders` → Posiciones: "Protección automática: SL · TP" y, en live, "El stop loss está como orden en el exchange." — [M8](M08-ORDERS-EXECUTION.md).
+- `/agents/:id` → Posiciones: "Protección automática: SL · TP" y, en live, "El stop loss está como orden en el exchange." — [M8](M08-ORDERS-EXECUTION.md).
 - `/agents/:id` → Configuración, en modo Con aprobación: campo **Minutos para aprobar** — [M7](M07-BOTS-SIGNALS.md).
 - Menú de usuario (todas las páginas): **Conectar Telegram** (diálogo) — [M1](M01-AUTH.md) / [M9](M09-ALERTS.md).
 
-En la UI los bots se llaman **agentes** y son el punto de entrada: el dashboard los muestra primero y el menú se organiza en **Operar** (Mis agentes, Órdenes, Alertas, Mis cuentas) y **Explorar** (Estrategias, Indicadores, Símbolos, Velas). En código, tablas y API siguen siendo `bot`.
+En la UI los bots se llaman **agentes** y son el punto de entrada: el dashboard los muestra primero y el menú se organiza en **Operar** (Mis agentes, Alertas, Mis cuentas) y **Explorar** (Explorar mercados, Estrategias). Todo lo que depende de un agente (órdenes, posiciones, velas, indicadores) vive dentro de su detalle, porque esos datos solo existen para agentes creados y activos. En código, tablas y API siguen siendo `bot`.
 
 ---
 

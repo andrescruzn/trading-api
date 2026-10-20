@@ -57,14 +57,6 @@ type Candle = {
 	volume: string;
 };
 
-type FetchCandlesResult = {
-	exchange: string;
-	symbol: string;
-	timeframe: string;
-	rows_fetched: number;
-	rows_affected?: number;
-};
-
 type TrendDirection = 'up' | 'down' | 'sideways';
 
 /**
@@ -186,11 +178,6 @@ function listCandles(filters: CandleFilters) {
 	return api.get<Candle[]>('/candles', filters);
 }
 
-/** Descarga velas del exchange real (ccxt) y las guarda. Solo admin. */
-function fetchCandles(input: CandleFilters) {
-	return api.post<FetchCandlesResult>('/candles/fetch', input);
-}
-
 // ======================================================================
 // Explorador de tendencia
 // ======================================================================
@@ -212,7 +199,6 @@ export type {
 	ExchangeInput,
 	ExchangeType,
 	ExchangeUpdate,
-	FetchCandlesResult,
 	MarketSymbol,
 	RefreshExplorerResult,
 	SymbolFilters,
@@ -227,7 +213,6 @@ export {
 	createExchange,
 	createSymbol,
 	createTimeframe,
-	fetchCandles,
 	listCandles,
 	listExchanges,
 	listSymbols,

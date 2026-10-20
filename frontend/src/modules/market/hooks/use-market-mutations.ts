@@ -1,12 +1,10 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-	type CandleFilters,
 	createExchange,
 	createSymbol,
 	createTimeframe,
 	type ExchangeInput,
 	type ExchangeUpdate,
-	fetchCandles,
 	refreshExplorer,
 	type SymbolInput,
 	type SymbolUpdate,
@@ -72,15 +70,6 @@ function useCreateTimeframeMutation() {
 	});
 }
 
-function useFetchCandlesMutation() {
-	const queryClient = useQueryClient();
-	return useMutation({
-		mutationFn: (input: CandleFilters) => fetchCandles(input),
-		onSuccess: () =>
-			queryClient.invalidateQueries({ queryKey: CANDLES_QUERY_KEY }),
-	});
-}
-
 function useRefreshExplorerMutation() {
 	const queryClient = useQueryClient();
 	return useMutation({
@@ -96,7 +85,6 @@ export {
 	useCreateExchangeMutation,
 	useCreateSymbolMutation,
 	useCreateTimeframeMutation,
-	useFetchCandlesMutation,
 	useRefreshExplorerMutation,
 	useUpdateExchangeMutation,
 	useUpdateSymbolMutation,

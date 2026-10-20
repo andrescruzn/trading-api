@@ -206,6 +206,17 @@ function transitionBot(id: number, transition: BotTransition) {
 	return api.post<Bot>(`/bots/${id}/${transition}`);
 }
 
+/** Sin conjunto de indicadores, `rows_calculated` llega en null. */
+type BotMarketSyncResult = {
+	rows_fetched: number;
+	rows_calculated: number | null;
+};
+
+/** Descarga las velas del agente y recalcula sus indicadores (puede tardar). */
+function syncBotMarket(id: number) {
+	return api.post<BotMarketSyncResult>(`/bots/${id}/market/sync`);
+}
+
 // ======================================================================
 // Señales
 // ======================================================================
@@ -239,6 +250,7 @@ export type {
 	BotExecutionMode,
 	BotFilters,
 	BotInput,
+	BotMarketSyncResult,
 	BotMode,
 	BotRiskParams,
 	BotStatus,
@@ -264,6 +276,7 @@ export {
 	listPendingSignals,
 	listSignals,
 	rejectSignal,
+	syncBotMarket,
 	transitionBot,
 	updateBot,
 };

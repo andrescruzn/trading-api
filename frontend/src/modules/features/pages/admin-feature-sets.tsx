@@ -1,8 +1,7 @@
-import { IconCpu, IconPlus } from '@tabler/icons-react';
+import { IconPlus } from '@tabler/icons-react';
 import { useState } from 'react';
 import { usePageBreadcrumb } from '@/modules/app-shell/hooks/use-page-breadcrumb';
 import type { FeatureSet } from '@/modules/features/api/features.api';
-import { CalculateFeaturesDialog } from '@/modules/features/components/calculate-features-dialog';
 import { FeatureSetFormDialog } from '@/modules/features/components/feature-set-form-dialog';
 import { useFeatureSetsQuery } from '@/modules/features/hooks/use-features-queries';
 import {
@@ -90,24 +89,17 @@ export function AdminFeatureSetsPage() {
 	]);
 	const featureSetsQuery = useFeatureSetsQuery();
 	const [creating, setCreating] = useState(false);
-	const [calculating, setCalculating] = useState(false);
 
 	return (
 		<div className="flex flex-col gap-6">
 			<PageListHeader
 				title="Conjuntos de indicadores"
-				description="Qué indicadores calcula cada agente. El spec usa {focus, indicators} con los grupos rsi, ema, macd, atr, bbands y vol_rel."
+				description="Qué indicadores calcula cada agente. El spec usa {focus, indicators} con los grupos rsi, ema, macd, atr, bbands y vol_rel. El cálculo se hace por agente: solo, mientras está activo, o con Actualizar datos en su pestaña Mercado."
 				actions={[
 					{
 						label: 'Nuevo conjunto',
 						icon: <IconPlus />,
 						onClick: () => setCreating(true),
-					},
-					{
-						label: 'Calcular indicadores',
-						icon: <IconCpu />,
-						variant: 'outline',
-						onClick: () => setCalculating(true),
 					},
 				]}
 			/>
@@ -121,10 +113,6 @@ export function AdminFeatureSetsPage() {
 				empty="Aún no hay conjuntos de indicadores. Crea uno o carga los de ejemplo con el seed feature_sets."
 			/>
 			<FeatureSetFormDialog open={creating} onOpenChange={setCreating} />
-			<CalculateFeaturesDialog
-				open={calculating}
-				onOpenChange={setCalculating}
-			/>
 		</div>
 	);
 }

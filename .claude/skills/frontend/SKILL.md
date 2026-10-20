@@ -55,7 +55,7 @@ Un módulo del front por módulo de backend (M2 → `market`, M3 → `features`,
   // routes/_app/agents/index.lazy.tsx
   export const Route = createLazyFileRoute('/_app/agents/')({ component: AgentsPage });
   ```
-- Search params tipados: archivo base `x.tsx` con `validateSearch` (zod con `.catch()` para no romper la ruta) + `x.lazy.tsx` con el componente. La página los lee con `getRouteApi('/_app/x').useSearch()`. Ejemplo: `routes/_app/admin/candles/view.tsx`.
+- Search params tipados: archivo base `x.tsx` con `validateSearch` (zod con `.catch()` para no romper la ruta) + `x.lazy.tsx` con el componente. La página los lee con `getRouteApi('/_app/x').useSearch()`. Ejemplo: `routes/_app/agents/new.tsx`.
 - **Hash history**: las URLs son `/#/agents`. Los `<Link to="/agents">` no llevan `#`.
 - **Parámetros de ruta**: `routes/_app/agents/$agentId.lazy.tsx`; la página los lee con `getRouteApi('/_app/agents/$agentId').useParams()`.
 - **Redirección de una URL vieja**: archivo no lazy con `beforeLoad: () => { throw redirect({ to: '/nueva', replace: true }); }` (ver `routes/_app/bots.tsx`).

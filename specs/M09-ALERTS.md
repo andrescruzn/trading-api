@@ -14,7 +14,7 @@
 | Lo usan | Es un consumidor: lo invocan [M7](M07-BOTS-SIGNALS.md) (alertas + aviso de señal pendiente), [M8](M08-ORDERS-EXECUTION.md) y el scheduler (polling de Telegram) |
 | Prefijo API | `/api/alert-rules`, `/api/alert-events`, `/api/alerts`, `/api/telegram/webhook` |
 | Frontend | `frontend/src/modules/alerts` (el vínculo de Telegram vive en `app-shell`, ver [M1](M01-AUTH.md)) |
-| Última revisión | 2026-10-19 |
+| Última revisión | 2026-10-20 |
 
 ## Descripción
 
@@ -42,8 +42,8 @@ Hash routing: la URL real es `/#/<ruta>`.
 - Menú de usuario → **Conectar Telegram** (diálogo, [M1](M01-AUTH.md)): genera el enlace de vinculación con el bot
 
 **Páginas — Administrador (solo admin):**
-- `/#/admin/alerts` — "Todas las alertas" (Administración → Supervisión): todas las reglas y eventos del sistema
-- `/#/admin/telegram` — Ver la configuración y probar la conexión con Telegram Bot
+- `/#/admin/alerts` — "Todas las alertas" (Administración → Supervisión): todas las reglas y eventos del sistema, con columna **Dueño** (nombre y correo) y filtro por dueño (aplica a Reglas y a Eventos)
+- `/#/admin/telegram` — "Telegram" (Administración → Configuración): ver la configuración y probar la conexión con Telegram Bot
 
 ## Entregables
 
@@ -273,3 +273,4 @@ DESKTOP_NOTIFICATIONS_ENABLED=false
 - **2026-10-10** — Seed `alerts`: tres reglas demo (señal y drawdown del 5 % del agente de oro, error del agente de BTC), solo canal de escritorio, idempotente por (user_id, name).
 - **2026-10-19** — Auditoría de seguridad: guarda SSRF del webhook (`url_guard.py`: https, hosts públicos, resolución DNS al enviar, sin redirects, URL fuera de los logs; `ALERT_RULE_INVALID_WEBHOOK`), reglas solo sobre agentes propios, límite de claves en los JSON; Telegram con HTML escapado, token fuera de los logs y helper `telegram_api`.
 - **2026-10-19** — Telegram por usuario para el modo Con aprobación: `SignalApprovalNotifier` (botones `sig:a`/`sig:r`), `TelegramUpdateService`, `TelegramReplier`, `telegram_messages.py`, `telegram_poller.py` (polling en el scheduler), `POST /api/telegram/webhook` con secreto (fuera de la auditoría), `telegram_provider.py`; settings `TELEGRAM_BOT_USERNAME`, `TELEGRAM_UPDATES_MODE`, `TELEGRAM_WEBHOOK_SECRET`, `FRONTEND_URL`.
+- **2026-10-20** — Todas las alertas: columna **Dueño** (nombre y correo) y filtro por dueño en Reglas y Eventos; Telegram pasa al grupo admin **Configuración**.

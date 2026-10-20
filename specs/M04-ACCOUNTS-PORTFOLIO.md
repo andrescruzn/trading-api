@@ -14,7 +14,7 @@
 | Lo usan | [M6](M06-AI-AGENT.md) (capital disponible), [M7](M07-BOTS-SIGNALS.md) (cuenta del bot), [M8](M08-ORDERS-EXECUTION.md) (credenciales del `LiveExecutor`), [M10](M10-BILLING.md) (cuenta administrada) |
 | Prefijo API | `/api/accounts` (la página del front es `/#/portfolio`) |
 | Frontend | `frontend/src/modules/accounts` |
-| Última revisión | 2026-10-19 |
+| Última revisión | 2026-10-20 |
 
 ## Descripción
 
@@ -35,7 +35,7 @@ Hash routing: la URL real es `/#/<ruta>`.
 - `/#/portfolio` — "Mis cuentas": lista tus cuentas, crea/edita (diálogo), y abre un panel lateral con el historial de balances donde puedes registrar uno nuevo
 
 **Páginas — Administrador (solo admin):**
-- `/#/admin/accounts` — "Todas las cuentas" (Administración → Supervisión): vista global de todas las cuentas del sistema (con su panel de balances)
+- `/#/admin/accounts` — "Todas las cuentas" (Administración → Supervisión): vista global de todas las cuentas del sistema (con su panel de balances), columna **Dueño** (nombre y correo) y filtro por dueño
 
 ## Entregables
 
@@ -185,3 +185,4 @@ from app.modules.accounts.rest import accounts_router, balances_router
 - **2026-10-08** — API headless (/api), páginas migradas a React (frontend/).
 - **2026-10-10** — Seed `accounts`: cuentas para Dayron y fix del re-run con varias fotos de balance.
 - **2026-10-19** — Auditoría de seguridad: `api_key` ≤ 512 y `api_secret` ≤ 1024 en los schemas; `CredentialsCipher.from_settings()` con MultiFernet y `CREDENTIALS_PREVIOUS_KEYS` (rotación de clave sin perder las cuentas). Spec corregida: `portfolio_snapshots` sí tiene modelo ORM (`portfolio_snapshot_model.py`, registrado), aunque nadie la escribe.
+- **2026-10-20** — Todas las cuentas: columna **Dueño** (nombre y correo) y filtro por dueño (antes "Usuario #id").

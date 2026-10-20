@@ -44,7 +44,7 @@ Hash routing: la URL real es `/#/<ruta>`.
 - `/#/agents`, `/#/bots` y `/#/agent` redirigen a `/#/dashboard`. La miga del detalle y del asistente es "Inicio".
 
 **Páginas — Administrador (solo admin):**
-- `/#/admin/agents` — "Todos los agentes" (Administración → Supervisión): vista global de todos los agentes con filtros por estado y modo; clic en una fila abre el detalle. `/#/admin/bots` redirige aquí.
+- `/#/admin/agents` — "Todos los agentes" (Administración → Supervisión): vista global de todos los agentes con columna **Dueño** (nombre y correo) y filtro por dueño (el dueño es el de la cuenta del agente), y filtros por estado y modo; clic en una fila abre el detalle. `/#/admin/bots` redirige aquí.
 
 ## Entregables
 
@@ -300,3 +300,4 @@ Routers registrados en `app/app_factory.py` (dentro de `api_routers`, con `prefi
 - **2026-10-19** — Pestaña **Mercado** en el detalle del agente (`AgentMarketTab`: velas + indicadores de su símbolo/timeframe) con **Actualizar datos** (`SyncBotMarketDataService` → `POST /api/bots/{id}/market/sync`, reutiliza `FetchCandlesService` y `CalculateFeaturesService`). El agente concentra todo lo suyo: el menú del usuario pierde Órdenes, Símbolos, Velas e Indicadores, y el admin pierde Descargar velas y Calcular indicadores. El grupo admin "Operación" pasa a **Supervisión** con nombres que dicen el alcance (Todos los agentes, Todas las cuentas, Gestionar estrategias, Todas las órdenes, Todas las alertas) para no confundirlos con Mis agentes / Mis cuentas.
 - **2026-10-20** — Fila **Precio** en `AgentCard` (`AgentPrice` + `useSymbolSnapshot`, movido desde el dashboard): último cierre, variación y régimen del mercado de cada agente, en el inicio.
 - **2026-10-20** — Se retira la página "Mis agentes" (`pages/agents.tsx`): el inicio lista todos los agentes con el filtro por estado; `/agents` redirige a `/dashboard`.
+- **2026-10-20** — Todos los agentes: columna **Dueño** (nombre y correo) y filtro por dueño.

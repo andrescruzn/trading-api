@@ -52,6 +52,7 @@ Entregables:
 - ~~Cambiar contraseña~~ (eliminado el 2026-10-08: no hay contraseñas)
 - Logout con cookie HTTP-only
 - `GET /api/users/me` (perfil del usuario autenticado)
+- `GET /api/users` (solo admin): id, nombre, correo y rol de cada usuario, para la columna Dueño de las vistas de Supervisión (2026-10-20)
 - Security headers middleware (CSP, X-Frame-Options, etc.)
 - 42 tests unitarios pasando
 - ✅ (2026-10-08) Frontend React: shell con sidebar, login por código, dashboard y aviso de sesión expirada
@@ -162,10 +163,11 @@ Todas las rutas REST se montan bajo `settings.API_PREFIX` (`/api`) en `app/app_f
 | POST | `/api/users/logout` | cookie |
 | POST | `/api/users/token/rotate` | cookie |
 | GET  | `/api/users/me` | cookie (incluye `telegram_linked`) |
+| GET  | `/api/users` | admin (`id`, `email`, `full_name`, `role_code`, `role_label`, `status`; sin OTP, JTI ni Telegram) |
 | POST | `/api/users/me/telegram/link` | cookie (enlace de vinculación de un solo uso) |
 | DELETE | `/api/users/me/telegram` | cookie (desvincula el chat) |
 
-El router de Telegram (`app/modules/users/rest/telegram/routes.py`, `prefix="/users/me/telegram"`) se registra como `telegram_link_router`; textos en `rest/telegram/error_messages.py`.
+El router de Telegram (`app/modules/users/rest/telegram/routes.py`, `prefix="/users/me/telegram"`) se registra como `telegram_link_router`; textos en `rest/telegram/error_messages.py`. `GET /api/users` vive en `rest/users/routes.py` (`users_router`) → `ListUsersService` (`services/users/`) → `UserRepository.list_all()`. En el front: `auth/api/users.api.ts`, `useUsersQuery` / `useOwners` (`auth/hooks/use-users-queries.ts`) y `OwnerCell` (`auth/components/owner-cell.tsx`).
 
 ### Errores
 - Todo error (401/403/404/405/422/429) sale con el envelope `{msg, errorCode, data}` (`app/common/errors/errors.py`).
@@ -222,7 +224,7 @@ El router de Telegram (`app/modules/users/rest/telegram/routes.py`, `prefix="/us
 - **Sin agentes:** `AgentsEmptyState` (qué es un agente, cómo funciona en 3 pasos y botón "Crear agente" → `/#/agents/new`).
 - **Con agentes:** 3 `StatCard` (agentes activos, paper/live, mis cuentas), aviso si ninguno está activo, filtro por estado y todas las `AgentCard` con el precio de su mercado, su última señal y controles.
 - Sin sección de mercado propia (retirada el 2026-10-20): mostraba solo los dos primeros pares y, sin agentes, BTC/ETH en 1h casi siempre sin velas. El precio va en cada tarjeta y las velas en la pestaña Mercado del agente.
-- Sidebar: **General** (Inicio) · **Operar** (Alertas, Mis cuentas) · **Explorar** (Explorar mercados, Estrategias) · Mi inversión · Administración (Datos de mercado, Supervisión, Inversores).
+- Sidebar: **General** (Inicio) · **Operar** (Alertas, Mis cuentas) · **Explorar** (Explorar mercados, Estrategias) · Mi inversión · Administración (Datos de mercado, Supervisión, Configuración, Inversores).
 
 ## Gotchas críticos
 
@@ -302,3 +304,4 @@ TELEGRAM_BOT_USERNAME=         # para el enlace de vinculación (M9)
 - **2026-10-19** — Vínculo de Telegram: `POST /api/users/me/telegram/link`, `DELETE /api/users/me/telegram`, `telegram_linked` en `GET /api/users/me`, columnas `users.telegram_*` (migración `f51e2dad9c13`), "Conectar Telegram" en el menú de usuario (`TelegramLinkDialog`); tarjeta "Señales por aprobar" en el dashboard.
 - **2026-10-20** — Dashboard sin sección "Mercado" (y sin `price-chart.tsx`): el precio, la variación y el régimen pasan a cada tarjeta de agente (`AgentPrice` en [M7](M07-BOTS-SIGNALS.md)).
 - **2026-10-20** — El inicio absorbe "Mis agentes": muestra todos los agentes con filtro por estado (antes, hasta 6); `/agents` redirige a `/dashboard`, "Inicio" queda marcado también dentro de un agente (`activePaths`) y sale "Mis agentes" del menú.
+- **2026-10-20** — `GET /api/users` (admin) y piezas del front para mostrar el dueño (`OwnerCell`, `useOwners`) en Supervisión.

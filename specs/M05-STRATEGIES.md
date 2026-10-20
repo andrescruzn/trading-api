@@ -14,7 +14,7 @@
 | Lo usan | [M6](M06-AI-AGENT.md) (Prompt Maestro), [M7](M07-BOTS-SIGNALS.md) (cada bot referencia una estrategia) |
 | Prefijo API | `/api/strategies`, `/api/datasets` |
 | Frontend | `frontend/src/modules/strategies` |
-| Última revisión | 2026-10-19 |
+| Última revisión | 2026-10-20 |
 
 ## Descripción
 
@@ -36,7 +36,7 @@ Hash routing: la URL real es `/#/<ruta>`.
 - `/#/strategies` — Lista de estrategias con tipo, régimen, timeframe y cantidad de reglas. Click en la fila abre un panel lateral con el detalle completo.
 
 **Páginas — Administrador (solo admin):**
-- `/#/admin/strategies` — "Gestionar estrategias" (Administración → Supervisión): crear y editar estrategias (diálogo) con editor de reglas JSON y validación de coherencia en vivo
+- `/#/admin/strategies` — "Gestionar estrategias" (Administración → Configuración): crear y editar estrategias (diálogo) con editor de reglas JSON y validación de coherencia en vivo
 
 ## Entregables
 
@@ -198,3 +198,4 @@ from app.modules.strategies.rest import strategies_router, datasets_router
 - **2026-10-08** — API headless (/api), páginas migradas a React (frontend/).
 - **2026-10-10** — Seed: RSI Mean Reversion 1.1.0 y Bollinger Band Reversion 1.1.0 (reglas de bandas corregidas) y Tendencia Metales 1.0.0 para perpetuos TradFi.
 - **2026-10-19** — Auditoría de seguridad (límites de entrada): `description` de la estrategia ≤ 2000 caracteres al crear y al editar.
+- **2026-10-20** — "Gestionar estrategias" pasa del grupo admin Supervisión a **Configuración**.

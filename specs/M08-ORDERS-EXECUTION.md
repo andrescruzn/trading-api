@@ -14,7 +14,7 @@
 | Lo usan | [M9](M09-ALERTS.md) (hook de orden; Telegram aprueba/rechaza vía `ExecuteSignalService`), [M10](M10-BILLING.md) (historial de órdenes y fills), scheduler de [M2](M02-MARKET-DATA.md) (ejecución automática, reconciliación y SL/TP) |
 | Prefijo API | `/api/orders`, `/api/fills`, `/api/positions`, `/api/signals/{id}/approve`, `/api/signals/{id}/reject` |
 | Frontend | `frontend/src/modules/orders` (aprobar/descartar vive en `frontend/src/modules/bots`) |
-| Última revisión | 2026-10-19 |
+| Última revisión | 2026-10-20 |
 
 ## Descripción
 
@@ -45,7 +45,7 @@ Hash routing: la URL real es `/#/<ruta>`.
 - Aprobar / descartar una señal pendiente: en el detalle de la señal del agente y en la tarjeta "Señales por aprobar" del dashboard ([M7](M07-BOTS-SIGNALS.md)); llaman a `POST /api/signals/{id}/approve|reject` de este módulo.
 
 **Páginas — Administrador (solo admin):**
-- `/#/admin/orders` — "Todas las órdenes" (Administración → Supervisión): vista global de todas las órdenes del sistema con filtros por lado, estado y tipo, y diálogo con los fills de cada orden
+- `/#/admin/orders` — "Todas las órdenes" (Administración → Supervisión): vista global de todas las órdenes del sistema con columna **Dueño** (nombre y correo) y filtro por dueño (orden → agente → cuenta → usuario; `OrdersTable` acepta `renderOwner`), y filtros por lado, estado y tipo, y diálogo con los fills de cada orden
 
 ## Entregables
 
@@ -333,3 +333,4 @@ Por agente: `risk_params.max_notional` (tope propio; se aplica el menor) y `risk
 - **2026-10-19** — Modo de ejecución: `ExecuteSignalService` (aprobar/rechazar con reclamo atómico, revalidación al precio actual), `ProtectPositionsService` (SL/TP por ciclo del scheduler, columnas en `positions` de la migración `f51e2dad9c13`), `POST /api/signals/{id}/approve|reject`, protección visible en Posiciones.
 - **2026-10-19** — Reconciliación y SL nativo: `LiveExecutor` con cliente compartido, `fetch`/`cancel`/`place_stop_loss` y `LIVE_USE_SANDBOX`; `ReconcileOrdersService` en el ciclo del scheduler (fills tardíos y parciales, órdenes perdidas a los 10 min); `NativeStopService` (SL como orden en el exchange en live, `positions.sl_order_id`, migración `3ac9fef574cb`, `ORDER_NATIVE_STOP_LOSS`, `ORDER_NATIVE_STOP_ACTIVE`); TP sigue por ciclo, sin OCO; `position_updater.apply_fill` compartido; aviso en Posiciones. Verificado solo con pruebas de humo con mocks.
 - **2026-10-19** — Página `/orders` retirada (duplicaba las pestañas Órdenes y Posiciones del agente): redirige a `/agents` y sale del menú.
+- **2026-10-20** — Todas las órdenes: columna **Dueño** (nombre y correo) y filtro por dueño.

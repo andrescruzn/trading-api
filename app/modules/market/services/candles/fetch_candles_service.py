@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from decimal import Decimal
 from typing import Any
 
 import ccxt
 
 from app.common.contracts import ServiceResult
-from app.modules.market.domain.candle_entity import Candle
+from app.modules.market.domain.candle_entity import Candle, candle_from_ccxt_row
 from app.modules.market.domain.candle_repository import CandleRepository
 from app.modules.market.domain.ccxt_exchanges import ccxt_id_for
 from app.modules.market.domain.exchange_repository import ExchangeRepository
@@ -108,22 +106,12 @@ class FetchCandlesService:
 
         # 5) Convertir a entidades Candle
         # ccxt devuelve: [timestamp_ms, open, high, low, close, volume]
-        candles: list[Candle] = []
-        for row in raw:
-            ts = datetime.fromtimestamp(row[0] / 1000, tz=timezone.utc)
-            candle = Candle(
-                id=0,
-                symbol_id=symbol_id,
-                timeframe_id=timeframe_id,
-                ts=ts,
-                open=Decimal(str(row[1])),
-                high=Decimal(str(row[2])),
-                low=Decimal(str(row[3])),
-                close=Decimal(str(row[4])),
-                volume=Decimal(str(row[5])) if row[5] is not None else Decimal("0"),
-            )
-            if candle.is_valid_ohlcv():
-                candles.append(candle)
+        # Las filas inválidas (high < low, negativos, precios nulos o NaN) se descartan
+        candles: list[Candle] = [
+            candle
+            for row in raw
+            if (candle := candle_from_ccxt_row(row, symbol_id, timeframe_id)) is not None
+        ]
 
         if not candles:
             return ServiceResult.fail(code="CANDLES_EMPTY_PAYLOAD", http_status=422)

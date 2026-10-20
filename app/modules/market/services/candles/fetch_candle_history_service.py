@@ -13,15 +13,13 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from decimal import Decimal
 from typing import Any
 
 import ccxt
 
 from app.common.contracts import ServiceResult
 from app.common.utils import utc_now
-from app.modules.market.domain.candle_entity import Candle
+from app.modules.market.domain.candle_entity import Candle, candle_from_ccxt_row
 from app.modules.market.domain.ccxt_exchanges import ccxt_id_for
 from app.modules.market.domain.exchange_repository import ExchangeRepository
 from app.modules.market.domain.symbol_repository import SymbolRepository
@@ -89,21 +87,12 @@ class FetchCandleHistoryService:
         except Exception:
             return ServiceResult.fail(code="CCXT_FETCH_ERROR", http_status=502)
 
+        # Las filas inválidas (high < low, negativos, precios nulos o NaN) se descartan
         candles = [
-            Candle(
-                id=0,
-                symbol_id=symbol_id,
-                timeframe_id=timeframe_id,
-                ts=datetime.fromtimestamp(ts / 1000, tz=timezone.utc),
-                open=Decimal(str(row[1])),
-                high=Decimal(str(row[2])),
-                low=Decimal(str(row[3])),
-                close=Decimal(str(row[4])),
-                volume=Decimal(str(row[5])) if row[5] is not None else Decimal("0"),
-            )
+            candle
             for ts, row in sorted(rows.items())
             # La vela en formación todavía no tiene cierre definitivo
             if ts + step_ms <= now_ms
+            and (candle := candle_from_ccxt_row(row, symbol_id, timeframe_id)) is not None
         ]
-        candles = [c for c in candles if c.is_valid_ohlcv()][-bars:]
-        return ServiceResult.ok(data=candles)
+        return ServiceResult.ok(data=candles[-bars:])

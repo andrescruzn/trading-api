@@ -6,9 +6,9 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | ✅ Completo (tests pendientes) |
-| Avance (alcance original) | 86 % — 6/7 entregables (falta "Tests unitarios") |
-| Madurez (estimada) | 70 % — ver [Avance](#avance) |
+| Estado | ✅ Completo |
+| Avance (alcance original) | 100 % — 7/7 entregables (tests unitarios desde el 2026-10-20) |
+| Madurez (estimada) | 78 % — ver [Avance](#avance) |
 | Tablas | `strategies`, `datasets` (R/W) |
 | Depende de | [M1](M01-AUTH.md); conceptualmente de [M3](M03-FEATURE-ENGINEERING.md) (los indicadores que usan las reglas) |
 | Lo usan | [M6](M06-AI-AGENT.md) (Prompt Maestro), [M7](M07-BOTS-SIGNALS.md) (cada bot referencia una estrategia) |
@@ -51,7 +51,7 @@ Entregables:
 - ✅ Web UI: `/#/strategies` (viewer) + `/#/admin/strategies` (CRUD admin) — en React desde 2026-10-08
 - ✅ API: GET/POST `/api/strategies`, GET/PUT `/api/strategies/{id}`
 - ✅ Seed: 9 estrategias de ejemplo (`database/seeds/strategies.py`)
-- Tests unitarios: pendientes (no solicitados)
+- ✅ (2026-10-20) Tests unitarios: estrategias (crear/editar/ver/listar, coherencia tipo↔régimen), datasets y evaluación de reglas
 - ✅ (2026-10-20) **Backtesting sin IA**: `domain/backtest.py` (`run_backtest`), `RunBacktestService`, `POST /api/backtests`, página Backtesting; reglas evaluadas con `domain/rule_evaluation.py` (la misma función que usa la IA)
 - ✅ (2026-10-20) Tests: `tests/strategies/test_backtest.py` (motor, servicio con indicadores reales en memoria, historia paginada)
 
@@ -77,17 +77,17 @@ Entregables:
 
 | Métrica | Valor | Evidencia |
 |---|---|---|
-| Alcance original | **86 %** (6/7) | CRUD, tipos, validación, UI, API y seed completos; los tests figuran como "pendientes (no solicitados)" |
-| Madurez | **≈ 70 %** | Funcionalidad 90 · Tests 50 · Seguridad 80 · Operación 60 |
+| Alcance original | **100 %** (7/7) | CRUD, tipos, validación, UI, API, seed y tests unitarios completos |
+| Madurez | **≈ 78 %** | Funcionalidad 90 · Tests 80 · Seguridad 80 · Operación 60 |
 
 - **Funcionalidad (90):** backtesting sin IA (`POST /api/backtests`, página `/#/backtest`); `datasets` sigue siendo solo un registro de metadatos sin UI.
+- **Tests (80):** 98 tests en `tests/strategies/` (servicios, entidad, reglas, backtest). Faltan las rutas (TestClient) y los repositorios con BD.
 - **Operación (60):** hay seed, pero no existe forma de comparar el rendimiento real de cada estrategia.
 
 ## Posibles mejoras
 
 | Prioridad | Mejora | Esfuerzo |
 |---|---|---|
-| Alta | Tests de `create_strategy_service` / `update_strategy_service` (coherencia tipo↔régimen, duplicados) y del esquema de `rules` | S |
 | Alta | Motor de **backtesting** que use `datasets` + `candle_features` y calcule Win Rate, R/R real, Profit Factor y Max Drawdown (el edge que pide [`_ROOT.md`](_ROOT.md) validar) | L |
 | Media | Validar `rules` al guardar: indicadores existentes en el feature set, operador válido y `value` numérico o indicador conocido (hoy una regla mal escrita simplemente "falla" en [M6](M06-AI-AGENT.md)) | S |
 | Media | Métricas por estrategia (señales aprobadas/rechazadas, Win Rate real) leyendo `signals` → `orders` → `fills` | M |
@@ -97,7 +97,6 @@ Entregables:
 
 ## Fuera de alcance y pendientes conocidos
 
-- Tests unitarios (marcados como pendientes en el roadmap original).
 - Motor de backtesting y optimización de parámetros.
 - Estrategias propias por usuario (hoy solo el admin las gestiona).
 
@@ -192,12 +191,24 @@ from app.modules.strategies.rest import strategies_router, datasets_router
 - ~~Prefijo `/api/` obligatorio por colisión con la página web~~ — resuelto el 2026-10-08: ya no hay router web; todas las rutas REST van bajo `/api`.
 - `build_list_response` retorna `{"data": [...array...]}`, no `{"data": {"items": [...]}}`. El front tipa `api.get<Strategy[]>('/strategies')` directamente sobre el array.
 - `errorCode` en una respuesta exitosa es 200/201, **nunca 0**: el api-client del front detecta errores con `errorCode >= 400`.
+- **Duplicado nombre+versión con espacios** (corregido el 2026-10-20): `CreateStrategyService` comprobaba el duplicado con el nombre tal cual llegaba y guardaba el nombre recortado, así que `" EMA Trend Follower"` pasaba el control y chocaba con el UNIQUE `(name, version)` de la BD (500 en lugar de 409). Ahora recorta antes de comprobar.
+- Pendiente: un nombre de solo espacios pasa el schema (`min_length=1`) y se guarda vacío tras el recorte; una descripción de solo espacios se guarda como `""` (no como `None`).
 - El texto original hablaba de "warning" para la incoherencia tipo↔régimen; el código actual **rechaza** con `STRATEGY_INCOHERENT_REGIME` (HTTP 422).
 
 ## Tests
 
-- **No hay tests** para este módulo (el roadmap los marca "pendientes (no solicitados)").
-- Recomendado: `tests/strategies/test_create_strategy_service.py` y `test_update_strategy_service.py`.
+Unitarios sin BD ni red (repositorios `MagicMock`). Correr: `uv run python -m pytest tests/strategies -q`.
+
+| Archivo | Tests | Qué cubre |
+|---|---:|---|
+| `tests/strategies/test_strategy_services.py` | 44 | Coherencia tipo↔régimen (tabla completa, régimen nulo o desconocido), tipos válidos, accesos a `parameters`; crear (recorte de textos, 409 por duplicado también con espacios, 422 por tipo o régimen), editar (404, 409 contra otra estrategia pero no contra sí misma, revalidación de `parameters`), ver y listar; commit solo en éxito; textos de `error_messages.py` (estrategias y backtesting) |
+| `tests/strategies/test_dataset_services.py` | 7 | Crear dataset (fin ≤ inicio → `DATASET_INVALID_DATE_RANGE` 422, rangos abiertos, recorte), ver (404) y listar |
+| `tests/strategies/test_rule_evaluation.py` | 30 | `evaluate_rule` / `rules_pass` (la misma función de la IA y el backtest): cada operador con números concretos, tolerancia de `eq` (< 0,0001), indicador contra indicador, umbral en texto numérico, fail-closed (indicador u operador inexistente, dato nulo, NaN, umbral raro), una regla rota bloquea la entrada |
+| `tests/strategies/test_backtest.py` | 17 | Motor de backtest, `RunBacktestService` con indicadores reales y tope del 1 %, historia paginada (2 casos) |
+
+`FetchCandleHistoryService` (de [M2](M02-MARKET-DATA.md)) tiene además 15 tests en `tests/market/test_fetch_candle_history_service.py`.
+
+**Sin cubrir:** rutas REST (TestClient, incluido el rate limit de `/api/backtests`) y los repositorios contra MySQL.
 
 ## Riesgos
 
@@ -213,3 +224,4 @@ from app.modules.strategies.rest import strategies_router, datasets_router
 - **2026-10-19** — Auditoría de seguridad (límites de entrada): `description` de la estrategia ≤ 2000 caracteres al crear y al editar.
 - **2026-10-20** — "Gestionar estrategias" pasa del grupo admin Supervisión a **Configuración**.
 - **2026-10-20** — Backtesting sin IA (motor puro, `POST /api/backtests`, página Backtesting, "Probar en el pasado") y evaluación de reglas compartida con la IA.
+- **2026-10-20** — Tests unitarios de estrategias, datasets y evaluación de reglas (81 nuevos en `tests/strategies/`). Destaparon un bug, corregido: crear una estrategia con espacios alrededor de un nombre+versión existente daba 500 (IntegrityError) en lugar de 409.

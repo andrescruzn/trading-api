@@ -17,10 +17,21 @@ function listUsers() {
 	return api.get<UserSummary[]>('/users');
 }
 
+type InviteUserInput = {
+	email: string;
+	full_name: string | null;
+	role_code: RoleCode;
+};
+
+/** Solo admin: crea la cuenta y envía el correo de bienvenida. */
+function inviteUser(input: InviteUserInput) {
+	return api.post<UserSummary>('/users', input);
+}
+
 /** Solo admin y nunca sobre uno mismo (el backend responde 422). */
 function updateUserRole(id: number, roleCode: RoleCode) {
 	return api.put<UserSummary>(`/users/${id}/role`, { role_code: roleCode });
 }
 
-export type { UserSummary };
-export { listUsers, updateUserRole };
+export type { InviteUserInput, UserSummary };
+export { inviteUser, listUsers, updateUserRole };

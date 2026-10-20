@@ -11,6 +11,12 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 
+class InviteUserRequest(BaseModel):
+    email: str = Field(..., min_length=3, max_length=255)
+    full_name: str | None = Field(default=None, max_length=255)
+    role_code: Literal["user", "admin", "investor"] = Field(default="user")
+
+
 class UpdateUserRoleRequest(BaseModel):
     role_code: Literal["user", "admin", "investor"] = Field(
         ..., description="Rol nuevo: user, admin o investor."

@@ -2,9 +2,14 @@
 {% block content %}
   <h2 style="margin:0 0 12px 0;">¡Bienvenido{% if full_name %}, {{ full_name }}{% endif %}!</h2>
   <p style="margin:0 0 12px 0;">
-    Tu cuenta ha sido creada correctamente.
+    Te dieron acceso a Trading App{% if email %} con el correo <strong>{{ email }}</strong>{% endif %}.
   </p>
+  <p style="margin:0 0 12px 0;">
+    No necesitas contraseña: entra con tu correo y te enviaremos un código de un solo uso para iniciar sesión.
+  </p>
+  {% if login_url %}
   <p style="margin:0;">
-    Puedes iniciar sesión cuando quieras.
+    <a href="{{ login_url }}" style="display:inline-block;padding:10px 16px;border-radius:6px;background:#111827;color:#ffffff;text-decoration:none;">Entrar a Trading App</a>
   </p>
+  {% endif %}
 {% endblock %}

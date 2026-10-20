@@ -372,7 +372,8 @@ sesión anterior se cierra y la web te muestra "Tu sesión expiró" y te lleva a
 
 Todo se navega desde el menú lateral: Inicio, Operar (mis agentes, alertas, mis cuentas),
 Explorar (explorar mercados, estrategias) y, según tu rol, "Mi inversión" (inversores)
-o "Administración" (administradores).
+o "Administración" (administradores). En Administración, "Supervisión" muestra lo de todos los
+usuarios: "Todos los agentes" son los mismos agentes de "Mis agentes", pero de todo el sistema.
 
 Todo lo que pertenece a un agente se ve dentro del agente: sus señales, sus órdenes, sus
 posiciones y los precios e indicadores de su mercado. No hay páginas sueltas de órdenes, velas o

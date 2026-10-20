@@ -166,7 +166,7 @@ Cambios del 2026-10-19 (nuevas piezas dentro de páginas existentes y reorganiza
 - `/agents/:id` → Configuración, en modo Con aprobación: campo **Minutos para aprobar** — [M7](M07-BOTS-SIGNALS.md).
 - Menú de usuario (todas las páginas): **Conectar Telegram** (diálogo) — [M1](M01-AUTH.md) / [M9](M09-ALERTS.md).
 
-En la UI los bots se llaman **agentes** y son el punto de entrada: el dashboard los muestra primero y el menú se organiza en **Operar** (Mis agentes, Alertas, Mis cuentas) y **Explorar** (Explorar mercados, Estrategias). Todo lo que depende de un agente (órdenes, posiciones, velas, indicadores) vive dentro de su detalle, porque esos datos solo existen para agentes creados y activos. En código, tablas y API siguen siendo `bot`.
+En la UI los bots se llaman **agentes** y son el punto de entrada: el dashboard los muestra primero y el menú se organiza en **Operar** (Mis agentes, Alertas, Mis cuentas) y **Explorar** (Explorar mercados, Estrategias). Todo lo que depende de un agente (órdenes, posiciones, velas, indicadores) vive dentro de su detalle, porque esos datos solo existen para agentes creados y activos. En Administración, el grupo **Supervisión** reúne las vistas de todos los usuarios con nombres que dicen su alcance (Todos los agentes, Todas las cuentas, Gestionar estrategias, Todas las órdenes, Todas las alertas, Telegram). En código, tablas y API siguen siendo `bot`.
 
 ---
 

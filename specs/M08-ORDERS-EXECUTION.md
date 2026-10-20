@@ -45,7 +45,7 @@ Hash routing: la URL real es `/#/<ruta>`.
 - Aprobar / descartar una señal pendiente: en el detalle de la señal del agente y en la tarjeta "Señales por aprobar" del dashboard ([M7](M07-BOTS-SIGNALS.md)); llaman a `POST /api/signals/{id}/approve|reject` de este módulo.
 
 **Páginas — Administrador (solo admin):**
-- `/#/admin/orders` — Vista global de todas las órdenes del sistema con filtros por lado, estado y tipo, y diálogo con los fills de cada orden
+- `/#/admin/orders` — "Todas las órdenes" (Administración → Supervisión): vista global de todas las órdenes del sistema con filtros por lado, estado y tipo, y diálogo con los fills de cada orden
 
 ## Entregables
 

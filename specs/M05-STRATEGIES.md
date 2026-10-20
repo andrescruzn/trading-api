@@ -36,7 +36,7 @@ Hash routing: la URL real es `/#/<ruta>`.
 - `/#/strategies` — Lista de estrategias con tipo, régimen, timeframe y cantidad de reglas. Click en la fila abre un panel lateral con el detalle completo.
 
 **Páginas — Administrador (solo admin):**
-- `/#/admin/strategies` — Crear y editar estrategias (diálogo) con editor de reglas JSON y validación de coherencia en vivo
+- `/#/admin/strategies` — "Gestionar estrategias" (Administración → Supervisión): crear y editar estrategias (diálogo) con editor de reglas JSON y validación de coherencia en vivo
 
 ## Entregables
 

@@ -7,6 +7,7 @@
 # - GET /users            → listar usuarios (solo admin)
 # - POST /users           → invitar (crear) un usuario (solo admin)
 # - PUT /users/{id}/role  → cambiar el rol de un usuario (solo admin)
+# - PUT /users/{id}/status → activar, bloquear o desactivar (solo admin)
 #
 # NOTAS:
 # - Lo usan las vistas de Supervisión para mostrar el dueño de agentes,
@@ -33,7 +34,7 @@ from app.modules.users.providers.auth_provider import AuthServiceFactory
 from app.modules.users.services.users import UserSummaryPayload
 
 from .error_messages import USER_ERROR_MESSAGES
-from .schemas import InviteUserRequest, UpdateUserRoleRequest
+from .schemas import InviteUserRequest, UpdateUserRoleRequest, UpdateUserStatusRequest
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
@@ -115,3 +116,38 @@ def update_user_role(
         return build_error_response(result, USER_ERROR_MESSAGES)
 
     return build_success_response(data=_user_to_dict(result.data), msg="Rol actualizado.")
+
+
+# ======================================================================
+# PUT /users/{user_id}/status
+# ======================================================================
+
+# Texto de éxito por estado nuevo: dice qué le pasa a la persona.
+_STATUS_SUCCESS_MESSAGES: dict[str, str] = {
+    "active":   "Cuenta activada. Ya puede entrar con su código.",
+    "blocked":  "Cuenta bloqueada. Cerramos su sesión y no podrá entrar hasta que la actives.",
+    "disabled": "Cuenta desactivada. Cerramos su sesión y no podrá entrar.",
+}
+
+
+@router.put("/{user_id}/status", status_code=200)
+def update_user_status(
+    user_id: int,
+    payload: UpdateUserStatusRequest,
+    identity: dict = Depends(admin_required),
+    factory: AuthServiceFactory = Depends(get_factory),
+):
+    """Activa, bloquea o desactiva la cuenta de un usuario (solo admin; nunca la propia)."""
+    result = factory.update_user_status().update(
+        user_id=user_id,
+        status=payload.status,
+        requester_user_id=int(identity["user_id"]),
+    )
+
+    if not result.success:
+        return build_error_response(result, USER_ERROR_MESSAGES)
+
+    return build_success_response(
+        data=_user_to_dict(result.data),
+        msg=_STATUS_SUCCESS_MESSAGES.get(result.data.status, "Estado actualizado."),
+    )

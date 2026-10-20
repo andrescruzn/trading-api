@@ -12,6 +12,7 @@
 #   de tabla es dinámico y no podemos definirlo en tiempo de clase.
 # - MetaData propio para no contaminar models_registry.
 # - checkfirst=True en create → idempotente aunque la tabla ya exista.
+# - get_existing_table() es solo para leer: nunca crea la tabla.
 # ======================================================================
 
 from __future__ import annotations
@@ -29,10 +30,11 @@ from sqlalchemy import (
     SmallInteger,
     String,
     Table,
+    inspect,
     text,
 )
 from sqlalchemy.dialects.mysql import TIMESTAMP as MySQLTIMESTAMP
-from sqlalchemy.engine import Engine
+from sqlalchemy.engine import Connection, Engine
 
 # ======================================================================
 # Metadata y caché aislados del ORM principal
@@ -111,3 +113,22 @@ def get_or_create_table(year: int, engine: Engine) -> Table:
 
         _table_cache[year] = table
         return table
+
+
+def get_existing_table(year: int, bind: Engine | Connection) -> Table | None:
+    """
+    Retorna la Table del año si ya existe en BD, o None. Nunca la crea.
+
+    Para lecturas (página de Auditoría): consultar un año sin tráfico no debe
+    crear tablas vacías. Si existe, se cachea como en `get_or_create_table`.
+    """
+    if year in _table_cache:
+        return _table_cache[year]
+
+    if not inspect(bind).has_table(f"http_audit_{year}"):
+        return None
+
+    with _lock:
+        if year not in _table_cache:
+            _table_cache[year] = _build_table_definition(year)
+        return _table_cache[year]

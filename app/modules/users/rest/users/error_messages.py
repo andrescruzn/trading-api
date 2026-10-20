@@ -13,4 +13,8 @@ USER_ERROR_MESSAGES: dict[str, str] = {
     "USER_INVALID_EMAIL":          "Escribe un correo válido, por ejemplo nombre@empresa.com.",
     "USER_INVALID_NAME":           "El nombre es demasiado largo.",
     "USER_EMAIL_TAKEN":            "Ya existe una cuenta con ese correo.",
+    "USER_INVALID_STATUS":         "Ese estado no existe. Elige Activo, Bloqueado o Desactivado.",
+    "USER_CANNOT_CHANGE_OWN_STATUS": (
+        "No puedes cambiar el estado de tu propia cuenta. Pídeselo a otro administrador."
+    ),
 }

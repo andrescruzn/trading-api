@@ -11,10 +11,11 @@ from __future__ import annotations
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy.orm import Session
+from sqlalchemy import func
+from sqlalchemy.orm import Query, Session
 
 from app.modules.orders.domain.order_entity import Order
-from app.modules.orders.domain.order_repository import OrderRepository
+from app.modules.orders.domain.order_repository import OrderCriteria, OrderRepository
 from app.modules.orders.infrastructure.order_model import OrderModel
 from app.extensions.db.sqlalchemy_repository import SqlAlchemyRepository
 
@@ -82,15 +83,37 @@ class SqlAlchemyOrderRepository(SqlAlchemyRepository, OrderRepository):
         model: OrderModel | None = self._session.get(OrderModel, order_id)
         return None if model is None else self._to_domain(model)
 
-    def list_by_bot(self, bot_id: int, limit: int = 100) -> list[Order]:
+    @staticmethod
+    def _apply_criteria(query: Query, criteria: OrderCriteria) -> Query:
+        if criteria.bot_ids is not None:
+            query = query.filter(OrderModel.bot_id.in_(criteria.bot_ids))
+        if criteria.side is not None:
+            query = query.filter(OrderModel.side == criteria.side)
+        if criteria.status is not None:
+            query = query.filter(OrderModel.status == criteria.status)
+        if criteria.type is not None:
+            query = query.filter(OrderModel.type == criteria.type)
+        return query
+
+    def search(self, criteria: OrderCriteria, offset: int = 0, limit: int = 100) -> list[Order]:
+        # `bot_ids=[]` = el dueño no tiene agentes: sin consulta (IN () no es SQL válido)
+        if criteria.bot_ids is not None and not criteria.bot_ids:
+            return []
+        query = self._apply_criteria(self._session.query(OrderModel), criteria)
+        # id desc desempata órdenes del mismo instante: el orden entre páginas es estable
         models = (
-            self._session.query(OrderModel)
-            .filter(OrderModel.bot_id == bot_id)
-            .order_by(OrderModel.ts.desc())
+            query.order_by(OrderModel.ts.desc(), OrderModel.id.desc())
+            .offset(max(offset, 0))
             .limit(limit)
             .all()
         )
         return [self._to_domain(m) for m in models]
+
+    def count(self, criteria: OrderCriteria) -> int:
+        if criteria.bot_ids is not None and not criteria.bot_ids:
+            return 0
+        query = self._apply_criteria(self._session.query(func.count(OrderModel.id)), criteria)
+        return int(query.scalar() or 0)
 
     def has_active_order_for_signal(self, signal_id: int) -> bool:
         return (
@@ -118,15 +141,6 @@ class SqlAlchemyOrderRepository(SqlAlchemyRepository, OrderRepository):
         # de la sintaxis JSON de MySQL
         live = [m for m in models if (m.meta or {}).get("mode") == "live"]
         return [self._to_domain(m) for m in live[:limit]]
-
-    def list_all(self, limit: int = 200) -> list[Order]:
-        models = (
-            self._session.query(OrderModel)
-            .order_by(OrderModel.ts.desc())
-            .limit(limit)
-            .all()
-        )
-        return [self._to_domain(m) for m in models]
 
     def create(self, order: Order) -> Order:
         model = OrderModel()

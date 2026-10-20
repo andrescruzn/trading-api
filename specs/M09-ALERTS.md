@@ -45,7 +45,7 @@ Hash routing: la URL real es `/#/<ruta>`.
 - Menú de usuario → **Conectar Telegram** (diálogo, [M1](M01-AUTH.md)): genera el enlace de vinculación con el bot
 
 **Páginas — Administrador (solo admin):**
-- `/#/admin/alerts` — "Todas las alertas" (Administración → Supervisión): todas las reglas y eventos del sistema, con columna **Dueño** (nombre y correo) y filtro por dueño (aplica a Reglas y a Eventos)
+- `/#/admin/alerts` — "Todas las alertas" (Administración → Supervisión): todas las reglas y eventos del sistema, con columna **Dueño** (nombre y correo) y filtro por dueño (aplica a Reglas y a Eventos). La pestaña **Eventos** está paginada en el servidor (el filtro Dueño lo aplica el backend); Reglas sigue completa
 - `/#/admin/telegram` — "Telegram" (Administración → Configuración): ver la configuración y probar la conexión con Telegram Bot
 
 ## Entregables
@@ -207,7 +207,7 @@ Providers:
 | GET | `/api/alert-rules/{id}` | token | Detalle; ownership check |
 | PUT | `/api/alert-rules/{id}` | token | Actualiza regla; ownership check; webhook validado |
 | DELETE | `/api/alert-rules/{id}` | token | Soft delete (is_active=False) |
-| GET | `/api/alert-events` | token | Historial de eventos |
+| GET | `/api/alert-events` | token | Historial de eventos, el más reciente primero (`ts`, `id` desc). Usuario: los suyos; admin: todos o los del dueño `user_id` (ignorado para usuarios). `from_ts` aplica a los dos roles (antes el admin lo ignoraba). Paginación opt-in: con `page` (≥ 1) y `page_size` (1–100, 20 por defecto) `data` pasa a ser `{items, pagination: {total, page, page_size, total_pages}}` (`build_paginated_response`); sin `page`, la lista de siempre hasta `limit` (1–500) |
 | POST | `/api/alerts/evaluate` | admin | Reglas `price` de un símbolo con el precio dado (`{symbol_id, current_price}`), mismo antispam → `{fired, checked, cooldown}` |
 | POST | `/api/alerts/test-telegram` | admin | Test de conexión Telegram |
 | POST | `/api/telegram/webhook` | cabecera `X-Telegram-Bot-Api-Secret-Token` | Updates del bot (solo con `TELEGRAM_UPDATES_MODE=webhook`); fuera de Swagger (`include_in_schema=False`) y de la auditoría |
@@ -232,7 +232,7 @@ Para volver a polling hay que borrar el webhook (`deleteWebhook`): `getUpdates` 
 | `/#/admin/alerts` | `routes/_app/admin/alerts.lazy.tsx` | `pages/admin-alerts.tsx` + `components/alert-events-table.tsx` |
 | `/#/admin/telegram` | `routes/_app/admin/telegram.lazy.tsx` | `pages/admin-telegram.tsx` |
 
-- API: `api/alerts.api.ts` (`/alert-rules`, `/alert-events`, `/alerts/test-telegram`); hooks `use-alerts-queries.ts` / `use-alerts-mutations.ts`; etiquetas `lib/alerts-labels.ts`; badges `components/alert-badges.tsx`.
+- API: `api/alerts.api.ts` (`/alert-rules`, `listAlertEventsPage` → `Paginated<AlertEvent>`, `/alerts/test-telegram`); hooks `use-alerts-queries.ts` (`useAlertEventsPageQuery`, `keepPreviousData`) / `use-alerts-mutations.ts`; `AlertEventsTable` pide página a página en `/alerts` y en Todas las alertas; etiquetas `lib/alerts-labels.ts`; badges `components/alert-badges.tsx`.
 - Activar/desactivar una regla se hace con `PUT /api/alert-rules/{id}` (`is_active`); el front no usa `DELETE` ni `POST /api/alerts/evaluate`.
 - Nombres de bot: `useMyBotsQuery` de [M7](M07-BOTS-SIGNALS.md) en páginas de usuario y `useBotsQuery()` en admin.
 - Vincular Telegram: `app-shell/components/telegram-link-dialog.tsx` ([M1](M01-AUTH.md)).
@@ -328,4 +328,5 @@ ALERT_REPEAT_MINUTES=60            # antispam de precio/PnL/drawdown; 0 = avisa 
 - **2026-10-20** — **Señales compartidas** ([M7](M07-BOTS-SIGNALS.md)): `SharedSignalNotifier` envía a los suscriptores de un agente compartido sus BUY/SELL aprobadas por Telegram, sin botones ni datos de la cuenta; `shared_signal_text`, `build_shared_signal_notifier`. Primeros tests del módulo (`tests/bots/test_shared_signal_notifier.py`).
 - **2026-10-20** — **Notificaciones en la app**: campana en la cabecera (`GET /api/notifications`, `POST /api/notifications/seen`), estado de "visto" en `users.notifications_seen_at` (migración `45ba83355691`), polling cada 60 s, 7 tests.
 - **2026-10-20** — **Alertas que funcionan solas**: las reglas `price`, `pnl` y `drawdown` se evalúan en cada ciclo del scheduler (`_evaluate_alert_rules` → `EvaluatePeriodicAlertsService`, `rule_conditions.py`, `alert_messages.py`); PnL y drawdown en % del capital invertido (mayor inversión de una operación), PnL `daily` desde las 00:00 de Bogotá, drawdown actual desde el pico; antispam `ALERT_REPEAT_MINUTES` (60) con el último evento de la regla; Telegram al chat del dueño (respaldo: chat del sistema) y correo al dueño; `pnl`/`drawdown` exigen agente (`ALERT_RULE_BOT_REQUIRED`); `POST /api/alerts/evaluate` reutiliza el servicio; front: agente obligatorio y textos de revisión automática. 44 tests en `tests/alerts/`. Sin cambios de esquema.
+- **2026-10-20** — **Paginación en el servidor** (Fase 4): `GET /api/alert-events` acepta `page`/`page_size` opt-in y el filtro `user_id` (dueño, solo admin). `AlertEventRepository.search/count` reemplaza a `list_all`; `ListAlertEventsService.list_page`. El historial de `/alerts` y la pestaña Eventos de Todas las alertas piden página a página (antes 100/200 eventos filtrados en el navegador). Tests: `tests/alerts/test_list_alert_events_service.py`.
 - **2026-10-20** — Reglas `signal`/`error` con "Cualquier agente" (`bot_id` NULL): ahora se disparan para todos los agentes de su dueño. Antes el hook filtraba por `bot_id` y no las encontraba nunca.

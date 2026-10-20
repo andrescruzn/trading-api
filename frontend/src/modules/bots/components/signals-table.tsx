@@ -3,12 +3,13 @@ import {
 	SignalActionBadge,
 	SignalDecisionBadge,
 } from '@/modules/bots/components/bot-badges';
-import { useSignalsQuery } from '@/modules/bots/hooks/use-bots-queries';
+import { useSignalsPageQuery } from '@/modules/bots/hooks/use-bots-queries';
 import { formatRiskReward } from '@/modules/bots/lib/bots-labels';
 import {
 	DataTable,
 	type DataTableColumn,
 } from '@/modules/shared/components/data-table';
+import { useServerPagination } from '@/modules/shared/hooks/use-server-pagination';
 import {
 	formatDateTime,
 	formatPercent,
@@ -79,14 +80,20 @@ type SignalsTableProps = {
 	onSelect: (signal: Signal) => void;
 };
 
-/** Historial de señales de un agente (la más reciente primero). */
+/**
+ * Historial de señales de un agente (la más reciente primero), paginado en el
+ * servidor: un agente automático genera una señal por vela cerrada.
+ */
 export function SignalsTable({ botId, onSelect }: SignalsTableProps) {
-	const signalsQuery = useSignalsQuery(botId);
+	const { params, tablePagination } = useServerPagination(String(botId));
+	const signalsQuery = useSignalsPageQuery({ bot_id: botId }, params);
 
 	return (
 		<DataTable
 			columns={columns}
-			rows={signalsQuery.data}
+			rows={signalsQuery.data?.items}
+			pagination={tablePagination(signalsQuery.data)}
+			isFetching={signalsQuery.isPlaceholderData}
 			getRowId={(row) => row.id}
 			isLoading={signalsQuery.isLoading}
 			error={signalsQuery.error}

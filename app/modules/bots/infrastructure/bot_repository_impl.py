@@ -8,10 +8,11 @@
 
 from __future__ import annotations
 
-from sqlalchemy.orm import Session
+from sqlalchemy import func
+from sqlalchemy.orm import Query, Session
 
 from app.modules.bots.domain.bot_entity import Bot
-from app.modules.bots.domain.bot_repository import BotRepository
+from app.modules.bots.domain.bot_repository import BotCriteria, BotRepository
 from app.modules.bots.infrastructure.bot_model import BotModel
 from app.extensions.db.sqlalchemy_repository import SqlAlchemyRepository
 
@@ -100,6 +101,37 @@ class SqlAlchemyBotRepository(SqlAlchemyRepository, BotRepository):
             .all()
         )
         return [self._to_domain(m) for m in models]
+
+    @staticmethod
+    def _apply_criteria(query: Query, criteria: BotCriteria) -> Query:
+        if criteria.account_ids is not None:
+            query = query.filter(BotModel.account_id.in_(criteria.account_ids))
+        if criteria.status is not None:
+            query = query.filter(BotModel.status == criteria.status)
+        if criteria.mode is not None:
+            query = query.filter(BotModel.mode == criteria.mode)
+        return query
+
+    def search(
+        self, criteria: BotCriteria, offset: int = 0, limit: int | None = None
+    ) -> list[Bot]:
+        # `account_ids=[]` = sin cuentas: sin consulta (IN () no es SQL válido)
+        if criteria.account_ids is not None and not criteria.account_ids:
+            return []
+        query = self._apply_criteria(self._session.query(BotModel), criteria).order_by(
+            BotModel.created_at.desc(), BotModel.id.desc()
+        )
+        if offset > 0:
+            query = query.offset(offset)
+        if limit is not None:
+            query = query.limit(limit)
+        return [self._to_domain(m) for m in query.all()]
+
+    def count(self, criteria: BotCriteria) -> int:
+        if criteria.account_ids is not None and not criteria.account_ids:
+            return 0
+        query = self._apply_criteria(self._session.query(func.count(BotModel.id)), criteria)
+        return int(query.scalar() or 0)
 
     def list_by_statuses(self, statuses: list[str]) -> list[Bot]:
         models = (

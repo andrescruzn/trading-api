@@ -1,12 +1,16 @@
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import {
 	type BotFilters,
 	getBot,
 	listBots,
+	listBotsPage,
 	listPendingSignals,
 	listSharedBots,
 	listSignals,
+	listSignalsPage,
+	type SignalPageFilters,
 } from '@/modules/bots/api/bots.api';
+import type { PageParams } from '@/modules/shared/types/api';
 
 const BOTS_QUERY_KEY = ['bots'] as const;
 /** Bajo BOTS_QUERY_KEY: activar o apagar "Compartir señales" refresca la lista. */
@@ -30,6 +34,18 @@ function useBotsQuery(
 		queryKey: [...BOTS_QUERY_KEY, filters],
 		queryFn: () => listBots(filters),
 		enabled: options.enabled ?? true,
+	});
+}
+
+/**
+ * Una página de agentes (paginación en el servidor; "Todos los agentes").
+ * Para nombres y catálogos sigue usándose `useBotsQuery` (lista completa).
+ */
+function useBotsPageQuery(filters: BotFilters, page: PageParams) {
+	return useQuery({
+		queryKey: [...BOTS_QUERY_KEY, 'page', filters, page],
+		queryFn: () => listBotsPage(filters, page),
+		placeholderData: keepPreviousData,
 	});
 }
 
@@ -58,6 +74,15 @@ function useSignalsQuery(botId: number | null, limit = 50) {
 	});
 }
 
+/** Historial de señales de un agente, página a página. */
+function useSignalsPageQuery(filters: SignalPageFilters, page: PageParams) {
+	return useQuery({
+		queryKey: [...SIGNALS_QUERY_KEY, 'page', filters, page],
+		queryFn: () => listSignalsPage(filters, page),
+		placeholderData: keepPreviousData,
+	});
+}
+
 /** Cola de señales por aprobar de mis agentes. */
 function usePendingSignalsQuery() {
 	return useQuery({
@@ -82,9 +107,11 @@ export {
 	SHARED_BOTS_QUERY_KEY,
 	SIGNALS_QUERY_KEY,
 	useBotQuery,
+	useBotsPageQuery,
 	useBotsQuery,
 	useMyBotsQuery,
 	usePendingSignalsQuery,
 	useSharedBotsQuery,
+	useSignalsPageQuery,
 	useSignalsQuery,
 };

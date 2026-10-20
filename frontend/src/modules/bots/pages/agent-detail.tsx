@@ -55,10 +55,11 @@ import { OrdersTable } from '@/modules/orders/components/orders-table';
 import { PositionsGrid } from '@/modules/orders/components/positions-grid';
 import {
 	useBotFillsQuery,
-	useBotOrdersQuery,
 	useBotPositionsQuery,
+	useOrdersPageQuery,
 } from '@/modules/orders/hooks/use-orders-queries';
 import { ErrorAlert } from '@/modules/shared/components/error-alert';
+import { useServerPagination } from '@/modules/shared/hooks/use-server-pagination';
 import { formatDateTime, formatPercent } from '@/modules/shared/lib/format';
 import { getErrorMessage } from '@/modules/shared/lib/get-error-message';
 import { useStrategiesQuery } from '@/modules/strategies/hooks/use-strategies-queries';
@@ -252,7 +253,9 @@ function PreparingNotice({ bot }: { bot: Bot }) {
 // ======================================================================
 
 function OrdersTab({ bot, botLabel }: { bot: Bot; botLabel: string }) {
-	const ordersQuery = useBotOrdersQuery(bot.id);
+	// Página a página en el servidor: un agente automático acumula órdenes.
+	const { params, tablePagination } = useServerPagination(String(bot.id));
+	const ordersQuery = useOrdersPageQuery({ bot_id: bot.id }, params);
 	const [fillsOrder, setFillsOrder] = useState<Order | null>(null);
 	const [creating, setCreating] = useState(false);
 
@@ -265,11 +268,13 @@ function OrdersTab({ bot, botLabel }: { bot: Bot; botLabel: string }) {
 				</Button>
 			</div>
 			<OrdersTable
-				orders={ordersQuery.data}
+				orders={ordersQuery.data?.items}
 				isLoading={ordersQuery.isLoading}
+				isFetching={ordersQuery.isPlaceholderData}
 				error={ordersQuery.error}
 				empty="Este agente aún no tiene órdenes."
 				onViewFills={setFillsOrder}
+				pagination={tablePagination(ordersQuery.data)}
 			/>
 			<OrderFillsDialog
 				order={fillsOrder}
@@ -455,7 +460,9 @@ export function AgentDetailPage() {
 	const bot = botQuery.data;
 
 	// Un admin puede abrir agentes de otros usuarios desde "Todos los
-	// agentes": la miga lleva de vuelta allí en vez de al inicio.
+	// agentes" (Supervisión): la miga repite la ruta de esa vista
+	// (Administración › Todos los agentes) y lleva de vuelta a la lista en
+	// vez de al inicio. Los agentes propios siguen colgando de Inicio.
 	const isAdmin = useHasRole(ROLES.ADMIN);
 	const myBotsQuery = useMyBotsQuery({ enabled: isAdmin });
 	const isOthersAgent =
@@ -465,9 +472,12 @@ export function AgentDetailPage() {
 		!myBotsQuery.data.some((item) => item.id === bot.id);
 
 	usePageBreadcrumb([
-		isOthersAgent
-			? { label: 'Todos los agentes', href: '/admin/agents' }
-			: { label: 'Inicio', href: '/dashboard' },
+		...(isOthersAgent
+			? [
+					{ label: 'Administración' },
+					{ label: 'Todos los agentes', href: '/admin/agents' },
+				]
+			: [{ label: 'Inicio', href: '/dashboard' }]),
 		{ label: bot ? describeBot(bot) : 'Agente' },
 	]);
 

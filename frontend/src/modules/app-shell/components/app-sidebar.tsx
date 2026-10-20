@@ -111,6 +111,7 @@ const navSections: NavSectionData[] = [
 					{ title: 'Usuarios', url: '/admin/users' },
 					{ title: 'Gestionar estrategias', url: '/admin/strategies' },
 					{ title: 'Telegram', url: '/admin/telegram' },
+					{ title: 'Auditoría', url: '/admin/audit' },
 				],
 			},
 			{

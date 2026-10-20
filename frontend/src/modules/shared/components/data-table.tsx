@@ -1,7 +1,8 @@
-import type { ReactNode } from 'react';
+import { type ReactNode, useEffect } from 'react';
 import { ErrorAlert } from '@/modules/shared/components/error-alert';
 import { TablePagination } from '@/modules/shared/components/table-pagination';
 import { useClientPagination } from '@/modules/shared/hooks/use-client-pagination';
+import { PAGE_LIMIT_OPTIONS, type PageLimit } from '@/modules/shared/types/api';
 import { Skeleton } from '@/modules/ui/components/skeleton';
 import {
 	Table,
@@ -24,6 +25,20 @@ export type DataTableColumn<T> = {
 	skeletonClassName?: string;
 };
 
+/**
+ * Paginación controlada (en el servidor): `rows` ya es la página actual y
+ * `total`/`totalPages` vienen de la respuesta `{items, pagination}`. Se arma
+ * con `useServerPagination`.
+ */
+export type ServerPagination = {
+	page: number;
+	pageSize: PageLimit;
+	total: number;
+	totalPages: number;
+	onPageChange: (page: number) => void;
+	onPageSizeChange: (pageSize: PageLimit) => void;
+};
+
 type DataTableProps<T> = {
 	columns: DataTableColumn<T>[];
 	rows: T[] | undefined;
@@ -38,13 +53,18 @@ type DataTableProps<T> = {
 	onRowClick?: (row: T) => void;
 	/** Pagina en el navegador. `false` para listas cortas o ya limitadas por la API. */
 	paginate?: boolean;
+	/** Si se pasa, la paginación es del servidor y `paginate` se ignora. */
+	pagination?: ServerPagination;
+	/** Hay una página nueva en camino (se ve la anterior atenuada). */
+	isFetching?: boolean;
 	skeletonRows?: number;
 	className?: string;
 };
 
 /**
  * Tabla estándar de listados: skeleton mientras carga, error inline, estado
- * vacío y paginación en el navegador. Las columnas se declaran como datos
+ * vacío y paginación en el navegador o, con `pagination`, en el servidor
+ * (página a página). Las columnas se declaran como datos
  * (`DataTableColumn<T>[]`) en la página; la columna de acciones es una
  * columna más cuyo `cell` renderiza un `DropdownMenu`.
  */
@@ -58,12 +78,26 @@ export function DataTable<T>({
 	empty,
 	onRowClick,
 	paginate = true,
+	pagination: serverPagination,
+	isFetching = false,
 	skeletonRows = 5,
 	className,
 }: DataTableProps<T>) {
 	const allRows = rows ?? [];
-	const pagination = useClientPagination(allRows);
-	const visibleRows = paginate ? pagination.pageItems : allRows;
+	const clientPagination = useClientPagination(allRows);
+	const isServer = serverPagination !== undefined;
+	const visibleRows =
+		paginate && !isServer ? clientPagination.pageItems : allRows;
+
+	// Si la página actual se quedó sin filas (p. ej. cambió el total), vuelve
+	// a la última que existe.
+	const serverPage = serverPagination?.page ?? 1;
+	const serverTotalPages = serverPagination?.totalPages ?? 0;
+	const onServerPageChange = serverPagination?.onPageChange;
+	useEffect(() => {
+		if (!isLoading && serverTotalPages > 0 && serverPage > serverTotalPages)
+			onServerPageChange?.(serverTotalPages);
+	}, [isLoading, serverPage, serverTotalPages, onServerPageChange]);
 
 	if (error) {
 		return <ErrorAlert title={errorTitle} error={error} />;
@@ -72,8 +106,16 @@ export function DataTable<T>({
 	const showHeader = isLoading || allRows.length > 0;
 
 	return (
-		<div className={cn('flex flex-col gap-4', className)}>
-			<Table>
+		<div
+			className={cn('flex flex-col gap-4', className)}
+			aria-busy={isFetching || isLoading}
+		>
+			<Table
+				className={cn(
+					'transition-opacity',
+					isFetching && !isLoading && 'opacity-60',
+				)}
+			>
 				{showHeader && (
 					<TableHeader>
 						<TableRow>
@@ -124,16 +166,31 @@ export function DataTable<T>({
 					)}
 				</TableBody>
 			</Table>
-			{paginate && !isLoading && pagination.total > pagination.limit && (
-				<TablePagination
-					page={pagination.page}
-					limit={pagination.limit}
-					total={pagination.total}
-					totalPages={pagination.totalPages}
-					onPageChange={pagination.setPage}
-					onLimitChange={pagination.setLimit}
-				/>
-			)}
+			{isServer
+				? !isLoading &&
+					// Visible desde el tamaño más chico para poder volver a él.
+					serverPagination.total > PAGE_LIMIT_OPTIONS[0] && (
+						<TablePagination
+							page={serverPagination.page}
+							limit={serverPagination.pageSize}
+							total={serverPagination.total}
+							totalPages={serverPagination.totalPages}
+							onPageChange={serverPagination.onPageChange}
+							onLimitChange={serverPagination.onPageSizeChange}
+						/>
+					)
+				: paginate &&
+					!isLoading &&
+					clientPagination.total > clientPagination.limit && (
+						<TablePagination
+							page={clientPagination.page}
+							limit={clientPagination.limit}
+							total={clientPagination.total}
+							totalPages={clientPagination.totalPages}
+							onPageChange={clientPagination.setPage}
+							onLimitChange={clientPagination.setLimit}
+						/>
+					)}
 		</div>
 	);
 }

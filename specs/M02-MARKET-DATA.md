@@ -6,9 +6,9 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | ✅ Completo (tests de services pendientes) |
-| Avance (alcance original) | 86 % — 6/7 entregables (falta "Tests unitarios de los services") |
-| Madurez (estimada) | 67 % — ver [Avance](#avance) |
+| Estado | ✅ Completo |
+| Avance (alcance original) | 100 % — 7/7 entregables (tests de services y del scheduler desde el 2026-10-20) |
+| Madurez (estimada) | 86 % — ver [Avance](#avance) |
 | Tablas | `exchanges`, `symbols`, `timeframes`, `candles` (R/W) |
 | Depende de | [M1](M01-AUTH.md) (auth y roles) |
 | Lo usan | [M3](M03-FEATURE-ENGINEERING.md), [M5](M05-STRATEGIES.md), [M6](M06-AI-AGENT.md), [M7](M07-BOTS-SIGNALS.md), [M8](M08-ORDERS-EXECUTION.md) y el scheduler (que además corre el ciclo de ejecución de [M7](M07-BOTS-SIGNALS.md)/[M8](M08-ORDERS-EXECUTION.md)) |
@@ -54,7 +54,7 @@ Entregables:
 - Ingestión de velas OHLCV: manual (endpoint) y/o automática (scheduler)
 - Endpoint: `GET /api/candles?symbol_id=…&timeframe_id=…&from_ts=…&to_ts=…`
 - Web UI: lista de símbolos, últimas velas en tabla (desde 2026-10-08 en React, `frontend/src/modules/market`)
-- Tests unitarios de los services
+- ✅ (2026-10-20) Tests unitarios de los services y del scheduler (`tests/market/`, `tests/scheduler/`)
 - ✅ Perpetuos TradFi (metales, materias primas, ETFs, acciones) vía ccxt en Binance/Bybit; clases de activo `commodity` e `index` (2026-10-10)
 - ✅ Explorador de tendencia: `GET /api/explorer`, `POST /api/explorer/refresh` y página `/#/market/explorer` (2026-10-10)
 - ✅ (2026-10-20) `FetchCandleHistoryService`: últimas N velas del exchange por páginas (1000 por llamada), **sin guardarlas** y sin la vela en formación; lo usa el backtesting de [M5](M05-STRATEGIES.md)
@@ -86,32 +86,30 @@ Entregables:
 
 | Métrica | Valor | Evidencia |
 |---|---|---|
-| Alcance original | **86 %** (6/7) | CRUD de exchanges/symbols/timeframes, ingesta manual y automática, `GET /api/candles` y UI completos; **no hay tests** en `tests/` para este módulo |
-| Madurez | **≈ 67 %** | Funcionalidad 100 · Tests 0 · Seguridad 80 · Operación 88 |
+| Alcance original | **100 %** (7/7) | CRUD de exchanges/symbols/timeframes, ingesta manual y automática, `GET /api/candles`, UI y tests unitarios de services y scheduler |
+| Madurez | **≈ 86 %** | Funcionalidad 100 · Tests 75 · Seguridad 80 · Operación 88 |
 
 - **Operación (88):** el scheduler automatiza fetch + features + retención y corre en un solo proceso aunque haya varios workers (lock de MySQL); hay seed (`database/seeds/market_data.py`). Sigue siendo un hilo dentro del proceso web.
-- **Seguridad (80):** escritura solo admin, validación OHLCV; sin rate limit propio.
+- **Tests (75):** 156 tests en `tests/market/` (services, dominio, explorador, mensajes de UI) y 57 en `tests/scheduler/` (`run_cycle`, `_should_fetch`, ciclo de ejecución). Faltan rutas (TestClient), repositorios con BD (`bulk_upsert`, `delete_beyond_retention`) y `SchedulerLock`.
+- **Seguridad (80):** escritura solo admin, validación OHLCV (también rechaza NaN/infinito); sin rate limit propio.
 
 ## Posibles mejoras
 
 | Prioridad | Mejora | Esfuerzo |
 |---|---|---|
-| Alta | Tests de `ingest_candles`, `fetch_candles` (ccxt mockeado) y del scheduler (`_should_fetch`, `_cleanup_candles`) | M |
 | Baja | UI para la carga manual `POST /api/candles/ingest` (hoy solo por API, igual que `/api/candles/fetch`; el usuario descarga desde su agente) | S |
 | Media | Ejecutar el scheduler en un proceso/worker dedicado: el *lock* ya evita que corra varias veces (2026-10-19), pero sigue siendo un hilo dentro del proceso web y comparte su CPU con las peticiones | M |
-| Media | Tests de `SchedulerLock` (con BD) y de `execution_cycle` | S |
+| Media | Tests de `SchedulerLock` y de los repositorios con BD (`bulk_upsert`, `delete_beyond_retention`); tests de rutas con TestClient (`execution_cycle` ya cubierto, 2026-10-20) | S |
 | Media | Detección y relleno de huecos: el ciclo incremental pide solo 3 velas, así que una caída del servidor de más de 3 timeframes deja velas faltantes | M |
 | Media | La retención por defecto (500 velas) limita el histórico disponible para datasets/backtesting de [M5](M05-STRATEGIES.md); separar retención operativa de histórico | M |
 | Media | Proveedor de datos no-ccxt (yfinance / Twelve Data) para forex e índices reales: capa de proveedores en `FetchCandlesService`, horario de mercado en el scheduler y `vol_rel` con volumen 0 | L |
 | Media | Live de perpetuos: cortos (`positions.qty >= 0`), apalancamiento, `contractSize` y redondeo a `lot_size` | L |
-| Baja | Tests de `trend_metrics.compute_trend_metrics` (función pura) | S |
 | Baja | Paginación y filtros en servidor para catálogos grandes | S |
 
 ## Fuera de alcance y pendientes conocidos
 
 - Datos en tiempo real por WebSocket (solo velas por polling).
 - Order book, trades y ticks (solo OHLCV).
-- Tests unitarios de services (entregable del roadmap sin cumplir).
 
 ## Detalle técnico
 
@@ -245,6 +243,9 @@ Desde 2026-10-19, después de `run_cycle()` el scheduler corre `run_execution_cy
 - **Dropdowns de símbolos duplicados** (BTC/USDT ×2 en Binance y Bybit): la entidad `Symbol` incluye `exchange_name` vía JOIN → el front muestra `BTC/USDT (Binance)`.
 - Resueltos con la migración a React (2026-10-08): CSP por prefijo web (`_is_web_route`), clases `.page-header`/`.pagination` de `app.css` y el redirect admin por `role_id` de la cookie ya no aplican (ver [M1](M01-AUTH.md)).
 
+- **Filas del exchange con precio nulo o NaN** (corregido el 2026-10-20): `Decimal(str(None))` y las comparaciones con `Decimal('NaN')` lanzan `InvalidOperation`. Antes, una sola fila así hacía fallar la descarga entera del par (y en el scheduler el par quedaba sin velas nuevas). Ahora la conversión vive en `candle_from_ccxt_row()` (`domain/candle_entity.py`, la usan `FetchCandlesService` y `FetchCandleHistoryService`) y descarta esas filas, e `is_valid_ohlcv()` exige valores finitos.
+- `is_valid_ohlcv()` no comprueba que `open`/`close` estén entre `low` y `high` (solo high ≥ low y no negativos).
+
 ### Patrones clave M2
 - `Decimal(str(model.tick_size))` — para convertir NUMERIC a Decimal sin errores float
 - `bulk_upsert` en candles usa `sqlalchemy.text()` con `INSERT ... ON DUPLICATE KEY UPDATE`
@@ -253,8 +254,22 @@ Desde 2026-10-19, después de `run_cycle()` el scheduler corre `run_execution_cy
 
 ## Tests
 
-- **No hay tests** para este módulo en `tests/` (el roadmap lo listaba como entregable).
-- Primer objetivo recomendado: `ingest_candles_service` (validación OHLCV + límite 5000), `fetch_candles_service` con ccxt mockeado y `scheduler_service._should_fetch`.
+Desde el 2026-10-20. Unitarios sin BD ni red: repositorios `MagicMock`, cliente ccxt falso (por `client_cache` / `client_factory` o `monkeypatch`), `utc_now` fijo. Correr: `uv run python -m pytest tests/market tests/scheduler -q`.
+
+| Archivo | Tests | Qué cubre |
+|---|---:|---|
+| `tests/market/test_market_domain.py` | 43 | `is_perpetual`, `ccxt_id_for` / `supports_auto_fetch` (mayúsculas, TradingView), `Candle.is_valid_ohlcv` (high < low, negativos, NaN, infinito), tipos de exchange, clases de activo, timeframe válido |
+| `tests/market/test_catalog_services.py` | 21 | Crear/editar/listar exchanges, símbolos y timeframes: `*_INVALID_*` (422), duplicados (409), no encontrado (404), commit solo en éxito, actualización parcial |
+| `tests/market/test_candle_services.py` | 29 | Ingesta (Decimal, volumen por defecto, `row_index` en `CANDLES_INVALID_ROW` / `CANDLES_INVALID_OHLCV`, NaN), `ListCandles` (límite 1–1000), `FetchCandles` (conversión, filas inválidas o nulas descartadas, errores ccxt → 422/503/502, `client_cache`) |
+| `tests/market/test_fetch_candle_history_service.py` | 15 | Historia del backtest: `since` = ahora − bars × timeframe, paginado, sin duplicados, sin vela en formación, solo las últimas `bars`, tope de 20 páginas, errores |
+| `tests/market/test_trend_explorer.py` | 28 | `compute_trend_metrics` con series de números conocidos (recta: ADX 100, eficiencia 1, fuerza 100; patrón +2/−1: eficiencia 1/3, fuerza = ADX/50 × 1/3 × 100 ≈ 22,28; zigzag: lateral; ADX < 20 fuerza lateral), helpers; orden del ranking; refresco (límite = días que faltan + 2, `force`, fallos aislados, un `client_cache` por lote) |
+| `tests/market/test_market_error_messages.py` | 20 | Todo código de error de los servicios tiene texto en su `error_messages.py` |
+| `tests/scheduler/test_scheduler_service.py` | 14 | `_should_fetch` (500 / 3 / nada) y `run_cycle`: un fetch por par, features por tripla (velas nuevas o atrasadas), limpieza con la retención, fallos aislados |
+| `tests/scheduler/test_execution_cycle.py` | 43 | Ciclo de ejecución salvo alertas (ver [M9](M09-ALERTS.md)): orden de los pasos, agentes elegibles, vela cerrada a analizar (timeframe mínimo, datos viejos > 2 timeframes, features de esa vela, señal ya existente, ts naive de MySQL), tope diario por dueño, auto ejecuta / approval espera, `IntegrityError` → rollback, caducar, reconciliar, proteger y Telegram en polling |
+
+`execution_mode_rules` (de [M7](M07-BOTS-SIGNALS.md)) está en `tests/bots/test_execution_mode_rules.py` (23 tests).
+
+**Sin cubrir:** rutas REST (TestClient), repositorios contra MySQL (`bulk_upsert`, `delete_beyond_retention`, `get_latest_ts`), `SchedulerLock`, `scheduler_runner` y `refresh_explorer()` (envoltorio con logs).
 
 ## Riesgos
 
@@ -275,3 +290,4 @@ Desde 2026-10-19, después de `run_cycle()` el scheduler corre `run_execution_cy
 - **2026-10-19** — El ciclo de ejecución suma la **reconciliación de órdenes** ([M8](M08-ORDERS-EXECUTION.md)): señales automáticas → caducar → reconciliar → proteger posiciones → Telegram.
 - **2026-10-19** — Velas centradas en el agente: Símbolos y Velas salen del menú del usuario (las velas se ven en la pestaña **Mercado** del agente, con "Actualizar datos"); se retira la página admin "Descargar velas" (el endpoint queda solo por API); la tabla se extrae a `components/candles-table.tsx`. Datos de mercado (admin) queda en Exchanges · Símbolos · Timeframes · Conjuntos de indicadores.
 - **2026-10-20** — `FetchCandleHistoryService` (historia paginada del exchange sin guardar) para el backtesting.
+- **2026-10-20** — Tests unitarios de M2 y del scheduler (`tests/market/`, `tests/scheduler/`: 213 tests). Destaparon un bug, corregido: una fila del exchange con precio nulo o NaN lanzaba `InvalidOperation` y tumbaba la descarga del par; ahora se descarta (`candle_from_ccxt_row`, `is_valid_ohlcv` con valores finitos).

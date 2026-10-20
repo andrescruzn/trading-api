@@ -4,7 +4,8 @@
 # app/modules/bots/rest/signals/routes.py
 #
 # ENDPOINTS:
-# - GET  /signals              → listar signals de un bot (requiere bot_id)
+# - GET  /signals              → listar signals de un bot (requiere bot_id).
+#                                 Con `page` responde paginado {items, pagination}
 # - POST /signals/generate     → generar señal invocando el Agente (M6)
 # ======================================================================
 
@@ -17,10 +18,13 @@ from typing import Any
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
+from app.common.contracts import PageRequest
+from app.common.contracts.pagination import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 from app.common.http import (
     build_created_response,
     build_error_response,
     build_list_response,
+    build_paginated_response,
     send,
 )
 from app.common.security.jwt import owner_scope, token_required_actual
@@ -129,10 +133,34 @@ def list_signals(
     from_ts: datetime | None = Query(default=None, description="Desde (ISO 8601)."),
     to_ts: datetime | None = Query(default=None, description="Hasta (ISO 8601)."),
     limit: int = Query(default=50, ge=1, le=500),
+    page: int | None = Query(default=None, ge=1, description="Activa la respuesta paginada."),
+    page_size: int = Query(default=DEFAULT_PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE),
     identity: dict = Depends(token_required_actual),
     factory: BotServiceFactory = Depends(get_factory),
 ):
-    """Lista signals de un bot con filtros opcionales."""
+    """
+    Lista signals de un bot con filtros opcionales (la más reciente primero).
+    Sin `page`: `data` es la lista (hasta `limit`). Con `page`: `data` es
+    `{items, pagination}` y `limit` se ignora.
+    """
+    if page is not None:
+        page_result = factory.list_signals().list_page(
+            bot_id=bot_id,
+            page=PageRequest.of(page, page_size),
+            action=action,
+            from_ts=from_ts,
+            to_ts=to_ts,
+            owner_id=owner_scope(identity),
+        )
+        if not page_result.success:
+            return build_error_response(page_result, SIGNAL_ERROR_MESSAGES)
+        return build_paginated_response(
+            items=[_signal_to_dict(s) for s in page_result.data.items],
+            total=page_result.data.total,
+            page=page_result.data.page,
+            page_size=page_result.data.page_size,
+        )
+
     result = factory.list_signals().list(
         bot_id=bot_id,
         action=action,

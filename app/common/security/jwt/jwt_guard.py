@@ -9,7 +9,8 @@
 #   2) type=access
 #   3) sub={"user_id": ...}
 #   4) jti presente
-#   5) DB: user.token_current_jti == jti
+#   5) DB: user.status == "active" (si no, 401 AUTH_USER_NOT_ALLOWED) y
+#      user.token_current_jti == jti
 #   6) Role del usuario existe y está activo (roles.is_active=1)
 #
 # FUENTES DEL TOKEN (en orden de prioridad):
@@ -132,9 +133,11 @@ def token_required_actual(
         raise AuthException(code="AUTH_USER_NOT_FOUND", http_status=401)
 
     if not user.is_active():
+        # 401 (no 403): la sesión de una cuenta bloqueada o desactivada ya no
+        # vale, y así el frontend la cierra y muestra el motivo en /login.
         raise AuthException(
             code="AUTH_USER_NOT_ALLOWED",
-            http_status=403,
+            http_status=401,
             meta={"status": user.status},
         )
 

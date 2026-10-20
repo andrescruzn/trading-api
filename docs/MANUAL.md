@@ -408,6 +408,22 @@ reúne lo que el administrador define para todos: los usuarios (y su rol), las e
 canal de Telegram. En "Usuarios" se cambia el rol de cada persona (Usuario, Administrador o
 Inversor); nadie puede cambiar el suyo, para que la app nunca se quede sin administrador.
 
+También desde "Usuarios" se bloquea o desactiva una cuenta. Bloquear es una suspensión temporal
+(por ejemplo, si ves actividad sospechosa); desactivar es para una cuenta que ya no se usa. En los
+dos casos la persona sale de la app al instante y no puede volver a entrar, y sus agentes activos
+quedan en pausa: no abren operaciones nuevas, pero sus posiciones abiertas siguen protegidas con
+su stop loss y take profit. Si reactivas la cuenta, los agentes siguen en pausa hasta que la
+persona los reanude. Nadie puede bloquearse a sí mismo.
+
+"Auditoría" (Configuración) muestra cada petición que llegó a la app: quién la hizo, cuándo, qué
+ruta, si fue una consulta o un cambio y si falló. Sirve para responder preguntas como "¿quién
+cambió este rol?" o "¿quién intentó entrar con este correo?". Se filtra por persona, tipo de
+evento, fechas, ruta o solo errores; nunca muestra contraseñas, códigos ni claves.
+
+Las listas grandes de Supervisión (todas las órdenes, todos los agentes, los eventos de alertas)
+y las pestañas Señales y Órdenes de un agente se cargan por páginas: abren rápido aunque haya
+miles de registros.
+
 Todo lo que pertenece a un agente se ve dentro del agente: sus señales, sus órdenes, sus
 posiciones y los precios e indicadores de su mercado. No hay páginas sueltas de órdenes, velas o
 indicadores porque esos datos solo existen para los agentes que creaste y están activos.

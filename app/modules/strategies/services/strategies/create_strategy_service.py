@@ -31,15 +31,20 @@ class CreateStrategyService:
         parameters: dict[str, Any],
         description: str | None = None,
     ) -> ServiceResult[Strategy]:
-        # Verificar duplicado nombre+versión
+        name = name.strip()
+        version = version.strip()
+
+        # Verificar duplicado nombre+versión con los mismos valores que se
+        # guardan: si no, " X" pasaría el control y chocaría con el UNIQUE
+        # (name, version) de la BD (IntegrityError → 500).
         existing = self._repo.get_by_name_version(name, version)
         if existing is not None:
             return ServiceResult.fail(code="STRATEGY_DUPLICATE_NAME_VERSION", http_status=409)
 
         strategy = Strategy(
             id=0,
-            name=name.strip(),
-            version=version.strip(),
+            name=name,
+            version=version,
             description=description.strip() if description else None,
             parameters=parameters,
         )

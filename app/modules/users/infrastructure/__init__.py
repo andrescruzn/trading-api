@@ -16,6 +16,9 @@ from .role_model import RoleModel
 
 from .user_repository_impl import SqlAlchemyUserRepository
 
+# SqlAlchemyAuditEventRepository no se exporta aquí: importa app.common.audit,
+# que vuelve a jwt_guard → este paquete (ciclo). Importarlo por su ruta.
+
 __all__ = [
     "UserModel",
     "RoleModel",

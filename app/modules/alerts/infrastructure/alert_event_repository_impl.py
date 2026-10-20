@@ -9,7 +9,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from sqlalchemy import func
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Query, Session
 
 from app.modules.alerts.domain.alert_event_entity import AlertEvent
 from app.modules.alerts.infrastructure.alert_event_model import AlertEventModel
@@ -60,14 +60,36 @@ class SqlAlchemyAlertEventRepository(SqlAlchemyRepository):
             q = q.filter(AlertEventModel.ts > after)
         return int(q.scalar() or 0)
 
-    def list_all(self, limit: int = 100) -> list[AlertEvent]:
-        rows = (
-            self._session.query(AlertEventModel)
-            .order_by(AlertEventModel.ts.desc())
-            .limit(limit)
-            .all()
+    @staticmethod
+    def _apply_filters(
+        query: Query, user_id: int | None, from_ts: datetime | None
+    ) -> Query:
+        if user_id is not None:
+            query = query.filter(AlertEventModel.user_id == user_id)
+        if from_ts is not None:
+            query = query.filter(AlertEventModel.ts >= from_ts)
+        return query
+
+    def search(
+        self,
+        user_id: int | None = None,
+        from_ts: datetime | None = None,
+        offset: int = 0,
+        limit: int = 50,
+    ) -> list[AlertEvent]:
+        query = self._apply_filters(
+            self._session.query(AlertEventModel), user_id, from_ts
+        ).order_by(AlertEventModel.ts.desc(), AlertEventModel.id.desc())
+        if offset > 0:
+            query = query.offset(offset)
+        return [_to_entity(r) for r in query.limit(limit).all()]
+
+    def count(self, user_id: int | None = None, from_ts: datetime | None = None) -> int:
+        # COUNT sobre idx_alert_events_user_ts / idx_alert_events_ts
+        query = self._apply_filters(
+            self._session.query(func.count(AlertEventModel.id)), user_id, from_ts
         )
-        return [_to_entity(r) for r in rows]
+        return int(query.scalar() or 0)
 
     def get_last_by_rule(self, rule_id: int) -> AlertEvent | None:
         row = (

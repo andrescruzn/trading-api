@@ -13,7 +13,7 @@ from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import func
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Query, Session
 
 from app.modules.bots.domain.signal_entity import Signal
 from app.modules.bots.domain.signal_repository import SignalRepository
@@ -96,6 +96,23 @@ class SqlAlchemySignalRepository(SqlAlchemyRepository, SignalRepository):
         model: SignalModel | None = self._session.get(SignalModel, signal_id)
         return None if model is None else self._to_domain(model)
 
+    @staticmethod
+    def _bot_signals_query(
+        query: Query,
+        bot_id: int,
+        action: str | None,
+        from_ts: datetime | None,
+        to_ts: datetime | None,
+    ) -> Query:
+        query = query.filter(SignalModel.bot_id == bot_id)
+        if action is not None:
+            query = query.filter(SignalModel.action == action)
+        if from_ts is not None:
+            query = query.filter(SignalModel.ts >= from_ts)
+        if to_ts is not None:
+            query = query.filter(SignalModel.ts <= to_ts)
+        return query
+
     def list_by_bot(
         self,
         bot_id: int,
@@ -103,24 +120,33 @@ class SqlAlchemySignalRepository(SqlAlchemyRepository, SignalRepository):
         from_ts: datetime | None = None,
         to_ts: datetime | None = None,
         limit: int = 50,
+        offset: int = 0,
     ) -> list[Signal]:
-        query = (
-            self._session.query(SignalModel)
-            .filter(SignalModel.bot_id == bot_id)
+        query = self._bot_signals_query(
+            self._session.query(SignalModel), bot_id, action, from_ts, to_ts
         )
-
-        if action is not None:
-            query = query.filter(SignalModel.action == action)
-        if from_ts is not None:
-            query = query.filter(SignalModel.ts >= from_ts)
-        if to_ts is not None:
-            query = query.filter(SignalModel.ts <= to_ts)
 
         # Límite máximo 500 para evitar queries costosas
         safe_limit = min(limit, 500)
 
-        models = query.order_by(SignalModel.ts.desc()).limit(safe_limit).all()
+        # id desc desempata señales del mismo instante: orden estable entre páginas
+        query = query.order_by(SignalModel.ts.desc(), SignalModel.id.desc())
+        if offset > 0:
+            query = query.offset(offset)
+        models = query.limit(safe_limit).all()
         return [self._to_domain(m) for m in models]
+
+    def count_by_bot(
+        self,
+        bot_id: int,
+        action: str | None = None,
+        from_ts: datetime | None = None,
+        to_ts: datetime | None = None,
+    ) -> int:
+        query = self._bot_signals_query(
+            self._session.query(func.count(SignalModel.id)), bot_id, action, from_ts, to_ts
+        )
+        return int(query.scalar() or 0)
 
     def exists_for_candle(self, bot_id: int, candle_ts: datetime) -> bool:
         return (

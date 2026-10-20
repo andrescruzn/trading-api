@@ -3,14 +3,19 @@ import { useState } from 'react';
 import { usePageBreadcrumb } from '@/modules/app-shell/hooks/use-page-breadcrumb';
 import { OwnerCell } from '@/modules/auth/components/owner-cell';
 import { useOwners } from '@/modules/auth/hooks/use-users-queries';
-import type { Bot } from '@/modules/bots/api/bots.api';
+import type {
+	Bot,
+	BotFilters,
+	BotMode,
+	BotStatus,
+} from '@/modules/bots/api/bots.api';
 import { BotActionsMenu } from '@/modules/bots/components/bot-actions-menu';
 import {
 	BotModeBadge,
 	BotStatusBadge,
 } from '@/modules/bots/components/bot-badges';
 import { useBotCatalogs } from '@/modules/bots/hooks/use-bot-catalogs';
-import { useBotsQuery } from '@/modules/bots/hooks/use-bots-queries';
+import { useBotsPageQuery } from '@/modules/bots/hooks/use-bots-queries';
 import {
 	BOT_MODE_OPTIONS,
 	BOT_STATUS_OPTIONS,
@@ -23,9 +28,11 @@ import {
 } from '@/modules/shared/components/data-table';
 import { OptionSelect } from '@/modules/shared/components/option-select';
 import { PageListHeader } from '@/modules/shared/components/page-list-header';
+import { useServerPagination } from '@/modules/shared/hooks/use-server-pagination';
 import {
 	formatDate,
 	formatDateTime,
+	formatNumber,
 	formatPercent,
 } from '@/modules/shared/lib/format';
 
@@ -37,27 +44,31 @@ export function AdminAgentsPage() {
 		{ label: 'Todos los agentes' },
 	]);
 	const navigate = useNavigate();
-	// Sin filtros el backend devuelve todos los agentes (solo admin).
-	const botsQuery = useBotsQuery();
 	const { accountsQuery, catalogs } = useBotCatalogs();
 	const owners = useOwners(ALL);
 	const [status, setStatus] = useState(ALL);
 	const [mode, setMode] = useState(ALL);
 	const [owner, setOwner] = useState(ALL);
 
+	// Filtros y paginación los resuelve el backend: sin filtros, todos los
+	// agentes del sistema (solo admin).
+	const filters: BotFilters = {
+		user_id: owner === ALL ? undefined : Number(owner),
+		status: status === ALL ? undefined : (status as BotStatus),
+		mode: mode === ALL ? undefined : (mode as BotMode),
+	};
+	const isFiltered = owner !== ALL || status !== ALL || mode !== ALL;
+	const { params, tablePagination } = useServerPagination(
+		JSON.stringify(filters),
+	);
+	const botsQuery = useBotsPageQuery(filters, params);
+	const total = botsQuery.data?.pagination.total;
+
 	// El dueño de un agente es el de su cuenta (el admin recibe todas).
 	const accountOwner = new Map<number, number>();
 	for (const account of accountsQuery.data ?? [])
 		accountOwner.set(account.id, account.user_id);
 	const ownerOf = (bot: Bot) => accountOwner.get(bot.account_id);
-
-	const allBots = botsQuery.data ?? [];
-	const filteredBots = allBots.filter(
-		(bot) =>
-			(status === ALL || bot.status === status) &&
-			(mode === ALL || bot.mode === mode) &&
-			(owner === ALL || ownerOf(bot) === Number(owner)),
-	);
 
 	function openAgent(bot: Bot) {
 		navigate({ to: '/agents/$agentId', params: { agentId: String(bot.id) } });
@@ -142,9 +153,11 @@ export function AdminAgentsPage() {
 			<PageListHeader
 				title="Todos los agentes"
 				description={
-					botsQuery.data
-						? `Todos los agentes del sistema. ${filteredBots.length} de ${allBots.length} agentes.`
-						: 'Todos los agentes del sistema.'
+					total === undefined
+						? 'Todos los agentes del sistema.'
+						: isFiltered
+							? `Todos los agentes del sistema. ${formatNumber(total, 0)} con esos filtros.`
+							: `Todos los agentes del sistema. ${formatNumber(total, 0)} en total.`
 				}
 			/>
 			<div className="grid gap-3 sm:grid-cols-3 lg:max-w-3xl">
@@ -178,13 +191,15 @@ export function AdminAgentsPage() {
 			</div>
 			<DataTable
 				columns={columns}
-				rows={botsQuery.data ? filteredBots : undefined}
+				rows={botsQuery.data?.items}
 				getRowId={(row) => row.id}
 				isLoading={botsQuery.isLoading}
+				isFetching={botsQuery.isPlaceholderData}
+				pagination={tablePagination(botsQuery.data)}
 				error={botsQuery.error}
 				errorTitle="No pudimos cargar los agentes"
 				empty={
-					allBots.length > 0
+					isFiltered
 						? 'No hay agentes con esos filtros.'
 						: 'Aún no hay agentes en el sistema.'
 				}

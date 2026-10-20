@@ -28,7 +28,20 @@ class AlertEventRepository(TransactionalRepository, Protocol):
         """Eventos del usuario con `ts` posterior a `after` (todos si es None)."""
         ...
 
-    def list_all(self, limit: int = 100) -> list[AlertEvent]: ...
+    def search(
+        self,
+        user_id: int | None = None,
+        from_ts: datetime | None = None,
+        offset: int = 0,
+        limit: int = 50,
+    ) -> list[AlertEvent]:
+        """Eventos del usuario (todos si es None) desde `from_ts`, el más reciente
+        primero (ts desc, id desc)."""
+        ...
+
+    def count(self, user_id: int | None = None, from_ts: datetime | None = None) -> int:
+        """Total de eventos con los mismos filtros que `search` (paginación)."""
+        ...
 
     def get_last_by_rule(self, rule_id: int) -> AlertEvent | None:
         """Último evento de la regla (antispam de las reglas periódicas)."""

@@ -40,6 +40,7 @@ from app.modules.users.services.users import (
     ListUsersService,
     UpdateProfileService,
     UpdateUserRoleService,
+    UpdateUserStatusService,
 )
 
 
@@ -182,6 +183,19 @@ class AuthServiceFactory:
     def update_user_role(self) -> UpdateUserRoleService:
         """Cambio de rol por un admin."""
         return UpdateUserRoleService(repo=self._repo, role_ids=self._role_ids())
+
+    def update_user_status(self) -> UpdateUserStatusService:
+        """Activar, bloquear o desactivar una cuenta (admin)."""
+        # Import diferido: accounts y bots importan piezas de users (guards)
+        from app.modules.accounts.infrastructure import SqlAlchemyAccountRepository
+        from app.modules.bots.infrastructure import SqlAlchemyBotRepository
+
+        # Misma sesión: el estado y la pausa de sus agentes van en un solo commit
+        return UpdateUserStatusService(
+            repo=self._repo,
+            bot_repo=SqlAlchemyBotRepository(self._session),
+            account_repo=SqlAlchemyAccountRepository(self._session),
+        )
 
     def invite_user(self) -> InviteUserService:
         """Alta de un usuario por un admin (registro solo por invitación)."""

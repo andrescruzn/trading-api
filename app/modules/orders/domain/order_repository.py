@@ -11,10 +11,25 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from datetime import datetime
 
 from app.modules.orders.domain.order_entity import Order
 from app.common.contracts import TransactionalRepository
+
+
+@dataclass(frozen=True)
+class OrderCriteria:
+    """
+    Filtros de los listados de órdenes (mismos en lista simple y paginada).
+
+    `bot_ids`: None = sin filtro (todas, solo admin); [] = ninguna orden
+    (p. ej. un dueño sin agentes): el repositorio no consulta.
+    """
+    bot_ids: list[int] | None = None
+    side: str | None = None
+    status: str | None = None
+    type: str | None = None
 
 
 class OrderRepository(TransactionalRepository, ABC):
@@ -25,8 +40,13 @@ class OrderRepository(TransactionalRepository, ABC):
         ...
 
     @abstractmethod
-    def list_by_bot(self, bot_id: int, limit: int = 100) -> list[Order]:
-        """Lista las órdenes más recientes de un bot específico."""
+    def search(self, criteria: OrderCriteria, offset: int = 0, limit: int = 100) -> list[Order]:
+        """Órdenes que cumplen `criteria`, la más reciente primero (ts desc, id desc)."""
+        ...
+
+    @abstractmethod
+    def count(self, criteria: OrderCriteria) -> int:
+        """Total de órdenes que cumplen `criteria` (paginación)."""
         ...
 
     @abstractmethod
@@ -37,11 +57,6 @@ class OrderRepository(TransactionalRepository, ABC):
     @abstractmethod
     def list_open_live(self, since: datetime, limit: int = 50) -> list[Order]:
         """Órdenes live sent/partially_filled desde `since` (reconciliación)."""
-        ...
-
-    @abstractmethod
-    def list_all(self, limit: int = 200) -> list[Order]:
-        """Lista las órdenes más recientes del sistema (uso admin)."""
         ...
 
     @abstractmethod

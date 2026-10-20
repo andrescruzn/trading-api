@@ -2,9 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { DEFAULT_PAGE_LIMIT, type PageLimit } from '@/modules/shared/types/api';
 
 /**
- * Paginación en el navegador para listas que el backend devuelve completas
- * (hoy ningún endpoint pagina en servidor). Vuelve a la página 1 cuando
- * cambia el total (p. ej. al aplicar un filtro).
+ * Paginación en el navegador para listas que el backend devuelve completas.
+ * Para listados que crecen sin tope (órdenes, señales, eventos, agentes del
+ * sistema) usa `useServerPagination` + `DataTable` con `pagination`. Vuelve a
+ * la página 1 cuando cambia el total (p. ej. al aplicar un filtro).
  */
 function useClientPagination<T>(items: T[], initialLimit = DEFAULT_PAGE_LIMIT) {
 	const [page, setPage] = useState(1);

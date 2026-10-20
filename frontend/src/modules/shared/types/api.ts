@@ -20,9 +20,15 @@ type Paginated<T> = {
 	};
 };
 
+/** Parámetros opt-in de los listados paginados en el servidor (`?page=&page_size=`). */
+type PageParams = {
+	page: number;
+	page_size: PageLimit;
+};
+
 const PAGE_LIMIT_OPTIONS = [10, 20, 50, 100] as const;
 type PageLimit = (typeof PAGE_LIMIT_OPTIONS)[number];
 const DEFAULT_PAGE_LIMIT: PageLimit = 20;
 
-export type { ApiEnvelope, PageLimit, Paginated };
+export type { ApiEnvelope, PageLimit, PageParams, Paginated };
 export { DEFAULT_PAGE_LIMIT, PAGE_LIMIT_OPTIONS };

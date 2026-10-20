@@ -122,7 +122,7 @@ export function AdminExchangesPage() {
 
 - **Breadcrumb**: `usePageBreadcrumb([...])` en cada página.
 - **Encabezado**: `PageListHeader` (título, descripción, acciones que colapsan a menú "…" en móvil).
-- **Tablas**: `DataTable` (skeleton, error inline, vacío, paginación en el navegador — hoy ningún endpoint pagina en servidor). Columna de acciones = una columna más; con varias acciones usa `DropdownMenu` con `IconDots`. Si la fila es clicable (`onRowClick`), las celdas con botones hacen `event.stopPropagation()`. Muestra nombres, no IDs crudos (cruza con las queries de catálogos).
+- **Tablas**: `DataTable` (skeleton, error inline, vacío, paginación en el navegador por defecto; con la prop `pagination` + `useServerPagination(resetKey)` pagina en servidor: endpoints con `page`/`page_size` opt-in que devuelven `Paginated<T>` `{items, pagination}` — ver `orders/pages/admin-orders.tsx`). Columna de acciones = una columna más; con varias acciones usa `DropdownMenu` con `IconDots`. Si la fila es clicable (`onRowClick`), las celdas con botones hacen `event.stopPropagation()`. Muestra nombres, no IDs crudos (cruza con las queries de catálogos).
 - **Filtros**: `OptionSelect` con opción `'all'` y `aria-label`; el filtro va en la query key.
 - **KPIs**: `StatCard`. Errores de carga fuera de tablas: `ErrorAlert`.
 - **Formato**: `formatNumber`, `formatPrice`, `formatPercent` (ratio 0–1), `formatPercentValue` (ya en %), `formatDateTime`, `formatDate` de `shared/lib/format.ts` (locale `es-CO`). No `toFixed` sueltos en la UI.

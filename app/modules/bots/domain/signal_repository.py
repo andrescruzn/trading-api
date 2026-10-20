@@ -31,9 +31,11 @@ class SignalRepository(TransactionalRepository, ABC):
         from_ts: datetime | None = None,
         to_ts: datetime | None = None,
         limit: int = 50,
+        offset: int = 0,
     ) -> list[Signal]:
         """
-        Lista signals de un bot con filtros opcionales.
+        Lista signals de un bot con filtros opcionales, la más reciente primero
+        (ts desc, id desc).
 
         Args:
             bot_id  : ID del bot propietario de las signals
@@ -41,7 +43,19 @@ class SignalRepository(TransactionalRepository, ABC):
             from_ts : timestamp de inicio del rango
             to_ts   : timestamp de fin del rango
             limit   : máximo de resultados (default 50, max 500)
+            offset  : filas a saltar (paginación)
         """
+        ...
+
+    @abstractmethod
+    def count_by_bot(
+        self,
+        bot_id: int,
+        action: str | None = None,
+        from_ts: datetime | None = None,
+        to_ts: datetime | None = None,
+    ) -> int:
+        """Total de signals del bot con los mismos filtros que `list_by_bot` (paginación)."""
         ...
 
     @abstractmethod

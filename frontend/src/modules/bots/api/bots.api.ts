@@ -1,4 +1,5 @@
 import { api } from '@/modules/shared/lib/api-client';
+import type { PageParams, Paginated } from '@/modules/shared/types/api';
 
 // ======================================================================
 // Tipos (reflejan el JSON del backend tal cual, en snake_case)
@@ -103,6 +104,10 @@ type BotFilters = {
 	account_id?: number;
 	/** Solo los bots de mis cuentas (para admin, que sin filtro ve todos). */
 	mine?: boolean;
+	status?: BotStatus;
+	mode?: BotMode;
+	/** Solo admin: bots de las cuentas de ese usuario (filtro Dueño). */
+	user_id?: number;
 };
 
 type SignalAction = 'buy' | 'sell' | 'hold';
@@ -208,6 +213,9 @@ type SignalFilters = {
 	limit?: number;
 };
 
+/** Filtros de `listSignalsPage` (`limit` no aplica: manda `page_size`). */
+type SignalPageFilters = Omit<SignalFilters, 'limit'>;
+
 // ======================================================================
 // Bots
 // ======================================================================
@@ -218,6 +226,11 @@ type SignalFilters = {
  */
 function listBots(filters: BotFilters = {}) {
 	return api.get<Bot[]>('/bots', filters);
+}
+
+/** Igual que `listBots`, página a página (el más reciente primero). */
+function listBotsPage(filters: BotFilters, page: PageParams) {
+	return api.get<Paginated<Bot>>('/bots', { ...filters, ...page });
 }
 
 function getBot(id: number) {
@@ -276,6 +289,11 @@ function listSignals(filters: SignalFilters) {
 	return api.get<Signal[]>('/signals', filters);
 }
 
+/** Señales de un agente página a página (la más reciente primero). */
+function listSignalsPage(filters: SignalPageFilters, page: PageParams) {
+	return api.get<Paginated<Signal>>('/signals', { ...filters, ...page });
+}
+
 /** Analiza el mercado con la IA (puede tardar). El bot debe estar activo. */
 function generateSignal(botId: number) {
 	return api.post<Signal>('/signals/generate', { bot_id: botId });
@@ -315,6 +333,7 @@ export type {
 	SignalDecisionResult,
 	SignalDecisionStatus,
 	SignalFilters,
+	SignalPageFilters,
 	SignalReasons,
 	SignalRejectionReason,
 	SignalRuleDetail,
@@ -325,9 +344,11 @@ export {
 	generateSignal,
 	getBot,
 	listBots,
+	listBotsPage,
 	listPendingSignals,
 	listSharedBots,
 	listSignals,
+	listSignalsPage,
 	rejectSignal,
 	subscribeToBot,
 	syncBotMarket,

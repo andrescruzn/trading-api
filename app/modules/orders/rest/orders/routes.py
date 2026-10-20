@@ -5,7 +5,8 @@
 #
 # ENDPOINTS:
 # - POST /orders         → crear y ejecutar una orden
-# - GET  /orders         → listar órdenes (admin: todas; user: por bot_id)
+# - GET  /orders         → listar órdenes (admin: todas; user: por bot_id).
+#                           Con `page` responde paginado {items, pagination}
 # - GET  /orders/{id}    → detalle de una orden
 # - POST /orders/{id}/cancel → cancelar una orden live abierta
 #
@@ -20,10 +21,13 @@ from typing import Any
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
+from app.common.contracts import PageRequest
+from app.common.contracts.pagination import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 from app.common.http import (
     build_created_response,
     build_error_response,
     build_list_response,
+    build_paginated_response,
     build_success_response,
 )
 from app.common.security.jwt import owner_scope, token_required_actual
@@ -131,21 +135,45 @@ def create_order(
 @router.get("", status_code=200)
 def list_orders(
     bot_id: int | None = Query(default=None, gt=0),
-    limit:  int        = Query(default=100, ge=1, le=500),
+    limit: int = Query(default=100, ge=1, le=500),
+    side: str | None = Query(default=None, description="buy | sell"),
+    status: str | None = Query(default=None, description="Estado de la orden."),
+    order_type: str | None = Query(default=None, alias="type", description="Tipo de orden."),
+    user_id: int | None = Query(default=None, gt=0, description="Solo admin: dueño de los agentes."),
+    page: int | None = Query(default=None, ge=1, description="Activa la respuesta paginada."),
+    page_size: int = Query(default=DEFAULT_PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE),
     identity: dict = Depends(token_required_actual),
     factory: OrderServiceFactory = Depends(get_factory),
 ):
     """
-    Lista órdenes.
-    - Admin: puede listar todas las órdenes o filtrar por bot_id.
+    Lista órdenes (la más reciente primero).
+    - Admin: puede listar todas las órdenes o filtrar por bot_id y por dueño (`user_id`).
     - Usuario: debe proveer bot_id para ver solo las órdenes de su bot.
+    - Sin `page`: `data` es la lista (hasta `limit`). Con `page`: `data` es
+      `{items, pagination}` y `limit` se ignora.
     """
-    result = factory.list_orders().list(
-        bot_id=bot_id,
-        limit=limit,
-        owner_id=owner_scope(identity),
-    )
+    filters = {
+        "bot_id":     bot_id,
+        "owner_id":   owner_scope(identity),
+        "side":       side,
+        "status":     status,
+        "order_type": order_type,
+        "user_id":    user_id,
+    }
+    service = factory.list_orders()
 
+    if page is not None:
+        result = service.list_page(page=PageRequest.of(page, page_size), **filters)
+        if not result.success:
+            return build_error_response(result, ORDER_ERROR_MESSAGES)
+        return build_paginated_response(
+            items=[_order_to_dict(o) for o in result.data.items],
+            total=result.data.total,
+            page=result.data.page,
+            page_size=result.data.page_size,
+        )
+
+    result = service.list(limit=limit, **filters)
     if not result.success:
         return build_error_response(result, ORDER_ERROR_MESSAGES)
 

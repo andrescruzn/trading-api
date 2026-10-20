@@ -11,9 +11,23 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 
 from app.modules.bots.domain.bot_entity import Bot
 from app.common.contracts import TransactionalRepository
+
+
+@dataclass(frozen=True)
+class BotCriteria:
+    """
+    Filtros de los listados de bots (mismos en lista simple y paginada).
+
+    `account_ids`: None = sin filtro (todas las cuentas, solo admin);
+    [] = ningún bot (usuario sin cuentas): el repositorio no consulta.
+    """
+    account_ids: list[int] | None = None
+    status: str | None = None
+    mode: str | None = None
 
 
 class BotRepository(TransactionalRepository, ABC):
@@ -36,6 +50,19 @@ class BotRepository(TransactionalRepository, ABC):
     @abstractmethod
     def list_all(self) -> list[Bot]:
         """Lista todos los bots del sistema (uso admin)."""
+        ...
+
+    @abstractmethod
+    def search(
+        self, criteria: BotCriteria, offset: int = 0, limit: int | None = None
+    ) -> list[Bot]:
+        """Bots que cumplen `criteria`, el más reciente primero (created_at desc, id desc).
+        `limit=None` = sin tope (lista simple)."""
+        ...
+
+    @abstractmethod
+    def count(self, criteria: BotCriteria) -> int:
+        """Total de bots que cumplen `criteria` (paginación)."""
         ...
 
     @abstractmethod

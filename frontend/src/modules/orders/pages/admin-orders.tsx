@@ -5,10 +5,16 @@ import { useOwners } from '@/modules/auth/hooks/use-users-queries';
 import { useBotCatalogs } from '@/modules/bots/hooks/use-bot-catalogs';
 import { useBotsQuery } from '@/modules/bots/hooks/use-bots-queries';
 import { describeBot, describeBotMarket } from '@/modules/bots/lib/bots-labels';
-import type { Order } from '@/modules/orders/api/orders.api';
+import type {
+	Order,
+	OrderFilters,
+	OrderSide,
+	OrderStatus,
+	OrderType,
+} from '@/modules/orders/api/orders.api';
 import { OrderFillsDialog } from '@/modules/orders/components/order-fills-dialog';
 import { OrdersTable } from '@/modules/orders/components/orders-table';
-import { useOrdersQuery } from '@/modules/orders/hooks/use-orders-queries';
+import { useOrdersPageQuery } from '@/modules/orders/hooks/use-orders-queries';
 import {
 	ORDER_SIDE_OPTIONS,
 	ORDER_STATUS_OPTIONS,
@@ -16,19 +22,20 @@ import {
 } from '@/modules/orders/lib/orders-labels';
 import { OptionSelect } from '@/modules/shared/components/option-select';
 import { PageListHeader } from '@/modules/shared/components/page-list-header';
+import { useServerPagination } from '@/modules/shared/hooks/use-server-pagination';
+import { formatNumber } from '@/modules/shared/lib/format';
 
 const ALL = 'all';
 
-// Máximo que acepta `GET /orders`; el backend devuelve las más recientes.
-const ORDERS_LIMIT = 500;
+function filterValue<T extends string>(value: string) {
+	return value === ALL ? undefined : (value as T);
+}
 
 export function AdminOrdersPage() {
 	usePageBreadcrumb([
 		{ label: 'Administración' },
 		{ label: 'Todas las órdenes' },
 	]);
-	// Sin `bot_id` el backend devuelve todas las órdenes (solo admin).
-	const ordersQuery = useOrdersQuery({ limit: ORDERS_LIMIT });
 	const botsQuery = useBotsQuery();
 	const { accountsQuery, catalogs } = useBotCatalogs();
 	const owners = useOwners(ALL);
@@ -37,6 +44,21 @@ export function AdminOrdersPage() {
 	const [status, setStatus] = useState(ALL);
 	const [type, setType] = useState(ALL);
 	const [fillsOrder, setFillsOrder] = useState<Order | null>(null);
+
+	// Filtros y paginación los resuelve el backend (solo admin sin `bot_id`).
+	const filters: OrderFilters = {
+		user_id: owner === ALL ? undefined : Number(owner),
+		side: filterValue<OrderSide>(side),
+		status: filterValue<OrderStatus>(status),
+		type: filterValue<OrderType>(type),
+	};
+	const isFiltered =
+		owner !== ALL || side !== ALL || status !== ALL || type !== ALL;
+	const { params, tablePagination } = useServerPagination(
+		JSON.stringify(filters),
+	);
+	const ordersQuery = useOrdersPageQuery(filters, params);
+	const total = ordersQuery.data?.pagination.total;
 
 	const botNames = new Map<number, string>();
 	for (const bot of botsQuery.data ?? [])
@@ -56,23 +78,16 @@ export function AdminOrdersPage() {
 	}
 	const ownerOf = (order: Order) => botOwner.get(order.bot_id);
 
-	const allOrders = ordersQuery.data ?? [];
-	const filteredOrders = allOrders.filter(
-		(order) =>
-			(owner === ALL || ownerOf(order) === Number(owner)) &&
-			(side === ALL || order.side === side) &&
-			(status === ALL || order.status === status) &&
-			(type === ALL || order.type === type),
-	);
-
 	return (
 		<div className="flex flex-col gap-6">
 			<PageListHeader
 				title="Todas las órdenes"
 				description={
-					ordersQuery.data
-						? `Todas las órdenes del sistema. ${filteredOrders.length} de ${allOrders.length} órdenes.`
-						: 'Todas las órdenes del sistema.'
+					total === undefined
+						? 'Todas las órdenes del sistema.'
+						: isFiltered
+							? `Todas las órdenes del sistema. ${formatNumber(total, 0)} con esos filtros.`
+							: `Todas las órdenes del sistema. ${formatNumber(total, 0)} en total.`
 				}
 			/>
 			<div className="grid gap-3 sm:grid-cols-2 lg:max-w-4xl lg:grid-cols-4">
@@ -115,11 +130,12 @@ export function AdminOrdersPage() {
 				/>
 			</div>
 			<OrdersTable
-				orders={ordersQuery.data ? filteredOrders : undefined}
+				orders={ordersQuery.data?.items}
 				isLoading={ordersQuery.isLoading}
+				isFetching={ordersQuery.isPlaceholderData}
 				error={ordersQuery.error}
 				empty={
-					allOrders.length > 0
+					isFiltered
 						? 'No hay órdenes con esos filtros.'
 						: 'Aún no hay órdenes en el sistema.'
 				}
@@ -128,6 +144,7 @@ export function AdminOrdersPage() {
 				renderOwner={(order) => (
 					<OwnerCell userId={ownerOf(order)} users={owners.byId} />
 				)}
+				pagination={tablePagination(ordersQuery.data)}
 			/>
 			<OrderFillsDialog
 				order={fillsOrder}

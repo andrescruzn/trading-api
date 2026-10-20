@@ -13,6 +13,7 @@ import {
 import {
 	DataTable,
 	type DataTableColumn,
+	type ServerPagination,
 } from '@/modules/shared/components/data-table';
 import {
 	formatDateTime,
@@ -33,6 +34,9 @@ type OrdersTableProps = {
 	botNames?: Map<number, string>;
 	/** Si se pasa, agrega la columna "Dueño" (vistas de Supervisión). */
 	renderOwner?: (order: Order) => ReactNode;
+	/** Paginación en el servidor (`orders` es la página actual). */
+	pagination?: ServerPagination;
+	isFetching?: boolean;
 };
 
 export function OrdersTable({
@@ -43,6 +47,8 @@ export function OrdersTable({
 	onViewFills,
 	botNames,
 	renderOwner,
+	pagination,
+	isFetching,
 }: OrdersTableProps) {
 	const [canceling, setCanceling] = useState<Order | null>(null);
 	const columns: DataTableColumn<Order>[] = [
@@ -145,6 +151,8 @@ export function OrdersTable({
 				error={error}
 				errorTitle="No pudimos cargar las órdenes"
 				empty={empty}
+				pagination={pagination}
+				isFetching={isFetching}
 			/>
 			<CancelOrderDialog
 				order={canceling}

@@ -8,6 +8,7 @@
 
 BOT_ERROR_MESSAGES: dict[str, str] = {
     "BOT_NOT_FOUND":               "No encontramos ese agente.",
+    "BOTS_INVALID_FILTER":         "Algún filtro no es válido. Elige el estado y el modo de la lista.",
     "BOT_INVALID_NAME":            "Escribe un nombre para el agente.",
     "BOT_INVALID_MODE":            "El modo no es válido. Elige Paper o Live.",
     "BOT_INVALID_RISK_PCT":        "El riesgo por operación debe ser mayor que 0 % y como máximo 1 % del capital.",

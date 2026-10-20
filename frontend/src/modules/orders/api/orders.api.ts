@@ -1,4 +1,5 @@
 import { api } from '@/modules/shared/lib/api-client';
+import type { PageParams, Paginated } from '@/modules/shared/types/api';
 
 // ======================================================================
 // Tipos (reflejan el JSON del backend tal cual, en snake_case)
@@ -140,8 +141,11 @@ type StrategyTrackRecord = {
 
 type OrderFilters = {
 	bot_id?: number;
-	/** 1–500 (por defecto 100). */
-	limit?: number;
+	side?: OrderSide;
+	status?: OrderStatus;
+	type?: OrderType;
+	/** Solo admin: órdenes de los agentes de ese usuario (filtro Dueño). */
+	user_id?: number;
 };
 
 type FillFilters = {
@@ -154,9 +158,12 @@ type FillFilters = {
 // Órdenes
 // ======================================================================
 
-/** Usuario: el backend exige `bot_id`. Admin: sin filtro devuelve todas. */
-function listOrders(filters: OrderFilters = {}) {
-	return api.get<Order[]>('/orders', filters);
+/**
+ * Órdenes página a página (la más reciente primero). Usuario: el backend exige
+ * `bot_id`. Admin: sin filtro devuelve todas.
+ */
+function listOrdersPage(filters: OrderFilters, page: PageParams) {
+	return api.get<Paginated<Order>>('/orders', { ...filters, ...page });
 }
 
 function getOrder(id: number) {
@@ -220,7 +227,7 @@ export {
 	getBotPerformance,
 	getOrder,
 	listFills,
-	listOrders,
+	listOrdersPage,
 	listPositions,
 	listStrategyTrackRecord,
 };

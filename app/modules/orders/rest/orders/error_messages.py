@@ -10,6 +10,7 @@
 ORDER_ERROR_MESSAGES: dict[str, str] = {
     "ORDER_NOT_FOUND":          "La orden no existe.",
     "ORDERS_MISSING_BOT":       "Elige un agente para ver sus órdenes.",
+    "ORDERS_INVALID_FILTER":    "Algún filtro no es válido. Elige el lado, el estado y el tipo de la lista.",
     "ORDER_INVALID_SIDE":       "Elige Compra o Venta.",
     "ORDER_INVALID_TYPE":       "El tipo de orden no es válido. Elige Mercado, Límite, Stop o Stop límite.",
     "ORDER_INVALID_QTY":        "La cantidad debe ser mayor a cero.",

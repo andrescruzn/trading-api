@@ -2,31 +2,31 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import {
 	getBotPerformance,
 	listFills,
-	listOrders,
+	listOrdersPage,
 	listPositions,
 	listStrategyTrackRecord,
 	type OrderFilters,
 } from '@/modules/orders/api/orders.api';
+import type { PageParams } from '@/modules/shared/types/api';
 
 const ORDERS_QUERY_KEY = ['orders'] as const;
 const POSITIONS_QUERY_KEY = ['positions'] as const;
 const FILLS_QUERY_KEY = ['fills'] as const;
 
-/** Admin: todas las órdenes (o las de un bot). */
-function useOrdersQuery(filters: OrderFilters = {}) {
+/**
+ * Una página de órdenes (paginación en el servidor). Admin: todas o filtradas;
+ * usuario: exige `bot_id`. Mientras llega la página nueva se ve la anterior.
+ */
+function useOrdersPageQuery(
+	filters: OrderFilters,
+	page: PageParams,
+	options: { enabled?: boolean } = {},
+) {
 	return useQuery({
-		queryKey: [...ORDERS_QUERY_KEY, filters],
-		queryFn: () => listOrders(filters),
+		queryKey: [...ORDERS_QUERY_KEY, 'page', filters, page],
+		queryFn: () => listOrdersPage(filters, page),
 		placeholderData: keepPreviousData,
-	});
-}
-
-/** Órdenes de un bot; solo consulta cuando hay bot elegido. */
-function useBotOrdersQuery(botId: number | null) {
-	return useQuery({
-		queryKey: [...ORDERS_QUERY_KEY, { bot_id: botId }],
-		queryFn: () => listOrders({ bot_id: botId as number }),
-		enabled: !!botId,
+		enabled: options.enabled ?? true,
 	});
 }
 
@@ -77,10 +77,9 @@ export {
 	ORDERS_QUERY_KEY,
 	POSITIONS_QUERY_KEY,
 	useBotFillsQuery,
-	useBotOrdersQuery,
 	useBotPerformanceQuery,
 	useBotPositionsQuery,
 	useOrderFillsQuery,
-	useOrdersQuery,
+	useOrdersPageQuery,
 	useStrategyTrackRecordQuery,
 };

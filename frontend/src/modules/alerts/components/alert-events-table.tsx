@@ -3,7 +3,7 @@ import {
 	DeliveryBadge,
 	SeverityBadge,
 } from '@/modules/alerts/components/alert-badges';
-import { useAlertEventsQuery } from '@/modules/alerts/hooks/use-alerts-queries';
+import { useAlertEventsPageQuery } from '@/modules/alerts/hooks/use-alerts-queries';
 import { botLabel } from '@/modules/alerts/lib/alerts-labels';
 import type { UserSummary } from '@/modules/auth/api/users.api';
 import { OwnerCell } from '@/modules/auth/components/owner-cell';
@@ -16,6 +16,7 @@ import {
 	DataTable,
 	type DataTableColumn,
 } from '@/modules/shared/components/data-table';
+import { useServerPagination } from '@/modules/shared/hooks/use-server-pagination';
 import { formatDateTime } from '@/modules/shared/lib/format';
 
 type AlertEventsTableProps = {
@@ -23,15 +24,17 @@ type AlertEventsTableProps = {
 	variant: 'user' | 'admin';
 	/** Solo admin: usuarios para la columna Dueño. */
 	users?: Map<number, UserSummary>;
-	/** Solo admin: muestra solo los eventos de ese usuario. */
+	/** Solo admin: muestra solo los eventos de ese usuario (filtra el backend). */
 	ownerId?: number;
 };
 
 const EMPTY_CELL = <span className="text-muted-foreground">—</span>;
 
 /**
- * Historial de eventos de alerta. Vive dentro de su pestaña: la consulta solo
- * corre cuando la pestaña se abre (Base UI no monta los paneles ocultos).
+ * Historial de eventos de alerta, paginado en el servidor (las reglas
+ * periódicas generan eventos sin parar). Vive dentro de su pestaña: la
+ * consulta solo corre cuando la pestaña se abre (Base UI no monta los paneles
+ * ocultos).
  */
 export function AlertEventsTable({
 	variant,
@@ -39,7 +42,11 @@ export function AlertEventsTable({
 	ownerId,
 }: AlertEventsTableProps) {
 	const isAdmin = variant === 'admin';
-	const eventsQuery = useAlertEventsQuery({ limit: isAdmin ? 200 : 100 });
+	const filters = { user_id: isAdmin ? ownerId : undefined };
+	const { params, tablePagination } = useServerPagination(
+		JSON.stringify(filters),
+	);
+	const eventsQuery = useAlertEventsPageQuery(filters, params);
 	// Admin ve los bots de todos; un usuario solo puede listar los suyos.
 	const allBotsQuery = useBotsQuery({}, { enabled: isAdmin });
 	const myBotsQuery = useMyBotsQuery({ enabled: !isAdmin });
@@ -107,13 +114,11 @@ export function AlertEventsTable({
 	return (
 		<DataTable
 			columns={[...baseColumns, ...extraColumns]}
-			rows={
-				ownerId === undefined
-					? eventsQuery.data
-					: eventsQuery.data?.filter((row) => row.user_id === ownerId)
-			}
+			rows={eventsQuery.data?.items}
 			getRowId={(row) => row.id}
 			isLoading={eventsQuery.isLoading}
+			isFetching={eventsQuery.isPlaceholderData}
+			pagination={tablePagination(eventsQuery.data)}
 			error={eventsQuery.error}
 			errorTitle="No pudimos cargar los eventos de alerta"
 			empty={

@@ -4,7 +4,8 @@
 # app/modules/bots/rest/bots/routes.py
 #
 # ENDPOINTS:
-# - GET  /bots              → listar bots (admin: todos; user o ?mine=true: los suyos)
+# - GET  /bots              → listar bots (admin: todos; user o ?mine=true: los suyos).
+#                              Con `page` responde paginado {items, pagination}
 # - GET  /bots/shared       → agentes que comparten sus señales (vista pública)
 # - POST /bots              → crear bot
 # - GET  /bots/{id}         → detalle de un bot
@@ -31,10 +32,13 @@ from typing import Any
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
+from app.common.contracts import PageRequest
+from app.common.contracts.pagination import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 from app.common.http import (
     build_created_response,
     build_error_response,
     build_list_response,
+    build_paginated_response,
     build_success_response,
 )
 from app.common.security.jwt import owner_scope, token_required_actual
@@ -116,16 +120,43 @@ def _subscription_to_dict(s: SubscriptionState) -> dict[str, Any]:
 def list_bots(
     account_id: int | None = Query(default=None, gt=0),
     mine: bool = Query(default=False, description="Solo los bots de mis cuentas (también para admin)."),
+    status: str | None = Query(default=None, description="running | paused | stopped | error"),
+    mode: str | None = Query(default=None, description="paper | live"),
+    user_id: int | None = Query(default=None, gt=0, description="Solo admin: dueño de las cuentas."),
+    page: int | None = Query(default=None, ge=1, description="Activa la respuesta paginada."),
+    page_size: int = Query(default=DEFAULT_PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE),
     identity: dict = Depends(token_required_actual),
     factory: BotServiceFactory = Depends(get_factory),
 ):
     """
-    Lista bots.
-    - Admin: todos, o los de `account_id`; con `mine=true`, solo los suyos.
+    Lista bots (el más reciente primero).
+    - Admin: todos, o los de `account_id` o del dueño `user_id`; con `mine=true`, solo los suyos.
     - Usuario: los de sus cuentas, o los de `account_id` si es suya.
+    - Sin `page`: `data` es la lista completa. Con `page`: `data` es `{items, pagination}`.
     """
-    owner_id = int(identity["user_id"]) if mine else owner_scope(identity)
-    result = factory.list_bots().list(account_id=account_id, owner_id=owner_id)
+    filters = {
+        "account_id": account_id,
+        "owner_id":   int(identity["user_id"]) if mine else owner_scope(identity),
+        "status":     status,
+        "mode":       mode,
+        "user_id":    user_id,
+    }
+    service = factory.list_bots()
+
+    if page is not None:
+        result = service.list_page(page=PageRequest.of(page, page_size), **filters)
+        if not result.success:
+            return build_error_response(result, BOT_ERROR_MESSAGES)
+        return build_paginated_response(
+            items=[_bot_to_dict(b) for b in result.data.items],
+            total=result.data.total,
+            page=result.data.page,
+            page_size=result.data.page_size,
+        )
+
+    result = service.list(**filters)
+    if not result.success:
+        return build_error_response(result, BOT_ERROR_MESSAGES)
     return build_list_response(
         items=[_bot_to_dict(b) for b in (result.data or [])],
         msg="OK",

@@ -49,7 +49,7 @@ Hash routing: la URL real es `/#/<ruta>`.
 - Pestaña **Rendimiento** del agente ([M7](M07-BOTS-SIGNALS.md)): resultado realizado y no realizado, % de ganadoras, R/R real contra el objetivo 2:1, profit factor, caída máxima y operaciones cerradas.
 
 **Páginas — Administrador (solo admin):**
-- `/#/admin/orders` — "Todas las órdenes" (Administración → Supervisión): vista global de todas las órdenes del sistema con columna **Dueño** (nombre y correo) y filtro por dueño (orden → agente → cuenta → usuario; `OrdersTable` acepta `renderOwner`), y filtros por lado, estado y tipo, y diálogo con los fills de cada orden
+- `/#/admin/orders` — "Todas las órdenes" (Administración → Supervisión): vista global de todas las órdenes del sistema con columna **Dueño** (nombre y correo) y filtro por dueño (orden → agente → cuenta → usuario; `OrdersTable` acepta `renderOwner`), y filtros por lado, estado y tipo, y diálogo con los fills de cada orden. **Paginada en el servidor** (sin el tope de 500): los filtros los aplica el backend y cambiar uno vuelve a la página 1
 
 ## Entregables
 
@@ -268,7 +268,7 @@ Provider: `app/modules/orders/providers/order_provider.py` → `OrderServiceFact
 |--------|------|------|------|
 | POST | `/api/orders` | token | Crea y ejecuta orden (paper o live); bot propio (404 si no). `stop_loss` / `take_profit` opcionales (compras a mercado). 201 con `msg` según estado real. Rate limit por usuario |
 | POST | `/api/orders/{id}/cancel` | token | Cancela una orden live abierta y la sincroniza; `msg` según el estado final (cancelada / ya ejecutada / pedida). Rate limit por usuario |
-| GET | `/api/orders` | token | Lista por `bot_id` (propio); sin `bot_id` solo admin (`ORDERS_MISSING_BOT` 400 para los demás) |
+| GET | `/api/orders` | token | Lista por `bot_id` (propio); sin `bot_id` solo admin (`ORDERS_MISSING_BOT` 400 para los demás). Filtros `side`, `status`, `type` (`ORDERS_INVALID_FILTER` 422) y, solo admin, `user_id` (dueño: sus cuentas → sus agentes; ignorado para usuarios). Más reciente primero (`ts`, `id` desc). Paginación opt-in: con `page` (≥ 1) y `page_size` (1–100, 20 por defecto) `data` pasa a ser `{items, pagination: {total, page, page_size, total_pages}}` (`build_paginated_response`); sin `page`, la lista de siempre hasta `limit` (1–500) |
 | GET | `/api/orders/{id}` | token | Detalle; orden de un agente ajeno → `ORDER_NOT_FOUND` 404 |
 | GET | `/api/fills` | token | Por `order_id` o `bot_id`, del usuario (`FILLS_MISSING_FILTER` sin filtro) |
 | GET | `/api/performance?bot_id=` | token | Rendimiento de un agente propio (404 si no): métricas, operaciones cerradas (la más reciente primero), curva de P&L acumulado y P&L no realizado al último cierre |
@@ -302,10 +302,11 @@ Por agente: `risk_params.max_notional` (tope propio; se aplica el menor) y `risk
 | `/#/orders` | `routes/_app/orders.tsx` | Redirección a `/dashboard` |
 | `/#/admin/orders` | `routes/_app/admin/orders.lazy.tsx` | `pages/admin-orders.tsx` + `components/order-fills-dialog.tsx` |
 
-- API: `api/orders.api.ts` (`listOrders`, `getOrder`, `createOrder`, `listPositions`, `listFills`; `Position` con `stop_loss`, `take_profit`, `signal_id`, `sl_order_id`); hooks `use-orders-queries.ts` / `use-orders-mutations.ts`; etiquetas `lib/orders-labels.ts`; badges `components/order-badges.tsx`.
+- Paginación en el servidor (2026-10-20): `listOrdersPage(filters, {page, page_size})` → `Paginated<Order>` y `useOrdersPageQuery` (clave `['orders', 'page', filtros, página]`, `keepPreviousData`), usados por Todas las órdenes y por la pestaña Órdenes del agente. `OrdersTable` acepta `pagination` / `isFetching` y los pasa a `DataTable`.
+- API: `api/orders.api.ts` (`listOrdersPage`, `getOrder`, `createOrder`, `listPositions`, `listFills`; `Position` con `stop_loss`, `take_profit`, `signal_id`, `sl_order_id`); hooks `use-orders-queries.ts` / `use-orders-mutations.ts`; etiquetas `lib/orders-labels.ts`; badges `components/order-badges.tsx`.
 - `positions-grid.tsx` muestra "Protección automática: SL … · TP …" cuando la posición la tiene y, si `sl_order_id` no es `null`, "El stop loss está como orden en el exchange."
 - Aprobar/descartar: `bots/components/signal-decision-actions.tsx` ([M7](M07-BOTS-SIGNALS.md)).
-- La página admin usa `useBotsQuery()` sin filtro de [M7](M07-BOTS-SIGNALS.md).
+- La página admin usa `useBotsQuery()` sin filtro de [M7](M07-BOTS-SIGNALS.md) como catálogo para las columnas Agente y Dueño.
 
 ## Gotchas críticos
 
@@ -355,4 +356,5 @@ Por agente: `risk_params.max_notional` (tope propio; se aplica el menor) y `risk
 - **2026-10-19** — Página `/orders` retirada (duplicaba las pestañas Órdenes y Posiciones del agente): redirige a `/agents` y sale del menú.
 - **2026-10-20** — Todas las órdenes: columna **Dueño** (nombre y correo) y filtro por dueño.
 - **2026-10-20** — Fase 1: cancelar órdenes (`CancelOrderService`, `POST /api/orders/{id}/cancel`, botón en la UI), protección SL/TP en compras manuales a mercado (con SL nativo en live), rate limit por usuario en crear/cancelar/aprobar (`ORDER_REQUESTS_PER_MINUTE`), tests del módulo y script + checklist de testnet. TP nativo / OCO sigue pendiente (ver Fuera de alcance). Los tests destaparon y se corrigieron: posición sin protección si la compra se ejecutaba tarde, señal `failed` con la orden viva, precio del fill de una límite (`price` antes que `cost / filled`), P&L de una venta mayor que la posición y la máquina de estados de `Order` (ahora `new` pasa directo a `filled`/`partially_filled`/`rejected`).
+- **2026-10-20** — **Paginación en el servidor** (Fase 4): `GET /api/orders` acepta `page`/`page_size` opt-in (sin `page`, misma lista que antes) y los filtros `side`, `status`, `type` y `user_id` (dueño, solo admin). `OrderRepository.search/count` con `OrderCriteria` reemplaza a `list_all`/`list_by_bot`; `ListOrdersService.list_page`. Todas las órdenes deja de traer 500 y filtrar en el navegador; la pestaña Órdenes del agente también pagina. Tests: `tests/orders/test_list_orders_service.py` (servicio, repo con sesión mockeada y contrato de la ruta con y sin `page`).
 - **2026-10-20** — Rendimiento por agente y track record por estrategia (`domain/performance.py`, `GET /api/performance`, `/api/performance/strategies`, pestaña Rendimiento y página Track record; `tests/orders/test_performance.py`).

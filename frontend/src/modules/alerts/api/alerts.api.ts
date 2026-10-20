@@ -1,4 +1,5 @@
 import { api } from '@/modules/shared/lib/api-client';
+import type { PageParams, Paginated } from '@/modules/shared/types/api';
 
 // ======================================================================
 // Tipos (reflejan el JSON del backend tal cual, en snake_case)
@@ -75,8 +76,9 @@ type AlertRuleUpdate = {
 };
 
 type AlertEventFilters = {
-	limit?: number;
 	from_ts?: string;
+	/** Solo admin: eventos de ese usuario (filtro Dueño). Al usuario lo ignora. */
+	user_id?: number;
 };
 
 type TelegramTestResult = { ok: boolean };
@@ -102,9 +104,15 @@ function updateAlertRule(id: number, input: AlertRuleUpdate) {
 // Eventos de alerta
 // ======================================================================
 
-/** Usuario: sus eventos. Admin: todos. Del más reciente al más antiguo. */
-function listAlertEvents(filters: AlertEventFilters = {}) {
-	return api.get<AlertEvent[]>('/alert-events', filters);
+/**
+ * Usuario: sus eventos. Admin: todos (o los de `user_id`). Del más reciente
+ * al más antiguo, página a página.
+ */
+function listAlertEventsPage(filters: AlertEventFilters, page: PageParams) {
+	return api.get<Paginated<AlertEvent>>('/alert-events', {
+		...filters,
+		...page,
+	});
 }
 
 // ======================================================================
@@ -134,7 +142,7 @@ export type {
 };
 export {
 	createAlertRule,
-	listAlertEvents,
+	listAlertEventsPage,
 	listAlertRules,
 	sendTelegramTest,
 	updateAlertRule,

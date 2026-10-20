@@ -6,7 +6,8 @@
 # Barrel exports para contratos de aplicación.
 # ======================================================================
 
+from .pagination import Page, PageRequest
 from .service_result import ServiceResult, ServiceError
 from .transactional_repository import TransactionalRepository
 
-__all__ = ["ServiceResult", "ServiceError", "TransactionalRepository"]
+__all__ = ["Page", "PageRequest", "ServiceResult", "ServiceError", "TransactionalRepository"]

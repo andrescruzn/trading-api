@@ -6,7 +6,8 @@
 # Factory que centraliza la creación de todos los servicios del módulo Bots.
 #
 # PATRÓN:
-# - Instancia repos propios (BotRepository, SignalRepository).
+# - Instancia repos propios (BotRepository, SignalRepository,
+#   SignalSubscriptionRepository).
 # - Borrow de repos de otros módulos para construir el AnalyzeService.
 # - El AnalyzeService (M6) se construye aquí y se inyecta en
 #   GenerateSignalService, que no conoce sus dependencias internas.
@@ -26,6 +27,7 @@ from app.modules.agent.services.agent import AnalyzeService
 from app.modules.bots.infrastructure import (
     SqlAlchemyBotRepository,
     SqlAlchemySignalRepository,
+    SqlAlchemySignalSubscriptionRepository,
 )
 
 # Servicios propios
@@ -41,6 +43,11 @@ from app.modules.bots.services.signals import (
     GenerateSignalService,
     ListPendingSignalsService,
     ListSignalsService,
+)
+from app.modules.bots.services.subscriptions import (
+    ListSharedBotsService,
+    SubscribeToBotService,
+    UnsubscribeFromBotService,
 )
 
 # Repos tomados de otros módulos (borrowing)
@@ -62,7 +69,11 @@ from app.modules.market.infrastructure import (
 from app.modules.features.services.calculations import CalculateFeaturesService
 from app.modules.market.services.candles import FetchCandlesService
 from app.modules.alerts.providers.alert_provider import build_evaluate_alerts_service
-from app.modules.alerts.providers.telegram_provider import build_signal_approval_notifier
+from app.modules.alerts.providers.telegram_provider import (
+    build_shared_signal_notifier,
+    build_signal_approval_notifier,
+)
+from app.modules.users.infrastructure import SqlAlchemyUserRepository
 
 
 class BotServiceFactory:
@@ -81,6 +92,7 @@ class BotServiceFactory:
         # Repos propios del módulo
         self._bot_repo = SqlAlchemyBotRepository(session)
         self._signal_repo = SqlAlchemySignalRepository(session)
+        self._subscription_repo = SqlAlchemySignalSubscriptionRepository(session)
 
         # Repos de otros módulos (borrowing) — necesarios para AnalyzeService
         self._strategy_repo = SqlAlchemyStrategyRepository(session)
@@ -197,6 +209,35 @@ class BotServiceFactory:
             evaluate_alerts=build_evaluate_alerts_service(self._session),
             notify_pending=build_signal_approval_notifier(self._session).notify,
             approval_ttl_minutes=settings.SIGNAL_APPROVAL_TTL_MINUTES,
+            notify_subscribers=build_shared_signal_notifier(self._session).notify,
+        )
+
+    # ------------------------------------------------------------------
+    # Señales compartidas (suscripciones)
+    # ------------------------------------------------------------------
+
+    def list_shared_bots(self) -> ListSharedBotsService:
+        return ListSharedBotsService(
+            bot_repo=self._bot_repo,
+            subscription_repo=self._subscription_repo,
+            account_repo=self._account_repo,
+            strategy_repo=self._strategy_repo,
+            symbol_repo=self._symbol_repo,
+            timeframe_repo=self._timeframe_repo,
+        )
+
+    def subscribe_to_bot(self) -> SubscribeToBotService:
+        return SubscribeToBotService(
+            bot_repo=self._bot_repo,
+            subscription_repo=self._subscription_repo,
+            account_repo=self._account_repo,
+            user_repo=SqlAlchemyUserRepository(self._session),
+        )
+
+    def unsubscribe_from_bot(self) -> UnsubscribeFromBotService:
+        return UnsubscribeFromBotService(
+            bot_repo=self._bot_repo,
+            subscription_repo=self._subscription_repo,
         )
 
 

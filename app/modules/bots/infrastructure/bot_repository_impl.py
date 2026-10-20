@@ -44,6 +44,7 @@ class SqlAlchemyBotRepository(SqlAlchemyRepository, BotRepository):
             created_at=model.created_at,
             execution_mode=model.execution_mode or "manual",
             approval_ttl_minutes=model.approval_ttl_minutes,
+            share_signals=bool(model.share_signals),
         )
 
     @staticmethod
@@ -61,6 +62,7 @@ class SqlAlchemyBotRepository(SqlAlchemyRepository, BotRepository):
         model.stopped_at   = bot.stopped_at
         model.execution_mode = bot.execution_mode
         model.approval_ttl_minutes = bot.approval_ttl_minutes
+        model.share_signals = bool(bot.share_signals)
         return model
 
     # ------------------------------------------------------------------
@@ -103,6 +105,15 @@ class SqlAlchemyBotRepository(SqlAlchemyRepository, BotRepository):
         models = (
             self._session.query(BotModel)
             .filter(BotModel.status.in_(statuses))
+            .all()
+        )
+        return [self._to_domain(m) for m in models]
+
+    def list_shared(self) -> list[Bot]:
+        models = (
+            self._session.query(BotModel)
+            .filter(BotModel.share_signals.is_(True))
+            .order_by(BotModel.created_at.desc())
             .all()
         )
         return [self._to_domain(m) for m in models]

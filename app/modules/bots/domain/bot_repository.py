@@ -44,6 +44,11 @@ class BotRepository(TransactionalRepository, ABC):
         ...
 
     @abstractmethod
+    def list_shared(self) -> list[Bot]:
+        """Lista los bots que comparten sus señales (share_signals = True)."""
+        ...
+
+    @abstractmethod
     def create(self, bot: Bot) -> Bot:
         """Persiste un nuevo bot. Retorna la entidad con ID asignado."""
         ...

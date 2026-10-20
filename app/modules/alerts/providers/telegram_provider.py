@@ -6,6 +6,8 @@
 # Wiring de Telegram por usuario:
 # - build_signal_approval_notifier(session): aviso con botones (hook de
 #   GenerateSignalService, lo usa BotServiceFactory).
+# - build_shared_signal_notifier(session): señales de un agente compartido
+#   a sus suscriptores (hook de GenerateSignalService).
 # - build_telegram_update_service(session): procesa mensajes y botones
 #   (webhook y polling).
 #
@@ -22,11 +24,19 @@ from sqlalchemy.orm import Session
 from app.common.config import settings
 from app.modules.accounts.infrastructure import SqlAlchemyAccountRepository
 from app.modules.alerts.channels.telegram_replier import TelegramReplier
-from app.modules.alerts.services.telegram import SignalApprovalNotifier, TelegramUpdateService
+from app.modules.alerts.services.telegram import (
+    SharedSignalNotifier,
+    SignalApprovalNotifier,
+    TelegramUpdateService,
+)
+from app.modules.bots.infrastructure.signal_subscription_repository_impl import (
+    SqlAlchemySignalSubscriptionRepository,
+)
 from app.modules.market.infrastructure import (
     SqlAlchemySymbolRepository,
     SqlAlchemyTimeframeRepository,
 )
+from app.modules.strategies.infrastructure import SqlAlchemyStrategyRepository
 from app.modules.users.infrastructure import SqlAlchemyUserRepository
 
 
@@ -36,6 +46,18 @@ def build_signal_approval_notifier(session: Session) -> SignalApprovalNotifier:
         user_repo=SqlAlchemyUserRepository(session),
         symbol_repo=SqlAlchemySymbolRepository(session),
         timeframe_repo=SqlAlchemyTimeframeRepository(session),
+        settings=settings,
+    )
+
+
+def build_shared_signal_notifier(session: Session) -> SharedSignalNotifier:
+    return SharedSignalNotifier(
+        subscription_repo=SqlAlchemySignalSubscriptionRepository(session),
+        account_repo=SqlAlchemyAccountRepository(session),
+        user_repo=SqlAlchemyUserRepository(session),
+        symbol_repo=SqlAlchemySymbolRepository(session),
+        timeframe_repo=SqlAlchemyTimeframeRepository(session),
+        strategy_repo=SqlAlchemyStrategyRepository(session),
         settings=settings,
     )
 

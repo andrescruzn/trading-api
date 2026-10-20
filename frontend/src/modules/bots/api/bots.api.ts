@@ -35,6 +35,8 @@ type Bot = {
 	execution_mode: BotExecutionMode;
 	/** Minutos para aprobar una señal; `null` = valor global del servidor. */
 	approval_ttl_minutes: number | null;
+	/** Otros usuarios pueden seguir sus señales aprobadas (llegan por Telegram). */
+	share_signals: boolean;
 };
 
 type BotRiskParams = {
@@ -57,8 +59,8 @@ type BotInput = {
 };
 
 /**
- * Renombrar y cambiar el modo de ejecución se puede en cualquier estado;
- * modo paper/live y riesgo solo con el bot detenido.
+ * Renombrar, cambiar el modo de ejecución y compartir señales se puede en
+ * cualquier estado; modo paper/live y riesgo solo con el bot detenido.
  */
 type BotUpdate = {
 	name?: string;
@@ -66,6 +68,35 @@ type BotUpdate = {
 	risk_params?: BotRiskParams;
 	execution_mode?: BotExecutionMode;
 	approval_ttl_minutes?: number | null;
+	share_signals?: boolean;
+};
+
+/**
+ * Agente que comparte sus señales, tal como lo ve cualquier usuario
+ * (GET /bots/shared): sin nombre, cuenta ni dueño.
+ */
+type SharedBot = {
+	id: number;
+	strategy_id: number;
+	strategy_name: string | null;
+	symbol_id: number;
+	symbol: string | null;
+	timeframe_id: number;
+	timeframe: string | null;
+	mode: BotMode;
+	status: BotStatus;
+	subscribers_count: number;
+	/** El usuario ya lo sigue. */
+	is_subscribed: boolean;
+	/** Es un agente del usuario (no puede seguirlo). */
+	is_mine: boolean;
+};
+
+/** Respuesta de seguir / dejar de seguir un agente. */
+type BotSubscription = {
+	bot_id: number;
+	is_subscribed: boolean;
+	subscribers_count: number;
 };
 
 type BotFilters = {
@@ -218,6 +249,25 @@ function syncBotMarket(id: number) {
 }
 
 // ======================================================================
+// Señales compartidas (suscripciones)
+// ======================================================================
+
+/** Agentes de cualquier usuario que comparten sus señales. */
+function listSharedBots() {
+	return api.get<SharedBot[]>('/bots/shared');
+}
+
+/** Idempotente. Exige Telegram vinculado: es el único canal de envío. */
+function subscribeToBot(id: number) {
+	return api.post<BotSubscription>(`/bots/${id}/subscription`);
+}
+
+/** Idempotente. */
+function unsubscribeFromBot(id: number) {
+	return api.delete<BotSubscription>(`/bots/${id}/subscription`);
+}
+
+// ======================================================================
 // Señales
 // ======================================================================
 
@@ -254,9 +304,11 @@ export type {
 	BotMode,
 	BotRiskParams,
 	BotStatus,
+	BotSubscription,
 	BotTransition,
 	BotUpdate,
 	PendingSignal,
+	SharedBot,
 	Signal,
 	SignalAction,
 	SignalDecisionChannel,
@@ -274,9 +326,12 @@ export {
 	getBot,
 	listBots,
 	listPendingSignals,
+	listSharedBots,
 	listSignals,
 	rejectSignal,
+	subscribeToBot,
 	syncBotMarket,
 	transitionBot,
+	unsubscribeFromBot,
 	updateBot,
 };

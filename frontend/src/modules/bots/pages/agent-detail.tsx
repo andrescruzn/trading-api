@@ -24,6 +24,7 @@ import {
 	ExecutionModeBadge,
 } from '@/modules/bots/components/bot-badges';
 import { ExecutionModeCard } from '@/modules/bots/components/execution-mode-card';
+import { ShareSignalsCard } from '@/modules/bots/components/share-signals-card';
 import { SignalDetailSheet } from '@/modules/bots/components/signal-detail-sheet';
 import { SignalsTable } from '@/modules/bots/components/signals-table';
 import { useBotCatalogs } from '@/modules/bots/hooks/use-bot-catalogs';
@@ -343,6 +344,7 @@ function ConfigTab({ bot, accountName }: { bot: Bot; accountName: string }) {
 	return (
 		<div className="grid gap-4 lg:grid-cols-2">
 			<ExecutionModeCard bot={bot} />
+			<ShareSignalsCard bot={bot} />
 			<Card>
 				<CardHeader>
 					<CardTitle>Estrategia</CardTitle>

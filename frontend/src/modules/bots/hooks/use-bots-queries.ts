@@ -4,10 +4,13 @@ import {
 	getBot,
 	listBots,
 	listPendingSignals,
+	listSharedBots,
 	listSignals,
 } from '@/modules/bots/api/bots.api';
 
 const BOTS_QUERY_KEY = ['bots'] as const;
+/** Bajo BOTS_QUERY_KEY: activar o apagar "Compartir señales" refresca la lista. */
+const SHARED_BOTS_QUERY_KEY = [...BOTS_QUERY_KEY, 'shared'] as const;
 const SIGNALS_QUERY_KEY = ['signals'] as const;
 /** Bajo SIGNALS_QUERY_KEY: invalidar señales también refresca la cola. */
 const PENDING_SIGNALS_QUERY_KEY = [...SIGNALS_QUERY_KEY, 'pending'] as const;
@@ -64,13 +67,24 @@ function usePendingSignalsQuery() {
 	});
 }
 
+/** Agentes que comparten sus señales (de cualquier usuario, sin datos de cuenta). */
+function useSharedBotsQuery(options: { enabled?: boolean } = {}) {
+	return useQuery({
+		queryKey: SHARED_BOTS_QUERY_KEY,
+		queryFn: listSharedBots,
+		enabled: options.enabled ?? true,
+	});
+}
+
 export {
 	BOTS_QUERY_KEY,
 	PENDING_SIGNALS_QUERY_KEY,
+	SHARED_BOTS_QUERY_KEY,
 	SIGNALS_QUERY_KEY,
 	useBotQuery,
 	useBotsQuery,
 	useMyBotsQuery,
 	usePendingSignalsQuery,
+	useSharedBotsQuery,
 	useSignalsQuery,
 };

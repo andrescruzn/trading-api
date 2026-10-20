@@ -38,3 +38,7 @@ class UpdateBotRequest(BaseModel):
     risk_params: dict[str, Any] | None = Field(default=None, max_length=20)
     execution_mode: str | None = Field(default=None, pattern="^(manual|approval|auto)$")
     approval_ttl_minutes: int | None = Field(default=None, ge=1, le=1440)
+    share_signals: bool | None = Field(
+        default=None,
+        description="Otros usuarios pueden suscribirse a sus señales aprobadas (Telegram).",
+    )

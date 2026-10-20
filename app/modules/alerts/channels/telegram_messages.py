@@ -105,5 +105,39 @@ def pending_signal_text(
     return "\n".join(lines)
 
 
+_SHARED_ACTION_LINE = {
+    "buy": "🟢 Compra",
+    "sell": "🔴 Venta",
+}
+
+
+def shared_signal_text(
+    *,
+    action: str,
+    symbol: str,
+    timeframe: str,
+    strategy_name: str,
+    entry: Decimal | None,
+    stop_loss: Decimal | None,
+    take_profit: Decimal | None,
+    rr_ratio: Decimal | None,
+) -> str:
+    """
+    Mensaje HTML de una señal compartida para quien sigue el agente.
+
+    Sin tamaño de posición, cuenta ni nombre del agente: el tamaño revela
+    el capital del dueño y el nombre puede identificarlo.
+    """
+    return "\n".join([
+        f"<b>{_SHARED_ACTION_LINE.get(action, 'Señal')} · "
+        f"{html.escape(symbol)} · {html.escape(timeframe)}</b>",
+        f"Entrada ${format_number(entry)} · SL ${format_number(stop_loss)} · "
+        f"TP ${format_number(take_profit)}",
+        f"R/R {format_number(rr_ratio, 1)}:1 · Estrategia {html.escape(strategy_name)}",
+        "Señal de un agente que sigues. Es informativa: no se abrió ninguna "
+        "orden en tu cuenta.",
+    ])
+
+
 def decision_text(code: str) -> str:
     return DECISION_MESSAGES.get(code, DEFAULT_DECISION_MESSAGE)

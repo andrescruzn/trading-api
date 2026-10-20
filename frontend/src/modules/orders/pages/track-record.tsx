@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { usePageBreadcrumb } from '@/modules/app-shell/hooks/use-page-breadcrumb';
+import { SharedAgentsSection } from '@/modules/bots/components/shared-agents-section';
 import type { StrategyTrackRecord } from '@/modules/orders/api/orders.api';
 import { useStrategyTrackRecordQuery } from '@/modules/orders/hooks/use-orders-queries';
 import {
@@ -170,6 +171,7 @@ export function TrackRecordPage() {
 				errorTitle="No pudimos cargar el track record"
 				empty="Todavía ningún agente ha cerrado operaciones."
 			/>
+			<SharedAgentsSection />
 		</div>
 	);
 }

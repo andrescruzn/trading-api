@@ -3,7 +3,9 @@
 # ======================================================================
 # app/modules/bots/services/bots/update_bot_service.py
 #
-# Actualiza la configuración de un bot (solo cuando está stopped).
+# Actualiza la configuración de un bot. Nombre, modo de ejecución y
+# compartir señales en cualquier estado; modo paper/live y riesgo solo
+# con el bot stopped.
 # ======================================================================
 
 from __future__ import annotations
@@ -26,7 +28,8 @@ class UpdateBotService:
     Actualiza la configuración de un bot existente.
 
     Regla de negocio:
-    - El nombre se puede cambiar en cualquier estado.
+    - El nombre, el modo de ejecución y `share_signals` se pueden cambiar
+      en cualquier estado.
     - El resto de la configuración solo si el bot está 'stopped'.
     - No se puede cambiar la cuenta, símbolo, estrategia ni timeframe
       de un bot activo (podría dejar posiciones huérfanas).
@@ -55,6 +58,7 @@ class UpdateBotService:
         execution_mode: str | None = None,
         approval_ttl_minutes: int | None = None,
         clear_approval_ttl: bool = False,
+        share_signals: bool | None = None,
     ) -> ServiceResult[Bot]:
         bot = find_accessible_bot(self._repo, self._account_repo, bot_id, owner_id)
         if bot is None:
@@ -99,6 +103,12 @@ class UpdateBotService:
             bot.execution_mode = execution_mode
         if approval_ttl_minutes is not None or clear_approval_ttl:
             bot.approval_ttl_minutes = approval_ttl_minutes
+
+        # Compartir señales no toca la operación del agente: cualquier estado.
+        # Al apagarlo las suscripciones se conservan, pero el aviso deja de
+        # salir (el hook mira share_signals) y el agente sale del listado.
+        if share_signals is not None:
+            bot.share_signals = share_signals
 
         timeframe = self._timeframe_repo.get_by_id(bot.timeframe_id)
         execution_check = check_execution_mode(bot, timeframe.seconds if timeframe else None)

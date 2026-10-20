@@ -7,12 +7,15 @@ import {
 	createBot,
 	generateSignal,
 	rejectSignal,
+	subscribeToBot,
 	syncBotMarket,
 	transitionBot,
+	unsubscribeFromBot,
 	updateBot,
 } from '@/modules/bots/api/bots.api';
 import {
 	BOTS_QUERY_KEY,
+	SHARED_BOTS_QUERY_KEY,
 	SIGNALS_QUERY_KEY,
 } from '@/modules/bots/hooks/use-bots-queries';
 import { CANDLE_FEATURES_QUERY_KEY } from '@/modules/features/hooks/use-features-queries';
@@ -110,12 +113,33 @@ function useSyncBotMarketMutation() {
 	});
 }
 
+/** Seguir un agente compartido: cambia su contador y `is_subscribed`. */
+function useSubscribeToBotMutation() {
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: (botId: number) => subscribeToBot(botId),
+		onSuccess: () =>
+			queryClient.invalidateQueries({ queryKey: SHARED_BOTS_QUERY_KEY }),
+	});
+}
+
+function useUnsubscribeFromBotMutation() {
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: (botId: number) => unsubscribeFromBot(botId),
+		onSuccess: () =>
+			queryClient.invalidateQueries({ queryKey: SHARED_BOTS_QUERY_KEY }),
+	});
+}
+
 export {
 	useApproveSignalMutation,
 	useCreateBotMutation,
 	useGenerateSignalMutation,
 	useRejectSignalMutation,
+	useSubscribeToBotMutation,
 	useSyncBotMarketMutation,
 	useTransitionBotMutation,
+	useUnsubscribeFromBotMutation,
 	useUpdateBotMutation,
 };

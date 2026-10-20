@@ -9,9 +9,9 @@
 | Estado | ✅ Completo (sin tests) |
 | Avance (alcance original) | 100 % — 10/10 entregables (+ 3 de 2026-10-19: guarda SSRF, endurecimiento de Telegram, Telegram por usuario) |
 | Madurez (estimada) | 58 % — ver [Avance](#avance) |
-| Tablas | `alert_rules`, `alert_events` (R/W); `bots`, `signals`, `orders`, `accounts` (R, vía hooks y propiedad); `users` (R: `telegram_chat_id`) |
+| Tablas | `alert_rules`, `alert_events` (R/W); `bots`, `signals`, `orders`, `accounts`, `signal_subscriptions` (R, vía hooks y propiedad); `users` (R: `telegram_chat_id`) |
 | Depende de | [M1](M01-AUTH.md) (vínculo del chat de Telegram), [M7](M07-BOTS-SIGNALS.md) y [M8](M08-ORDERS-EXECUTION.md) (hooks; Telegram aprueba/rechaza vía `ExecuteSignalService`); mailer para el canal email |
-| Lo usan | Es un consumidor: lo invocan [M7](M07-BOTS-SIGNALS.md) (alertas + aviso de señal pendiente), [M8](M08-ORDERS-EXECUTION.md) y el scheduler (polling de Telegram) |
+| Lo usan | Es un consumidor: lo invocan [M7](M07-BOTS-SIGNALS.md) (alertas + aviso de señal pendiente + señales compartidas), [M8](M08-ORDERS-EXECUTION.md) y el scheduler (polling de Telegram) |
 | Prefijo API | `/api/alert-rules`, `/api/alert-events`, `/api/alerts`, `/api/telegram/webhook` |
 | Frontend | `frontend/src/modules/alerts` (el vínculo de Telegram vive en `app-shell`, ver [M1](M01-AUTH.md)) |
 | Última revisión | 2026-10-20 |
@@ -32,6 +32,7 @@
 - Guarda un historial de todos los eventos de alerta disparados con estado de entrega
 - El despacho es **fire-and-forget**: si falla una alerta, no afecta la operación de trading
 - **Telegram por usuario:** cada persona vincula su chat privado; cuando un agente en modo Con aprobación tiene una señal pendiente, le llega un mensaje con los precios y botones **Aprobar** / **Descartar**. La respuesta se procesa por webhook (producción) o polling (desarrollo).
+- **Señales compartidas** (2026-10-20): si un agente comparte sus señales ([M7](M07-BOTS-SIGNALS.md)), quienes lo siguen reciben por Telegram sus BUY/SELL aprobadas — solo información, sin botones.
 
 ## Páginas
 
@@ -64,6 +65,7 @@ Entregables:
 - ✅ (2026-10-19) **Guarda SSRF del webhook** (`app/common/security/url_guard.py`) al guardar y al enviar; reglas solo sobre agentes propios; límite de claves en los JSON
 - ✅ (2026-10-19) **Telegram endurecido**: HTML escapado, token nunca en logs, helper `telegram_api`
 - ✅ (2026-10-19) **Telegram por usuario**: `SignalApprovalNotifier` (botones), `TelegramUpdateService`, `TelegramReplier`, `telegram_messages.py`, `telegram_poller.py`, `POST /api/telegram/webhook`, `telegram_provider.py`
+- ✅ (2026-10-20) **Señales compartidas**: `SharedSignalNotifier` + `shared_signal_text` + `build_shared_signal_notifier` (hook `notify_subscribers` de [M7](M07-BOTS-SIGNALS.md)), 10 tests
 
 ## Decisiones de diseño
 
@@ -90,6 +92,7 @@ Entregables:
 | Tres modos de recibir respuestas (`TELEGRAM_UPDATES_MODE`): `off` · `polling` (el scheduler líder llama `getUpdates`; desarrollo) · `webhook` (Telegram llama `POST /api/telegram/webhook`; producción) | En desarrollo Telegram no puede llamar a localhost | Solo webhook |
 | Webhook protegido con `X-Telegram-Bot-Api-Secret-Token` comparado en tiempo constante con `TELEGRAM_WEBHOOK_SECRET`; sin secreto o con otro modo → 404; con secreto correcto → siempre 200 | Solo Telegram puede llamarlo; con otro código Telegram reintenta el mismo update | Endpoint abierto |
 | `/api/telegram/webhook` **excluido de la auditoría HTTP** | El cuerpo de `/start` lleva el código de vinculación y mensajes de terceros | Auditarlo con redacción |
+| `SharedSignalNotifier`: mensaje **sin botones**, sin tamaño de posición, cuenta ni nombre del agente (acción, símbolo, timeframe, entrada, SL, TP, R/R y estrategia); omite al dueño y a quien no tiene chat; nunca lanza (log por suscriptor y por llamada) | Quien sigue no decide ni ejecuta nada; el tamaño revela el capital del dueño y el nombre puede identificarlo; un chat roto no corta el reparto | Reutilizar `pending_signal_text` |
 | `telegram_provider.py` no se exporta en `providers/__init__.py` y hace imports diferidos de los providers de orders y users | `orders → alerts` (hooks) importa este paquete: un import a nivel de módulo crearía un ciclo | Reorganizar los paquetes |
 | El email usa `ALERT_TEMPLATE` del catálogo del mailer (`alert.html`) | Reutiliza el servicio SMTP existente | Plantilla embebida |
 | Notificaciones de escritorio (`plyer`) **opcionales** (`DESKTOP_NOTIFICATIONS_ENABLED=false`) | Solo tiene sentido en desarrollo local | Dependencia obligatoria |
@@ -103,7 +106,7 @@ Entregables:
 | Madurez | **≈ 58 %** | Funcionalidad 80 · Tests 0 · Seguridad 85 · Operación 65 |
 
 - **Funcionalidad (80):** Telegram por usuario con aprobación de señales por botones. De los 5 tipos de regla, `EvaluateAlertsService` solo evalúa `signal`, `error` y `price`; **`pnl` y `drawdown` no se evalúan** en ningún sitio. Las reglas `price` solo se evalúan con `POST /api/alerts/evaluate` (admin, manual). Las alertas por Telegram siguen yendo al chat del sistema, no al del usuario.
-- **Tests (0):** ningún test cubre este módulo (ni `url_guard`, ni `TelegramUpdateService`).
+- **Tests (0):** solo `SharedSignalNotifier` tiene tests (10, en `tests/bots/test_shared_signal_notifier.py`); nada cubre `url_guard` ni `TelegramUpdateService`.
 - **Seguridad (85):** guarda SSRF al guardar y al enviar, sin redirects; reglas solo sobre agentes propios; JSON con máximo 20 claves; HTML escapado y token fuera de los logs; webhook de Telegram con secreto. Riesgo residual de *DNS rebinding* entre la resolución y la conexión (ver [Riesgos](#riesgos)).
 - **Operación (65):** polling en el scheduler para desarrollo y webhook para producción; el registro del webhook es manual (`setWebhook`). El canal Desktop solo notifica en la máquina del servidor.
 
@@ -141,7 +144,8 @@ Entregables:
 | `accounts` | READ | Propiedad del agente (bot → cuenta → usuario) |
 | `signals` | READ (hook) | Datos de la señal para el payload |
 | `orders` | READ (hook) | Datos de la orden para el payload |
-| `users` | READ | `telegram_chat_id` del dueño del agente (aviso) y del chat que responde (decisión); columnas de [M1](M01-AUTH.md) |
+| `users` | READ | `telegram_chat_id` del dueño del agente (aviso), del chat que responde (decisión) y de los suscriptores (señales compartidas); columnas de [M1](M01-AUTH.md) |
+| `signal_subscriptions` | READ | Suscriptores de un agente compartido (tabla de [M7](M07-BOTS-SIGNALS.md)) |
 
 ### Modelos ORM (`app/modules/alerts/infrastructure/`)
 | Archivo | Clase | Tabla |
@@ -165,7 +169,7 @@ Entregables:
 | `telegram_channel.py` | `TelegramChannel` (`send`, `send_raw`, `call(method, payload)`) + `telegram_api(token, method, payload)` | Bot API via httpx (timeout 10 s); devuelve el `result` o `None` |
 | `webhook_channel.py` | `WebhookChannel` | HTTP POST via httpx; `resolves_to_public_ips` antes de cada envío, sin redirects, timeout 5 s |
 | `desktop_channel.py` | `DesktopChannel` | plyer (macOS/Win/Linux) |
-| `telegram_messages.py` | `DECISION_MESSAGES`, `LINK_MESSAGES`, `BUTTON_APPROVE/REJECT/OPEN_APP`, `pending_signal_text(...)`, `decision_text(code)`, `format_number` | Textos del bot (rol notificación) |
+| `telegram_messages.py` | `DECISION_MESSAGES`, `LINK_MESSAGES`, `BUTTON_APPROVE/REJECT/OPEN_APP`, `pending_signal_text(...)`, `shared_signal_text(...)`, `decision_text(code)`, `format_number` | Textos del bot (rol notificación) |
 | `telegram_replier.py` | `TelegramReplier` (`link_result`, `decision_result`) | Responde con `sendMessage`, `answerCallbackQuery` y `editMessageText` |
 | `telegram_poller.py` | `fetch_updates(token)` | `getUpdates` con `offset` en memoria (modo polling) |
 
@@ -179,11 +183,11 @@ Entregables:
 | `alert_rules/` | `list_alert_rules_service.py`, `create_alert_rule_service.py` (`owner_id`, bot propio, webhook válido), `update_alert_rule_service.py` (webhook válido) |
 | `alert_events/` | `list_alert_events_service.py` |
 | `evaluation/` | `fire_alert_service.py` (crea evento + despacha), `evaluate_alerts_service.py` (evalúa reglas) |
-| `telegram/` | `signal_approval_notifier.py` (`SignalApprovalNotifier.notify(signal, bot)`: sin token, sin cuenta o sin chat vinculado no envía), `telegram_update_service.py` (`TelegramUpdateService.handle(update)`: `/start <código>` → `TelegramLinkService.confirm`; `sig:a:<id>` / `sig:r:<id>` → `ExecuteSignalService.execute/reject(channel="telegram")`) |
+| `telegram/` | `signal_approval_notifier.py` (`SignalApprovalNotifier.notify(signal, bot)`: sin token, sin cuenta o sin chat vinculado no envía), `shared_signal_notifier.py` (`SharedSignalNotifier.notify(signal, bot) -> int` enviados: sin token, agente que no comparte o señal no accionable → 0), `telegram_update_service.py` (`TelegramUpdateService.handle(update)`: `/start <código>` → `TelegramLinkService.confirm`; `sig:a:<id>` / `sig:r:<id>` → `ExecuteSignalService.execute/reject(channel="telegram")`) |
 
 Providers:
 - `app/modules/alerts/providers/alert_provider.py` → `AlertServiceFactory`, `get_alert_factory()`, `build_evaluate_alerts_service()`
-- `app/modules/alerts/providers/telegram_provider.py` → `build_signal_approval_notifier(session)` (lo usa `BotServiceFactory.generate_signal()`), `build_telegram_update_service(session)` (`None` sin `TELEGRAM_BOT_TOKEN`; lo usan el webhook y el polling)
+- `app/modules/alerts/providers/telegram_provider.py` → `build_signal_approval_notifier(session)` y `build_shared_signal_notifier(session)` (los usa `BotServiceFactory.generate_signal()`), `build_telegram_update_service(session)` (`None` sin `TELEGRAM_BOT_TOKEN`; lo usan el webhook y el polling)
 
 ### Endpoints REST
 | Método | Ruta | Auth | Nota |
@@ -255,7 +259,7 @@ DESKTOP_NOTIFICATIONS_ENABLED=false
 
 ## Tests
 
-- **No hay tests** para este módulo en `tests/`.
+- `tests/bots/test_shared_signal_notifier.py` — 10 tests de `SharedSignalNotifier` (envío sin botones, sin nombre ni tamaño, omite dueño/sin chat/HOLD/rechazadas/agente que no comparte/sin token, fallo de envío tragado). El resto del módulo no tiene tests.
 - Recomendado: `url_guard` (IPs privadas, IPv4 mapeada, `.internal`, puertos), `FireAlertService` (crea evento + despacha + registra `delivery_status`), `EvaluateAlertsService` (reglas `signal`/`error`/`price`), `TelegramUpdateService` y los canales con dependencias mockeadas.
 
 ## Riesgos
@@ -274,3 +278,4 @@ DESKTOP_NOTIFICATIONS_ENABLED=false
 - **2026-10-19** — Auditoría de seguridad: guarda SSRF del webhook (`url_guard.py`: https, hosts públicos, resolución DNS al enviar, sin redirects, URL fuera de los logs; `ALERT_RULE_INVALID_WEBHOOK`), reglas solo sobre agentes propios, límite de claves en los JSON; Telegram con HTML escapado, token fuera de los logs y helper `telegram_api`.
 - **2026-10-19** — Telegram por usuario para el modo Con aprobación: `SignalApprovalNotifier` (botones `sig:a`/`sig:r`), `TelegramUpdateService`, `TelegramReplier`, `telegram_messages.py`, `telegram_poller.py` (polling en el scheduler), `POST /api/telegram/webhook` con secreto (fuera de la auditoría), `telegram_provider.py`; settings `TELEGRAM_BOT_USERNAME`, `TELEGRAM_UPDATES_MODE`, `TELEGRAM_WEBHOOK_SECRET`, `FRONTEND_URL`.
 - **2026-10-20** — Todas las alertas: columna **Dueño** (nombre y correo) y filtro por dueño en Reglas y Eventos; Telegram pasa al grupo admin **Configuración**.
+- **2026-10-20** — **Señales compartidas** ([M7](M07-BOTS-SIGNALS.md)): `SharedSignalNotifier` envía a los suscriptores de un agente compartido sus BUY/SELL aprobadas por Telegram, sin botones ni datos de la cuenta; `shared_signal_text`, `build_shared_signal_notifier`. Primeros tests del módulo (`tests/bots/test_shared_signal_notifier.py`).

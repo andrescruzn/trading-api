@@ -8,4 +8,5 @@ MANAGED_ACCOUNT_ERROR_MESSAGES: dict[str, str] = {
     "BILLING_INVESTOR_INACTIVE":          "El inversor no está activo.",
     "BILLING_INVALID_PERIOD_TYPE":        "Tipo de período inválido. Use: daily, weekly o monthly.",
     "BILLING_INVALID_CAPITAL":            "El capital inicial no puede ser negativo.",
+    "BILLING_ACCOUNT_NOT_FOUND":          "La cuenta de exchange de esta cuenta gestionada no existe.",
 }

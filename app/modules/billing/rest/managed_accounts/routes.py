@@ -20,8 +20,10 @@ from sqlalchemy.orm import Session
 from app.common.config import settings
 from app.common.http import build_created_response, build_error_response, build_list_response, send
 from app.common.security.jwt import token_required_actual
+from app.common.security.jwt.role_guard import admin_required
 from app.extensions.db import get_db
 from app.modules.billing.domain.managed_account_entity import ManagedAccount
+from app.modules.billing.services.managed_accounts import EquityEstimate
 from app.modules.billing.providers.billing_provider import BillingServiceFactory, get_billing_factory
 
 from .error_messages import MANAGED_ACCOUNT_ERROR_MESSAGES
@@ -174,3 +176,39 @@ def update_managed_account(
         return build_error_response(result, MANAGED_ACCOUNT_ERROR_MESSAGES)
 
     return send(msg="Cuenta gestionada actualizada.", status_code=200, data=_account_to_dict(result.data))
+
+
+# ======================================================================
+# GET /api/managed-accounts/{id}/equity-estimate
+# ======================================================================
+
+def _estimate_to_dict(e: EquityEstimate) -> dict[str, Any]:
+    return {
+        "currency": e.currency,
+        "equity":   str(e.equity),
+        "as_of":    e.as_of.isoformat() if e.as_of else None,
+        "lines": [
+            {
+                "asset": line.asset,
+                "qty":   str(line.qty),
+                "price": str(line.price) if line.price is not None else None,
+                "value": str(line.value) if line.value is not None else None,
+            }
+            for line in e.lines
+        ],
+        "missing": e.missing,
+    }
+
+
+@router.get("/{managed_account_id}/equity-estimate", status_code=200)
+def estimate_equity(
+    managed_account_id: int,
+    _identity: dict = Depends(admin_required),
+    factory: BillingServiceFactory = Depends(get_factory),
+):
+    """Equity sugerido desde los últimos balances (para abrir o cerrar un período)."""
+    result = factory.estimate_equity().execute(managed_account_id=managed_account_id)
+    if not result.success:
+        return build_error_response(result, MANAGED_ACCOUNT_ERROR_MESSAGES)
+    return send(msg="OK", status_code=200, data=_estimate_to_dict(result.data))
+

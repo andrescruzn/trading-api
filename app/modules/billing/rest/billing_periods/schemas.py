@@ -13,6 +13,10 @@ class OpenBillingPeriodRequest(BaseModel):
     )
 
 
+class SettleFeeRequest(BaseModel):
+    notes: str | None = Field(default=None, max_length=500, description="Nota opcional")
+
+
 class CloseBillingPeriodRequest(BaseModel):
     closing_equity: Decimal = Field(
         ge=Decimal("0"),

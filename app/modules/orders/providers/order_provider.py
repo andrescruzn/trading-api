@@ -46,6 +46,11 @@ from app.modules.orders.services.orders.create_order_service import CreateOrderS
 from app.modules.orders.services.orders.get_order_service import GetOrderService
 from app.modules.orders.services.orders.list_orders_service import ListOrdersService
 from app.modules.orders.services.positions.list_positions_service import ListPositionsService
+from app.modules.orders.services.performance import (
+    GetBotPerformanceService,
+    ListStrategyTrackRecordService,
+)
+from app.modules.strategies.infrastructure import SqlAlchemyStrategyRepository
 from app.modules.orders.services.risk.risk_gate_service import RiskGateService
 from app.modules.orders.services.execution import (
     ExecuteSignalService,
@@ -228,6 +233,21 @@ class OrderServiceFactory:
     # ------------------------------------------------------------------
     # Positions
     # ------------------------------------------------------------------
+
+    def bot_performance(self) -> GetBotPerformanceService:
+        return GetBotPerformanceService(
+            fill_repo=self._fill_repo,
+            bot_repo=self._bot_repo,
+            account_repo=self._account_repo,
+            candle_repo=self._candle_repo,
+        )
+
+    def strategy_track_record(self) -> ListStrategyTrackRecordService:
+        return ListStrategyTrackRecordService(
+            fill_repo=self._fill_repo,
+            bot_repo=self._bot_repo,
+            strategy_repo=SqlAlchemyStrategyRepository(self._session),
+        )
 
     def list_positions(self) -> ListPositionsService:
         return ListPositionsService(

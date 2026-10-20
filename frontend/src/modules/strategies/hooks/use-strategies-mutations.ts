@@ -1,6 +1,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
+	type BacktestInput,
 	createStrategy,
+	runBacktest,
 	type StrategyInput,
 	type StrategyUpdate,
 	updateStrategy,
@@ -27,4 +29,15 @@ function useUpdateStrategyMutation() {
 	});
 }
 
-export { useCreateStrategyMutation, useUpdateStrategyMutation };
+/** No cambia nada en la BD: solo devuelve el resultado. */
+function useRunBacktestMutation() {
+	return useMutation({
+		mutationFn: (input: BacktestInput) => runBacktest(input),
+	});
+}
+
+export {
+	useCreateStrategyMutation,
+	useRunBacktestMutation,
+	useUpdateStrategyMutation,
+};

@@ -5,6 +5,7 @@ import {
 	IconCompass,
 	IconDatabase,
 	IconEye,
+	IconFlask,
 	IconHome,
 	IconSettings,
 	IconTrendingUp,
@@ -61,6 +62,7 @@ const navSections: NavSectionData[] = [
 			},
 			{ title: 'Estrategias', icon: IconBook, url: '/strategies' },
 			{ title: 'Track record', icon: IconTrophy, url: '/track-record' },
+			{ title: 'Backtesting', icon: IconFlask, url: '/backtest' },
 		],
 	},
 	{

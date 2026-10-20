@@ -1,3 +1,5 @@
+import { IconFlask } from '@tabler/icons-react';
+import { Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { formatDate, formatPercent } from '@/modules/shared/lib/format';
 import type {
@@ -9,6 +11,7 @@ import {
 	describeRule,
 	strategyTypeLabel,
 } from '@/modules/strategies/lib/strategies-labels';
+import { Button } from '@/modules/ui/components/button';
 import {
 	Sheet,
 	SheetContent,
@@ -122,6 +125,22 @@ export function StrategyDetailSheet({
 										);
 									})}
 								</ul>
+							)}
+							{rules.length > 0 && (
+								<Button
+									variant="outline"
+									size="sm"
+									className="self-start"
+									render={
+										<Link
+											to="/backtest"
+											search={{ strategy_id: strategy.id }}
+										/>
+									}
+								>
+									<IconFlask />
+									Probar en el pasado
+								</Button>
 							)}
 						</section>
 

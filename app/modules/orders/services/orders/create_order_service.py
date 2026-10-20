@@ -19,6 +19,10 @@
 #      filled / partially_filled → Fill + Position; sent → solo la orden;
 #      rechazo → rejected; sin respuesta → sent + needs_reconciliation
 #   8. Commit y hook de alertas
+#   9. Protección (opcional, compras a mercado; también la de las
+#      señales): SL/TP en la posición y, en live, el SL como orden nativa.
+#      Si la compra no se ejecutó al instante (sent / sin respuesta), queda
+#      pendiente en `meta.protection` y la aplica la reconciliación.
 #
 # DECISIÓN DE DISEÑO — Persistir antes de enviar:
 #   Si se revierte la orden cuando la llamada al exchange falla por red,
@@ -59,6 +63,14 @@ if TYPE_CHECKING:
     from app.modules.orders.services.execution.native_stop_service import NativeStopService
 
 
+def _protection_meta(stop_loss: Decimal | None, take_profit: Decimal | None) -> dict:
+    """Protección pendiente guardada en la orden (JSON: decimales como texto)."""
+    return {
+        "stop_loss": str(stop_loss) if stop_loss is not None else None,
+        "take_profit": str(take_profit) if take_profit is not None else None,
+    }
+
+
 class CreateOrderService:
     """
     Crea y ejecuta una orden de trading.
@@ -72,6 +84,10 @@ class CreateOrderService:
     - signal_id, si viene: señal del mismo bot, aprobada, con la misma
       dirección y sin otra orden activa (una señal = una orden).
     - Toda orden pasa por el RiskGate antes de ejecutarse.
+    - Protección manual (stop_loss / take_profit): solo compras a mercado
+      (una límite no se sabe cuándo se ejecuta), SL < precio < TP, R/R ≥
+      `min_rr_ratio` si vienen los dos, y no sobre una posición que ya tiene
+      SL nativo (cubriría solo la cantidad anterior).
     """
 
     def __init__(
@@ -89,8 +105,12 @@ class CreateOrderService:
         live_executor: LiveExecutor,
         evaluate_alerts: "EvaluateAlertsService | None" = None,
         native_stop: "NativeStopService | None" = None,
+        place_native_stop: bool = False,
+        min_rr_ratio: Decimal = Decimal("2"),
     ):
         self._native_stop = native_stop
+        self._place_native_stop = place_native_stop
+        self._min_rr_ratio = min_rr_ratio
         self._order_repo = order_repo
         self._fill_repo = fill_repo
         self._position_repo = position_repo
@@ -117,6 +137,8 @@ class CreateOrderService:
         owner_id: int | None = None,
         require_running: bool = True,
         reason: str | None = None,
+        stop_loss: Decimal | None = None,
+        take_profit: Decimal | None = None,
     ) -> ServiceResult[Order]:
         """
         Args:
@@ -125,6 +147,8 @@ class CreateOrderService:
                              o detenido (el kill switch global sigue aplicando).
             reason:          origen de la orden para el historial (`meta.reason`):
                              manual, signal, stop_loss, take_profit.
+            stop_loss / take_profit: protección manual de la posición (solo
+                             compras a mercado). Las señales la ponen aparte.
         """
 
         # ------------------------------------------------------------------
@@ -200,6 +224,14 @@ class CreateOrderService:
             bot_id=bot_id,
             symbol_id=bot.symbol_id,
         )
+        wants_protection = stop_loss is not None or take_profit is not None
+        if wants_protection:
+            protection_check = self._check_protection(
+                side, order_type, reference_price, stop_loss, take_profit, position
+            )
+            if not protection_check.success:
+                return protection_check
+
         if side == "sell":
             held = position.qty if position is not None else Decimal("0")
             if qty > held:
@@ -277,6 +309,8 @@ class CreateOrderService:
         except ExecutionUncertainError as exc:
             order.status = "sent"
             order.meta = {**order.meta, "needs_reconciliation": True, "error": str(exc)}
+            if wants_protection:
+                order.meta = {**order.meta, "protection": _protection_meta(stop_loss, take_profit)}
             self._order_repo.update(order)
             self._order_repo.commit()
             return ServiceResult.fail(
@@ -305,7 +339,7 @@ class CreateOrderService:
             fill = self._fill_repo.create(fill)
             if order.exchange_order_id is None:
                 order.exchange_order_id = fill.exchange_trade_id
-            apply_fill(
+            position = apply_fill(
                 self._position_repo,
                 bot=bot,
                 position=position,
@@ -313,6 +347,10 @@ class CreateOrderService:
                 fill_price=fill.price,
                 side=side,
             )
+        elif wants_protection:
+            # Sin ejecución todavía: la reconciliación aplica la protección
+            # cuando registre el fill
+            order.meta = {**order.meta, "protection": _protection_meta(stop_loss, take_profit)}
 
         order = self._order_repo.update(order)
 
@@ -321,6 +359,17 @@ class CreateOrderService:
         # ------------------------------------------------------------------
         self._order_repo.commit()
         self._fire_order_alerts(order, bot_id)
+
+        # ------------------------------------------------------------------
+        # 9. Protección de la posición abierta por esta compra
+        # ------------------------------------------------------------------
+        if (
+            wants_protection
+            and result.fill is not None
+            and position is not None
+            and not position.is_flat()
+        ):
+            self._protect(bot, position, stop_loss, take_profit, signal_id)
 
         return ServiceResult.ok(data=order)
 
@@ -344,6 +393,73 @@ class CreateOrderService:
             return ServiceResult.fail(code="ORDER_SIGNAL_ALREADY_USED", http_status=409)
 
         return ServiceResult.ok(data=None)
+
+    def _check_protection(
+        self,
+        side: str,
+        order_type: str,
+        reference_price: Decimal,
+        stop_loss: Decimal | None,
+        take_profit: Decimal | None,
+        position,
+    ) -> ServiceResult[None]:
+        if side != "buy" or order_type != "market":
+            return ServiceResult.fail(code="ORDER_PROTECTION_MARKET_BUY_ONLY", http_status=422)
+        if stop_loss is not None and stop_loss >= reference_price:
+            return ServiceResult.fail(
+                code="ORDER_INVALID_STOP_LOSS",
+                http_status=422,
+                meta={"price": str(reference_price)},
+            )
+        if take_profit is not None and take_profit <= reference_price:
+            return ServiceResult.fail(
+                code="ORDER_INVALID_TAKE_PROFIT",
+                http_status=422,
+                meta={"price": str(reference_price)},
+            )
+        if stop_loss is not None and take_profit is not None:
+            ratio = (take_profit - reference_price) / (reference_price - stop_loss)
+            if ratio < self._min_rr_ratio:
+                return ServiceResult.fail(
+                    code="ORDER_PROTECTION_RR_TOO_LOW",
+                    http_status=422,
+                    meta={"ratio": f"{ratio:.2f}", "min": str(self._min_rr_ratio)},
+                )
+        if position is not None and position.has_native_stop():
+            return ServiceResult.fail(code="ORDER_NATIVE_STOP_ACTIVE", http_status=409)
+        return ServiceResult.ok(data=None)
+
+    def _protect(
+        self,
+        bot: Bot,
+        position,
+        stop_loss: Decimal | None,
+        take_profit: Decimal | None,
+        signal_id: int | None = None,
+    ) -> None:
+        """
+        Guarda SL/TP en la posición (los vigila el scheduler) y, en live,
+        deja el SL como orden nativa. Un fallo aquí no deshace la compra: la
+        orden ya está confirmada y el scheduler sigue de respaldo.
+
+        Solo cambia el nivel que se pide: comprar más con solo TP no borra el
+        SL que ya tenía la posición (p. ej. el de la señal que la abrió).
+        """
+        position.set_protection(
+            stop_loss if stop_loss is not None else position.stop_loss,
+            take_profit if take_profit is not None else position.take_profit,
+            signal_id=signal_id or position.signal_id,
+        )
+        self._position_repo.update(position)
+        self._position_repo.commit()
+
+        if (
+            stop_loss is not None
+            and bot.mode == "live"
+            and self._place_native_stop
+            and self._native_stop is not None
+        ):
+            self._native_stop.place(bot, position, stop_loss)
 
     def _last_close(self, bot: Bot) -> Decimal | None:
         candles = self._candle_repo.list_candles(

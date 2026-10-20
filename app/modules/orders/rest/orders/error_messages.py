@@ -34,4 +34,25 @@ ORDER_ERROR_MESSAGES: dict[str, str] = {
     "BOT_NOT_RUNNING":          "Inicia el agente para poder enviar órdenes.",
     "SYMBOL_NOT_FOUND":         "El símbolo asociado al agente no existe.",
     "FILLS_MISSING_FILTER":     "Elige un agente o una orden para ver sus ejecuciones.",
+
+    # Protección manual (stop loss / take profit en la orden)
+    "ORDER_PROTECTION_MARKET_BUY_ONLY": "El stop loss y el take profit solo se pueden poner en compras a mercado.",
+    "ORDER_INVALID_STOP_LOSS":  "El stop loss debe estar por debajo del precio actual.",
+    "ORDER_INVALID_TAKE_PROFIT":"El take profit debe estar por encima del precio actual.",
+    "ORDER_PROTECTION_RR_TOO_LOW": (
+        "La ganancia posible no compensa el riesgo: el take profit debe estar al menos "
+        "dos veces más lejos del precio que el stop loss."
+    ),
+
+    # Cancelar
+    "ORDER_NOT_CANCELABLE": (
+        "Solo se pueden cancelar órdenes live que siguen abiertas en el exchange. "
+        "Esta ya terminó (o es paper, que se ejecuta al instante)."
+    ),
+    "ORDER_CANCEL_PENDING_SYNC": (
+        "Aún no tenemos el número de esta orden en el exchange. Espera un par de minutos "
+        "a que se sincronice e inténtalo de nuevo."
+    ),
+    "ORDER_CANCEL_UNCERTAIN":   "No recibimos respuesta del exchange al cancelar. Revisa la orden en unos minutos.",
+    "ORDER_CANCEL_FAILED":      "El exchange no aceptó la cancelación. Revisa la orden directamente en el exchange.",
 }

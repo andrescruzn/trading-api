@@ -25,6 +25,8 @@ class CreateOrderRequest(BaseModel):
     - price    : requerido si type es "limit" o "stop_limit"
     - stop_price: requerido si type es "stop" o "stop_limit"
     - signal_id: opcional — vincula la orden a una señal generada por el bot
+    - stop_loss / take_profit: opcional — protección automática de la
+      posición (solo compras a mercado; lo valida el servicio)
     """
 
     bot_id:        int     = Field(..., gt=0)
@@ -35,6 +37,8 @@ class CreateOrderRequest(BaseModel):
     stop_price:    Decimal | None = Field(default=None, gt=0, max_digits=30, decimal_places=12)
     time_in_force: str     | None = Field(default=None, pattern="^(GTC|IOC|FOK)$")
     signal_id:     int     | None = Field(default=None, gt=0)
+    stop_loss:     Decimal | None = Field(default=None, gt=0, max_digits=30, decimal_places=12)
+    take_profit:   Decimal | None = Field(default=None, gt=0, max_digits=30, decimal_places=12)
 
     @model_validator(mode="after")
     def validate_price_consistency(self) -> "CreateOrderRequest":

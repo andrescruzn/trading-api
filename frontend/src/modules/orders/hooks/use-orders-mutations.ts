@@ -1,5 +1,9 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { createOrder, type OrderInput } from '@/modules/orders/api/orders.api';
+import {
+	cancelOrder,
+	createOrder,
+	type OrderInput,
+} from '@/modules/orders/api/orders.api';
 import {
 	FILLS_QUERY_KEY,
 	ORDERS_QUERY_KEY,
@@ -19,4 +23,17 @@ function useCreateOrderMutation() {
 	});
 }
 
-export { useCreateOrderMutation };
+/** Cancelar puede registrar ejecuciones de último momento: refresca todo. */
+function useCancelOrderMutation() {
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: (id: number) => cancelOrder(id),
+		onSettled: () => {
+			queryClient.invalidateQueries({ queryKey: ORDERS_QUERY_KEY });
+			queryClient.invalidateQueries({ queryKey: FILLS_QUERY_KEY });
+			queryClient.invalidateQueries({ queryKey: POSITIONS_QUERY_KEY });
+		},
+	});
+}
+
+export { useCancelOrderMutation, useCreateOrderMutation };

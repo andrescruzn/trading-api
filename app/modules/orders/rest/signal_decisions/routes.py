@@ -20,6 +20,7 @@ from sqlalchemy.orm import Session
 
 from app.common.http import build_error_response, build_success_response
 from app.common.security.jwt import owner_scope, token_required_actual
+from app.common.security.rate_limiter import check_user_rate_limit, order_rate_limiter
 from app.extensions.db import get_db
 from app.modules.orders.providers import OrderServiceFactory, get_order_factory
 from app.modules.orders.services.execution import SignalDecision
@@ -57,6 +58,9 @@ def approve_signal(
     factory: OrderServiceFactory = Depends(get_factory),
 ):
     """Aprueba una señal pendiente: revalida al precio actual y envía la orden."""
+    # Aprobar crea una orden: mismo límite que POST /orders
+    check_user_rate_limit(order_rate_limiter, identity["user_id"])
+
     result = factory.execute_signal().execute(
         signal_id,
         owner_id=owner_scope(identity),

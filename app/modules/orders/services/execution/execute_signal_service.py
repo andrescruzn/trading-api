@@ -19,18 +19,19 @@
 #      - SELL (spot): cierra la posición abierta; sin posición → falla
 #   5. Cantidad: se recalcula para que el riesgo en dinero siga siendo el
 #      de la señal (1 % del capital) con la distancia actual al SL
-#   6. CreateOrderService (propiedad, RiskGate, idempotencia)
-#   7. BUY ejecutada → la posición guarda SL/TP para el scheduler; en live
-#      el SL además queda como orden nativa en el exchange (si lo soporta)
-#   8. executing → executed | failed (decision_reason = código)
+#   6. CreateOrderService (propiedad, RiskGate, idempotencia) con el SL/TP
+#      de la señal: al ejecutarse la BUY la posición los guarda para el
+#      scheduler y, en live, el SL queda como orden nativa. Si la compra se
+#      ejecuta después, la protección la aplica la reconciliación.
+#   7. executing → executed | failed (decision_reason = código). Si la
+#      orden quedó sin respuesta o abierta (`sent`), la señal sigue
+#      `executing` y la reconciliación la cierra cuando la orden termine.
 # ======================================================================
 
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import TYPE_CHECKING
 
 from app.common.contracts import ServiceResult
 from app.common.utils.datetime_utils import utc_now
@@ -44,11 +45,6 @@ from app.modules.market.domain.candle_repository import CandleRepository
 from app.modules.orders.domain.order_entity import Order
 from app.modules.orders.domain.position_repository import PositionRepository
 from app.modules.orders.services.orders.create_order_service import CreateOrderService
-
-if TYPE_CHECKING:
-    from app.modules.orders.services.execution.native_stop_service import NativeStopService
-
-logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -71,9 +67,7 @@ class ExecuteSignalService:
         position_repo: PositionRepository,
         create_order: CreateOrderService,
         min_rr_ratio: float,
-        native_stop: "NativeStopService | None" = None,
     ):
-        self._native_stop = native_stop
         self._signal_repo = signal_repo
         self._bot_repo = bot_repo
         self._account_repo = account_repo
@@ -116,6 +110,8 @@ class ExecuteSignalService:
             return self._finish_failed(signal_id, plan.error.code, plan.error.http_status)
         side, qty = plan.data
 
+        # La protección (SL/TP y, en live, SL nativo) la aplica CreateOrderService
+        # al ejecutarse la compra, o la reconciliación si se ejecuta después.
         result = self._create_order.create(
             bot_id=bot.id,
             side=side,
@@ -124,23 +120,26 @@ class ExecuteSignalService:
             signal_id=signal.id,
             owner_id=owner_id,
             reason="signal",
+            stop_loss=signal.stop_loss if side == "buy" else None,
+            take_profit=signal.take_profit if side == "buy" else None,
         )
         if not result.success:
+            if result.error.code == "ORDER_EXECUTION_UNCERTAIN":
+                # La orden puede estar viva en el exchange: la señal sigue
+                # `executing` y la reconciliación la cierra (executed / failed)
+                return ServiceResult.fail(
+                    code=result.error.code,
+                    http_status=result.error.http_status,
+                    meta=result.error.meta,
+                )
             return self._finish_failed(signal_id, result.error.code, result.error.http_status)
 
         order = result.data
-        position = self._position_repo.get_by_bot_and_symbol(bot.id, bot.symbol_id)
-        if side == "buy" and position is not None and not position.is_flat():
-            position.set_protection(signal.stop_loss, signal.take_profit, signal.id)
-            self._position_repo.update(position)
-            self._signal_repo.commit()
-            if bot.mode == "live" and self._native_stop is not None:
-                placed = self._native_stop.place(bot, position, signal.stop_loss)
-                if not placed.success:
-                    # El scheduler sigue vigilando el SL: la señal no falla
-                    logger.warning(
-                        "SL nativo no colocado — signal=%d code=%s", signal.id, placed.error.code
-                    )
+        if order.status == "sent":
+            # Aceptada sin ejecutarse aún: se decide cuando se ejecute o se cierre
+            return ServiceResult.ok(
+                data=SignalDecision(signal=self._signal_repo.get_by_id(signal_id), order=order)
+            )
 
         self._signal_repo.transition_decision(
             signal_id, from_statuses=("executing",), to_status="executed"

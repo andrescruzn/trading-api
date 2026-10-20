@@ -41,6 +41,7 @@ from app.modules.orders.infrastructure import (
 
 # Servicios propios
 from app.modules.orders.services.fills.list_fills_service import ListFillsService
+from app.modules.orders.services.orders.cancel_order_service import CancelOrderService
 from app.modules.orders.services.orders.create_order_service import CreateOrderService
 from app.modules.orders.services.orders.get_order_service import GetOrderService
 from app.modules.orders.services.orders.list_orders_service import ListOrdersService
@@ -156,6 +157,17 @@ class OrderServiceFactory:
             live_executor=self._live_executor,
             evaluate_alerts=build_evaluate_alerts_service(self._session),
             native_stop=self.native_stop(),
+            place_native_stop=settings.ORDER_NATIVE_STOP_LOSS,
+            min_rr_ratio=settings.AGENT_MIN_RR_RATIO,
+        )
+
+    def cancel_order(self) -> CancelOrderService:
+        return CancelOrderService(
+            order_repo=self._order_repo,
+            bot_repo=self._bot_repo,
+            account_repo=self._account_repo,
+            live_executor=self._live_executor,
+            reconcile=self.reconcile_orders(),
         )
 
     # ------------------------------------------------------------------
@@ -178,6 +190,8 @@ class OrderServiceFactory:
             bot_repo=self._bot_repo,
             live_executor=self._live_executor,
             evaluate_alerts=build_evaluate_alerts_service(self._session),
+            signal_repo=self._signal_repo,
+            native_stop=self.native_stop() if settings.ORDER_NATIVE_STOP_LOSS else None,
         )
 
     def execute_signal(self) -> ExecuteSignalService:
@@ -189,7 +203,6 @@ class OrderServiceFactory:
             position_repo=self._position_repo,
             create_order=self.create_order(),
             min_rr_ratio=settings.AGENT_MIN_RR_RATIO,
-            native_stop=self.native_stop() if settings.ORDER_NATIVE_STOP_LOSS else None,
         )
 
     def protect_positions(self) -> ProtectPositionsService:

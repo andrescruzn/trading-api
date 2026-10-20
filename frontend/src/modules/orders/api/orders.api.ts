@@ -79,6 +79,9 @@ type OrderInput = {
 	stop_price?: string;
 	time_in_force?: TimeInForce;
 	signal_id?: number;
+	/** Protección automática de la posición: solo compras a mercado. */
+	stop_loss?: string;
+	take_profit?: string;
 };
 
 type OrderFilters = {
@@ -111,6 +114,11 @@ function createOrder(input: OrderInput) {
 	return api.post<Order>('/orders', input);
 }
 
+/** Cancela una orden live abierta; devuelve cómo quedó tras sincronizarla. */
+function cancelOrder(id: number) {
+	return api.post<Order>(`/orders/${id}/cancel`);
+}
+
 // ======================================================================
 // Posiciones y ejecuciones
 // ======================================================================
@@ -137,4 +145,11 @@ export type {
 	Position,
 	TimeInForce,
 };
-export { createOrder, getOrder, listFills, listOrders, listPositions };
+export {
+	cancelOrder,
+	createOrder,
+	getOrder,
+	listFills,
+	listOrders,
+	listPositions,
+};

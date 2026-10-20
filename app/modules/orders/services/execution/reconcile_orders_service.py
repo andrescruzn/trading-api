@@ -17,6 +17,11 @@
 #   rejected). Una orden con needs_reconciliation que el exchange no conoce
 #   a los 10 minutos se marca rejected: nunca llegó.
 # - Si es el SL nativo de la posición y terminó, se desvincula.
+# - Compra con protección pendiente (`meta.protection`: no se ejecutó al
+#   enviarla): al registrar su fill se ponen SL/TP en la posición y, en
+#   live, el SL nativo. Si la orden es de una señal, su decisión pasa de
+#   `executing` a `executed` (se ejecutó algo) o `failed` (terminó sin
+#   ejecutarse).
 # - Errores de red: se reintenta en el siguiente ciclo. Una orden por
 #   commit: un fallo no deshace las demás.
 # ======================================================================
@@ -32,6 +37,7 @@ from typing import TYPE_CHECKING
 from app.common.contracts import ServiceResult
 from app.common.utils.datetime_utils import ensure_aware_utc, utc_now
 from app.modules.bots.domain.bot_repository import BotRepository
+from app.modules.bots.domain.signal_repository import SignalRepository
 from app.modules.orders.domain.fill_entity import Fill
 from app.modules.orders.domain.fill_repository import FillRepository
 from app.modules.orders.domain.order_entity import Order
@@ -43,6 +49,7 @@ from app.modules.orders.services.orders.position_updater import apply_fill
 
 if TYPE_CHECKING:
     from app.modules.alerts.services.evaluation.evaluate_alerts_service import EvaluateAlertsService
+    from app.modules.orders.services.execution.native_stop_service import NativeStopService
 
 logger = logging.getLogger(__name__)
 
@@ -69,6 +76,8 @@ class ReconcileOrdersService:
         bot_repo: BotRepository,
         live_executor: LiveExecutor,
         evaluate_alerts: "EvaluateAlertsService | None" = None,
+        signal_repo: SignalRepository | None = None,
+        native_stop: "NativeStopService | None" = None,
     ):
         self._order_repo = order_repo
         self._fill_repo = fill_repo
@@ -76,6 +85,8 @@ class ReconcileOrdersService:
         self._bot_repo = bot_repo
         self._live = live_executor
         self._evaluate_alerts = evaluate_alerts
+        self._signal_repo = signal_repo
+        self._native_stop = native_stop
 
     def run(self, limit: int = 50) -> ServiceResult[ReconcileReport]:
         report = ReconcileReport()
@@ -93,6 +104,14 @@ class ReconcileOrdersService:
                 report.updated.append({"order_id": order.id, **change})
 
         return ServiceResult.ok(data=report)
+
+    def sync_one(self, order: Order) -> dict | None:
+        """
+        Sincroniza una sola orden ahora (p. ej. justo después de cancelarla,
+        para registrar lo que se ejecutó desde el último ciclo). None si no
+        cambió nada o el exchange no respondió (lo retoma el siguiente ciclo).
+        """
+        return self._reconcile(order, utc_now())
 
     # ------------------------------------------------------------------
 
@@ -186,11 +205,74 @@ class ReconcileOrdersService:
             position.sl_order_id = None
             self._position_repo.update(position)
 
+        # La protección pendiente va en el MISMO commit que el fill: si se
+        # aplicara después y fallara, la orden ya sería final y la
+        # reconciliación no volvería a verla (posición sin protección).
+        native_stop_price = None
+        if filled_delta is not None and order.side == "buy":
+            native_stop_price = self._apply_pending_protection(order, position)
+
         self._order_repo.update(order)
         self._order_repo.commit()
+
+        if native_stop_price is not None:
+            self._place_native_stop(order, bot, position, native_stop_price)
+        self._settle_signal(order)
 
         if order.status == "rejected" and self._evaluate_alerts is not None:
             try:
                 self._evaluate_alerts.evaluate_order_alerts(order=order, bot_id=bot.id)
             except Exception:
                 pass
+
+    def _apply_pending_protection(self, order: Order, position) -> Decimal | None:
+        """
+        SL/TP que la compra traía y no se pudieron poner al enviarla (sin
+        commit: va con el del fill). Devuelve el SL a dejar como orden nativa.
+        """
+        pending = order.meta.get("protection")
+        if not pending or pending.get("applied") or position is None or position.is_flat():
+            return None
+
+        stop_loss = Decimal(pending["stop_loss"]) if pending.get("stop_loss") else None
+        take_profit = Decimal(pending["take_profit"]) if pending.get("take_profit") else None
+        position.set_protection(
+            stop_loss if stop_loss is not None else position.stop_loss,
+            take_profit if take_profit is not None else position.take_profit,
+            signal_id=order.signal_id or position.signal_id,
+        )
+        self._position_repo.update(position)
+        order.meta = {**order.meta, "protection": {**pending, "applied": True}}
+        return stop_loss
+
+    def _place_native_stop(self, order: Order, bot, position, stop_loss: Decimal) -> None:
+        """
+        SL nativo en live. `native_stop` solo se inyecta con
+        ORDER_NATIVE_STOP_LOSS=true (order_provider); si falla, el scheduler
+        vigila el SL que ya quedó en la posición.
+        """
+        if bot.mode == "live" and self._native_stop is not None and not position.has_native_stop():
+            placed = self._native_stop.place(bot, position, stop_loss)
+            if not placed.success:
+                logger.warning(
+                    "[Reconcile] SL nativo no colocado — order=%d: %s", order.id, placed.error.code
+                )
+
+    def _settle_signal(self, order: Order) -> None:
+        """Cierra la decisión de la señal cuya orden quedó sin confirmar."""
+        if self._signal_repo is None or order.signal_id is None:
+            return
+        if order.status in ("filled", "partially_filled") or (
+            order.status == "canceled" and self._fill_repo.list_by_order(order_id=order.id)
+        ):
+            to_status, reason = "executed", None
+        elif order.status in ("rejected", "canceled"):
+            to_status, reason = "failed", "ORDER_EXECUTION_FAILED"
+        else:
+            return
+        fields = {"decision_reason": reason} if reason else {}
+        if self._signal_repo.transition_decision(
+            order.signal_id, from_statuses=("executing",), to_status=to_status, **fields
+        ):
+            self._signal_repo.commit()
+

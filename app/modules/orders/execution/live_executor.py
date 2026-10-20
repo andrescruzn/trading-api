@@ -380,11 +380,15 @@ class LiveExecutor(ExecutorInterface):
             status = _CCXT_FINAL_STATUS.get(str(response.get("status") or ""), "sent")
             return ExecutionResult(status=status, exchange_order_id=exchange_order_id)
 
-        price_raw = response.get("average") or response.get("price")
-        if price_raw:
-            exec_price = Decimal(str(price_raw))
+        # Precio real: `average`, o `cost / filled`. `price` es el último
+        # recurso: en una límite es el precio límite, no el de ejecución (una
+        # límite que se ejecutó a mejor precio quedaría con el P&L mal).
+        if response.get("average"):
+            exec_price = Decimal(str(response["average"]))
         elif response.get("cost"):
             exec_price = Decimal(str(response["cost"])) / filled
+        elif response.get("price"):
+            exec_price = Decimal(str(response["price"]))
         else:
             raise ExecutionUncertainError(
                 "El exchange reportó la ejecución sin precio; hay que reconciliar la orden."

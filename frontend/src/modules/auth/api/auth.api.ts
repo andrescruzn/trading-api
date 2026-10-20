@@ -56,6 +56,13 @@ function me() {
 	return api.get<CurrentUser>('/users/me');
 }
 
+/** Solo el nombre visible: `null` o vacío lo borra. */
+function updateProfile(fullName: string | null) {
+	return api.put<{ id: number; full_name: string | null }>('/users/me', {
+		full_name: fullName,
+	});
+}
+
 function createTelegramLink() {
 	return api.post<TelegramLink>('/users/me/telegram/link');
 }
@@ -71,5 +78,6 @@ export {
 	me,
 	requestOtp,
 	unlinkTelegram,
+	updateProfile,
 	verifyOtp,
 };

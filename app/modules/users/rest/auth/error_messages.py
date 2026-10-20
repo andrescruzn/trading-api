@@ -20,6 +20,13 @@ DEFAULT_AUTH_ERROR_MESSAGES = AUTH_ERROR_MESSAGES
 #   que la respuesta no revele si el correo tiene cuenta.
 _OTP_REJECTED_MESSAGE = "El código no es válido o ya venció. Revísalo o pide uno nuevo."
 
+# PUT /users/me
+PROFILE_ERROR_MESSAGES: dict[str, str] = {
+    **AUTH_ERROR_MESSAGES,
+    "USER_NOT_FOUND":    "No encontramos tu cuenta. Inicia sesión de nuevo.",
+    "USER_INVALID_NAME": "El nombre es demasiado largo.",
+}
+
 OTP_VERIFY_ERROR_MESSAGES: dict[str, str] = {
     **AUTH_ERROR_MESSAGES,
     "OTP_NOT_REQUESTED": _OTP_REJECTED_MESSAGE,

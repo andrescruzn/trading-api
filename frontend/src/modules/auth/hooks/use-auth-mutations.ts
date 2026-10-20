@@ -4,6 +4,7 @@ import {
 	logout,
 	requestOtp,
 	unlinkTelegram,
+	updateProfile,
 	verifyOtp,
 } from '@/modules/auth/api/auth.api';
 import { useAuth } from '@/modules/auth/hooks/use-auth';
@@ -50,10 +51,20 @@ function useUnlinkTelegramMutation() {
 	});
 }
 
+// El nombre se muestra desde `useAuth().user`: se recarga el perfil al guardar.
+function useUpdateProfileMutation() {
+	const { refreshUser } = useAuth();
+	return useMutation({
+		mutationFn: (fullName: string | null) => updateProfile(fullName),
+		onSuccess: () => refreshUser(),
+	});
+}
+
 export {
 	useCreateTelegramLinkMutation,
 	useLogoutMutation,
 	useRequestOtpMutation,
 	useUnlinkTelegramMutation,
+	useUpdateProfileMutation,
 	useVerifyOtpMutation,
 };

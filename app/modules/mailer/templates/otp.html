@@ -10,4 +10,10 @@
   <p style="color:#666; margin:0;">
     Este código expira en {{ expires_minutes }} minutos.
   </p>
+  {% if has_open_session %}
+  <p style="color:#666; margin:12px 0 0 0;">
+    Tienes una sesión abierta en otro dispositivo o navegador: al entrar con este código se cerrará.
+    Si no fuiste tú, ignora este correo.
+  </p>
+  {% endif %}
 {% endblock %}

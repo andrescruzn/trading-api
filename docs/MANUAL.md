@@ -386,8 +386,18 @@ Por seguridad, la pantalla nunca dice si un correo está registrado: siempre pas
 código y te avisa que, si el correo tiene una cuenta, te llegó un código. Así nadie puede
 averiguar quién usa la app probando correos.
 
-Por seguridad solo hay una sesión abierta por persona: si entras desde otro navegador, la
-sesión anterior se cierra y la web te muestra "Tu sesión expiró" y te lleva al login.
+Por seguridad solo hay una sesión abierta por persona: si entras desde otro navegador o
+dispositivo, la sesión anterior se cierra. Esa otra pantalla muestra "Tu sesión se cerró" con
+el motivo (iniciaste sesión en otro lugar) y te lleva al login. Si ya tienes una sesión abierta
+cuando pides el código, el correo te lo avisa: si no fuiste tú, ignóralo.
+
+En el menú de usuario (abajo en la barra lateral), "Mi perfil" cambia el nombre que se muestra.
+El correo y el rol no se cambian desde ahí: el rol lo asigna un administrador, y si te lo cambia,
+el menú se actualiza solo en unos minutos.
+
+Arriba a la derecha está la campana de notificaciones: muestra lo último que avisaron tus
+alertas y cuántas no has visto. Al abrirla quedan como vistas en tu cuenta, así que el
+contador también se limpia en tus otros dispositivos.
 
 Todo se navega desde el menú lateral: Inicio, Operar (mis agentes, alertas, mis cuentas),
 Explorar (explorar mercados, estrategias, track record) y, según tu rol, "Mi inversión" (inversores)
@@ -651,7 +661,9 @@ La página de cada agente:
     regla 2:1 que usa la IA. Ejemplo: compras a 100 con SL 95 → el TP debe ser 110 o más.
   - Las órdenes live que siguen abiertas (una límite que no se ha ejecutado, por ejemplo) se
     pueden cancelar con "Cancelar". Lo que ya se ejecutó se mantiene.
-  - Mercado: las últimas velas del símbolo y timeframe del agente y, en "Indicadores", lo que la
+  - Mercado: un gráfico del precio de cierre (con líneas de la entrada, el stop loss y el take
+    profit si hay una posición abierta; pasa el cursor o usa las flechas para ver cada vela), las
+    últimas velas del símbolo y timeframe del agente y, en "Indicadores", lo que la
     IA lee de cada vela (RSI, EMA, MACD, régimen…). Puedes elegir cuántas velas ver (50 a 500).
     Mientras el agente está activo, los datos se actualizan solos. "Actualizar datos" los trae
     en ese momento (las últimas 500 velas del exchange y sus indicadores), también con el agente
@@ -1118,8 +1130,9 @@ El sistema soporta 4 canales simultáneos:
   Canal     Cómo funciona
   ──────────────────────────────────────────────────────────────────────────────
   Email     Envía un correo HTML usando el servidor SMTP configurado
-  Telegram  Manda un mensaje al chat de Telegram del sistema (requiere TELEGRAM_BOT_TOKEN).
-            Aparte, cada persona puede conectar su propio chat para aprobar señales (ver 3.6).
+  Telegram  Manda el aviso a TU chat de Telegram si lo conectaste (menú de usuario → Conectar
+            Telegram); si no, al chat del sistema. El mismo chat sirve para aprobar señales (ver 3.6).
+  (Email)   El correo llega a la dirección con la que entras a la app.
   Webhook   Hace un HTTP POST a una URL externa (Slack, Discord, IFTTT, etc.). Por seguridad
             la URL tiene que empezar por https:// y apuntar a un servicio público de internet.
   Desktop   Notificación nativa del sistema operativo (macOS, Windows, Linux)
@@ -1133,7 +1146,8 @@ Las alertas se disparan automáticamente desde los módulos clave:
   GenerateSignalService (M7)         Evalúa reglas tipo 'signal' post-señal aprobada
   CreateOrderService (M8)            Evalúa reglas de orden tras cada orden, también si el
                                      exchange la rechazó
-  POST /api/alerts/evaluate (manual) Evalúa reglas tipo 'price' para un símbolo
+  Cada ciclo del scheduler (~1 min)  Revisa solas las reglas de precio, P&L y drawdown
+  POST /api/alerts/evaluate (manual) Lo mismo para las reglas de precio de un símbolo
 
 El despacho es fire-and-forget: si falla una alerta, NO se cancela la señal u orden.
 Las alertas son informativas — nunca bloquean el flujo de trading.
@@ -1146,7 +1160,30 @@ Cada vez que se dispara una regla, se crea un AlertEvent con:
   - estado de entrega (pending / sent / failed)
   - el payload completo del contexto (signal_id, precio, etc.)
 
-Esto crea un log de auditoría de todas las notificaciones enviadas.
+Esto crea un log de auditoría de todas las notificaciones enviadas. Además, cada aviso aparece
+en la campana de la cabecera de la app (ver 3.0).
+
+4.5.6 ¿Cómo se calculan el P&L y el drawdown de una alerta?
+─────────────────────────────────────────────────────────────
+Las reglas de P&L y drawdown siempre van atadas a un agente, y se miden en % de lo que ese agente
+llegó a tener invertido en una sola operación (no la suma de todas, que diluiría el %).
+
+  - P&L total: lo ganado o perdido en operaciones cerradas + lo que va ganando o perdiendo la
+    abierta al último precio.
+  - P&L del día: el P&L total ahora menos el que había a las 00:00 (hora de Colombia).
+  - Drawdown: cuánto cayó el P&L desde su mejor momento. Si se recupera, baja; por eso no te
+    sigue avisando cuando ya pasó.
+
+Umbral negativo en P&L ("−5 %") avisa si se pierde eso o más; umbral positivo ("+5 %") avisa
+si se gana eso o más.
+
+Ejemplo: el agente cerró una operación con +40 (invirtió 1.000) y otra con −20 (invirtió 800), y
+tiene abierta una de 0,01 BTC comprada a 60.000 que hoy vale 57.000 (−30).
+  P&L total = 40 − 20 − 30 = −10 → −1 % de 1.000.
+  Su mejor momento fue +40 → drawdown = 40 − (−10) = 50 → 5 %. Una regla de drawdown de 5 % avisa.
+
+Para no llenarte de mensajes, una regla que ya avisó espera 60 minutos antes de volver a revisarse
+(ALERT_REPEAT_MINUTES). Si la condición sigue, te lo recuerda cada hora.
 
 ---
 PARTE 5 — Módulo 10: Billing & Managed Accounts (El modelo de negocio)

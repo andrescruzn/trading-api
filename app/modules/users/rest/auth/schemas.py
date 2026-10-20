@@ -39,6 +39,11 @@ class LoginRequest(BaseModel):
     email: EmailStr = Field(..., description="User email")
 
 
+class UpdateProfileRequest(BaseModel):
+    """Datos que la persona puede cambiar de su propia cuenta."""
+    full_name: str | None = Field(default=None, max_length=255, description="Nombre visible")
+
+
 class VerifyOtpRequest(BaseModel):
     """
     Request para verificar OTP y finalizar login.

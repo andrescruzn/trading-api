@@ -7,7 +7,7 @@
 | Campo | Valor |
 |---|---|
 | Estado | ✅ Completo |
-| Avance (alcance original) | 100 % — 7/7 entregables (+ 2 de 2026-10-19: endurecimiento de seguridad y vínculo de Telegram) |
+| Avance (alcance original) | 100 % — 7/7 entregables (+ 2 de 2026-10-19: endurecimiento de seguridad y vínculo de Telegram; + 2 de 2026-10-20: perfil propio y aviso de sesión abierta) |
 | Madurez (estimada) | 84 % — ver [Avance](#avance) |
 | Tablas | `users` (R/W), `roles` (R) |
 | Depende de | — (es la base) |
@@ -57,6 +57,8 @@ Entregables:
 - `GET /api/users/me` (perfil del usuario autenticado)
 - `GET /api/users` (solo admin): id, nombre, correo, rol, estado y último ingreso de cada usuario, para la columna Dueño de Supervisión y la página Usuarios (2026-10-20)
 - `PUT /api/users/{id}/role` (solo admin): cambiar el rol de otro usuario (2026-10-20)
+- ✅ (2026-10-20) **Perfil propio:** `PUT /api/users/me` (`UpdateProfileService`, solo `full_name`) + diálogo **Mi perfil** en el menú de usuario (correo y rol de solo lectura)
+- ✅ (2026-10-20) **Una sesión y avisar:** el 401 `AUTH_SESSION_REVOKED` explica que se entró desde otro dispositivo y el diálogo de sesión muestra ese `msg`; el correo del código avisa si ya hay una sesión abierta (`has_open_session`); el front relee `/users/me` cada 5 min y al volver a la pestaña (cambios de rol o nombre sin recargar)
 - Security headers middleware (CSP, X-Frame-Options, etc.)
 - 42 tests unitarios pasando
 - ✅ (2026-10-08) Frontend React: shell con sidebar, login por código, dashboard y aviso de sesión expirada
@@ -138,7 +140,7 @@ Tablas usadas: `users`, `roles`
 ### Tablas en BD
 | Tabla | Uso |
 |-------|-----|
-| `users` | Usuarios, OTP, JTI de sesión, last_login_at (sin columnas de contraseña ni de lockout). Desde 2026-10-19: `otp_failed_attempts INT NOT NULL DEFAULT 0` (migración `218d50385270`), `telegram_chat_id BIGINT NULL` + `uq_users_telegram_chat`, `telegram_link_hash VARCHAR(64) NULL` + `idx_users_telegram_link`, `telegram_link_expires_at TIMESTAMP(6) NULL` (migración `f51e2dad9c13`) |
+| `users` | Usuarios, OTP, JTI de sesión, last_login_at (sin columnas de contraseña ni de lockout). Desde 2026-10-19: `otp_failed_attempts INT NOT NULL DEFAULT 0` (migración `218d50385270`), `telegram_chat_id BIGINT NULL` + `uq_users_telegram_chat`, `telegram_link_hash VARCHAR(64) NULL` + `idx_users_telegram_link`, `telegram_link_expires_at TIMESTAMP(6) NULL` (migración `f51e2dad9c13`). Desde 2026-10-20: `notifications_seen_at TIMESTAMP(6) NULL` (última vez que abrió la campana; `NULL` = todas sin leer; la escribe [M9](M09-ALERTS.md) con `UserRepository.set_notifications_seen_at`; migración `45ba83355691`) |
 | `roles` | id=1→user, id=2→admin |
 
 ### Modelos ORM
@@ -170,6 +172,7 @@ Todas las rutas REST se montan bajo `settings.API_PREFIX` (`/api`) en `app/app_f
 | POST | `/api/users/logout` | cookie |
 | POST | `/api/users/token/rotate` | cookie |
 | GET  | `/api/users/me` | cookie (incluye `telegram_linked`) |
+| PUT  | `/api/users/me` | cookie (`{full_name}`; vacío o `null` lo borra; 404 `USER_NOT_FOUND`) |
 | POST | `/api/users` | admin (`{email, full_name?, role_code}`; 409 `USER_EMAIL_TAKEN`, 422 `USER_INVALID_EMAIL` / `USER_INVALID_ROLE`) |
 | GET  | `/api/users` | admin (`id`, `email`, `full_name`, `role_code`, `role_label`, `status`, `last_login_at`; sin OTP, JTI ni Telegram) |
 | PUT  | `/api/users/{id}/role` | admin (`{role_code: user\|admin\|investor}`; 422 `USER_CANNOT_CHANGE_OWN_ROLE` / `USER_INVALID_ROLE`, 404 `USER_NOT_FOUND`) |
@@ -193,8 +196,9 @@ El router de Telegram (`app/modules/users/rest/telegram/routes.py`, `prefix="/us
 - **Telegram:** `app-shell/components/telegram-link-dialog.tsx` (`TelegramLinkDialog`: "Generar enlace" → "Abrir Telegram" → "Ya lo vinculé" refresca `GET /users/me`; "Desvincular"), abierto desde `nav-user.tsx` ("Conectar Telegram" / "Telegram conectado").
 - **Sesión:** `auth/context/auth-provider.tsx` + `auth/hooks/use-auth.ts` (`{status, user, refreshUser, clear}`); `routes/__root.tsx` carga `GET /api/users/me` antes de renderizar. `_app.tsx` sin sesión → `/login`.
 - **Roles:** `auth/lib/roles.ts` (`ROLES`), `auth/components/has-role.tsx`, `auth/hooks/use-has-role.ts`, `auth/layouts/role-guard.tsx` (`AdminGuardLayout`, `InvestorGuardLayout`).
-- **Sesión expirada:** `shared/lib/api-client.ts` — un 401 fuera de `/users/login`, `/users/login/otp/verify`, `/users/logout` y `/users/me` llama `endSession(true)` → `auth/lib/session-expired-store.ts` (zustand) → `auth/components/session-expired-dialog.tsx` en `/login`. No hay refresh token.
-- **Shell:** `app-shell/layouts/app-shell.tsx` (sidebar + breadcrumb), `app-shell/components/app-sidebar.tsx` (`navSections`: General, Mercado, Trading, "Mi inversión" con `role: investor`, "Administración" con `role: admin`), `nav-user.tsx` (menú de usuario: datos, Telegram y cerrar sesión), `app-brand.tsx`, `app-not-found-page.tsx`; migas con `usePageBreadcrumb`.
+- **Sesión expirada:** `shared/lib/api-client.ts` — un 401 fuera de `/users/login`, `/users/login/otp/verify`, `/users/logout` y `/users/me` llama `endSession(true, msg)` → `auth/lib/session-expired-store.ts` (zustand, guarda el `msg` del 401) → `auth/components/session-expired-dialog.tsx` en `/login` ("Tu sesión se cerró" + el motivo). No hay refresh token. `auth-provider.tsx` relee `/users/me` cada 5 min y al volver a la pestaña; un fallo ahí no cierra la sesión.
+- **Perfil:** `app-shell/components/profile-dialog.tsx` (`ProfileDialog`) desde "Mi perfil" en `nav-user.tsx`; `updateProfile` en `auth.api.ts` y `useUpdateProfileMutation` (llama `refreshUser()`).
+- **Shell:** `app-shell/layouts/app-shell.tsx` (sidebar + breadcrumb + campana `NotificationsBell` de [M9](M09-ALERTS.md)), `app-shell/components/app-sidebar.tsx` (`navSections`: General, Mercado, Trading, "Mi inversión" con `role: investor`, "Administración" con `role: admin`), `nav-user.tsx` (menú de usuario: datos, Telegram y cerrar sesión), `app-brand.tsx`, `app-not-found-page.tsx`; migas con `usePageBreadcrumb`.
 - **Compartido:** `shared/lib/api-client.ts` (`credentials: 'include'`, desempaqueta `{msg, errorCode, data}`, lanza `ApiClientError` si `errorCode >= 400`), `DataTable`, `OptionSelect`, `StatCard`, `PageListHeader`, `ErrorAlert`, `shared/lib/format.ts`.
 - **Variables de entorno:** `.env.frontend` en la raíz (copiar de `.env.frontend.example`, no se commitea): `VITE_API_URL` (URL completa; dev `http://localhost:8000/api`, sin proxy). `pnpm dev` → `http://localhost:5193`.
 - Convenciones: skill [`frontend`](../.claude/skills/frontend/SKILL.md).
@@ -316,3 +320,5 @@ TELEGRAM_BOT_USERNAME=         # para el enlace de vinculación (M9)
 - **2026-10-20** — `GET /api/users` (admin) y piezas del front para mostrar el dueño (`OwnerCell`, `useOwners`) en Supervisión.
 - **2026-10-20** — Página **Usuarios** (`/admin/users`, Configuración) y `PUT /api/users/{id}/role`: el admin cambia el rol de otros usuarios (no el propio). `GET /api/users` suma `last_login_at`.
 - **2026-10-20** — Registro por invitación: `POST /api/users` (`InviteUserService`) + diálogo "Invitar usuario" y correo de bienvenida con enlace.
+- **2026-10-20** — Columna `users.notifications_seen_at` (campana de notificaciones de [M9](M09-ALERTS.md), estado de "visto" compartido entre dispositivos) + `UserRepository.set_notifications_seen_at`. La campana vive en la cabecera del shell (`app-shell/layouts/app-shell.tsx`).
+- **2026-10-20** — **Perfil propio** (`PUT /api/users/me`, `UpdateProfileService`, diálogo Mi perfil) y **una sesión con aviso**: mensaje `AUTH_SESSION_REVOKED` que nombra el otro dispositivo, mostrado en el diálogo de sesión; aviso en el correo del código si ya hay sesión abierta; refresco de `/users/me` cada 5 min y al volver a la pestaña. Tests `tests/users/test_update_profile_service.py`.

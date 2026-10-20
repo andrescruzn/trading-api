@@ -123,6 +123,8 @@ class LoginOtpService:
         # 5) Persistir OTP hasheado (commit)
         # - Garantiza consistencia si el usuario recibe el código.
         # --------------------------------------------------------------
+        # Una sola sesión por persona: si ya hay una abierta, entrar la cierra
+        has_open_session = user.token_current_jti is not None
         user.otp_code = hash_otp(otp_plain)
         user.otp_created_at = now
         user.otp_expires_at = expires_at
@@ -141,6 +143,7 @@ class LoginOtpService:
                 "otp_code": otp_plain,
                 "expires_minutes": self._otp_ttl_minutes,
                 "title": "Tu código de acceso a Trading App",
+                "has_open_session": has_open_session,
             },
             text_body=f"Tu OTP es: {otp_plain}. Expira en {self._otp_ttl_minutes} minutos.",
         )

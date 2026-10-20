@@ -169,7 +169,7 @@ export function AlertsPage() {
 		<div className="flex flex-col gap-6">
 			<PageListHeader
 				title="Alertas"
-				description="Elige qué eventos te avisan y por qué canal, y revisa las alertas que recibiste."
+				description="Elige qué eventos te avisan y por qué canal, y revisa las alertas que recibiste. Las reglas de precio, PnL y drawdown se revisan solas: no necesitas tener la app abierta."
 				actions={[
 					{
 						label: 'Nueva regla',

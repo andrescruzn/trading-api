@@ -17,6 +17,8 @@ import {
 } from '@/modules/alerts/hooks/use-alerts-mutations';
 import {
 	botOptions,
+	PERIODIC_RULE_NOTE,
+	PERIODIC_RULE_TYPES,
 	PNL_PERIOD_OPTIONS,
 	PRICE_OPERATOR_OPTIONS,
 	RULE_TYPE_DESCRIPTIONS,
@@ -101,6 +103,13 @@ const ruleSchema = z
 				'price_threshold',
 				isNumber(values.price_threshold) && Number(values.price_threshold) > 0,
 				'Debe ser un número mayor que 0',
+			);
+		}
+		if (values.rule_type === 'pnl' || values.rule_type === 'drawdown') {
+			requireField(
+				'bot_id',
+				!!values.bot_id && values.bot_id !== ANY_BOT,
+				'Elige el agente que quieres vigilar',
 			);
 		}
 		if (values.rule_type === 'pnl') {
@@ -194,6 +203,9 @@ export function AlertRuleFormDialog({
 		defaultValues: EMPTY_VALUES,
 	});
 	const ruleType = useWatch({ control: form.control, name: 'rule_type' });
+	// PnL y drawdown miden un agente concreto: no aplica "Cualquier agente".
+	const needsBot = ruleType === 'pnl' || ruleType === 'drawdown';
+	const isPeriodic = PERIODIC_RULE_TYPES.includes(ruleType as AlertRuleType);
 
 	useEffect(() => {
 		if (!open) return;
@@ -343,19 +355,28 @@ export function AlertRuleFormDialog({
 								<Controller
 									name="bot_id"
 									control={form.control}
-									render={({ field }) => (
-										<Field>
-											<FieldLabel htmlFor="alert-rule-bot">Agente</FieldLabel>
+									render={({ field, fieldState }) => (
+										<Field data-invalid={fieldState.invalid}>
+											<FieldLabel htmlFor="alert-rule-bot" required={needsBot}>
+												Agente
+											</FieldLabel>
 											<OptionSelect
 												id="alert-rule-bot"
 												value={field.value}
 												onChange={field.onChange}
 												options={[
-													{ value: ANY_BOT, label: 'Cualquier agente' },
+													...(needsBot
+														? []
+														: [{ value: ANY_BOT, label: 'Cualquier agente' }]),
 													...botOptions(botsQuery.data, symbolsQuery.data),
 												]}
+												placeholder="Elige"
 												disabled={isEdit}
+												aria-invalid={fieldState.invalid}
 											/>
+											{fieldState.invalid && (
+												<FieldError errors={[fieldState.error]} />
+											)}
 										</Field>
 									)}
 								/>
@@ -363,6 +384,7 @@ export function AlertRuleFormDialog({
 							{(typeDescription || isEdit) && (
 								<FieldDescription>
 									{typeDescription}
+									{isPeriodic && ` ${PERIODIC_RULE_NOTE}`}
 									{isEdit && ' El tipo y el agente no se pueden cambiar.'}
 								</FieldDescription>
 							)}
@@ -577,7 +599,8 @@ export function AlertRuleFormDialog({
 											/>
 											<FieldDescription>
 												Opcional. Sin canales, la alerta solo queda en tu
-												historial.
+												historial. Telegram llega al chat que vinculaste en tu
+												menú de usuario.
 											</FieldDescription>
 											{fieldState.invalid && (
 												<FieldError errors={[fieldState.error]} />

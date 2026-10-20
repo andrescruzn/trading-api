@@ -37,12 +37,16 @@ class AlertRule:
     rule_spec por tipo:
     - price:    {"symbol_id": 1, "operator": "lt|gt|lte|gte", "threshold": 80000}
     - signal:   {"action": "buy|sell|hold|any"}
-    - pnl:      {"threshold": -5.0, "period": "daily|total"}
-    - drawdown: {"threshold": 10.0}
+    - pnl:      {"threshold": -5.0, "period": "daily|total"}   (% del capital invertido)
+    - drawdown: {"threshold": 10.0}                            (% del capital invertido)
     - error:    {}
+
+    price, pnl y drawdown se revisan solas en cada ciclo del scheduler
+    (EvaluatePeriodicAlertsService); pnl y drawdown exigen `bot_id`.
     """
 
     VALID_TYPES = ("price", "signal", "pnl", "drawdown", "error")
+    BOT_REQUIRED_TYPES = ("pnl", "drawdown")
 
     def __init__(
         self,

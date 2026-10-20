@@ -98,9 +98,9 @@ async function toResult<T>(response: Response): Promise<ApiEnvelope<T>> {
  * Cierra la sesión local y redirige a `/login`. `announce` marca que fue un
  * cierre forzado (para que `/login` muestre el aviso de sesión vencida).
  */
-async function endSession(announce: boolean) {
+async function endSession(announce: boolean, message: string | null = null) {
 	if (announce) {
-		useSessionExpiredStore.getState().announceSessionExpired();
+		useSessionExpiredStore.getState().announceSessionExpired(message);
 	}
 
 	// Import dinámico: `router` depende (transitivamente) de este módulo (vía
@@ -134,7 +134,9 @@ async function apiFetchFull<T>(
 		!AUTH_FLOW_PATHS.includes(path) &&
 		path !== ME_PATH
 	) {
-		await endSession(true);
+		// El `msg` dice por qué: venció, o se abrió sesión en otro dispositivo
+		const body = await parseBody<unknown>(response.clone());
+		await endSession(true, body?.msg ?? null);
 	}
 
 	return toResult<T>(response);

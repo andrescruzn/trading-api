@@ -4,7 +4,9 @@
 # app/modules/alerts/rest/admin_routes.py
 #
 # ENDPOINTS admin:
-# - POST /api/alerts/evaluate       → evaluación manual precio/pnl/drawdown
+# - POST /api/alerts/evaluate       → evaluación manual de las reglas de precio
+#                                     con un precio dado (mismo antispam que el
+#                                     scheduler, que las revisa solas cada ciclo)
 # - POST /api/alerts/test-telegram  → envía mensaje de prueba a Telegram
 # ======================================================================
 
@@ -45,15 +47,16 @@ def evaluate_price_alerts(
     identity: dict = Depends(admin_required),
     factory: AlertServiceFactory = Depends(get_factory),
 ):
-    """Evalúa manualmente las reglas tipo 'price' para un símbolo."""
-    fired = factory.evaluate_alerts().evaluate_price_alerts(
+    """Evalúa manualmente las reglas tipo 'price' de un símbolo con el precio indicado."""
+    report = factory.evaluate_periodic_alerts().evaluate_price(
         symbol_id=payload.symbol_id,
         current_price=payload.current_price,
-    )
+    ).data
+    fired = report.fired
     return send(
         msg=f"Evaluación completada. {fired} alerta(s) disparada(s).",
         status_code=200,
-        data={"fired": fired},
+        data={"fired": fired, "checked": report.checked, "cooldown": report.cooldown},
     )
 
 

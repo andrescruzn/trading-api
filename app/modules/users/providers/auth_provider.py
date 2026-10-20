@@ -38,6 +38,7 @@ from app.modules.users.services.telegram import TelegramLinkService
 from app.modules.users.services.users import (
     InviteUserService,
     ListUsersService,
+    UpdateProfileService,
     UpdateUserRoleService,
 )
 
@@ -173,6 +174,10 @@ class AuthServiceFactory:
             "admin": self._config.AUTH_ADMIN_ROLE_ID,
             "investor": self._config.AUTH_INVESTOR_ROLE_ID,
         }
+
+    def update_profile(self) -> UpdateProfileService:
+        """La persona cambia su propio nombre visible."""
+        return UpdateProfileService(repo=self._repo)
 
     def update_user_role(self) -> UpdateUserRoleService:
         """Cambio de rol por un admin."""

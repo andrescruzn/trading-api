@@ -22,7 +22,10 @@ class AlertRuleRepository(TransactionalRepository, Protocol):
 
     def list_active_by_type_and_bot(
         self, rule_type: str, bot_id: int | None = None
-    ) -> list[AlertRule]: ...
+    ) -> list[AlertRule]:
+        """Activas del tipo. Con `bot_id`: las de ese bot y las de "cualquier
+        agente" (bot_id NULL) del dueño del bot; sin él, todas."""
+        ...
 
     def get_by_id(self, rule_id: int) -> AlertRule | None: ...
 

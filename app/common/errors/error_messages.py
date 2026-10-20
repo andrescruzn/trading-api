@@ -39,7 +39,10 @@ COMMON_ERROR_MESSAGES: Dict[str, str] = {
     "AUTH_REQUIRED": "Inicia sesión para continuar.",
     "AUTH_INVALID_TOKEN": "Tu sesión no es válida o expiró. Inicia sesión de nuevo.",
     "AUTH_MISSING_TOKEN": "Inicia sesión para continuar.",
-    "AUTH_SESSION_REVOKED": "Tu sesión se cerró porque iniciaste sesión en otro lugar.",
+    "AUTH_SESSION_REVOKED": (
+        "Tu sesión se cerró porque iniciaste sesión en otro dispositivo o navegador. "
+        "Por seguridad solo puede haber una sesión abierta a la vez."
+    ),
     "AUTH_INVALID_TOKEN_TYPE": "Tu sesión no es válida. Inicia sesión de nuevo.",
     "AUTH_INVALID_SUBJECT": "Tu sesión no es válida. Inicia sesión de nuevo.",
     "AUTH_INVALID_IDENTITY": "Tu sesión no es válida. Inicia sesión de nuevo.",

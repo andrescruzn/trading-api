@@ -34,7 +34,10 @@ from sqlalchemy.orm import Session
 
 from app.common.config import settings
 from app.common.errors import AUTH_ERROR_MESSAGES
-from app.modules.users.rest.auth.error_messages import OTP_VERIFY_ERROR_MESSAGES
+from app.modules.users.rest.auth.error_messages import (
+    OTP_VERIFY_ERROR_MESSAGES,
+    PROFILE_ERROR_MESSAGES,
+)
 from app.common.http import (
     build_error_response,
     build_internal_error_response,
@@ -59,6 +62,7 @@ from .schemas import (
     LoginResponse,
     VerifyOtpRequest,
     VerifyOtpResponse,
+    UpdateProfileRequest,
     UserProfileResponse,
 )
 
@@ -281,6 +285,28 @@ def get_me(
             "telegram_linked": profile.telegram_linked,
         },
         msg="OK",
+    )
+
+
+# ======================================================================
+# PUT /users/me
+# ======================================================================
+
+@router.put("/me", status_code=status.HTTP_200_OK)
+def update_me(
+    payload: UpdateProfileRequest,
+    identity: dict = Depends(token_required_actual),
+    factory: AuthServiceFactory = Depends(get_factory),
+):
+    """Cambia el nombre visible de la persona autenticada."""
+    result = factory.update_profile().update(
+        user_id=int(identity["user_id"]), full_name=payload.full_name
+    )
+    if not result.success:
+        return build_error_response(result, PROFILE_ERROR_MESSAGES)
+    return build_success_response(
+        data={"id": result.data.id, "full_name": result.data.full_name},
+        msg="Perfil actualizado.",
     )
 
 

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.modules.alerts.domain.alert_event_entity import AlertEvent
@@ -49,6 +50,16 @@ class SqlAlchemyAlertEventRepository(SqlAlchemyRepository):
         rows = q.order_by(AlertEventModel.ts.desc()).limit(limit).all()
         return [_to_entity(r) for r in rows]
 
+    def count_by_user_after(self, user_id: int, after: datetime | None = None) -> int:
+        # COUNT sobre idx_alert_events_user_ts: el contador de la campana se
+        # pide cada minuto, no conviene traer las filas.
+        q = self._session.query(func.count(AlertEventModel.id)).filter(
+            AlertEventModel.user_id == user_id
+        )
+        if after is not None:
+            q = q.filter(AlertEventModel.ts > after)
+        return int(q.scalar() or 0)
+
     def list_all(self, limit: int = 100) -> list[AlertEvent]:
         rows = (
             self._session.query(AlertEventModel)
@@ -57,6 +68,15 @@ class SqlAlchemyAlertEventRepository(SqlAlchemyRepository):
             .all()
         )
         return [_to_entity(r) for r in rows]
+
+    def get_last_by_rule(self, rule_id: int) -> AlertEvent | None:
+        row = (
+            self._session.query(AlertEventModel)
+            .filter(AlertEventModel.alert_rule_id == rule_id)
+            .order_by(AlertEventModel.ts.desc(), AlertEventModel.id.desc())
+            .first()
+        )
+        return _to_entity(row) if row else None
 
     def create(self, event: AlertEvent) -> AlertEvent:
         model = AlertEventModel(

@@ -6,8 +6,12 @@ import { CandleFeaturesTable } from '@/modules/features/components/candle-featur
 import { IndicatorsGlossary } from '@/modules/features/components/indicators-glossary';
 import { useCandleFeaturesQuery } from '@/modules/features/hooks/use-features-queries';
 import { CandlesTable } from '@/modules/market/components/candles-table';
+import { PriceLineChart } from '@/modules/market/components/price-line-chart';
 import { useCandlesQuery } from '@/modules/market/hooks/use-market-queries';
 import { CANDLE_LIMIT_OPTIONS } from '@/modules/market/lib/market-labels';
+import type { PriceLevel } from '@/modules/market/lib/price-chart';
+import type { Position } from '@/modules/orders/api/orders.api';
+import { useBotPositionsQuery } from '@/modules/orders/hooks/use-orders-queries';
 import { OptionSelect } from '@/modules/shared/components/option-select';
 import { formatNumber } from '@/modules/shared/lib/format';
 import { getErrorMessage } from '@/modules/shared/lib/get-error-message';
@@ -32,19 +36,59 @@ function emptyMessage(bot: Bot, what: 'velas' | 'indicadores') {
 		: `Aún no hay ${what}. Pulsa Actualizar datos o inicia el agente.`;
 }
 
+/** Entrada, stop loss y take profit de la posición abierta del agente. */
+function positionLevels(position: Position | undefined): PriceLevel[] {
+	if (!position || position.is_flat) return [];
+	const levels: PriceLevel[] = [];
+	if (position.avg_price) {
+		levels.push({
+			label: 'Entrada',
+			value: position.avg_price,
+			tone: 'neutral',
+		});
+	}
+	if (position.stop_loss) {
+		levels.push({ label: 'SL', value: position.stop_loss, tone: 'critical' });
+	}
+	if (position.take_profit) {
+		levels.push({ label: 'TP', value: position.take_profit, tone: 'good' });
+	}
+	return levels;
+}
+
 function CandlesPanel({ bot, limit }: { bot: Bot; limit: number }) {
 	const candlesQuery = useCandlesQuery({
 		symbol_id: bot.symbol_id,
 		timeframe_id: bot.timeframe_id,
 		limit,
 	});
+	const positionsQuery = useBotPositionsQuery(bot.id);
+	const position = positionsQuery.data?.find(
+		(item) => item.symbol_id === bot.symbol_id,
+	);
+	const candles = candlesQuery.data ?? [];
+
 	return (
-		<CandlesTable
-			rows={candlesQuery.data}
-			isLoading={candlesQuery.isLoading}
-			error={candlesQuery.error}
-			empty={emptyMessage(bot, 'velas')}
-		/>
+		<div className="flex flex-col gap-4">
+			{candles.length >= 2 && (
+				<section className="flex flex-col gap-1 rounded-xl border bg-card p-3">
+					<h3 className="text-sm font-medium">Precio de cierre</h3>
+					<p className="text-xs text-muted-foreground">
+						Pasa el cursor (o usa las flechas) para ver cada vela.
+						{position && !position.is_flat
+							? ' Las líneas marcan la entrada y la protección de la posición abierta.'
+							: ''}
+					</p>
+					<PriceLineChart candles={candles} levels={positionLevels(position)} />
+				</section>
+			)}
+			<CandlesTable
+				rows={candlesQuery.data}
+				isLoading={candlesQuery.isLoading}
+				error={candlesQuery.error}
+				empty={emptyMessage(bot, 'velas')}
+			/>
+		</div>
 	);
 }
 

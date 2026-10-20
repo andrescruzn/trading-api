@@ -13,6 +13,7 @@ import {
 
 function SessionExpiredDialog() {
 	const visible = useSessionExpiredStore((state) => state.visible);
+	const message = useSessionExpiredStore((state) => state.message);
 	const acknowledgeSessionExpired = useSessionExpiredStore(
 		(state) => state.acknowledgeSessionExpired,
 	);
@@ -29,9 +30,10 @@ function SessionExpiredDialog() {
 					<AlertDialogMedia>
 						<IconClockX />
 					</AlertDialogMedia>
-					<AlertDialogTitle>Tu sesión expiró</AlertDialogTitle>
+					<AlertDialogTitle>Tu sesión se cerró</AlertDialogTitle>
 					<AlertDialogDescription>
-						Por seguridad la cerramos. Ingresa de nuevo para seguir.
+						{message ??
+							'Por seguridad la cerramos. Ingresa de nuevo para seguir.'}
 					</AlertDialogDescription>
 				</AlertDialogHeader>
 				<AlertDialogFooter className="sm:justify-center">

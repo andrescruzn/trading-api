@@ -2,9 +2,11 @@ import {
 	IconBrandTelegram,
 	IconLogout,
 	IconSelector,
+	IconUserCircle,
 } from '@tabler/icons-react';
 import { useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
+import { ProfileDialog } from '@/modules/app-shell/components/profile-dialog';
 import { TelegramLinkDialog } from '@/modules/app-shell/components/telegram-link-dialog';
 import { useAuth } from '@/modules/auth/hooks/use-auth';
 import { useLogoutMutation } from '@/modules/auth/hooks/use-auth-mutations';
@@ -62,6 +64,7 @@ export function NavUser() {
 	const { user } = useAuth();
 	const logoutMutation = useLogoutMutation();
 	const [telegramOpen, setTelegramOpen] = useState(false);
+	const [profileOpen, setProfileOpen] = useState(false);
 
 	if (!user) return null;
 
@@ -112,6 +115,10 @@ export function NavUser() {
 							</DropdownMenuLabel>
 						</DropdownMenuGroup>
 						<DropdownMenuSeparator />
+						<DropdownMenuItem onClick={() => setProfileOpen(true)}>
+							<IconUserCircle />
+							Mi perfil
+						</DropdownMenuItem>
 						<DropdownMenuItem onClick={() => setTelegramOpen(true)}>
 							<IconBrandTelegram />
 							{user.telegram_linked
@@ -125,6 +132,7 @@ export function NavUser() {
 						</DropdownMenuItem>
 					</DropdownMenuContent>
 				</DropdownMenu>
+				<ProfileDialog open={profileOpen} onOpenChange={setProfileOpen} />
 				<TelegramLinkDialog
 					open={telegramOpen}
 					onOpenChange={setTelegramOpen}

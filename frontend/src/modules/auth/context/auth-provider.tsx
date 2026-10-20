@@ -15,6 +15,8 @@ import { AuthContext } from '@/modules/auth/context/auth-context';
 import { onSessionCleared } from '@/modules/auth/lib/auth-bridge';
 import { ApiClientError } from '@/modules/shared/lib/api-client';
 
+const PROFILE_REFRESH_MS = 5 * 60 * 1000;
+
 function AuthProvider({ children }: { children: ReactNode }) {
 	const [state, setState] = useState<AuthState>({ status: 'idle', user: null });
 	// `ensureLoaded()` necesita leer/comparar el estado más reciente de forma
@@ -60,6 +62,33 @@ function AuthProvider({ children }: { children: ReactNode }) {
 	// `api-client.ts` corre fuera del árbol de React (es un interceptor de
 	// fetch) y necesita poder limpiar la sesión cuando la API responde 401.
 	useEffect(() => onSessionCleared(clear), [clear]);
+
+	// Si un admin cambia el rol (o el nombre) de la persona, el menú se
+	// actualiza solo: se relee `/users/me` cada pocos minutos y al volver a
+	// la pestaña. Un fallo aquí no cierra la sesión: de eso se encarga el 401
+	// de la siguiente acción real (con su aviso).
+	const isAuthenticated = state.status === 'authenticated';
+	useEffect(() => {
+		if (!isAuthenticated) return;
+		const refresh = () => {
+			fetchCurrentUser()
+				.then((user) => {
+					if (stateRef.current.status === 'authenticated') {
+						setAndTrack({ status: 'authenticated', user });
+					}
+				})
+				.catch(() => {});
+		};
+		const onVisible = () => {
+			if (document.visibilityState === 'visible') refresh();
+		};
+		const timer = window.setInterval(refresh, PROFILE_REFRESH_MS);
+		document.addEventListener('visibilitychange', onVisible);
+		return () => {
+			window.clearInterval(timer);
+			document.removeEventListener('visibilitychange', onVisible);
+		};
+	}, [isAuthenticated, setAndTrack]);
 
 	const ensureLoaded = useCallback(async (): Promise<AuthState> => {
 		if (

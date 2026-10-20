@@ -84,6 +84,60 @@ type OrderInput = {
 	take_profit?: string;
 };
 
+/** `GET /performance?bot_id=`: fracciones (0.6 = 60 %) y montos en la cotización. */
+type ClosedTrade = {
+	opened_at: string | null;
+	closed_at: string | null;
+	qty: number;
+	cost: number;
+	pnl: number;
+	return_pct: number | null;
+};
+
+type BotPerformance = {
+	trades: number;
+	wins: number;
+	losses: number;
+	win_rate: number | null;
+	realized_pnl: number;
+	gross_profit: number;
+	gross_loss: number;
+	profit_factor: number | null;
+	avg_win: number | null;
+	avg_loss: number | null;
+	/** R/R real: ganancia media / pérdida media. */
+	payoff_ratio: number | null;
+	avg_return_pct: number | null;
+	max_drawdown: number;
+	total_fees: number;
+	open_qty: number;
+	open_avg_price: number | null;
+	open_realized_pnl: number;
+	last_price: number | null;
+	unrealized_pnl: number | null;
+	equity_curve: { ts: string | null; pnl: number }[];
+	/** La más reciente primero. */
+	closed_trades: ClosedTrade[];
+};
+
+/** `GET /performance/strategies`: anónimo, en retornos % por operación. */
+type StrategyTrackRecord = {
+	strategy_id: number;
+	strategy_name: string;
+	mode: 'paper' | 'live';
+	agents: number;
+	trades: number;
+	wins: number;
+	win_rate: number | null;
+	avg_return_pct: number | null;
+	total_return_pct: number;
+	profit_factor: number | null;
+	max_drawdown_pct: number;
+	best_trade_pct: number | null;
+	worst_trade_pct: number | null;
+	curve: { ts: string | null; return_pct: number }[];
+};
+
 type OrderFilters = {
 	bot_id?: number;
 	/** 1–500 (por defecto 100). */
@@ -120,6 +174,18 @@ function cancelOrder(id: number) {
 }
 
 // ======================================================================
+// Rendimiento
+// ======================================================================
+
+function getBotPerformance(botId: number) {
+	return api.get<BotPerformance>('/performance', { bot_id: botId });
+}
+
+function listStrategyTrackRecord(filters: { mode?: 'paper' | 'live' } = {}) {
+	return api.get<StrategyTrackRecord[]>('/performance/strategies', filters);
+}
+
+// ======================================================================
 // Posiciones y ejecuciones
 // ======================================================================
 
@@ -134,6 +200,8 @@ function listFills(filters: FillFilters) {
 }
 
 export type {
+	BotPerformance,
+	ClosedTrade,
 	Fill,
 	FillFilters,
 	Order,
@@ -143,13 +211,16 @@ export type {
 	OrderStatus,
 	OrderType,
 	Position,
+	StrategyTrackRecord,
 	TimeInForce,
 };
 export {
 	cancelOrder,
 	createOrder,
+	getBotPerformance,
 	getOrder,
 	listFills,
 	listOrders,
 	listPositions,
+	listStrategyTrackRecord,
 };

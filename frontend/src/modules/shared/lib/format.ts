@@ -37,6 +37,14 @@ function formatPrice(value: Numeric): string {
 	return `$${formatNumber(number, Math.abs(number) >= 1 ? 2 : 6)}`;
 }
 
+/** Monto con signo: `+$12,50` / `-$3,20` (P&L). */
+function formatSignedPrice(value: Numeric): string {
+	const number = toNumber(value);
+	if (number === null) return EMPTY;
+	const sign = number > 0 ? '+' : number < 0 ? '-' : '';
+	return `${sign}${formatPrice(Math.abs(number))}`;
+}
+
 /** `0.0123` → `1,23 %`. Para valores que ya vienen en %, usa `formatPercentValue`. */
 function formatPercent(ratio: Numeric, fractionDigits = 2): string {
 	const number = toNumber(ratio);
@@ -88,5 +96,6 @@ export {
 	formatPercentValue,
 	formatPrice,
 	formatSignedPercentValue,
+	formatSignedPrice,
 	toNumber,
 };

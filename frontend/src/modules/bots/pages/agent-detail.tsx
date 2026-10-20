@@ -15,6 +15,7 @@ import { ROLES } from '@/modules/auth/lib/roles';
 import type { Bot, Signal } from '@/modules/bots/api/bots.api';
 import { AgentControls } from '@/modules/bots/components/agent-controls';
 import { AgentMarketTab } from '@/modules/bots/components/agent-market-tab';
+import { AgentPerformanceTab } from '@/modules/bots/components/agent-performance-tab';
 import { AnalyzeNowButton } from '@/modules/bots/components/analyze-now-button';
 import {
 	AgentStatusDot,
@@ -533,6 +534,7 @@ export function AgentDetailPage() {
 					<TabsTrigger value="signals">Señales</TabsTrigger>
 					<TabsTrigger value="orders">Órdenes</TabsTrigger>
 					<TabsTrigger value="positions">Posiciones</TabsTrigger>
+					<TabsTrigger value="performance">Rendimiento</TabsTrigger>
 					<TabsTrigger value="market">Mercado</TabsTrigger>
 					<TabsTrigger value="config">Configuración</TabsTrigger>
 				</TabsList>
@@ -544,6 +546,9 @@ export function AgentDetailPage() {
 				</TabsContent>
 				<TabsContent value="positions" className="pt-2">
 					<PositionsTab botId={bot.id} symbolNames={catalogs.symbols} />
+				</TabsContent>
+				<TabsContent value="performance" className="pt-2">
+					<AgentPerformanceTab botId={bot.id} />
 				</TabsContent>
 				<TabsContent value="market" className="pt-2">
 					<AgentMarketTab bot={bot} />

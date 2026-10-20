@@ -140,7 +140,7 @@ Tablas usadas: `users`, `roles`
 ### Tablas en BD
 | Tabla | Uso |
 |-------|-----|
-| `users` | Usuarios, OTP, JTI de sesión, last_login_at (sin columnas de contraseña ni de lockout). Desde 2026-10-19: `otp_failed_attempts INT NOT NULL DEFAULT 0` (migración `218d50385270`), `telegram_chat_id BIGINT NULL` + `uq_users_telegram_chat`, `telegram_link_hash VARCHAR(64) NULL` + `idx_users_telegram_link`, `telegram_link_expires_at TIMESTAMP(6) NULL` (migración `f51e2dad9c13`). Desde 2026-10-20: `notifications_seen_at TIMESTAMP(6) NULL` (última vez que abrió la campana; `NULL` = todas sin leer; la escribe [M9](M09-ALERTS.md) con `UserRepository.set_notifications_seen_at`; **migración pendiente de generar**) |
+| `users` | Usuarios, OTP, JTI de sesión, last_login_at (sin columnas de contraseña ni de lockout). Desde 2026-10-19: `otp_failed_attempts INT NOT NULL DEFAULT 0` (migración `218d50385270`), `telegram_chat_id BIGINT NULL` + `uq_users_telegram_chat`, `telegram_link_hash VARCHAR(64) NULL` + `idx_users_telegram_link`, `telegram_link_expires_at TIMESTAMP(6) NULL` (migración `f51e2dad9c13`). Desde 2026-10-20: `notifications_seen_at TIMESTAMP(6) NULL` (última vez que abrió la campana; `NULL` = todas sin leer; la escribe [M9](M09-ALERTS.md) con `UserRepository.set_notifications_seen_at`; migración `45ba83355691`) |
 | `roles` | id=1→user, id=2→admin |
 
 ### Modelos ORM

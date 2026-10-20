@@ -45,6 +45,9 @@ Hash routing: la URL real es `/#/<ruta>`.
 - Las órdenes de cada agente viven en su detalle (`/#/agents/:id`, [M7](M07-BOTS-SIGNALS.md)): pestaña **Órdenes** (con "Nueva orden", que en compras a mercado ofrece **Protección automática** opcional: stop loss y take profit; y botón **Cancelar** con confirmación en las órdenes live abiertas) y **Posiciones** (con las ejecuciones debajo). `/#/orders` redirige al inicio (`/#/dashboard`) (era un selector de agente que repetía esas pestañas). Las posiciones con protección muestran "Protección automática: SL … · TP …" y, si el SL está en el exchange (live), "El stop loss está como orden en el exchange."
 - Aprobar / descartar una señal pendiente: en el detalle de la señal del agente y en la tarjeta "Señales por aprobar" del dashboard ([M7](M07-BOTS-SIGNALS.md)); llaman a `POST /api/signals/{id}/approve|reject` de este módulo.
 
+- `/#/track-record` — "Track record" (Explorar): por estrategia y modo, sumando las operaciones cerradas de todos los agentes que la usan; anónimo y en retornos %.
+- Pestaña **Rendimiento** del agente ([M7](M07-BOTS-SIGNALS.md)): resultado realizado y no realizado, % de ganadoras, R/R real contra el objetivo 2:1, profit factor, caída máxima y operaciones cerradas.
+
 **Páginas — Administrador (solo admin):**
 - `/#/admin/orders` — "Todas las órdenes" (Administración → Supervisión): vista global de todas las órdenes del sistema con columna **Dueño** (nombre y correo) y filtro por dueño (orden → agente → cuenta → usuario; `OrdersTable` acepta `renderOwner`), y filtros por lado, estado y tipo, y diálogo con los fills de cada orden
 
@@ -78,6 +81,7 @@ Entregables:
 - ✅ (2026-10-20) **Protección en órdenes manuales**: `stop_loss` / `take_profit` en `POST /api/orders` (compras a mercado) + SL nativo en live
 - ✅ (2026-10-20) **Rate limit** por usuario en crear, cancelar y aprobar órdenes (`ORDER_REQUESTS_PER_MINUTE`)
 - ✅ (2026-10-20) **Tests** del módulo (`tests/orders/`) y **script de testnet** (`scripts/testnet_check.py` + `docs/TESTNET.md`)
+- ✅ (2026-10-20) **Rendimiento y track record**: `domain/performance.py` (`compute_performance`), `GetBotPerformanceService`, `ListStrategyTrackRecordService`, `GET /api/performance` y `/api/performance/strategies`; pestaña Rendimiento del agente y página `/#/track-record`
 
 ## Decisiones de diseño
 
@@ -114,6 +118,8 @@ Entregables:
 | **La protección la aplica `CreateOrderService`**, también la de las señales (`ExecuteSignalService` le pasa el SL/TP de la señal) | Un solo lugar decide SL/TP y SL nativo, con o sin ejecución inmediata | Que cada llamador ponga la protección después de crear la orden (esquema anterior) |
 | **Señal sin confirmar = `executing`**: con `ORDER_EXECUTION_UNCERTAIN` o una orden `sent`, la señal no pasa a `failed`/`executed`; la reconciliación la cierra (`executed` si se ejecutó algo, `failed` con `ORDER_EXECUTION_FAILED` si terminó sin ejecutarse) | "Sin respuesta" no es "falló": la orden puede estar viva en el exchange | Marcarla `failed` (esquema anterior) |
 | **Protección manual solo en compras a mercado**, SL < precio < TP y R/R ≥ `AGENT_MIN_RR_RATIO` si vienen los dos; no sobre una posición con SL nativo | Una límite no se sabe cuándo se ejecuta (la protección quedaría colgada); la regla 2:1 aplica también a lo manual; el SL nativo cubriría solo la cantidad anterior | Guardar la protección en la orden y aplicarla al ejecutarse |
+| **Operación = de posición 0 a posición 0**, reproduciendo los fills con la misma regla de `Position` (WAP, P&L por precio); las comisiones se informan aparte | Las comisiones pueden venir en el activo base o en la cotización: restarlas mezclaría unidades | Una operación por fill de venta |
+| **Track record anónimo en retornos %** por operación (`pnl / invertido`), agrupado por estrategia y modo; profit factor y drawdown sobre los retornos | Cuentas de tamaños distintos no se pueden sumar en dinero, y no se expone quién opera qué | Sumar P&L en dinero de todos los agentes |
 | Si una vela toca SL y TP a la vez, **gana el SL** (`Position.protection_hit`) | Sin datos intravela no se sabe cuál llegó primero: se asume el peor caso | Asumir el TP |
 | La protección actúa aunque el agente esté pausado o detenido (`require_running=False`); el kill switch sí la detiene | Proteger el capital no depende de que el agente siga buscando entradas | Exigir agente `running` |
 | Al quedar flat, `apply_sell_fill` borra SL/TP/`signal_id` de la posición | Una posición nueva no hereda la protección de la anterior | Limpiarlo a mano |
@@ -265,6 +271,8 @@ Provider: `app/modules/orders/providers/order_provider.py` → `OrderServiceFact
 | GET | `/api/orders` | token | Lista por `bot_id` (propio); sin `bot_id` solo admin (`ORDERS_MISSING_BOT` 400 para los demás) |
 | GET | `/api/orders/{id}` | token | Detalle; orden de un agente ajeno → `ORDER_NOT_FOUND` 404 |
 | GET | `/api/fills` | token | Por `order_id` o `bot_id`, del usuario (`FILLS_MISSING_FILTER` sin filtro) |
+| GET | `/api/performance?bot_id=` | token | Rendimiento de un agente propio (404 si no): métricas, operaciones cerradas (la más reciente primero), curva de P&L acumulado y P&L no realizado al último cierre |
+| GET | `/api/performance/strategies` | token | Track record por estrategia y modo (`?mode=paper\|live`), anónimo y en retornos % |
 | GET | `/api/positions` | token | Por `bot_id` (propio); sin `bot_id` solo admin (`POSITIONS_MISSING_BOT` 400). Devuelve `stop_loss`, `take_profit`, `signal_id`, `sl_order_id` (orden stop loss nativa; `null` = la vigila el scheduler) |
 | POST | `/api/signals/{id}/approve` | token | Aprueba una señal pendiente: revalida y envía la orden (`channel="app"`). Devuelve `signal_id`, `decision_status`, `decision_channel`, `decided_at`, `order_id`, `order_status` |
 | POST | `/api/signals/{id}/reject` | token | Descarta una señal pendiente |
@@ -347,3 +355,4 @@ Por agente: `risk_params.max_notional` (tope propio; se aplica el menor) y `risk
 - **2026-10-19** — Página `/orders` retirada (duplicaba las pestañas Órdenes y Posiciones del agente): redirige a `/agents` y sale del menú.
 - **2026-10-20** — Todas las órdenes: columna **Dueño** (nombre y correo) y filtro por dueño.
 - **2026-10-20** — Fase 1: cancelar órdenes (`CancelOrderService`, `POST /api/orders/{id}/cancel`, botón en la UI), protección SL/TP en compras manuales a mercado (con SL nativo en live), rate limit por usuario en crear/cancelar/aprobar (`ORDER_REQUESTS_PER_MINUTE`), tests del módulo y script + checklist de testnet. TP nativo / OCO sigue pendiente (ver Fuera de alcance). Los tests destaparon y se corrigieron: posición sin protección si la compra se ejecutaba tarde, señal `failed` con la orden viva, precio del fill de una límite (`price` antes que `cost / filled`), P&L de una venta mayor que la posición y la máquina de estados de `Order` (ahora `new` pasa directo a `filled`/`partially_filled`/`rejected`).
+- **2026-10-20** — Rendimiento por agente y track record por estrategia (`domain/performance.py`, `GET /api/performance`, `/api/performance/strategies`, pestaña Rendimiento y página Track record; `tests/orders/test_performance.py`).

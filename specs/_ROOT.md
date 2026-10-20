@@ -129,7 +129,7 @@ Módulo 10 (Billing) ← necesita historial de orders + fills de M8
 
 | # | Prioridad | Qué | Módulos |
 |---|---|---|---|
-| 8 | Alta | **Métricas y track record público:** win rate, R/R real, profit factor y drawdown por agente/estrategia a partir de `signals → orders → fills → positions`; página pública del historial completo. La tabla `portfolio_snapshots` existe (con modelo ORM en `accounts/infrastructure/`) pero ningún servicio la escribe | [M7](M07-BOTS-SIGNALS.md), [M8](M08-ORDERS-EXECUTION.md), [M4](M04-ACCOUNTS-PORTFOLIO.md) |
+| 8 | ~~Alta~~ ✅ (parcial) | ~~Métricas y track record~~ **Hecho (2026-10-20):** pestaña **Rendimiento** del agente (`GET /api/performance?bot_id=`: win rate, P&L, R/R real, profit factor, drawdown, operaciones cerradas) y página **Track record** para usuarios con sesión (`GET /api/performance/strategies`, anónimo y en retornos %). **Pendiente:** `portfolio_snapshots` (curva de capital con el valor de la cuenta) sigue sin escribirse | [M7](M07-BOTS-SIGNALS.md), [M8](M08-ORDERS-EXECUTION.md), [M4](M04-ACCOUNTS-PORTFOLIO.md) |
 | 9 | Alta | **Backtesting** sobre los datasets de [M5](M05-STRATEGIES.md) para mostrar el edge antes de vender nada (misma prioridad 7, vista como requisito comercial) | [M5](M05-STRATEGIES.md), [M2](M02-MARKET-DATA.md) |
 | 10 | Media | **Planes SaaS** con pasarela (Stripe / MercadoPago) y **registro propio** (hoy no hay alta de usuarios, solo el seed) | [M1](M01-AUTH.md), [M10](M10-BILLING.md) |
 | 11 | Media | **Señales como servicio vía Telegram:** reutilizar el bot de Telegram por usuario para suscriptores que reciben (sin ejecutar) las señales | [M9](M09-ALERTS.md), [M7](M07-BOTS-SIGNALS.md) |
@@ -153,7 +153,7 @@ Hash routing: la URL real es `/#/<ruta>`. Cada ruta vive en `frontend/src/routes
 | Rol | Páginas |
 |---|---|
 | Público | `/login` |
-| Usuario (y demás roles) | `/dashboard` (inicio = lista de agentes), `/agents/new`, `/agents/:id`, `/alerts`, `/portfolio`, `/strategies`, `/market/explorer` (`/agents`, `/bots`, `/agent`, `/orders`, `/features` y `/market/candles` redirigen a `/dashboard`; `/market/symbols` a `/market/explorer`) |
+| Usuario (y demás roles) | `/dashboard` (inicio = lista de agentes), `/agents/new`, `/agents/:id`, `/alerts`, `/portfolio`, `/strategies`, `/track-record`, `/market/explorer` (`/agents`, `/bots`, `/agent`, `/orders`, `/features` y `/market/candles` redirigen a `/dashboard`; `/market/symbols` a `/market/explorer`) |
 | Admin (`_app/admin/*`) | `/admin/exchanges`, `/admin/symbols`, `/admin/timeframes`, `/admin/feature-sets`, `/admin/users`, `/admin/accounts`, `/admin/strategies`, `/admin/agents`, `/admin/orders`, `/admin/alerts`, `/admin/telegram`, `/admin/investors`, `/admin/managed-accounts`, `/admin/billing` |
 | Inversor (`_app/investor/*`) | `/investor/dashboard` |
 

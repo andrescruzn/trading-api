@@ -272,6 +272,23 @@ Una orden es la instrucción real al exchange para comprar o vender:
 - Position: El estado actual de lo que tienes abierto. Si compraste 0.05 BTC y no lo has vendido, tienes una posición abierta de
 0.05 BTC.
 
+1.14 ¿Cómo se mide si un agente funciona?
+
+La pestaña "Rendimiento" de cada agente cuenta sus operaciones cerradas: una operación va desde
+que compra hasta que vuelve a quedar sin posición.
+
+- % de operaciones ganadoras (win rate): 6 de 10 ganadoras = 60 %.
+- R/R real: ganancia media / pérdida media. Si ganas en promedio $200 y pierdes $100, es 2 : 1,
+  el mínimo que pide el sistema.
+- Profit factor: todo lo ganado / todo lo perdido. $1.000 ganados y $500 perdidos = 2. Mayor
+  que 1 = la estrategia gana más de lo que pierde.
+- Caída máxima (drawdown): la peor racha. Si el resultado acumulado llegó a +$300 y bajó a
+  −$100, la caída fue de $400.
+
+"Track record" (menú Explorar) muestra lo mismo por estrategia, sumando todos los agentes que la
+usan. Allí todo va en % de retorno, para que una cuenta grande no pese más que una pequeña, y no
+se ve de quién es cada agente.
+
 ---
 PARTE 2 — El flujo completo de extremo a extremo
 
@@ -370,7 +387,7 @@ Por seguridad solo hay una sesión abierta por persona: si entras desde otro nav
 sesión anterior se cierra y la web te muestra "Tu sesión expiró" y te lleva al login.
 
 Todo se navega desde el menú lateral: Inicio, Operar (mis agentes, alertas, mis cuentas),
-Explorar (explorar mercados, estrategias) y, según tu rol, "Mi inversión" (inversores)
+Explorar (explorar mercados, estrategias, track record) y, según tu rol, "Mi inversión" (inversores)
 o "Administración" (administradores). En Administración, "Supervisión" muestra lo de todos los
 usuarios: "Todos los agentes" son los mismos agentes del inicio, pero de todo el sistema. Cada
 vista dice quién es el dueño (nombre y correo) y se puede filtrar por persona. "Configuración"

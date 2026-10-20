@@ -8,7 +8,7 @@
 |---|---|
 | Estado | ✅ Completo (tests pendientes) |
 | Avance (alcance original) | 86 % — 6/7 entregables (falta "Tests unitarios") |
-| Madurez (estimada) | 55 % — ver [Avance](#avance) |
+| Madurez (estimada) | 70 % — ver [Avance](#avance) |
 | Tablas | `strategies`, `datasets` (R/W) |
 | Depende de | [M1](M01-AUTH.md); conceptualmente de [M3](M03-FEATURE-ENGINEERING.md) (los indicadores que usan las reglas) |
 | Lo usan | [M6](M06-AI-AGENT.md) (Prompt Maestro), [M7](M07-BOTS-SIGNALS.md) (cada bot referencia una estrategia) |
@@ -35,6 +35,8 @@ Hash routing: la URL real es `/#/<ruta>`.
 **Páginas — Usuario (cualquier usuario autenticado):**
 - `/#/strategies` — Lista de estrategias con tipo, régimen, timeframe y cantidad de reglas. Click en la fila abre un panel lateral con el detalle completo.
 
+- `/#/backtest` — "Backtesting" (Explorar): estrategia, símbolo, timeframe, historia (500–3000 velas) y capital; resultado contra comprar y mantener, % de ganadoras, R/R real, profit factor, caída máxima y operaciones simuladas. Se abre también con "Probar en el pasado" en el detalle de una estrategia (`?strategy_id=`).
+
 **Páginas — Administrador (solo admin):**
 - `/#/admin/strategies` — "Gestionar estrategias" (Administración → Configuración): crear y editar estrategias (diálogo) con editor de reglas JSON y validación de coherencia en vivo
 
@@ -50,6 +52,8 @@ Entregables:
 - ✅ API: GET/POST `/api/strategies`, GET/PUT `/api/strategies/{id}`
 - ✅ Seed: 9 estrategias de ejemplo (`database/seeds/strategies.py`)
 - Tests unitarios: pendientes (no solicitados)
+- ✅ (2026-10-20) **Backtesting sin IA**: `domain/backtest.py` (`run_backtest`), `RunBacktestService`, `POST /api/backtests`, página Backtesting; reglas evaluadas con `domain/rule_evaluation.py` (la misma función que usa la IA)
+- ✅ (2026-10-20) Tests: `tests/strategies/test_backtest.py` (motor, servicio con indicadores reales en memoria, historia paginada)
 
 ## Decisiones de diseño
 
@@ -65,15 +69,18 @@ Entregables:
 | Lectura para cualquier usuario autenticado, escritura solo admin | El trader ve las estrategias disponibles pero no las altera | Estrategias por usuario |
 | Seed de estrategias con `get_or_create` por (name, version); una corrección es una **versión nueva** | Arranque rápido e idempotente; no cambia estrategias que ya usan agentes | Crearlas a mano / actualizar la fila existente |
 | `description` limitada a **2000 caracteres** en `CreateStrategyRequest` y `UpdateStrategyRequest` (además `name` 1–120 y `version` ≤ 32) | Acota la entrada del usuario (se guarda en la BD y se muestra en la UI): evita textos enormes | Sin límite |
+| **Backtest sin IA**: reglas + régimen como la IA, entrada en la apertura siguiente, SL 1,5×ATR / TP 3×ATR (2:1), riesgo de la estrategia con tope 1 %, comisión por lado; SL gana si se tocan los dos; solo largos | Mide si las reglas tienen ventaja de forma gratis, rápida y repetible; sin mirar el futuro | Llamar al LLM en cada vela (costoso, lento y no repetible) |
+| **Evaluación de reglas única** (`domain/rule_evaluation.py`) para la IA y el backtest | Si cada uno evaluara a su manera, el backtest no mediría lo mismo que opera el agente | Copia del código en el backtest |
+| Métricas del backtest con `orders/domain/performance.py` (`compute_performance`) | Se comparan en la misma escala con la pestaña Rendimiento de los agentes reales | Métricas propias del backtest |
 
 ## Avance
 
 | Métrica | Valor | Evidencia |
 |---|---|---|
 | Alcance original | **86 %** (6/7) | CRUD, tipos, validación, UI, API y seed completos; los tests figuran como "pendientes (no solicitados)" |
-| Madurez | **≈ 55 %** | Funcionalidad 80 · Tests 0 · Seguridad 80 · Operación 60 |
+| Madurez | **≈ 70 %** | Funcionalidad 90 · Tests 50 · Seguridad 80 · Operación 60 |
 
-- **Funcionalidad (80):** `datasets` es solo un registro de metadatos (CRUD de `query_spec`); **no hay motor de backtesting** ni UI de datasets.
+- **Funcionalidad (90):** backtesting sin IA (`POST /api/backtests`, página `/#/backtest`); `datasets` sigue siendo solo un registro de metadatos sin UI.
 - **Operación (60):** hay seed, pero no existe forma de comparar el rendimiento real de cada estrategia.
 
 ## Posibles mejoras
@@ -95,6 +102,12 @@ Entregables:
 - Estrategias propias por usuario (hoy solo el admin las gestiona).
 
 ## Detalle técnico
+
+### Backtesting (2026-10-20)
+- `POST /api/backtests` (token, rate limit 3/min por usuario, `backtest_rate_limiter`): `{strategy_id, symbol_id, timeframe_id, bars (300–3000), initial_capital?, fee_pct? (≤ 0.01)}`. No guarda nada.
+- `RunBacktestService` → `FetchCandleHistoryService` ([M2](M02-MARKET-DATA.md), `bars + 250` velas de calentamiento) → `compute_feature_rows` ([M3](M03-FEATURE-ENGINEERING.md)) → `run_backtest` → `compute_performance` ([M8](M08-ORDERS-EXECUTION.md)).
+- Códigos: `STRATEGY_NOT_FOUND`, `BACKTEST_STRATEGY_WITHOUT_RULES`, `BACKTEST_NOT_ENOUGH_HISTORY` y los de ccxt (`rest/backtests/error_messages.py`).
+- Front: `strategies/pages/backtest.tsx`, `runBacktest` / `useRunBacktestMutation`; ruta `routes/_app/backtest.tsx` (`validateSearch`: `strategy_id`).
 
 ### Tablas en BD
 | Tabla | Acción | Nota |
@@ -199,3 +212,4 @@ from app.modules.strategies.rest import strategies_router, datasets_router
 - **2026-10-10** — Seed: RSI Mean Reversion 1.1.0 y Bollinger Band Reversion 1.1.0 (reglas de bandas corregidas) y Tendencia Metales 1.0.0 para perpetuos TradFi.
 - **2026-10-19** — Auditoría de seguridad (límites de entrada): `description` de la estrategia ≤ 2000 caracteres al crear y al editar.
 - **2026-10-20** — "Gestionar estrategias" pasa del grupo admin Supervisión a **Configuración**.
+- **2026-10-20** — Backtesting sin IA (motor puro, `POST /api/backtests`, página Backtesting, "Probar en el pasado") y evaluación de reglas compartida con la IA.

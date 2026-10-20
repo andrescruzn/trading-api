@@ -64,6 +64,7 @@ Entregables:
 - ✅ (2026-10-19) **Vínculo de Telegram**: `POST /api/users/me/telegram/link`, `DELETE /api/users/me/telegram`, `telegram_linked` en `GET /api/users/me`, diálogo en el menú de usuario
 
 Tablas usadas: `users`, `roles`
+- ✅ (2026-10-20) **Registro solo por invitación:** `POST /api/users` (admin) crea la cuenta activa (correo, nombre, rol) y envía el correo de bienvenida (`WELCOME_TEMPLATE`, ahora con el enlace de entrada); "Invitar usuario" en Configuración → Usuarios
 
 ## Decisiones de diseño
 
@@ -98,6 +99,7 @@ Tablas usadas: `users`, `roles`
 | `CredentialsCipher` con **MultiFernet**: cifra con `CREDENTIALS_SECRET_KEY` y descifra también con `CREDENTIALS_PREVIOUS_KEYS`; `rotate(token)` re-cifra; sin clave fuera de development/testing → `RuntimeError` (en `Settings` y en el cipher) | Rotar la clave sin perder las credenciales guardadas; nunca arrancar con la clave de ejemplo en producción | Una sola clave (cambiarla invalidaba todo) |
 | `owner_scope(identity)` e `is_admin(identity)` en `app/common/security/jwt/role_guard.py` | Una sola regla de propiedad (`user_id` o `None` para admin) para todos los módulos | Copiarla en cada router |
 | Vínculo de Telegram por código de un solo uso (`secrets.token_urlsafe(24)`, 10 min) guardado como **SHA-256** en `users.telegram_link_hash`; `telegram_chat_id` UNIQUE (si el chat ya era de otro usuario, se le quita) | El código no queda en claro; un chat pertenece a una sola cuenta | Guardar el código en claro o pedir el `chat_id` a mano |
+| **Alta solo por invitación del admin** (`InviteUserService`): la cuenta nace activa y la persona entra con el OTP de siempre; el correo de bienvenida sale en segundo plano | El login ya es por código: no hace falta token de invitación ni contraseña; si el correo falla, la persona igual puede pedir su código | Enlace de invitación con token que caduca (tabla nueva) · registro abierto |
 
 ## Avance
 
@@ -168,6 +170,7 @@ Todas las rutas REST se montan bajo `settings.API_PREFIX` (`/api`) en `app/app_f
 | POST | `/api/users/logout` | cookie |
 | POST | `/api/users/token/rotate` | cookie |
 | GET  | `/api/users/me` | cookie (incluye `telegram_linked`) |
+| POST | `/api/users` | admin (`{email, full_name?, role_code}`; 409 `USER_EMAIL_TAKEN`, 422 `USER_INVALID_EMAIL` / `USER_INVALID_ROLE`) |
 | GET  | `/api/users` | admin (`id`, `email`, `full_name`, `role_code`, `role_label`, `status`, `last_login_at`; sin OTP, JTI ni Telegram) |
 | PUT  | `/api/users/{id}/role` | admin (`{role_code: user\|admin\|investor}`; 422 `USER_CANNOT_CHANGE_OWN_ROLE` / `USER_INVALID_ROLE`, 404 `USER_NOT_FOUND`) |
 | POST | `/api/users/me/telegram/link` | cookie (enlace de vinculación de un solo uso) |
@@ -312,3 +315,4 @@ TELEGRAM_BOT_USERNAME=         # para el enlace de vinculación (M9)
 - **2026-10-20** — El inicio absorbe "Mis agentes": muestra todos los agentes con filtro por estado (antes, hasta 6); `/agents` redirige a `/dashboard`, "Inicio" queda marcado también dentro de un agente (`activePaths`) y sale "Mis agentes" del menú.
 - **2026-10-20** — `GET /api/users` (admin) y piezas del front para mostrar el dueño (`OwnerCell`, `useOwners`) en Supervisión.
 - **2026-10-20** — Página **Usuarios** (`/admin/users`, Configuración) y `PUT /api/users/{id}/role`: el admin cambia el rol de otros usuarios (no el propio). `GET /api/users` suma `last_login_at`.
+- **2026-10-20** — Registro por invitación: `POST /api/users` (`InviteUserService`) + diálogo "Invitar usuario" y correo de bienvenida con enlace.

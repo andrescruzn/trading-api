@@ -10,13 +10,13 @@ Una explicación simple de los 10 módulos del sistema, sin tecnicismos. Cada m�
 | [M2 — Market Data](M02-MARKET-DATA.md) | ✅ Completo | 86 % | 67 % | Exchanges, símbolos (cripto + perpetuos TradFi: metales, materias primas, ETFs, acciones), velas OHLCV via ccxt, scheduler de ingesta (un solo líder por lock de MySQL) y explorador de tendencia |
 | [M3 — Feature Engineering](M03-FEATURE-ENGINEERING.md) | ✅ Completo | 100 % | 82 % | RSI, ATR, EMA, MACD, Bollinger Bands, régimen; conjuntos por enfoque (Completo/Tendencia/Rango) |
 | [M4 — Accounts & Portfolio](M04-ACCOUNTS-PORTFOLIO.md) | ✅ Completo | 100 % | 79 % | Cuentas de exchange (credenciales cifradas), balances, equity curve |
-| [M5 — Strategies](M05-STRATEGIES.md) | ✅ Completo | 86 % | 55 % | Reglas de entrada/salida, validación tipo/régimen, datasets |
+| [M5 — Strategies](M05-STRATEGIES.md) | ✅ Completo | 86 % | 70 % | Reglas de entrada/salida, backtesting sin IA, validación tipo/régimen, datasets |
 | [M6 — AI Agent / Models](M06-AI-AGENT.md) | ✅ Completo | 100 % | 81 % | Prompt Maestro con pool de LLMs rotativo (Groq + Gemini + Ollama Cloud, con failover), salida del LLM validada, rate limit por usuario, modelos ML y model runs |
 | [M7 — Bots & Signals](M07-BOTS-SIGNALS.md) | ✅ Completo | 100 % | 81 % | **Agentes** (bots en la UI): punto de entrada, asistente, señales BUY/SELL/HOLD con entry/SL/TP y **modo de ejecución** Manual / Con aprobación / Automático (señales automáticas por vela cerrada) |
 | [M8 — Orders & Execution](M08-ORDERS-EXECUTION.md) | ✅ Completo | 100 % | 84 % | Órdenes paper/live (ccxt) con propiedad, RiskGate e idempotencia; señal → orden (aprobada o automática); SL nativo en el exchange en live + TP por ciclo del scheduler; protección SL/TP también en compras manuales y en compras que se ejecutan tarde; cancelar órdenes; reconciliación con el exchange; fills, posiciones; 350+ tests |
 | [M9 — Alerts](M09-ALERTS.md) | ✅ Completo | 100 % | 58 % | Reglas de alerta, notificaciones email/Telegram/webhook (con guarda SSRF)/desktop; bot de Telegram por usuario para aprobar señales |
 | [M10 — Billing & Managed Accounts](M10-BILLING.md) | ✅ Completo | 100 % | 75 % | Inversores, cuentas administradas, performance fee con HWM |
-| **Promedio** | | **97 %** | **75 %** | |
+| **Promedio** | | **97 %** | **76 %** | |
 
 - **Alcance** = entregables del plan original hechos / planificados. Las dos filas por debajo del 100 % (M2 y M5) son por los tests de services que el plan original listaba y nunca se escribieron.
 - **Madurez** = estimación de qué tan lista para producción está cada pieza (rúbrica abajo). Es una opinión fundamentada en el repo, no una medición.
@@ -123,17 +123,17 @@ Módulo 10 (Billing) ← necesita historial de orders + fills de M8
 | 4 | Alta (parcial) | Salvaguardas para `live`. **Hecho:** tamaño máximo (`ORDER_MAX_NOTIONAL` / `max_notional`), kill switch, live apagado por defecto, drawdown máximo, idempotencia (`client_order_id`), reconciliación con el exchange y SL nativo (2026-10-19). Cancelar órdenes desde la API/UI (2026-10-20). **Pendiente:** correr la prueba en testnet (`scripts/testnet_check.py` + `docs/TESTNET.md`) antes del primer peso real | [M8](M08-ORDERS-EXECUTION.md) |
 | 5 | Media (parcial) | Scheduler: **lock hecho** (un solo líder con `GET_LOCK`); sigue recomendado sacarlo a un proceso aparte. Pendiente el relleno de huecos de velas | [M2](M02-MARKET-DATA.md) |
 | 6 | Media | Sincronizar balances con el exchange y derivar `closing_equity` de ellos; registrar cobros del fee | [M4](M04-ACCOUNTS-PORTFOLIO.md), [M10](M10-BILLING.md) |
-| 7 | Media | Backtesting para validar el edge antes de pasar a live | [M5](M05-STRATEGIES.md) |
+| 7 | ~~Media~~ ✅ | ~~Backtesting~~ **Hecho (2026-10-20):** backtesting sin IA (`POST /api/backtests`, página Backtesting) con las mismas reglas y métricas que los agentes reales | [M5](M05-STRATEGIES.md) |
 
 ### Hoja de ruta de ingresos (propuesta, nada de esto está implementado)
 
 | # | Prioridad | Qué | Módulos |
 |---|---|---|---|
 | 8 | ~~Alta~~ ✅ (parcial) | ~~Métricas y track record~~ **Hecho (2026-10-20):** pestaña **Rendimiento** del agente (`GET /api/performance?bot_id=`: win rate, P&L, R/R real, profit factor, drawdown, operaciones cerradas) y página **Track record** para usuarios con sesión (`GET /api/performance/strategies`, anónimo y en retornos %). **Pendiente:** `portfolio_snapshots` (curva de capital con el valor de la cuenta) sigue sin escribirse | [M7](M07-BOTS-SIGNALS.md), [M8](M08-ORDERS-EXECUTION.md), [M4](M04-ACCOUNTS-PORTFOLIO.md) |
-| 9 | Alta | **Backtesting** sobre los datasets de [M5](M05-STRATEGIES.md) para mostrar el edge antes de vender nada (misma prioridad 7, vista como requisito comercial) | [M5](M05-STRATEGIES.md), [M2](M02-MARKET-DATA.md) |
-| 10 | Media | **Planes SaaS** con pasarela (Stripe / MercadoPago) y **registro propio** (hoy no hay alta de usuarios, solo el seed) | [M1](M01-AUTH.md), [M10](M10-BILLING.md) |
-| 11 | Media | **Señales como servicio vía Telegram:** reutilizar el bot de Telegram por usuario para suscriptores que reciben (sin ejecutar) las señales | [M9](M09-ALERTS.md), [M7](M07-BOTS-SIGNALS.md) |
-| 12 | Media | **Completar cuentas gestionadas:** `closing_equity` desde balances, marcar fees como cobrados, extractos para el inversor, aportes/retiros | [M10](M10-BILLING.md), [M4](M04-ACCOUNTS-PORTFOLIO.md) |
+| 9 | ~~Alta~~ ✅ | ~~Backtesting~~ **Hecho (2026-10-20)**, ver prioridad 7. Sobre historia del exchange (no sobre `datasets`, que siguen sin UI) | [M5](M05-STRATEGIES.md), [M2](M02-MARKET-DATA.md) |
+| 10 | ~~Media~~ (parcial) | **Registro por invitación** hecho (2026-10-20, `POST /api/users`). Planes SaaS con pasarela: descartados por ahora |  [M1](M01-AUTH.md), [M10](M10-BILLING.md) |
+| 11 | ~~Media~~ ✅ | ~~Señales como servicio~~ **Hecho (2026-10-20):** el dueño comparte las señales de su agente y otros lo siguen por Telegram (sin ejecutar nada) | [M9](M09-ALERTS.md), [M7](M07-BOTS-SIGNALS.md) |
+| 12 | ~~Media~~ ✅ (parcial) | **Hecho (2026-10-20):** equity sugerido desde balances, comisiones cobradas/condonadas, extracto CSV, aportes y retiros. **Pendiente:** balances sincronizados con el exchange (hoy se registran a mano) | [M10](M10-BILLING.md), [M4](M04-ACCOUNTS-PORTFOLIO.md) |
 | 13 | Baja | Marketplace de estrategias / copy-trading (más adelante, con track record verificado) | [M5](M05-STRATEGIES.md), [M7](M07-BOTS-SIGNALS.md) |
 
 > **Nota legal:** gestionar dinero de terceros (cuentas gestionadas con comisión de desempeño) y vender señales de trading pagas puede estar regulado según el país (asesoría de inversión, gestión de portafolios, licencias). Validarlo con un abogado antes de lanzar cualquiera de las rutas 10–13. Este documento no es asesoría legal.
@@ -153,7 +153,7 @@ Hash routing: la URL real es `/#/<ruta>`. Cada ruta vive en `frontend/src/routes
 | Rol | Páginas |
 |---|---|
 | Público | `/login` |
-| Usuario (y demás roles) | `/dashboard` (inicio = lista de agentes), `/agents/new`, `/agents/:id`, `/alerts`, `/portfolio`, `/strategies`, `/track-record`, `/market/explorer` (`/agents`, `/bots`, `/agent`, `/orders`, `/features` y `/market/candles` redirigen a `/dashboard`; `/market/symbols` a `/market/explorer`) |
+| Usuario (y demás roles) | `/dashboard` (inicio = lista de agentes), `/agents/new`, `/agents/:id`, `/alerts`, `/portfolio`, `/strategies`, `/track-record`, `/backtest`, `/market/explorer` (`/agents`, `/bots`, `/agent`, `/orders`, `/features` y `/market/candles` redirigen a `/dashboard`; `/market/symbols` a `/market/explorer`) |
 | Admin (`_app/admin/*`) | `/admin/exchanges`, `/admin/symbols`, `/admin/timeframes`, `/admin/feature-sets`, `/admin/users`, `/admin/accounts`, `/admin/strategies`, `/admin/agents`, `/admin/orders`, `/admin/alerts`, `/admin/telegram`, `/admin/investors`, `/admin/managed-accounts`, `/admin/billing` |
 | Inversor (`_app/investor/*`) | `/investor/dashboard` |
 

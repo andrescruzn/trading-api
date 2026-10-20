@@ -53,6 +53,11 @@ class UserRepository(TransactionalRepository, ABC):
         """Retorna {"code", "name"} del rol, o None si no existe."""
         raise NotImplementedError
 
+    @abstractmethod
+    def list_all(self) -> list[User]:
+        """Todos los usuarios, ordenados por ID."""
+        raise NotImplementedError
+
     # ------------------------------------------------------------------
     # Escrituras
     # ------------------------------------------------------------------

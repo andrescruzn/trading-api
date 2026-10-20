@@ -35,6 +35,7 @@ from app.modules.users.services.auth import (
     GetMeService,
 )
 from app.modules.users.services.telegram import TelegramLinkService
+from app.modules.users.services.users import ListUsersService
 
 
 class AuthServiceFactory:
@@ -156,6 +157,10 @@ class AuthServiceFactory:
     def telegram_link(self) -> TelegramLinkService:
         """Vincular / desvincular el chat de Telegram del usuario."""
         return TelegramLinkService(repo=self._repo, settings=self._config)
+
+    def list_users(self) -> ListUsersService:
+        """Listado de usuarios para las vistas de administración."""
+        return ListUsersService(repo=self._repo)
 
 
 # ======================================================================

@@ -50,7 +50,7 @@ from app.modules.alerts.rest import (
     telegram_webhook_router,
 )
 from app.modules.billing.rest import investors_router, managed_accounts_router, billing_periods_router
-from app.modules.users.rest import auth_router, telegram_link_router
+from app.modules.users.rest import auth_router, telegram_link_router, users_router
 
 logger = get_logger(__name__)
 
@@ -132,7 +132,7 @@ def create_app() -> FastAPI:
     app.include_router(health_router)
 
     api_routers = (
-        auth_router, telegram_link_router,
+        auth_router, telegram_link_router, users_router,
         # Market Data
         exchanges_router, symbols_router, timeframes_router, candles_router, explorer_router,
         # Feature Engineering

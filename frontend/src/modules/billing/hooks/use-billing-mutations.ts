@@ -1,20 +1,25 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
+	type CapitalMovementInput,
 	type CloseBillingPeriodInput,
 	closeBillingPeriod,
 	createInvestor,
 	createManagedAccount,
+	type FeeSettleAction,
 	type InvestorInput,
 	type InvestorUpdate,
 	type ManagedAccountInput,
 	type ManagedAccountUpdate,
 	type OpenBillingPeriodInput,
 	openBillingPeriod,
+	recordCapitalMovement,
+	settleFeeTransaction,
 	updateInvestor,
 	updateManagedAccount,
 } from '@/modules/billing/api/billing.api';
 import {
 	BILLING_PERIODS_QUERY_KEY,
+	CAPITAL_MOVEMENTS_QUERY_KEY,
 	FEE_TRANSACTIONS_QUERY_KEY,
 	INVESTORS_QUERY_KEY,
 	MANAGED_ACCOUNTS_QUERY_KEY,
@@ -86,11 +91,44 @@ function useCloseBillingPeriodMutation() {
 	});
 }
 
+function useSettleFeeMutation() {
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: ({
+			id,
+			action,
+			notes,
+		}: {
+			id: number;
+			action: FeeSettleAction;
+			notes: string | null;
+		}) => settleFeeTransaction(id, action, notes),
+		onSuccess: () =>
+			queryClient.invalidateQueries({ queryKey: FEE_TRANSACTIONS_QUERY_KEY }),
+	});
+}
+
+/** Cambia la marca de agua y puede cambiar la apertura del período abierto. */
+function useRecordCapitalMovementMutation() {
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: ({ id, input }: { id: number; input: CapitalMovementInput }) =>
+			recordCapitalMovement(id, input),
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: CAPITAL_MOVEMENTS_QUERY_KEY });
+			queryClient.invalidateQueries({ queryKey: MANAGED_ACCOUNTS_QUERY_KEY });
+			queryClient.invalidateQueries({ queryKey: BILLING_PERIODS_QUERY_KEY });
+		},
+	});
+}
+
 export {
 	useCloseBillingPeriodMutation,
 	useCreateInvestorMutation,
 	useCreateManagedAccountMutation,
 	useOpenBillingPeriodMutation,
+	useRecordCapitalMovementMutation,
+	useSettleFeeMutation,
 	useUpdateInvestorMutation,
 	useUpdateManagedAccountMutation,
 };

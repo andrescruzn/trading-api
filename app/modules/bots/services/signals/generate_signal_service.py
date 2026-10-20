@@ -12,7 +12,8 @@
 #   3. Mapea el AnalysisResult → Signal entity.
 #   4. Persiste la Signal en la BD. Si el agente está en modo approval/auto
 #      y la señal es BUY/SELL aprobada, queda `pending` hasta expires_at.
-#   5. Hooks: alertas y aviso de aprobación (Telegram) — nunca bloquean.
+#   5. Hooks: alertas, aviso de aprobación (Telegram) y reparto a los
+#      suscriptores de un agente compartido — nunca bloquean.
 #
 # INTEGRACIÓN CON EL AGENTE (M6):
 #   El AnalyzeService se recibe como dependencia ya construida por el
@@ -68,8 +69,10 @@ class GenerateSignalService:
         evaluate_alerts: "EvaluateAlertsService | None" = None,
         notify_pending: "Callable[[Signal, Bot], None] | None" = None,
         approval_ttl_minutes: int = 60,
+        notify_subscribers: "Callable[[Signal, Bot], object] | None" = None,
     ):
         self._notify_pending = notify_pending
+        self._notify_subscribers = notify_subscribers
         self._approval_ttl_minutes = approval_ttl_minutes
         self._account_repo = account_repo
         self._bot_repo = bot_repo
@@ -215,5 +218,15 @@ class GenerateSignalService:
                 self._notify_pending(created, bot)
             except Exception:
                 logger.exception("No se pudo avisar la señal pendiente %s", created.id)
+
+        # ------------------------------------------------------------------
+        # 8. Señal compartida (Telegram, sin botones) a quienes siguen el
+        #    agente — solo BUY/SELL aprobadas; fire-and-forget
+        # ------------------------------------------------------------------
+        if bot.share_signals and created.is_actionable() and self._notify_subscribers:
+            try:
+                self._notify_subscribers(created, bot)
+            except Exception:
+                logger.exception("No se pudo repartir la señal compartida %s", created.id)
 
         return ServiceResult.ok(data=created)

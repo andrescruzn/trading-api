@@ -45,6 +45,7 @@ from app.common.contracts import ServiceResult
 from app.modules.agent.domain.analysis_result import AnalysisResult, RuleCheckDetail
 from app.modules.agent.llm.llm_client import LLMCallError, LLMClient, LLMParseError
 from app.modules.features.domain.indicator_catalog import missing_for_rules
+from app.modules.strategies.domain.rule_evaluation import evaluate_rule
 
 logger = logging.getLogger(__name__)
 
@@ -74,13 +75,6 @@ You MUST respond ONLY with valid JSON. No markdown, no explanation outside the J
 }"""
 
 # Operadores soportados en las reglas de la estrategia
-_OPERATORS: dict[str, Any] = {
-    "lt":  lambda a, b: a < b,
-    "gt":  lambda a, b: a > b,
-    "lte": lambda a, b: a <= b,
-    "gte": lambda a, b: a >= b,
-    "eq":  lambda a, b: abs(a - b) < 0.0001,
-}
 
 
 # Regla del 1 %: nunca arriesgar más del 1 % del capital por operación
@@ -597,37 +591,13 @@ class AnalyzeService:
         - Un string de otro indicator: comparar contra ese valor (ema_20 > ema_50)
         """
         details: list[RuleCheckDetail] = []
-
         for rule in rules:
-            indicator = rule.get("indicator", "")
-            operator = rule.get("operator", "")
-            threshold = rule.get("value")
-
-            actual = features.get(indicator)
-
-            # El threshold puede ser el nombre de otro indicator
-            if isinstance(threshold, str) and threshold in features:
-                compare = features[threshold]
-            else:
-                try:
-                    compare = float(threshold)
-                except (TypeError, ValueError):
-                    compare = None
-
-            # Evaluar la regla con el operador correspondiente
-            if actual is None or compare is None or operator not in _OPERATORS:
-                passed = False
-            else:
-                try:
-                    passed = _OPERATORS[operator](float(actual), float(compare))
-                except Exception:
-                    passed = False
-
+            passed, actual = evaluate_rule(rule, features)
             details.append(
                 RuleCheckDetail(
-                    indicator=indicator,
-                    operator=operator,
-                    threshold=threshold,
+                    indicator=rule.get("indicator", ""),
+                    operator=rule.get("operator", ""),
+                    threshold=rule.get("value"),
                     actual_value=actual,
                     passed=passed,
                 )

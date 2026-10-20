@@ -4,8 +4,9 @@
 # app/modules/bots/services/bots/bot_access.py
 #
 # PROPÓSITO:
-# - Regla de propiedad de los bots, compartida por los servicios de bots
-#   y de señales: un usuario solo ve y opera los bots de sus cuentas.
+# - Regla de propiedad de los bots, compartida por los servicios de bots,
+#   de señales y de suscripciones: un usuario solo ve y opera los bots de
+#   sus cuentas. `bot_owner_id` dice de quién es un bot.
 #
 # NOTAS:
 # - `owner_id=None` significa "sin restricción" (admin).
@@ -36,3 +37,11 @@ def find_accessible_bot(
     if account is None or account.user_id != owner_id:
         return None
     return bot
+
+
+def bot_owner_id(account_repo: AccountRepository, bot: Bot) -> int | None:
+    """ID del dueño del bot (el de su cuenta), o None si no tiene cuenta."""
+    if bot.account_id is None:
+        return None
+    account = account_repo.get_by_id(bot.account_id)
+    return account.user_id if account else None

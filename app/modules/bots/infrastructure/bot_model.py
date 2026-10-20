@@ -11,6 +11,7 @@
 
 from sqlalchemy import (
     BigInteger,
+    Boolean,
     CheckConstraint,
     Column,
     ForeignKey,
@@ -85,6 +86,13 @@ class BotModel(Base):
         Integer,
         nullable=True,
         comment="Minutos para aprobar una señal antes de que caduque (NULL = valor global)",
+    )
+    share_signals = Column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default=text("0"),
+        comment="1 = otros usuarios pueden suscribirse a sus señales (Telegram)",
     )
     status = Column(String(16), nullable=False, server_default=text("'stopped'"))
     risk_params = Column(JSON, nullable=False)

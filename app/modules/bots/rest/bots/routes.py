@@ -5,6 +5,7 @@
 #
 # ENDPOINTS:
 # - GET  /bots              → listar bots (admin: todos; user o ?mine=true: los suyos)
+# - GET  /bots/shared       → agentes que comparten sus señales (vista pública)
 # - POST /bots              → crear bot
 # - GET  /bots/{id}         → detalle de un bot
 # - PUT  /bots/{id}         → renombrar (siempre) o actualizar config (si stopped)
@@ -12,11 +13,15 @@
 # - POST /bots/{id}/stop    → detener bot  (running/paused → stopped)
 # - POST /bots/{id}/pause   → pausar bot   (running → paused)
 # - POST /bots/{id}/market/sync → descargar velas y recalcular indicadores
+# - POST   /bots/{id}/subscription → seguir las señales de un agente compartido
+# - DELETE /bots/{id}/subscription → dejar de seguirlas
 #
 # NOTAS:
 # - En la UI los bots se llaman "agentes"; los mensajes usan esa palabra.
 # - Un usuario solo ve y opera bots de sus cuentas (`owner_id`); para un
 #   bot ajeno la respuesta es 404, igual que si no existiera.
+# - `GET /bots/shared` va antes de `GET /bots/{bot_id}`: si no, "shared"
+#   se intentaría leer como bot_id (422).
 # ======================================================================
 
 from __future__ import annotations
@@ -37,6 +42,7 @@ from app.common.security.rate_limiter import check_user_rate_limit, market_sync_
 from app.extensions.db import get_db
 from app.modules.bots.domain.bot_entity import Bot
 from app.modules.bots.providers import BotServiceFactory, get_bot_factory
+from app.modules.bots.services.subscriptions import SharedBot, SubscriptionState
 
 from .error_messages import BOT_ERROR_MESSAGES
 from .schemas import CreateBotRequest, UpdateBotRequest
@@ -70,9 +76,35 @@ def _bot_to_dict(b: Bot) -> dict[str, Any]:
         "risk_params":    b.risk_params,
         "execution_mode": b.execution_mode,
         "approval_ttl_minutes": b.approval_ttl_minutes,
+        "share_signals":  b.share_signals,
         "started_at":     b.started_at.isoformat() if b.started_at else None,
         "stopped_at":     b.stopped_at.isoformat() if b.stopped_at else None,
         "created_at":     b.created_at.isoformat() if b.created_at else None,
+    }
+
+
+def _shared_bot_to_dict(s: SharedBot) -> dict[str, Any]:
+    return {
+        "id":                s.bot_id,
+        "strategy_id":       s.strategy_id,
+        "strategy_name":     s.strategy_name,
+        "symbol_id":         s.symbol_id,
+        "symbol":            s.symbol,
+        "timeframe_id":      s.timeframe_id,
+        "timeframe":         s.timeframe,
+        "mode":              s.mode,
+        "status":            s.status,
+        "subscribers_count": s.subscribers_count,
+        "is_subscribed":     s.is_subscribed,
+        "is_mine":           s.is_mine,
+    }
+
+
+def _subscription_to_dict(s: SubscriptionState) -> dict[str, Any]:
+    return {
+        "bot_id":            s.bot_id,
+        "is_subscribed":     s.is_subscribed,
+        "subscribers_count": s.subscribers_count,
     }
 
 
@@ -96,6 +128,26 @@ def list_bots(
     result = factory.list_bots().list(account_id=account_id, owner_id=owner_id)
     return build_list_response(
         items=[_bot_to_dict(b) for b in (result.data or [])],
+        msg="OK",
+    )
+
+
+# ======================================================================
+# GET /bots/shared   (antes de /bots/{bot_id})
+# ======================================================================
+
+@router.get("/shared", status_code=200)
+def list_shared_bots(
+    identity: dict = Depends(token_required_actual),
+    factory: BotServiceFactory = Depends(get_factory),
+):
+    """
+    Agentes que comparten sus señales, sin datos de la cuenta ni del dueño.
+    Incluye si el usuario ya los sigue (`is_subscribed`) y si son suyos (`is_mine`).
+    """
+    result = factory.list_shared_bots().list(user_id=int(identity["user_id"]))
+    return build_list_response(
+        items=[_shared_bot_to_dict(s) for s in (result.data or [])],
         msg="OK",
     )
 
@@ -178,6 +230,7 @@ def update_bot(
         approval_ttl_minutes=payload.approval_ttl_minutes,
         clear_approval_ttl="approval_ttl_minutes" in payload.model_fields_set
         and payload.approval_ttl_minutes is None,
+        share_signals=payload.share_signals,
     )
 
     if not result.success:
@@ -274,3 +327,51 @@ def sync_bot_market_data(
         return build_error_response(result, BOT_ERROR_MESSAGES)
 
     return build_success_response(data=result.data, msg="Datos del agente actualizados.")
+
+
+# ======================================================================
+# POST /bots/{bot_id}/subscription
+# ======================================================================
+
+@router.post("/{bot_id}/subscription", status_code=200)
+def subscribe_to_bot(
+    bot_id: int,
+    identity: dict = Depends(token_required_actual),
+    factory: BotServiceFactory = Depends(get_factory),
+):
+    """Sigue las señales de un agente compartido (idempotente; exige Telegram)."""
+    result = factory.subscribe_to_bot().subscribe(
+        bot_id=bot_id, user_id=int(identity["user_id"])
+    )
+
+    if not result.success:
+        return build_error_response(result, BOT_ERROR_MESSAGES)
+
+    return build_success_response(
+        data=_subscription_to_dict(result.data),
+        msg="Listo: te llegarán por Telegram las señales de este agente.",
+    )
+
+
+# ======================================================================
+# DELETE /bots/{bot_id}/subscription
+# ======================================================================
+
+@router.delete("/{bot_id}/subscription", status_code=200)
+def unsubscribe_from_bot(
+    bot_id: int,
+    identity: dict = Depends(token_required_actual),
+    factory: BotServiceFactory = Depends(get_factory),
+):
+    """Deja de seguir las señales de un agente (idempotente)."""
+    result = factory.unsubscribe_from_bot().unsubscribe(
+        bot_id=bot_id, user_id=int(identity["user_id"])
+    )
+
+    if not result.success:
+        return build_error_response(result, BOT_ERROR_MESSAGES)
+
+    return build_success_response(
+        data=_subscription_to_dict(result.data),
+        msg="Ya no recibirás las señales de este agente.",
+    )

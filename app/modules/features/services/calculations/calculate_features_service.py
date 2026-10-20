@@ -24,44 +24,15 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Optional
 
-import pandas as pd
-import pandas_ta as ta
-
 from app.common.contracts import ServiceResult
 from app.modules.features.domain.candle_feature_entity import CandleFeature
 from app.modules.features.domain.candle_feature_repository import CandleFeatureRepository
 from app.modules.features.domain.feature_set_repository import FeatureSetRepository
-from app.modules.features.domain.indicator_catalog import INDICATOR_GROUPS, groups_for
+from app.modules.features.domain.indicator_catalog import groups_for
+from app.modules.features.domain.indicator_engine import MIN_CANDLES, compute_feature_rows
 from app.modules.market.domain.candle_repository import CandleRepository
 from app.modules.market.domain.symbol_repository import SymbolRepository
 from app.modules.market.domain.timeframe_repository import TimeframeRepository
-
-# Número mínimo de velas para calcular EMA(200) con margen
-_MIN_CANDLES = 220
-
-# Clave de salida → columna que genera pandas-ta
-_OUTPUT_COLUMNS: dict[str, str] = {
-    "rsi_14": "RSI_14",
-    "ema_20": "EMA_20",
-    "ema_50": "EMA_50",
-    "ema_200": "EMA_200",
-    "macd": "MACD_12_26_9",
-    "macd_signal": "MACDs_12_26_9",
-    "macd_hist": "MACDh_12_26_9",
-    "atr_14": "ATRr_14",
-    "bb_upper": "BBU_20_2.0_2.0",
-    "bb_mid": "BBM_20_2.0_2.0",
-    "bb_lower": "BBL_20_2.0_2.0",
-    "bb_bandwidth": "BBB_20_2.0_2.0",
-    "vol_rel": "vol_rel",
-}
-
-# Columna que debe existir sin NaN, por grupo, para considerar la fila válida
-_REQUIRED_BY_GROUP: dict[str, tuple[str, ...]] = {
-    "rsi": ("RSI_14",),
-    "ema": ("EMA_20", "EMA_50", "EMA_200"),
-    "atr": ("ATRr_14",),
-}
 
 
 class CalculateFeaturesService:
@@ -113,7 +84,6 @@ class CalculateFeaturesService:
             return ServiceResult.fail(code="FEATURE_SET_NOT_FOUND", http_status=404)
 
         groups = groups_for(feature_set.spec)
-        output_keys = [key for group in groups for key in INDICATOR_GROUPS[group]]
 
         # ------------------------------------------------------------------
         # 2. Cargar velas (hasta 1000, ordenadas de más antigua a más nueva)
@@ -128,73 +98,30 @@ class CalculateFeaturesService:
         # list_candles devuelve orden desc → invertir para cálculos cronológicos
         candles = list(reversed(candles))
 
-        if len(candles) < _MIN_CANDLES:
+        if len(candles) < MIN_CANDLES:
             return ServiceResult.fail(
                 code="INSUFFICIENT_CANDLES",
                 http_status=422,
-                meta={"required": _MIN_CANDLES, "available": len(candles)},
+                meta={"required": MIN_CANDLES, "available": len(candles)},
             )
 
         # ------------------------------------------------------------------
-        # 3. Construir DataFrame
+        # 3. Indicadores + régimen (domain/indicator_engine.py)
         # ------------------------------------------------------------------
-        df = pd.DataFrame([{
-            "ts": c.ts,
-            "open": float(c.open),
-            "high": float(c.high),
-            "low": float(c.low),
-            "close": float(c.close),
-            "volume": float(c.volume),
-        } for c in candles])
-        df.set_index("ts", inplace=True)
-
-        # ------------------------------------------------------------------
-        # 4. Calcular indicadores con pandas-ta
-        # ------------------------------------------------------------------
-        df.ta.rsi(length=14, append=True)
-        df.ta.ema(length=20, append=True)
-        df.ta.ema(length=50, append=True)
-        df.ta.ema(length=200, append=True)
-        df.ta.macd(fast=12, slow=26, signal=9, append=True)
-        df.ta.atr(length=14, append=True)
-        df.ta.bbands(length=20, std=2, append=True)
-
-        # Volumen relativo: vol / media_móvil_vol_20
-        df["vol_rel"] = df["volume"] / df["volume"].rolling(20).mean()
-
-        # ------------------------------------------------------------------
-        # 5. Detectar régimen de mercado
-        # ------------------------------------------------------------------
-        df["regime"] = df.apply(
-            lambda row: self._detect_regime(df, row.name), axis=1
-        )
-
-        # ------------------------------------------------------------------
-        # 6. Construir entidades CandleFeature (solo filas con datos completos)
-        # ------------------------------------------------------------------
-        # Columnas que deben existir sin NaN para considerar la fila válida
-        required_cols = [
-            col for group in groups for col in _REQUIRED_BY_GROUP.get(group, ())
-        ]
-        df_valid = df.dropna(subset=required_cols) if required_cols else df
-
-        feature_entities = []
-        for ts, row in df_valid.iterrows():
-            features: dict = {
-                key: self._safe_float(row.get(_OUTPUT_COLUMNS[key])) for key in output_keys
-            }
-            features["regime"] = row.get("regime", "sideways")
-            feature_entities.append(CandleFeature(
+        feature_entities = [
+            CandleFeature(
                 id=0,
                 symbol_id=symbol_id,
                 timeframe_id=timeframe_id,
                 ts=ts,
                 feature_set_id=feature_set_id,
                 features=features,
-            ))
+            )
+            for ts, features in compute_feature_rows(candles, groups)
+        ]
 
         # ------------------------------------------------------------------
-        # 7. Persistir
+        # 4. Persistir
         # ------------------------------------------------------------------
         rows_affected = self._candle_feature_repo.bulk_upsert(feature_entities)
         self._candle_feature_repo.commit()
@@ -207,61 +134,3 @@ class CalculateFeaturesService:
             "rows_calculated": len(feature_entities),
             "rows_affected": rows_affected,
         })
-
-    # ------------------------------------------------------------------
-    # Helpers privados
-    # ------------------------------------------------------------------
-
-    @staticmethod
-    def _safe_float(value) -> Optional[float]:
-        """Convierte a float; retorna None si es NaN o None."""
-        try:
-            import math
-            v = float(value)
-            return None if math.isnan(v) else round(v, 8)
-        except (TypeError, ValueError):
-            return None
-
-    @staticmethod
-    def _detect_regime(df: pd.DataFrame, current_ts) -> str:
-        """
-        Detecta régimen de mercado usando lógica HH/HL (Higher Highs / Higher Lows).
-
-        Reglas (ventana de 20 velas):
-        - trend_up:   los últimos 2 máximos son ascendentes Y los últimos 2 mínimos son ascendentes
-        - trend_down: los últimos 2 máximos son descendentes Y los últimos 2 mínimos son descendentes
-        - sideways:   cualquier otro caso
-        """
-        try:
-            idx = df.index.get_loc(current_ts)
-            if idx < 20:
-                return "sideways"
-
-            window = df.iloc[idx - 20: idx]
-            highs = window["high"].values
-            lows = window["low"].values
-
-            # Detectar swing highs y swing lows locales (ventana de 3)
-            swing_highs = [
-                highs[i] for i in range(1, len(highs) - 1)
-                if highs[i] > highs[i - 1] and highs[i] > highs[i + 1]
-            ]
-            swing_lows = [
-                lows[i] for i in range(1, len(lows) - 1)
-                if lows[i] < lows[i - 1] and lows[i] < lows[i + 1]
-            ]
-
-            if len(swing_highs) >= 2 and len(swing_lows) >= 2:
-                hh = swing_highs[-1] > swing_highs[-2]
-                hl = swing_lows[-1] > swing_lows[-2]
-                lh = swing_highs[-1] < swing_highs[-2]
-                ll = swing_lows[-1] < swing_lows[-2]
-
-                if hh and hl:
-                    return "trend_up"
-                if lh and ll:
-                    return "trend_down"
-
-            return "sideways"
-        except Exception:
-            return "sideways"

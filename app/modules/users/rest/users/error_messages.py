@@ -10,4 +10,7 @@ USER_ERROR_MESSAGES: dict[str, str] = {
     "USER_NOT_FOUND":              "No encontramos ese usuario.",
     "USER_INVALID_ROLE":           "Ese rol no existe. Elige Usuario, Administrador o Inversor.",
     "USER_CANNOT_CHANGE_OWN_ROLE": "No puedes cambiar tu propio rol. Pídeselo a otro administrador.",
+    "USER_INVALID_EMAIL":          "Escribe un correo válido, por ejemplo nombre@empresa.com.",
+    "USER_INVALID_NAME":           "El nombre es demasiado largo.",
+    "USER_EMAIL_TAKEN":            "Ya existe una cuenta con ese correo.",
 }

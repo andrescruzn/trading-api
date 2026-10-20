@@ -94,6 +94,50 @@ type OpenBillingPeriodInput = {
 
 type CloseBillingPeriodInput = { closing_equity: string };
 
+/** Equity sugerido desde los últimos balances (montos como texto, DECIMAL). */
+type EquityEstimate = {
+	currency: string;
+	equity: string;
+	as_of: string | null;
+	lines: {
+		asset: string;
+		qty: string;
+		price: string | null;
+		value: string | null;
+	}[];
+	/** Activos sin precio: no suman al equity. */
+	missing: string[];
+};
+
+type FeeSettleAction = 'charge' | 'waive';
+
+type CapitalMovementKind = 'deposit' | 'withdrawal';
+
+type CapitalMovement = {
+	id: number;
+	kind: CapitalMovementKind;
+	amount: string;
+	ts: string | null;
+	notes: string | null;
+	created_at: string | null;
+};
+
+/** Movimientos (del más reciente al más antiguo) y totales. */
+type CapitalSummary = {
+	deposits: string;
+	withdrawals: string;
+	net: string;
+	movements: CapitalMovement[];
+};
+
+type CapitalMovementInput = {
+	kind: CapitalMovementKind;
+	amount: string;
+	/** ISO; sin valor = ahora. */
+	ts?: string;
+	notes?: string | null;
+};
+
 // ======================================================================
 // Inversores
 // ======================================================================
@@ -128,6 +172,31 @@ function updateManagedAccount(id: number, input: ManagedAccountUpdate) {
 	return api.put<ManagedAccount>(`/managed-accounts/${id}`, input);
 }
 
+/** Admin: cualquier cuenta. Inversor: solo las suyas. */
+function listCapitalMovements(managedAccountId: number) {
+	return api.get<CapitalSummary>(
+		`/managed-accounts/${managedAccountId}/capital-movements`,
+	);
+}
+
+/** Solo admin: ajusta la marca de agua y la apertura del período abierto. */
+function recordCapitalMovement(
+	managedAccountId: number,
+	input: CapitalMovementInput,
+) {
+	return api.post<CapitalMovement>(
+		`/managed-accounts/${managedAccountId}/capital-movements`,
+		input,
+	);
+}
+
+/** Solo admin. */
+function getEquityEstimate(managedAccountId: number) {
+	return api.get<EquityEstimate>(
+		`/managed-accounts/${managedAccountId}/equity-estimate`,
+	);
+}
+
 // ======================================================================
 // Períodos de facturación y comisiones
 // ======================================================================
@@ -149,11 +218,28 @@ function listFeeTransactions(filters: BillingFilters) {
 	return api.get<FeeTransaction[]>('/fee-transactions', filters);
 }
 
+/** Solo admin: `charge` = cobrada, `waive` = condonada. Solo comisiones pendientes. */
+function settleFeeTransaction(
+	id: number,
+	action: FeeSettleAction,
+	notes: string | null,
+) {
+	return api.post<FeeTransaction>(`/fee-transactions/${id}/${action}`, {
+		notes,
+	});
+}
+
 export type {
 	BillingFilters,
 	BillingPeriod,
 	BillingPeriodStatus,
+	CapitalMovement,
+	CapitalMovementInput,
+	CapitalMovementKind,
+	CapitalSummary,
 	CloseBillingPeriodInput,
+	EquityEstimate,
+	FeeSettleAction,
 	FeeTransaction,
 	FeeTransactionStatus,
 	Investor,
@@ -169,11 +255,15 @@ export {
 	closeBillingPeriod,
 	createInvestor,
 	createManagedAccount,
+	getEquityEstimate,
 	listBillingPeriods,
+	listCapitalMovements,
 	listFeeTransactions,
 	listInvestors,
 	listManagedAccounts,
 	openBillingPeriod,
+	recordCapitalMovement,
+	settleFeeTransaction,
 	updateInvestor,
 	updateManagedAccount,
 };

@@ -5,9 +5,11 @@ import {
 	IconCompass,
 	IconDatabase,
 	IconEye,
+	IconFlask,
 	IconHome,
 	IconSettings,
 	IconTrendingUp,
+	IconTrophy,
 	IconWallet,
 } from '@tabler/icons-react';
 import { useRouterState } from '@tanstack/react-router';
@@ -59,6 +61,8 @@ const navSections: NavSectionData[] = [
 				url: '/market/explorer',
 			},
 			{ title: 'Estrategias', icon: IconBook, url: '/strategies' },
+			{ title: 'Track record', icon: IconTrophy, url: '/track-record' },
+			{ title: 'Backtesting', icon: IconFlask, url: '/backtest' },
 		],
 	},
 	{

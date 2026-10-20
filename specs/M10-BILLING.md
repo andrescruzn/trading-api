@@ -73,6 +73,10 @@ Entregables:
 - ✅ Nuevo rol: role_id=3 → investor; settings.AUTH_INVESTOR_ROLE_ID = 3
 - ✅ ~~CSP: prefijo /investor/ en security_headers.py~~ (ya no aplica: API headless desde 2026-10-08)
 - ✅ Tests unitarios: 53 tests pasando (entity HWM, close/open period service)
+- ✅ (2026-10-20) **Comisiones cobradas / condonadas**: `POST /api/fee-transactions/{id}/charge` y `/waive` (admin, solo pendientes, nota opcional) + botones en Facturación
+- ✅ (2026-10-20) **Equity sugerido** desde los balances: `GET /api/managed-accounts/{id}/equity-estimate` (último balance de cada activo valorado al último cierre del par activo/moneda base; los activos sin precio se avisan y no suman) + "Usar este valor" al abrir y cerrar períodos
+- ✅ (2026-10-20) **Aportes y retiros**: tabla `capital_movements`, `GET/POST /api/managed-accounts/{id}/capital-movements`, panel en Cuentas gestionadas y sección en Mi inversión
+- ✅ (2026-10-20) **Extracto CSV** del inversor (períodos, comisiones y movimientos) y "Comisiones pagadas" contando solo las cobradas
 
 ## Decisiones de diseño
 
@@ -90,6 +94,8 @@ Entregables:
 | Propiedad: el inversor ve solo sus cuentas (`find_by_user_id`); el admin usa `list_all()` | Aislamiento entre inversores | Filtrar en el cliente |
 | Alta/edición de inversores, cuentas y períodos solo para admin | El cobro lo controla quien administra el negocio | Autoservicio |
 | Prefijo `/api/` (hoy común a toda la API vía `settings.API_PREFIX`) | Originalmente para evitar colisión con las páginas Jinja; el prefijo `/investor/` del CSP desapareció con la API headless (2026-10-08) | — |
+| **Aporte = marca de agua y apertura del período abierto suben el mismo monto; retiro = bajan** (sin pasar de 0), en un solo commit | La comisión solo mide la ganancia: un depósito a mitad de período no se cobra como si fuera rendimiento | Ajuste proporcional del HWM en retiros (necesita el equity del momento) |
+| Equity sugerido, no impuesto | Los balances se registran a mano y algún activo puede no tener precio: el admin decide | Calcular el cierre automáticamente |
 
 ## Avance
 
@@ -248,3 +254,4 @@ AUTH_INVESTOR_ROLE_ID: int = 3  # leído de env AUTH_INVESTOR_ROLE_ID, default 3
 - **2026-10-08** — API headless (/api), páginas migradas a React (frontend/).
 - **2026-10-19** — Auditoría de seguridad: `GET /api/managed-accounts/{id}` responde 403 a quien no es admin ni inversor (antes cualquier usuario autenticado podía leer cualquier cuenta gestionada); `limit` de `/api/billing-periods` y `/api/fee-transactions` acotado a 1–500.
 - **2026-10-20** — Nuevo inversor: selector de usuario (rol Inversor, sin perfil) en lugar de escribir el ID; inversores y cuentas administradas muestran nombre y correo (`investorLabel(investor, users)`).
+- **2026-10-20** — Comisiones cobradas/condonadas, equity sugerido desde balances, aportes y retiros (`capital_movements`, ajustan HWM y período abierto) y extracto CSV del inversor.

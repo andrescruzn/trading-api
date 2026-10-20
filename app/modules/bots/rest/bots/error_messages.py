@@ -42,6 +42,13 @@ BOT_ERROR_MESSAGES: dict[str, str] = {
         "Los modos Con aprobación y Automático necesitan un timeframe de 15 minutos o más."
     ),
 
+    # Señales compartidas (POST/DELETE /bots/{id}/subscription)
+    "SUBSCRIPTION_OWN_BOT":        "Este agente es tuyo: sus señales ya las ves en la app.",
+    "SUBSCRIPTION_TELEGRAM_REQUIRED": (
+        "Las señales compartidas llegan por Telegram. Conéctalo desde el menú de "
+        "tu usuario → Conectar Telegram y vuelve a intentarlo."
+    ),
+
     # Actualizar datos del agente (POST /bots/{id}/market/sync)
     "SYMBOL_NOT_FOUND":            "No encontramos el símbolo de este agente.",
     "TIMEFRAME_NOT_FOUND":         "No encontramos el timeframe de este agente.",

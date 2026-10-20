@@ -15,6 +15,7 @@ from app.modules.billing.infrastructure import (
     SqlAlchemyManagedAccountRepository,
     SqlAlchemyBillingPeriodRepository,
     SqlAlchemyFeeTransactionRepository,
+    SqlAlchemyCapitalMovementRepository,
 )
 from app.modules.billing.services.investors import (
     ListInvestorsService,
@@ -26,12 +27,27 @@ from app.modules.billing.services.managed_accounts import (
     GetManagedAccountService,
     CreateManagedAccountService,
     UpdateManagedAccountService,
+    EstimateEquityService,
+    ListCapitalMovementsService,
+    RecordCapitalMovementService,
 )
 from app.modules.billing.services.billing import (
     ListBillingPeriodsService,
     OpenBillingPeriodService,
     CloseBillingPeriodService,
     ListFeeTransactionsService,
+    SettleFeeTransactionService,
+)
+
+# Repos tomados de otros módulos (borrowing) para el equity sugerido
+from app.modules.accounts.infrastructure import (
+    SqlAlchemyAccountBalanceRepository,
+    SqlAlchemyAccountRepository,
+)
+from app.modules.market.infrastructure import (
+    SqlAlchemyCandleRepository,
+    SqlAlchemySymbolRepository,
+    SqlAlchemyTimeframeRepository,
 )
 
 
@@ -51,6 +67,7 @@ class BillingServiceFactory:
         self._managed_account_repo = SqlAlchemyManagedAccountRepository(session)
         self._period_repo = SqlAlchemyBillingPeriodRepository(session)
         self._fee_tx_repo = SqlAlchemyFeeTransactionRepository(session)
+        self._movement_repo = SqlAlchemyCapitalMovementRepository(session)
 
     # ------------------------------------------------------------------
     # Investors
@@ -118,6 +135,32 @@ class BillingServiceFactory:
         return ListFeeTransactionsService(
             fee_tx_repo=self._fee_tx_repo,
             managed_account_repo=self._managed_account_repo,
+        )
+
+    def settle_fee_transaction(self) -> SettleFeeTransactionService:
+        return SettleFeeTransactionService(fee_tx_repo=self._fee_tx_repo)
+
+    def record_capital_movement(self) -> RecordCapitalMovementService:
+        return RecordCapitalMovementService(
+            movement_repo=self._movement_repo,
+            managed_account_repo=self._managed_account_repo,
+            period_repo=self._period_repo,
+        )
+
+    def list_capital_movements(self) -> ListCapitalMovementsService:
+        return ListCapitalMovementsService(
+            movement_repo=self._movement_repo,
+            managed_account_repo=self._managed_account_repo,
+        )
+
+    def estimate_equity(self) -> EstimateEquityService:
+        return EstimateEquityService(
+            managed_account_repo=self._managed_account_repo,
+            account_repo=SqlAlchemyAccountRepository(self._session),
+            balance_repo=SqlAlchemyAccountBalanceRepository(self._session),
+            symbol_repo=SqlAlchemySymbolRepository(self._session),
+            timeframe_repo=SqlAlchemyTimeframeRepository(self._session),
+            candle_repo=SqlAlchemyCandleRepository(self._session),
         )
 
 

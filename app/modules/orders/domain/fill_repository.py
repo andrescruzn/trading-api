@@ -13,6 +13,7 @@ from abc import ABC, abstractmethod
 
 from app.modules.orders.domain.fill_entity import Fill
 from app.common.contracts import TransactionalRepository
+from app.modules.orders.domain.performance import TradeFill
 
 
 class FillRepository(TransactionalRepository, ABC):
@@ -25,6 +26,11 @@ class FillRepository(TransactionalRepository, ABC):
     @abstractmethod
     def list_by_bot(self, bot_id: int, limit: int = 200) -> list[Fill]:
         """Lista los fills más recientes de un bot (via join con orders)."""
+        ...
+
+    @abstractmethod
+    def list_trade_fills_by_bots(self, bot_ids: list[int]) -> dict[int, list[TradeFill]]:
+        """Todos los fills de esos bots con el lado de su orden, por bot y por fecha."""
         ...
 
     @abstractmethod

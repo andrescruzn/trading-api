@@ -58,11 +58,84 @@ function updateStrategy(id: number, input: StrategyUpdate) {
 	return api.put<Strategy>(`/strategies/${id}`, input);
 }
 
+// ======================================================================
+// Backtesting (sin IA)
+// ======================================================================
+
+type BacktestInput = {
+	strategy_id: number;
+	symbol_id: number;
+	timeframe_id: number;
+	/** 300–3000. */
+	bars: number;
+	initial_capital?: string;
+	/** Comisión por lado como fracción (0.001 = 0,1 %). */
+	fee_pct?: string;
+};
+
+type BacktestTrade = {
+	entry_ts: string | null;
+	exit_ts: string | null;
+	entry_price: number;
+	exit_price: number | null;
+	qty: number;
+	stop_loss: number;
+	take_profit: number;
+	exit_reason: 'stop_loss' | 'take_profit' | 'end' | null;
+	pnl: number;
+	return_pct: number;
+};
+
+/** Fracciones (0.05 = 5 %); montos en la moneda de cotización. */
+type BacktestReport = {
+	strategy_name: string;
+	regime_required: string | null;
+	from_ts: string | null;
+	to_ts: string | null;
+	bars: number;
+	signals: number;
+	skipped_in_position: number;
+	initial_capital: number;
+	final_capital: number;
+	return_pct: number | null;
+	buy_and_hold_pct: number | null;
+	risk_pct: number;
+	fee_pct: number;
+	sl_atr: number;
+	tp_atr: number;
+	trades: number;
+	wins: number;
+	losses: number;
+	win_rate: number | null;
+	profit_factor: number | null;
+	payoff_ratio: number | null;
+	avg_return_pct: number | null;
+	max_drawdown: number;
+	total_fees: number;
+	equity_curve: { ts: string | null; capital: number }[];
+	/** La más reciente primero. */
+	closed_trades: BacktestTrade[];
+};
+
+/** Trae la historia del exchange y simula: puede tardar unos segundos. */
+function runBacktest(input: BacktestInput) {
+	return api.post<BacktestReport>('/backtests', input);
+}
+
 export type {
+	BacktestInput,
+	BacktestReport,
+	BacktestTrade,
 	Strategy,
 	StrategyInput,
 	StrategyParameters,
 	StrategyType,
 	StrategyUpdate,
 };
-export { createStrategy, getStrategy, listStrategies, updateStrategy };
+export {
+	createStrategy,
+	getStrategy,
+	listStrategies,
+	runBacktest,
+	updateStrategy,
+};

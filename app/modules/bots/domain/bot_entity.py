@@ -72,6 +72,7 @@ class Bot:
         created_at: datetime | None = None,
         execution_mode: str = "manual",
         approval_ttl_minutes: int | None = None,
+        share_signals: bool = False,
     ):
         self.id = id
         self.name = name
@@ -88,6 +89,8 @@ class Bot:
         self.created_at = created_at
         self.execution_mode = execution_mode
         self.approval_ttl_minutes = approval_ttl_minutes
+        # Otros usuarios pueden suscribirse a sus señales aprobadas (Telegram)
+        self.share_signals = share_signals
 
     # ------------------------------------------------------------------
     # Accessors sobre risk_params

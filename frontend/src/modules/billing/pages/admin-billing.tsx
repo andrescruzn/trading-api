@@ -10,6 +10,7 @@ import {
 	BillingPeriodsTable,
 	FeeTransactionsTable,
 } from '@/modules/billing/components/billing-tables';
+import { FeeSettleActions } from '@/modules/billing/components/fee-settle-actions';
 import {
 	useBillingPeriodsQuery,
 	useFeeTransactionsQuery,
@@ -179,6 +180,7 @@ export function AdminBillingPage() {
 							error={feesQuery.error}
 							empty="Aún no hay comisiones registradas para esta cuenta."
 							showNotes
+							renderActions={(fee) => <FeeSettleActions fee={fee} />}
 						/>
 					</TabsContent>
 				</Tabs>

@@ -24,6 +24,7 @@ Una palabra por concepto. Si la app dice "cuenta" en un lado y "wallet" en otro,
 | **ejecución** | fill | "Ejecuciones" en la pestaña. |
 | **posición** | trade abierto | |
 | **agente** | bot, robot | Lo que la persona crea para operar: símbolo + estrategia + cuenta. En código y API sigue siendo `bot`. Estados: **Activo**, **Pausado**, **Detenido**. Acciones: **Iniciar** (**Reanudar** si está pausado), **Pausar**, **Detener**, **Analizar ahora** (pide una señal a la IA). "Mis agentes" para la lista. Excepción: el **bot de Telegram** conserva su nombre. |
+| **Compartir señales** / **seguir un agente** | copiar, copy trading, publicar | El dueño **comparte** las señales de su agente; otra persona lo **sigue** (botón `Suscribirme`, para salir `Dejar de seguir`) y recibe sus compras y ventas aprobadas por Telegram. Es información: no se ejecuta nada en su cuenta. Los suyos se marcan `Es tuyo`. |
 | **la IA** | agente de IA, modelo (para la IA) | El modelo de lenguaje que evalúa cada operación dentro de un agente. "Modelo" queda para los modelos de ML registrados. |
 | **modo de ejecución** | modo de operación, autopiloto | Qué hace el agente cuando la IA aprueba: **Manual**, **Con aprobación**, **Automático**. No confundir con modo paper/live. |
 | **señal por aprobar** | señal pendiente (en pantalla) | Señal de un agente Con aprobación que espera tu decisión. Acciones: **Aprobar** / **Descartar** (igual en la app y en Telegram). Estados: **Por aprobar**, **Ejecutada**, **Descartada**, **Vencida**, **No ejecutada**. |

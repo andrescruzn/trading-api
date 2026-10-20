@@ -1,10 +1,11 @@
-import { IconPencil, IconPlus } from '@tabler/icons-react';
+import { IconArrowsExchange, IconPencil, IconPlus } from '@tabler/icons-react';
 import { useState } from 'react';
 import { useAccountsQuery } from '@/modules/accounts/hooks/use-accounts-queries';
 import { botLabel } from '@/modules/alerts/lib/alerts-labels';
 import { usePageBreadcrumb } from '@/modules/app-shell/hooks/use-page-breadcrumb';
 import { useOwners } from '@/modules/auth/hooks/use-users-queries';
 import type { ManagedAccount } from '@/modules/billing/api/billing.api';
+import { CapitalMovementsSheet } from '@/modules/billing/components/capital-movements-sheet';
 import { ManagedAccountFormDialog } from '@/modules/billing/components/managed-account-form-dialog';
 import {
 	useInvestorsQuery,
@@ -39,6 +40,7 @@ export function AdminManagedAccountsPage() {
 	const botsQuery = useBotsQuery();
 	const symbolsQuery = useSymbolsQuery();
 	// `undefined` = diálogo cerrado; `null` = crear; una cuenta = editar.
+	const [movements, setMovements] = useState<ManagedAccount | null>(null);
 	const [editing, setEditing] = useState<ManagedAccount | null | undefined>(
 		undefined,
 	);
@@ -119,10 +121,16 @@ export function AdminManagedAccountsPage() {
 			header: <span className="sr-only">Acciones</span>,
 			className: 'text-right',
 			cell: (row) => (
-				<Button variant="ghost" size="sm" onClick={() => setEditing(row)}>
-					<IconPencil />
-					Editar
-				</Button>
+				<div className="flex justify-end gap-1">
+					<Button variant="ghost" size="sm" onClick={() => setMovements(row)}>
+						<IconArrowsExchange />
+						Aportes y retiros
+					</Button>
+					<Button variant="ghost" size="sm" onClick={() => setEditing(row)}>
+						<IconPencil />
+						Editar
+					</Button>
+				</div>
 			),
 		},
 	];
@@ -148,6 +156,10 @@ export function AdminManagedAccountsPage() {
 				error={managedAccountsQuery.error}
 				errorTitle="No pudimos cargar las cuentas gestionadas"
 				empty="Aún no hay cuentas gestionadas. Crea una para empezar a facturar a un inversor."
+			/>
+			<CapitalMovementsSheet
+				account={movements}
+				onClose={() => setMovements(null)}
 			/>
 			<ManagedAccountFormDialog
 				open={editing !== undefined}

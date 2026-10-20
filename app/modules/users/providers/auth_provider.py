@@ -35,7 +35,11 @@ from app.modules.users.services.auth import (
     GetMeService,
 )
 from app.modules.users.services.telegram import TelegramLinkService
-from app.modules.users.services.users import ListUsersService, UpdateUserRoleService
+from app.modules.users.services.users import (
+    InviteUserService,
+    ListUsersService,
+    UpdateUserRoleService,
+)
 
 
 class AuthServiceFactory:
@@ -162,15 +166,25 @@ class AuthServiceFactory:
         """Listado de usuarios para las vistas de administración."""
         return ListUsersService(repo=self._repo)
 
+    def _role_ids(self) -> dict[str, int]:
+        """Códigos de rol → IDs de la tabla `roles` (desde los settings)."""
+        return {
+            "user": self._config.AUTH_USER_ROLE_ID,
+            "admin": self._config.AUTH_ADMIN_ROLE_ID,
+            "investor": self._config.AUTH_INVESTOR_ROLE_ID,
+        }
+
     def update_user_role(self) -> UpdateUserRoleService:
-        """Cambio de rol por un admin (códigos → IDs desde los settings)."""
-        return UpdateUserRoleService(
+        """Cambio de rol por un admin."""
+        return UpdateUserRoleService(repo=self._repo, role_ids=self._role_ids())
+
+    def invite_user(self) -> InviteUserService:
+        """Alta de un usuario por un admin (registro solo por invitación)."""
+        return InviteUserService(
             repo=self._repo,
-            role_ids={
-                "user": self._config.AUTH_USER_ROLE_ID,
-                "admin": self._config.AUTH_ADMIN_ROLE_ID,
-                "investor": self._config.AUTH_INVESTOR_ROLE_ID,
-            },
+            mailer=build_mailer(self._config),
+            role_ids=self._role_ids(),
+            login_url=f"{self._config.FRONTEND_URL}/#/login",
         )
 
 

@@ -7,10 +7,10 @@
 | Campo | Valor |
 |---|---|
 | Estado | ✅ Completo |
-| Avance (alcance original) | 100 % — 11/11 entregables (+ 6 del modo de ejecución, 2026-10-19) |
+| Avance (alcance original) | 100 % — 11/11 entregables (+ 6 del modo de ejecución, 2026-10-19; + 1 de señales compartidas, 2026-10-20) |
 | Madurez (estimada) | 81 % — ver [Avance](#avance) |
-| Tablas | `bots`, `signals` (R/W); `strategies`, `accounts`, `account_balances`, `candles`, `candle_features`, `feature_sets`, `symbols`, `timeframes` (R) |
-| Depende de | [M2](M02-MARKET-DATA.md), [M3](M03-FEATURE-ENGINEERING.md), [M4](M04-ACCOUNTS-PORTFOLIO.md), [M5](M05-STRATEGIES.md), [M6](M06-AI-AGENT.md); [M9](M09-ALERTS.md) (aviso por Telegram de señales pendientes) |
+| Tablas | `bots`, `signals`, `signal_subscriptions` (R/W); `users` (R: `telegram_chat_id`); `strategies`, `accounts`, `account_balances`, `candles`, `candle_features`, `feature_sets`, `symbols`, `timeframes` (R) |
+| Depende de | [M2](M02-MARKET-DATA.md), [M3](M03-FEATURE-ENGINEERING.md), [M4](M04-ACCOUNTS-PORTFOLIO.md), [M5](M05-STRATEGIES.md), [M6](M06-AI-AGENT.md); [M9](M09-ALERTS.md) (aviso por Telegram de señales pendientes y de señales compartidas) |
 | Lo usan | [M8](M08-ORDERS-EXECUTION.md) (órdenes por bot, ejecución de señales), [M9](M09-ALERTS.md) (hooks de señal/error), [M10](M10-BILLING.md) (bot de la cuenta administrada), scheduler de [M2](M02-MARKET-DATA.md) (señales automáticas), dashboard de [M1](M01-AUTH.md) |
 | Prefijo API | `/api/bots`, `/api/signals` (ver [corrección de rutas](#corrección-de-rutas)) |
 | Frontend | `frontend/src/modules/bots` |
@@ -30,6 +30,7 @@
 - Señales APROBADAS: BUY o SELL + entry, SL, TP, position_size, rr_ratio. RECHAZADAS: HOLD, `approved=False`; todas persisten.
 - El agente le pasa a la IA **su** riesgo (`risk_params.risk_pct`, acotado al 1 %), no el de la estrategia.
 - `features_hash`: SHA-256 del contexto de mercado, fingerprint para auditoría.
+- **Señales compartidas:** el dueño de un agente puede activar **Compartir señales**; cualquier otro usuario lo ve en Track record y lo sigue. Quien lo sigue recibe por Telegram sus BUY/SELL aprobadas (acción, símbolo, timeframe, entrada, SL, TP, R/R), sin datos de la cuenta ni del dueño y sin botones: no ejecuta nada.
 - Cada señal guarda qué servicio de IA respondió (`llm_provider`), con qué modelo (`llm_model`) y cuánto tardó (`llm_latency_ms`), y su **decisión de ejecución** (estado, canal, quién, cuándo y por qué falló).
 
 ## Páginas
@@ -39,8 +40,9 @@ Hash routing: la URL real es `/#/<ruta>`.
 **Páginas — Usuario (cualquier usuario autenticado):**
 - `/#/dashboard` ([M1](M01-AUTH.md)) — **Inicio = lista de agentes** (desde 2026-10-20; `/#/agents` redirige aquí): tarjetas con estado (punto que late si está activo), símbolo · timeframe, precio (último cierre, variación frente a la vela anterior y régimen), estrategia, última señal y botones Iniciar/Reanudar/Pausar. Filtro Todos / Activos / Detenidos. Sin agentes: bienvenida que explica qué es un agente.
 - `/#/agents/new` — **Asistente de creación** en 4 pasos: (1) qué operar (solo símbolos con velas automáticas), (2) cómo opera (estrategia + conjunto de indicadores compatible, con el recomendado preseleccionado), (3) con qué dinero (cuentas propias con su saldo; crea una cuenta de práctica en línea si no hay), (4) revisar: nombre sugerido editable, riesgo de la estrategia en solo lectura, **"Cuando la IA aprueba una operación"** (selector Manual / Con aprobación / Automático, Manual por defecto; aviso en rojo si es Automático con cuenta live), "Iniciarlo al crear".
-- `/#/agents/:id` — **Detalle**: nombre editable, badge del modo de ejecución, controles, **Analizar ahora** (genera una señal y abre su detalle), aviso "Preparando datos" hasta que hay indicadores, pestañas Señales (columna **Ejecución**) · Órdenes (con Nueva orden) · Posiciones (+ ejecuciones) · **Mercado** (velas e indicadores del símbolo y timeframe del agente, con selector de cantidad y botón **Actualizar datos**, que descarga velas y recalcula indicadores también con el agente detenido; si no hay datos dice si se están preparando o cómo conseguirlos) · Configuración (tarjeta "Cuando la IA aprueba una operación" para cambiar el modo en cualquier estado —Automático pide confirmación—; en Con aprobación incluye **Minutos para aprobar**, 1–1440, vacío = valor por defecto del servidor; reglas e indicadores explicados). El detalle de una señal pendiente muestra **Aprobar** / **Descartar** con la cuenta atrás ("Vence en 45 min") y, en live, una confirmación extra.
+- `/#/agents/:id` — **Detalle**: nombre editable, badge del modo de ejecución, controles, **Analizar ahora** (genera una señal y abre su detalle), aviso "Preparando datos" hasta que hay indicadores, pestañas Señales (columna **Ejecución**) · Órdenes (con Nueva orden) · Posiciones (+ ejecuciones) · **Mercado** (velas e indicadores del símbolo y timeframe del agente, con selector de cantidad y botón **Actualizar datos**, que descarga velas y recalcula indicadores también con el agente detenido; si no hay datos dice si se están preparando o cómo conseguirlos) · Configuración (tarjeta "Cuando la IA aprueba una operación" para cambiar el modo en cualquier estado —Automático pide confirmación—; en Con aprobación incluye **Minutos para aprobar**, 1–1440, vacío = valor por defecto del servidor; tarjeta **Compartir señales** con una casilla —en cualquier estado— que explica qué ven los demás y cuántas personas lo siguen; reglas e indicadores explicados). El detalle de una señal pendiente muestra **Aprobar** / **Descartar** con la cuenta atrás ("Vence en 45 min") y, en live, una confirmación extra.
 - `/#/dashboard` ([M1](M01-AUTH.md)) — tarjeta **Señales por aprobar** (solo si hay alguna): agente, acción, precios, R/R y botones Aprobar/Descartar; se refresca cada 30 s.
+- `/#/track-record` ([M8](M08-ORDERS-EXECUTION.md)) — sección **Agentes que comparten sus señales** (`SharedAgentsSection`): estrategia, símbolo · timeframe, modo, estado y cuántos lo siguen, con **Suscribirme** / **Dejar de seguir**; los propios muestran "Es tuyo". Sin Telegram conectado, un aviso y el botón **Conectar Telegram** abren el diálogo de vínculo (también está en el menú de usuario).
 - `/#/agents`, `/#/bots` y `/#/agent` redirigen a `/#/dashboard`. La miga del detalle y del asistente es "Inicio".
 
 **Páginas — Administrador (solo admin):**
@@ -68,6 +70,7 @@ Entregables:
 - ✅ (2026-10-19) **Señales automáticas por vela cerrada** en el scheduler (`app/modules/scheduler/execution_cycle.py`), una por vela (`candle_ts` + UNIQUE)
 - ✅ (2026-10-19) **Cola de pendientes** `GET /api/signals/pending` (`ListPendingSignalsService`)
 - ✅ (2026-10-19) **Riesgo del agente** (`effective_risk_pct`, acotado al 1 %) en el análisis
+- ✅ (2026-10-20) **Señales compartidas**: `bots.share_signals` + tabla `signal_subscriptions`, `GET /api/bots/shared`, `POST`/`DELETE /api/bots/{id}/subscription`, hook `notify_subscribers` → `SharedSignalNotifier` ([M9](M09-ALERTS.md)), tarjeta en Configuración y sección en Track record, 31 tests
 - ✅ (2026-10-19) UI: selector de modo (asistente + Configuración), badges de modo y de decisión, Aprobar/Descartar en el detalle de la señal y tarjeta de pendientes en el dashboard
 
 ## Decisiones de diseño
@@ -107,6 +110,14 @@ Entregables:
 | Dirección buy/sell inferida: `entry > stop_loss` → buy; `entry < stop_loss` → sell | La señal no necesita un campo de dirección aparte | Pedirle la dirección al LLM |
 | `GenerateSignalService` invoca [M6](M06-AI-AGENT.md) vía `_build_analyze_service()` con repos propios y *prestados* | Reutiliza el agente sin duplicar su cableado | Llamar a `/api/agent/analyze` por HTTP |
 | Hook de alertas post-commit, siempre en `try/except` ([M9](M09-ALERTS.md)) | Una alerta nunca debe abortar el flujo de trading | Alertas dentro de la transacción |
+| **Compartir señales** = `bots.share_signals` (por agente, lo cambia quien puede editar el agente, en cualquier estado) + tabla `signal_subscriptions` (UNIQUE `bot_id, user_id`, `ON DELETE CASCADE`) | El dueño decide qué agente expone; compartir no toca la operación | Compartir todos los agentes del usuario |
+| Quien sigue recibe **solo BUY/SELL aprobadas** por Telegram, sin botones ni tamaño de posición, cuenta o nombre del agente; el dueño nunca recibe este aviso | No ejecuta nada; el tamaño revela el capital y el nombre puede identificar al dueño | Copiar la orden en la cuenta del suscriptor (copy trading) |
+| `GET /bots/shared` muestra estrategia, símbolo, timeframe, modo, estado y nº de suscriptores (+ `is_subscribed`, `is_mine`); nunca nombre, cuenta ni dueño | Se elige un agente por lo que hace, no por quién es | Mostrar nombre y dueño |
+| Seguir un agente privado o inexistente → `BOT_NOT_FOUND` (404) | No revela qué agentes privados existen | 403 |
+| Seguir **exige Telegram vinculado** (`SUBSCRIPTION_TELEGRAM_REQUIRED` 422) y no se puede seguir uno propio (`SUBSCRIPTION_OWN_BOT` 422) | Telegram es el único canal de envío; los propios ya se ven en la app | Guardar la suscripción y avisar "cuando conectes" |
+| Suscribirse y dejar de seguir son **idempotentes** (200 con `{bot_id, is_subscribed, subscribers_count}`) | Un doble clic o una pestaña vieja no es un error para la persona | 409 `SUBSCRIPTION_EXISTS` |
+| Al **apagar** Compartir señales las suscripciones **se conservan**: el hook no envía nada (mira `share_signals`) y el agente sale del listado; si se vuelve a compartir, siguen recibiendo. Dejar de seguir funciona aunque ya no se comparta | Un apagado por error no hace perder a quienes lo seguían | Borrar las suscripciones al apagar |
+| Hook `notify_subscribers` post-commit en `GenerateSignalService`, en `try/except`, solo si `share_signals` y la señal `is_actionable()` (manual, Con aprobación o Automático por igual) | Igual que las alertas: un fallo de Telegram no frena la señal | Enviar dentro de la transacción |
 | `owner_scope(identity)` vive en `app/common/security/jwt/role_guard.py` (antes en `rest/bots/routes.py`) | Lo usan bots, signals, orders, agent y alerts | Copiarlo en cada router |
 
 ## Avance
@@ -146,8 +157,10 @@ Entregables:
 ### Tablas en BD
 | Tabla | Acción | Nota |
 |-------|--------|------|
-| `bots` | WRITE | CRUD + state machine (stopped/running/paused/error); `name VARCHAR(80) NOT NULL`; `execution_mode VARCHAR(16) NOT NULL DEFAULT 'manual'` (CHECK `chk_bots_execution_mode`: manual \| approval \| auto); `approval_ttl_minutes INT NULL` (CHECK `chk_bots_approval_ttl`: NULL o 1–1440) |
+| `bots` | WRITE | CRUD + state machine (stopped/running/paused/error); `name VARCHAR(80) NOT NULL`; `share_signals TINYINT(1) NOT NULL DEFAULT 0` (señales compartidas); `execution_mode VARCHAR(16) NOT NULL DEFAULT 'manual'` (CHECK `chk_bots_execution_mode`: manual \| approval \| auto); `approval_ttl_minutes INT NULL` (CHECK `chk_bots_approval_ttl`: NULL o 1–1440) |
 | `signals` | WRITE | Señales generadas por bot (buy/sell/hold + precios + servicio/modelo/latencia de la IA). Decisión: `decision_status VARCHAR(16) NOT NULL DEFAULT 'not_required'` (CHECK: not_required \| pending \| executing \| executed \| rejected \| expired \| failed), `expires_at`, `decided_at` (`TIMESTAMP(6)`), `decided_by_user_id BIGINT` (FK `fk_signals_decided_by` → users; NULL = automático), `decision_channel VARCHAR(16)` (CHECK: app \| telegram \| auto), `decision_reason VARCHAR(64)`, `candle_ts TIMESTAMP(6)` + `UNIQUE uq_signals_bot_candle (bot_id, candle_ts)`, índice `idx_signals_decision_status (decision_status, expires_at)` |
+| `signal_subscriptions` | WRITE | Quién sigue qué agente compartido: `id`, `bot_id` (FK `fk_signal_subscriptions_bot` → bots, CASCADE), `user_id` (FK `fk_signal_subscriptions_user` → users, CASCADE), `created_at TIMESTAMP(6)`; `UNIQUE uq_signal_subscriptions_bot_user (bot_id, user_id)`, índice `idx_signal_subscriptions_user` |
+| `users` | READ | `telegram_chat_id` para exigir Telegram al suscribirse ([M1](M01-AUTH.md)) |
 | `strategies` | READ | Validar al crear y construir AnalyzeService (M5) |
 | `accounts` | READ | Propiedad, estado y modo; capital (M4) |
 | `account_balances` | READ | Balance más reciente (M4) |
@@ -162,6 +175,7 @@ Entregables:
 |---------|-----------|-------|
 | `bot_model.py` | `BotModel` | `bots` |
 | `signal_model.py` | `SignalModel` | `signals` |
+| `signal_subscription_model.py` | `SignalSubscriptionModel` | `signal_subscriptions` |
 
 Registrados en: `app/extensions/db/models_registry.py`
 
@@ -169,10 +183,12 @@ Registrados en: `app/extensions/db/models_registry.py`
 - Columnas de precio en `signals` y `bots.feature_set_id`: en la migración inicial de Alembic.
 - `bots.name`: revisión `m07 add name to bots` (columna nullable → backfill `CONCAT('Agente #', id)` → NOT NULL).
 - `signals.llm_provider VARCHAR(32)`, `llm_model VARCHAR(128)`, `llm_latency_ms INT` (nullable, después de `features_hash`): revisión `a4e81c5d27f9` `m07 signals llm provider model latency`, escrita a mano.
+- **Pendiente de generar** (lo hace el usuario con `alembic revision --autogenerate`): `bots.share_signals` (revisar que lleve `server_default 0`) y la tabla `signal_subscriptions`.
 - `f51e2dad9c13` `m07 execution mode and signal decisions` (escrita a mano, con `AFTER` y los CHECK que autogenerate no detecta): columnas y CHECK de `bots` y `signals` de arriba; además `positions.stop_loss/take_profit/signal_id` ([M8](M08-ORDERS-EXECUTION.md)) y `users.telegram_chat_id/telegram_link_hash/telegram_link_expires_at` ([M1](M01-AUTH.md)). Los agentes existentes quedan en `manual`. `downgrade()` real.
 
 ### Dominio
 - `Bot.VALID_EXECUTION_MODES`, `AUTOMATED_EXECUTION_MODES = ("approval", "auto")`, `is_valid_execution_mode()`, `is_automated()`, `effective_risk_pct`, `max_notional` (de `risk_params.max_notional`, > 0 o `None`).
+- `Bot.share_signals` (bool, `False` por defecto). `SignalSubscription` (`domain/signal_subscription_entity.py`): `id`, `bot_id`, `user_id`, `created_at`.
 - `Signal.VALID_DECISION_STATUSES`, `VALID_DECISION_CHANNELS`, `is_actionable()` (aprobada y BUY/SELL), `is_pending()`, `is_expired_at(now)`.
 
 ### Repositorios
@@ -180,14 +196,18 @@ Registrados en: `app/extensions/db/models_registry.py`
 |-------------------|-----------------------|
 | `domain/bot_repository.py` | `infrastructure/bot_repository_impl.py` → `SqlAlchemyBotRepository` (incluye `list_by_account_ids`) |
 | `domain/signal_repository.py` | `infrastructure/signal_repository_impl.py` → `SqlAlchemySignalRepository` |
+| `domain/signal_subscription_repository.py` | `infrastructure/signal_subscription_repository_impl.py` → `SqlAlchemySignalSubscriptionRepository` (`list_by_bot`, `list_bot_ids_by_user`, `count_by_bot_ids`, `exists`, `create`, `delete`) |
+
+`BotRepository.list_shared()`: agentes con `share_signals = True`.
 
 Nuevos en `SignalRepository`: `exists_for_candle(bot_id, candle_ts)`, `count_created_since(bot_ids, since)`, `list_by_decision_status(status, bot_ids=None, limit=100)` (máx. 500), `transition_decision(signal_id, from_statuses, to_status, **fields) -> bool`, `expire_pending(now) -> list[int]`.
 
 ### Servicios (`app/modules/bots/services/`)
 | Subdir | Servicios |
 |--------|-----------|
-| `bots/` | `list_bots_service.py`, `get_bot_service.py`, `create_bot_service.py`, `update_bot_service.py`, `update_bot_status_service.py`, `bot_access.py` (`find_accessible_bot`: regla de propiedad compartida), `execution_mode_rules.py` (`check_execution_mode(bot, timeframe_seconds)`, compartida por crear y editar) |
+| `bots/` | `list_bots_service.py`, `get_bot_service.py`, `create_bot_service.py`, `update_bot_service.py`, `update_bot_status_service.py`, `bot_access.py` (`find_accessible_bot`: regla de propiedad compartida; `bot_owner_id`), `execution_mode_rules.py` (`check_execution_mode(bot, timeframe_seconds)`, compartida por crear y editar) |
 | `signals/` | `list_signals_service.py`, `generate_signal_service.py` (`generate(bot_id, owner_id=None, candle_ts=None)`), `list_pending_signals_service.py` (`ListPendingSignalsService.list(owner_id, limit)` → `PendingSignal(signal, bot)`; excluye las vencidas que el scheduler aún no marcó) |
+| `subscriptions/` | `list_shared_bots_service.py` (`ListSharedBotsService.list(user_id)` → `SharedBot`), `subscribe_to_bot_service.py` (`SubscribeToBotService.subscribe(bot_id, user_id)` → `SubscriptionState`), `unsubscribe_from_bot_service.py` (`UnsubscribeFromBotService.unsubscribe(bot_id, user_id)`) |
 
 Todos los servicios que reciben un `bot_id` aceptan `owner_id` (`None` = admin o scheduler, sin restricción).
 
@@ -197,7 +217,8 @@ Provider: `app/modules/bots/providers/bot_provider.py` → `BotServiceFactory`
 - Repos propios: `SqlAlchemyBotRepository`, `SqlAlchemySignalRepository`
 - Repos borrowed: M2 (candle/symbol/timeframe), M3 (feature_set/candle_feature), M4 (account/balance), M5 (strategy)
 - `_build_analyze_service()` instancia M6 AnalyzeService con todos sus deps (incluye `AGENT_MAX_ENTRY_ATR_DISTANCE`)
-- `generate_signal()` inyecta `build_evaluate_alerts_service(session)`, `notify_pending=build_signal_approval_notifier(session).notify` ([M9](M09-ALERTS.md)) y `SIGNAL_APPROVAL_TTL_MINUTES`
+- `generate_signal()` inyecta `build_evaluate_alerts_service(session)`, `notify_pending=build_signal_approval_notifier(session).notify`, `notify_subscribers=build_shared_signal_notifier(session).notify` ([M9](M09-ALERTS.md)) y `SIGNAL_APPROVAL_TTL_MINUTES`
+- `list_shared_bots()`, `subscribe_to_bot()` (con `SqlAlchemyUserRepository` de [M1](M01-AUTH.md)), `unsubscribe_from_bot()`
 
 ### Ciclo de ejecución del scheduler (`app/modules/scheduler/execution_cycle.py`)
 `run_execution_cycle()` corre después de `run_cycle()` (velas + indicadores, [M2](M02-MARKET-DATA.md)), solo en el proceso líder (`SchedulerLock`). Cada paso está aislado: si uno falla, los demás corren.
@@ -221,17 +242,20 @@ AGENT_MAX_AUTO_ANALYSES_PER_DAY=96       # análisis automáticos por usuario y 
 | GET | `/api/bots` | token | Usuario: sus bots (opcional `account_id` propio). Admin: todos, por `account_id`, o los suyos con `?mine=true` |
 | POST | `/api/bots` | token | Crea bot (`name` obligatorio; siempre inicia en stopped). Opcionales `execution_mode` (default `manual`) y `approval_ttl_minutes` (1–1440) |
 | GET | `/api/bots/{id}` | token | Detalle (404 si no es del usuario); incluye `execution_mode` y `approval_ttl_minutes` |
-| PUT | `/api/bots/{id}` | token | `name`, `execution_mode` y `approval_ttl_minutes` en cualquier estado (enviar `approval_ttl_minutes: null` lo borra); `mode`/`risk_params` solo si stopped |
+| GET | `/api/bots/shared` | token | Agentes que comparten señales (de cualquier usuario): `id`, `strategy_name`, `symbol`, `timeframe` (+ sus IDs), `mode`, `status`, `subscribers_count`, `is_subscribed`, `is_mine`. Sin nombre, cuenta ni dueño. Declarada antes de `/{bot_id}` |
+| PUT | `/api/bots/{id}` | token | `name`, `execution_mode`, `approval_ttl_minutes` y `share_signals` en cualquier estado (enviar `approval_ttl_minutes: null` lo borra); `mode`/`risk_params` solo si stopped |
 | POST | `/api/bots/{id}/start` | token | Transición → running |
 | POST | `/api/bots/{id}/pause` | token | Transición → paused |
 | POST | `/api/bots/{id}/stop` | token | Transición → stopped |
 | POST | `/api/bots/{id}/market/sync` | token | "Actualizar datos": descarga 500 velas del símbolo/timeframe del agente (ccxt, M2) y recalcula sus indicadores (M3). 404 si no es del usuario; rate limit 3/min por usuario (`market_sync_rate_limiter`). Devuelve `rows_fetched` y `rows_calculated` (null sin conjunto) |
+| POST | `/api/bots/{id}/subscription` | token | Seguir un agente compartido (idempotente). 404 `BOT_NOT_FOUND` si no existe o no comparte; 422 `SUBSCRIPTION_OWN_BOT` · `SUBSCRIPTION_TELEGRAM_REQUIRED`. Devuelve `{bot_id, is_subscribed, subscribers_count}` |
+| DELETE | `/api/bots/{id}/subscription` | token | Dejar de seguir (idempotente; funciona aunque el agente ya no comparta). 404 si no hay suscripción y el agente no comparte |
 | GET | `/api/signals` | token | Lista señales (requiere `?bot_id=`; 404 si el bot no es del usuario) |
 | GET | `/api/signals/pending` | token | Señales `pending` de mis agentes, con `bot_name` y `bot_mode`. `?mine=true` por defecto (también para admin); `mine=false` → admin ve todas. `limit` 1–200 (50) |
 | POST | `/api/signals/generate` | token | Genera señal invocando M6 ("Analizar ahora"); rate limit por usuario (`AGENT_ANALYSES_PER_MINUTE`) |
 | POST | `/api/signals/{id}/approve` · `/reject` | token | Viven en [M8](M08-ORDERS-EXECUTION.md) (`orders/rest/signal_decisions`) |
 
-`_signal_to_dict` añade `decision_status`, `expires_at`, `decided_at`, `decision_channel`, `decision_reason`, `decision_reason_message` y `candle_ts`.
+`_bot_to_dict` incluye `share_signals`. `_signal_to_dict` añade `decision_status`, `expires_at`, `decided_at`, `decision_channel`, `decision_reason`, `decision_reason_message` y `candle_ts`.
 
 `owner_scope(identity)` viene de `app.common.security.jwt` (devuelve el `user_id` o `None` para admin).
 
@@ -242,12 +266,14 @@ Routers registrados en `app/app_factory.py` (dentro de `api_routers`, con `prefi
 |-----|----------|----|
 | `/#/dashboard` (lista de agentes) | `routes/_app/dashboard.lazy.tsx` | `dashboard/pages/dashboard.tsx` ([M1](M01-AUTH.md)) + `components/agent-card.tsx` + `components/agent-price.tsx` (`hooks/use-symbol-snapshot.ts`) + `components/agents-empty-state.tsx` |
 | `/#/agents/new` | `routes/_app/agents/new.lazy.tsx` | `pages/agent-new.tsx` + `components/agent-wizard/{choice-card,symbol-step,strategy-step,account-step}.tsx` + `components/execution-mode-picker.tsx` + `shared/components/stepper.tsx` |
-| `/#/agents/:id` | `routes/_app/agents/$agentId.lazy.tsx` | `pages/agent-detail.tsx` + `components/{agent-controls,analyze-now-button,signals-table,signal-detail-sheet,signal-decision-actions,execution-mode-card,approval-ttl-field,agent-market-tab}.tsx` (Mercado: `useSyncBotMarketMutation`, invalida velas e indicadores) |
+| `/#/agents/:id` | `routes/_app/agents/$agentId.lazy.tsx` | `pages/agent-detail.tsx` + `components/{agent-controls,analyze-now-button,signals-table,signal-detail-sheet,signal-decision-actions,execution-mode-card,approval-ttl-field,share-signals-card,agent-market-tab}.tsx` (Mercado: `useSyncBotMarketMutation`, invalida velas e indicadores) |
+| `/#/track-record` (sección) | `routes/_app/track-record.lazy.tsx` | `orders/pages/track-record.tsx` + `components/shared-agents-section.tsx` (reutiliza `TelegramLinkDialog` de `app-shell`) |
 | `/#/admin/agents` | `routes/_app/admin/agents.lazy.tsx` | `pages/admin-agents.tsx` + `components/bot-actions-menu.tsx` |
 | `/#/agents`, `/#/bots`, `/#/admin/bots`, `/#/agent` | `routes/_app/agents/index.tsx`, `routes/_app/{bots,agent}.tsx`, `routes/_app/admin/bots.tsx` | Redirecciones (`beforeLoad` + `redirect`) |
 
-- API: `api/bots.api.ts` (`listBots({account_id, mine})`, `getBot`, `createBot`, `updateBot`, transiciones, `listSignals`, `generateSignal`, `listPendingSignals`, aprobar/rechazar; tipos `BotExecutionMode`, `SignalDecisionStatus`, `SignalDecisionChannel`).
-- Queries: `useBotsQuery`, `useMyBotsQuery` (`?mine=true`), `useBotQuery`, `useSignalsQuery`, `usePendingSignalsQuery` (clave bajo `SIGNALS_QUERY_KEY`, `refetchInterval` 30 s). Mutations: create, update, transition, generate signal, `useApproveSignalMutation`, `useRejectSignalMutation`. `hooks/use-bot-transition.ts` centraliza las transiciones con sus toasts.
+- API: `api/bots.api.ts` (`listBots({account_id, mine})`, `getBot`, `createBot`, `updateBot`, transiciones, `listSignals`, `generateSignal`, `listPendingSignals`, aprobar/rechazar, `listSharedBots`, `subscribeToBot`, `unsubscribeFromBot`; tipos `SharedBot`, `BotSubscription`, `BotExecutionMode`, `SignalDecisionStatus`, `SignalDecisionChannel`).
+- Queries: `useBotsQuery`, `useMyBotsQuery` (`?mine=true`), `useBotQuery`, `useSignalsQuery`, `usePendingSignalsQuery` (clave bajo `SIGNALS_QUERY_KEY`, `refetchInterval` 30 s), `useSharedBotsQuery` (`SHARED_BOTS_QUERY_KEY`, bajo `BOTS_QUERY_KEY`: editar un agente la refresca). Mutations: create, update, transition, generate signal, `useApproveSignalMutation`, `useRejectSignalMutation`, `useSubscribeToBotMutation`, `useUnsubscribeFromBotMutation` (invalidan `SHARED_BOTS_QUERY_KEY`).
+- `ShareSignalsCard` (Configuración): casilla "Compartir las señales de este agente" con `useUpdateBotMutation({share_signals})`; el nº de suscriptores sale de `useSharedBotsQuery` (solo se pide si comparte). `hooks/use-bot-transition.ts` centraliza las transiciones con sus toasts.
 - Componentes del modo de ejecución: `ExecutionModePicker` (3 `ChoiceCard`; aviso en rojo para Automático + live), `ExecutionModeCard` (Configuración; Automático abre `AlertDialog` "¿Activar el modo Automático?"; en Con aprobación muestra `ApprovalTtlField`), `ApprovalTtlField` (`components/approval-ttl-field.tsx`: campo "Minutos para aprobar", entero 1–1440 como el backend, vacío = valor por defecto del servidor (`approval_ttl_minutes: null` → `SIGNAL_APPROVAL_TTL_MINUTES`); guarda con `useUpdateBotMutation`), `ExecutionModeBadge` y `SignalDecisionBadge` (en `bot-badges.tsx`; columna **Ejecución** de `SignalsTable`), `SignalDecisionActions` (Aprobar / Descartar, cuenta atrás cada 30 s, confirmación extra en live), `PendingSignalsCard` (dashboard; se oculta sin pendientes).
 - `lib/agent-wizard.ts`: compatibilidad estrategia ↔ conjunto (mismo criterio que `rule_keys` del backend), conjunto recomendado, timeframe y riesgo de la estrategia, nombre sugerido.
 - `lib/bots-labels.ts`: `describeBot(bot)` = nombre; `describeBotMarket(bot, catalogs)` = `BTC/USDT · 1h`; `EXECUTION_MODE_LABELS` (Manual / Con aprobación / Automático), `EXECUTION_MODE_DESCRIPTIONS`, `SIGNAL_DECISION_LABELS` (— / Por aprobar / Enviando orden / Ejecutada / Descartada / Vencida / No ejecutada), `DECISION_CHANNEL_LABELS`; motivos de rechazo `INCONSISTENT_LEVELS` y `ENTRY_TOO_FAR`.
@@ -278,13 +304,17 @@ Routers registrados en `app/app_factory.py` (dentro de `api_routers`, con `prefi
 - `tests/bots/test_bot_entity.py` — 22 tests (máquina de estados, is_active, risk_params)
 - `tests/bots/test_update_bot_status_service.py` — 16 tests (transiciones, timestamps, repo.commit)
 - `tests/bots/test_generate_signal_service.py` — 17 tests (validaciones, dirección, campos); el 2026-10-19 se ajustó la llamada esperada a `analyze` (`risk_pct`, `as_of`)
-- Total: 55 tests unitarios. **Huecos:** propiedad, validaciones de `CreateBotService`/`UpdateBotService`, `execution_mode_rules`, decisión de ejecución, pendientes, ciclo del scheduler, rutas REST, hooks de alertas y de Telegram.
+- `tests/bots/test_signal_subscription_services.py` — 14 tests (listado público, `is_mine`/`is_subscribed`/conteo, privado → 404, propio, Telegram, idempotencia, dejar de seguir tras apagar)
+- `tests/bots/test_generate_signal_shared_hook.py` — 7 tests (`notify_subscribers` solo con agente compartido y BUY/SELL aprobada, después del commit; fallo tragado)
+- `tests/bots/test_shared_signal_notifier.py` — 10 tests del notificador de [M9](M09-ALERTS.md)
+- Total del alcance original: 55 tests unitarios (+ 31 de señales compartidas). **Huecos:** propiedad, validaciones de `CreateBotService`/`UpdateBotService`, `execution_mode_rules`, decisión de ejecución, pendientes, ciclo del scheduler, rutas REST, hooks de alertas y de Telegram.
 
 ## Riesgos
 
 - **Automático en live** envía órdenes reales sin una persona en medio; está apagado por defecto (`TRADING_LIVE_AUTO_ENABLED=false`) y además depende de `TRADING_LIVE_ENABLED` ([M8](M08-ORDERS-EXECUTION.md)).
 - Coste de la IA: cada agente automático hace un análisis por vela cerrada; lo acotan el timeframe mínimo y el tope diario por usuario.
 - Una señal manual ("Analizar ahora") se sigue generando con la última vela, aunque no esté cerrada.
+- **Señales compartidas:** el envío a los suscriptores es síncrono (un `sendMessage` por persona, timeout 10 s) dentro del request de "Analizar ahora" o del ciclo del scheduler; con muchos suscriptores o Telegram lento, tarda. Si crece, pasarlo a una cola. Una señal compartida es información, no una recomendación personalizada: el texto lo dice, pero conviene revisarlo con quien lleve lo legal.
 
 ## Historial
 
@@ -301,3 +331,4 @@ Routers registrados en `app/app_factory.py` (dentro de `api_routers`, con `prefi
 - **2026-10-20** — Fila **Precio** en `AgentCard` (`AgentPrice` + `useSymbolSnapshot`, movido desde el dashboard): último cierre, variación y régimen del mercado de cada agente, en el inicio.
 - **2026-10-20** — Se retira la página "Mis agentes" (`pages/agents.tsx`): el inicio lista todos los agentes con el filtro por estado; `/agents` redirige a `/dashboard`.
 - **2026-10-20** — Todos los agentes: columna **Dueño** (nombre y correo) y filtro por dueño.
+- **2026-10-20** — **Señales compartidas por Telegram**: `bots.share_signals` + tabla `signal_subscriptions` (migración pendiente de generar), `GET /api/bots/shared`, `POST`/`DELETE /api/bots/{id}/subscription` (idempotentes; exigen Telegram; no se sigue un agente propio; privados → 404), hook `notify_subscribers` en `GenerateSignalService` → `SharedSignalNotifier` ([M9](M09-ALERTS.md)). Al apagar se conservan las suscripciones y deja de enviarse. UI: tarjeta **Compartir señales** en Configuración y sección **Agentes que comparten sus señales** en Track record. 31 tests nuevos.

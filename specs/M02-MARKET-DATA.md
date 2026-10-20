@@ -14,7 +14,7 @@
 | Lo usan | [M3](M03-FEATURE-ENGINEERING.md), [M5](M05-STRATEGIES.md), [M6](M06-AI-AGENT.md), [M7](M07-BOTS-SIGNALS.md), [M8](M08-ORDERS-EXECUTION.md) y el scheduler (que además corre el ciclo de ejecución de [M7](M07-BOTS-SIGNALS.md)/[M8](M08-ORDERS-EXECUTION.md)) |
 | Prefijo API | `/api/exchanges`, `/api/symbols`, `/api/timeframes`, `/api/candles`, `/api/explorer` |
 | Frontend | `frontend/src/modules/market` |
-| Última revisión | 2026-10-19 |
+| Última revisión | 2026-10-20 |
 
 ## Descripción
 
@@ -57,6 +57,7 @@ Entregables:
 - Tests unitarios de los services
 - ✅ Perpetuos TradFi (metales, materias primas, ETFs, acciones) vía ccxt en Binance/Bybit; clases de activo `commodity` e `index` (2026-10-10)
 - ✅ Explorador de tendencia: `GET /api/explorer`, `POST /api/explorer/refresh` y página `/#/market/explorer` (2026-10-10)
+- ✅ (2026-10-20) `FetchCandleHistoryService`: últimas N velas del exchange por páginas (1000 por llamada), **sin guardarlas** y sin la vela en formación; lo usa el backtesting de [M5](M05-STRATEGIES.md)
 
 ## Decisiones de diseño
 
@@ -79,6 +80,7 @@ Entregables:
 | El scheduler corre el **ciclo de ejecución** (`run_execution_cycle`) después de velas e indicadores | Las señales automáticas necesitan las velas y features de ese mismo ciclo | Un segundo hilo con su propio intervalo |
 | Rutas REST bajo `/api` (`settings.API_PREFIX`), como el resto de módulos | La API es headless desde el 2026-10-08; antes iban sin prefijo porque las páginas Jinja vivían en `/market/` y `/admin/` | Prefijo distinto por módulo |
 | Paginación en el cliente (`DataTable`) en las tablas de exchanges, symbols, timeframes y market/symbols | Simplicidad; los catálogos son pequeños | Paginación en servidor |
+| **Historia para el backtest en memoria** (`FetchCandleHistoryService`), no en `candles` | La retención del scheduler deja ~500 velas por par y un backtest necesita miles; guardarlas llenaría la tabla con datos que nadie más usa | Subir la retención para todos los pares |
 
 ## Avance
 
@@ -272,3 +274,4 @@ Desde 2026-10-19, después de `run_cycle()` el scheduler corre `run_execution_cy
 - **2026-10-08** — Scheduler: recalcula features atrasadas aunque no haya velas nuevas. `CCXT_EXCHANGE_MAP` movido al dominio (`ccxt_exchanges.py`) y `supports_auto_fetch` en la respuesta de símbolos. Páginas de usuario movidas a la sección "Explorar" del menú.
 - **2026-10-19** — El ciclo de ejecución suma la **reconciliación de órdenes** ([M8](M08-ORDERS-EXECUTION.md)): señales automáticas → caducar → reconciliar → proteger posiciones → Telegram.
 - **2026-10-19** — Velas centradas en el agente: Símbolos y Velas salen del menú del usuario (las velas se ven en la pestaña **Mercado** del agente, con "Actualizar datos"); se retira la página admin "Descargar velas" (el endpoint queda solo por API); la tabla se extrae a `components/candles-table.tsx`. Datos de mercado (admin) queda en Exchanges · Símbolos · Timeframes · Conjuntos de indicadores.
+- **2026-10-20** — `FetchCandleHistoryService` (historia paginada del exchange sin guardar) para el backtesting.

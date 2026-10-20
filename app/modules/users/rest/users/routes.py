@@ -5,6 +5,7 @@
 #
 # ENDPOINTS:
 # - GET /users            → listar usuarios (solo admin)
+# - POST /users           → invitar (crear) un usuario (solo admin)
 # - PUT /users/{id}/role  → cambiar el rol de un usuario (solo admin)
 #
 # NOTAS:
@@ -20,14 +21,19 @@ from typing import Any
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from app.common.http import build_error_response, build_list_response, build_success_response
+from app.common.http import (
+    build_created_response,
+    build_error_response,
+    build_list_response,
+    build_success_response,
+)
 from app.common.security.jwt.role_guard import admin_required
 from app.extensions.db import get_db
 from app.modules.users.providers.auth_provider import AuthServiceFactory
 from app.modules.users.services.users import UserSummaryPayload
 
 from .error_messages import USER_ERROR_MESSAGES
-from .schemas import UpdateUserRoleRequest
+from .schemas import InviteUserRequest, UpdateUserRoleRequest
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
@@ -61,6 +67,30 @@ def list_users(
     result = factory.list_users().list()
 
     return build_list_response(items=[_user_to_dict(u) for u in (result.data or [])])
+
+
+# ======================================================================
+# POST /users
+# ======================================================================
+
+@router.post("", status_code=201)
+def invite_user(
+    payload: InviteUserRequest,
+    _identity: dict = Depends(admin_required),
+    factory: AuthServiceFactory = Depends(get_factory),
+):
+    """Da de alta a una persona y le envía la bienvenida (solo admin)."""
+    result = factory.invite_user().invite(
+        email=payload.email,
+        role_code=payload.role_code,
+        full_name=payload.full_name,
+    )
+    if not result.success:
+        return build_error_response(result, USER_ERROR_MESSAGES)
+    return build_created_response(
+        data=_user_to_dict(result.data),
+        msg="Usuario creado. Le enviamos un correo para que entre con su código.",
+    )
 
 
 # ======================================================================

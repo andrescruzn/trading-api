@@ -4,5 +4,12 @@ from app.modules.orders.rest.orders.routes import router as orders_router
 from app.modules.orders.rest.fills.routes import router as fills_router
 from app.modules.orders.rest.positions.routes import router as positions_router
 from app.modules.orders.rest.signal_decisions.routes import router as signal_decisions_router
+from app.modules.orders.rest.performance.routes import router as performance_router
 
-__all__ = ["orders_router", "fills_router", "positions_router", "signal_decisions_router"]
+__all__ = [
+    "orders_router",
+    "fills_router",
+    "positions_router",
+    "signal_decisions_router",
+    "performance_router",
+]

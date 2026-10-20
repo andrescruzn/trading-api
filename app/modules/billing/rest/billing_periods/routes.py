@@ -8,6 +8,8 @@
 # - POST /api/billing-periods/open         → abrir período (admin)
 # - POST /api/billing-periods/{id}/close   → cerrar período con HWM (admin)
 # - GET  /api/fee-transactions             → listar transacciones de fee
+# - POST /api/fee-transactions/{id}/charge → marcar cobrada (admin)
+# - POST /api/fee-transactions/{id}/waive  → condonar (admin)
 # ======================================================================
 
 from __future__ import annotations
@@ -20,13 +22,14 @@ from sqlalchemy.orm import Session
 from app.common.config import settings
 from app.common.http import build_created_response, build_error_response, build_list_response, send
 from app.common.security.jwt import token_required_actual
+from app.common.security.jwt.role_guard import admin_required
 from app.extensions.db import get_db
 from app.modules.billing.domain.billing_period_entity import BillingPeriod
 from app.modules.billing.domain.fee_transaction_entity import FeeTransaction
 from app.modules.billing.providers.billing_provider import BillingServiceFactory, get_billing_factory
 
 from .error_messages import BILLING_PERIOD_ERROR_MESSAGES
-from .schemas import CloseBillingPeriodRequest, OpenBillingPeriodRequest
+from .schemas import CloseBillingPeriodRequest, OpenBillingPeriodRequest, SettleFeeRequest
 
 router = APIRouter(tags=["Billing — Periods & Fees"])
 
@@ -187,3 +190,45 @@ def list_fee_transactions(
         items=[_fee_tx_to_dict(tx) for tx in (result.data or [])],
         msg="OK",
     )
+
+
+# ======================================================================
+# POST /api/fee-transactions/{id}/charge | /waive
+# ======================================================================
+
+_SETTLE_MESSAGES: dict[str, str] = {
+    "charge": "Comisión marcada como cobrada.",
+    "waive":  "Comisión condonada.",
+}
+
+
+def _settle(fee_tx_id: int, action: str, payload: SettleFeeRequest, factory: BillingServiceFactory):
+    result = factory.settle_fee_transaction().execute(
+        fee_tx_id=fee_tx_id, action=action, notes=payload.notes
+    )
+    if not result.success:
+        return build_error_response(result, BILLING_PERIOD_ERROR_MESSAGES)
+    return send(msg=_SETTLE_MESSAGES[action], status_code=200, data=_fee_tx_to_dict(result.data))
+
+
+@router.post("/fee-transactions/{fee_tx_id}/charge", status_code=200)
+def charge_fee_transaction(
+    fee_tx_id: int,
+    payload: SettleFeeRequest,
+    _identity: dict = Depends(admin_required),
+    factory: BillingServiceFactory = Depends(get_factory),
+):
+    """Marca una comisión pendiente como cobrada."""
+    return _settle(fee_tx_id, "charge", payload, factory)
+
+
+@router.post("/fee-transactions/{fee_tx_id}/waive", status_code=200)
+def waive_fee_transaction(
+    fee_tx_id: int,
+    payload: SettleFeeRequest,
+    _identity: dict = Depends(admin_required),
+    factory: BillingServiceFactory = Depends(get_factory),
+):
+    """Condona una comisión pendiente (no se cobrará)."""
+    return _settle(fee_tx_id, "waive", payload, factory)
+

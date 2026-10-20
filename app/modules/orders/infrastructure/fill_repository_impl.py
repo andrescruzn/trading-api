@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 
 from app.modules.orders.domain.fill_entity import Fill
 from app.modules.orders.domain.fill_repository import FillRepository
+from app.modules.orders.domain.performance import TradeFill
 from app.modules.orders.infrastructure.fill_model import FillModel
 from app.modules.orders.infrastructure.order_model import OrderModel
 from app.extensions.db.sqlalchemy_repository import SqlAlchemyRepository
@@ -81,6 +82,29 @@ class SqlAlchemyFillRepository(SqlAlchemyRepository, FillRepository):
             .all()
         )
         return [self._to_domain(m) for m in models]
+
+    def list_trade_fills_by_bots(self, bot_ids: list[int]) -> dict[int, list[TradeFill]]:
+        result: dict[int, list[TradeFill]] = {bot_id: [] for bot_id in bot_ids}
+        if not bot_ids:
+            return result
+        rows = (
+            self._session.query(FillModel, OrderModel.side, OrderModel.bot_id)
+            .join(OrderModel, FillModel.order_id == OrderModel.id)
+            .filter(OrderModel.bot_id.in_(bot_ids))
+            .order_by(FillModel.ts.asc(), FillModel.id.asc())
+            .all()
+        )
+        for model, side, bot_id in rows:
+            result.setdefault(bot_id, []).append(
+                TradeFill(
+                    side=side,
+                    qty=Decimal(str(model.qty)),
+                    price=Decimal(str(model.price)),
+                    fee=Decimal(str(model.fee or 0)),
+                    ts=model.ts,
+                )
+            )
+        return result
 
     def create(self, fill: Fill) -> Fill:
         model = FillModel()

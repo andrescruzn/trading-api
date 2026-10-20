@@ -14,7 +14,7 @@
 | Lo usan | [M6](M06-AI-AGENT.md) (Prompt Maestro), [M7](M07-BOTS-SIGNALS.md) (feature set por bot), scheduler de [M2](M02-MARKET-DATA.md) |
 | Prefijo API | `/api/feature-sets`, `/api/candle-features` |
 | Frontend | `frontend/src/modules/features` |
-| Última revisión | 2026-10-19 |
+| Última revisión | 2026-10-20 |
 
 ## Descripción
 
@@ -59,6 +59,7 @@ Entregables:
 - ✅ Test unitarios (18 tests)
 - ✅ **El cálculo y la IA respetan el `spec`** (`indicator_catalog`): solo se guardan y se envían al LLM los indicadores del conjunto
 - ✅ **Seed `feature_sets`** con Completo / Tendencia / Rango
+- ✅ (2026-10-20) **Motor de indicadores puro** (`domain/indicator_engine.py`, `compute_feature_rows`): `CalculateFeaturesService` lo usa para guardar y el backtesting de [M5](M05-STRATEGIES.md) para calcular en memoria
 
 ## Decisiones de diseño
 
@@ -236,3 +237,4 @@ Solo las claves de los grupos del conjunto, más `regime`:
 - **2026-10-08** — API headless (/api), páginas migradas a React (frontend/).
 - **2026-10-08** — Conjuntos por enfoque: `indicator_catalog`, el cálculo y la IA respetan el `spec`, seed Completo/Tendencia/Rango, `focus`/`indicators`/`outputs` en la API; páginas renombradas a "Conjuntos de indicadores".
 - **2026-10-19** — Indicadores centrados en el agente: salen del menú del usuario y se ven en la pestaña **Mercado** del agente, que también los recalcula ("Actualizar datos"); se retira "Calcular indicadores" de Conjuntos (el endpoint queda solo por API); la tabla y el glosario se extraen a `components/`.
+- **2026-10-20** — Cálculo de indicadores y régimen extraído a `domain/indicator_engine.py` (sin cambios de comportamiento; tests ajustados a la función nueva).

@@ -272,6 +272,23 @@ Una orden es la instrucción real al exchange para comprar o vender:
 - Position: El estado actual de lo que tienes abierto. Si compraste 0.05 BTC y no lo has vendido, tienes una posición abierta de
 0.05 BTC.
 
+1.14 ¿Cómo se mide si un agente funciona?
+
+La pestaña "Rendimiento" de cada agente cuenta sus operaciones cerradas: una operación va desde
+que compra hasta que vuelve a quedar sin posición.
+
+- % de operaciones ganadoras (win rate): 6 de 10 ganadoras = 60 %.
+- R/R real: ganancia media / pérdida media. Si ganas en promedio $200 y pierdes $100, es 2 : 1,
+  el mínimo que pide el sistema.
+- Profit factor: todo lo ganado / todo lo perdido. $1.000 ganados y $500 perdidos = 2. Mayor
+  que 1 = la estrategia gana más de lo que pierde.
+- Caída máxima (drawdown): la peor racha. Si el resultado acumulado llegó a +$300 y bajó a
+  −$100, la caída fue de $400.
+
+"Track record" (menú Explorar) muestra lo mismo por estrategia, sumando todos los agentes que la
+usan. Allí todo va en % de retorno, para que una cuenta grande no pese más que una pequeña, y no
+se ve de quién es cada agente.
+
 ---
 PARTE 2 — El flujo completo de extremo a extremo
 
@@ -345,6 +362,9 @@ PARTE 3 — Módulos implementados y cómo usarlos
 
 3.0 Cómo entrar a la aplicación
 ───────────────────────────────
+Las cuentas las crea un administrador (Configuración → Usuarios → "Invitar usuario"): llega un
+correo de bienvenida y se entra con el correo y un código de un solo uso; no hay contraseñas.
+
 La aplicación tiene dos partes que se encienden por separado:
 
   1. El servidor (la "API"): hace los cálculos y guarda los datos.
@@ -370,7 +390,7 @@ Por seguridad solo hay una sesión abierta por persona: si entras desde otro nav
 sesión anterior se cierra y la web te muestra "Tu sesión expiró" y te lleva al login.
 
 Todo se navega desde el menú lateral: Inicio, Operar (mis agentes, alertas, mis cuentas),
-Explorar (explorar mercados, estrategias) y, según tu rol, "Mi inversión" (inversores)
+Explorar (explorar mercados, estrategias, track record) y, según tu rol, "Mi inversión" (inversores)
 o "Administración" (administradores). En Administración, "Supervisión" muestra lo de todos los
 usuarios: "Todos los agentes" son los mismos agentes del inicio, pero de todo el sistema. Cada
 vista dice quién es el dueño (nombre y correo) y se puede filtrar por persona. "Configuración"
@@ -448,6 +468,26 @@ Cada estrategia tiene:
 Regla de coherencia (se valida automáticamente):
   trend_following + sideways → RECHAZADO (una estrategia de tendencia no opera en lateral)
   mean_reversion + trend_up  → RECHAZADO (una estrategia de reversión no opera en tendencia)
+
+3.1.1 Backtesting: probar una estrategia en el pasado
+
+Antes de dejar que un agente opere, puedes ver cómo le habría ido a su estrategia: menú
+Explorar → Backtesting (o "Probar en el pasado" en el detalle de una estrategia).
+
+  1. Elige la estrategia, el símbolo, el timeframe y cuánta historia (500 a 3.000 velas).
+  2. La app trae esa historia del exchange (no la guarda), calcula los indicadores y recorre
+     las velas: cuando una cumple el régimen y todas las reglas, "compra" al abrir la
+     siguiente, con stop loss a 1,5 × ATR y take profit a 3 × ATR (2:1), arriesgando el 1 %.
+  3. Ves el resultado contra "comprar y mantener", el % de operaciones ganadoras, el R/R real,
+     el profit factor, la caída máxima y cada operación simulada.
+
+  Ejemplo: con 10.000 USDT, una entrada a 100 con ATR 10 pone el SL en 85 y el TP en 130. El
+  riesgo es 100 USDT (1 %), así que compra 100 / 15 = 6,67 unidades. Si llega al TP gana
+  6,67 × 30 = 200 USDT (2 : 1).
+
+  Es una prueba SIN la IA: mide si las reglas tienen ventaja, no lo que decidiría el agente.
+  Con menos de 30 operaciones el resultado puede ser suerte, y un buen pasado no garantiza el
+  futuro: lo recomendado sigue siendo probar en paper antes de pasar a live.
 
 3.2 Módulo 5 — Datasets
 
@@ -848,6 +888,13 @@ Conectar Telegram (para aprobar desde el celular)
   tamaño, el agente y la hora límite para decidir (hora de Bogotá), con los botones Aprobar y
   Descartar. Al pulsar uno, el mensaje se actualiza con el resultado.
 
+Compartir las señales de un agente (y seguir las de otros)
+  - El dueño de un agente puede activar "Compartir señales" en su pestaña Configuración.
+  - En Track record aparece la lista de agentes que comparten. Con Telegram conectado, pulsa
+    "Suscribirme" y recibirás sus compras y ventas aprobadas: acción, símbolo, entrada, SL, TP
+    y R/R. Es solo información: no se ejecuta nada en tu cuenta y no se ve de quién es el
+    agente ni cuánto dinero maneja. "Dejar de seguir" lo detiene.
+
 Las protecciones (se aplican a toda orden: manual, aprobada o automática)
   - Interruptor general: el administrador puede detener el envío de todas las órdenes de golpe.
     Mientras esté apagado no sale ninguna, ni siquiera los cierres por stop loss o take profit
@@ -1151,8 +1198,19 @@ El Módulo 10 automatiza todo esto:
      - (Pendiente, todavía no implementado: enviar el estado de cuenta por correo al inversor)
   5. El inversor puede ver su dashboard: capital, rendimiento, historial de fees
 
-  Hoy el cierre del período lo hace el administrador a mano desde /#/admin/billing, escribiendo
-  el capital final (closing_equity); el sistema no lo calcula solo ni envía ningún correo.
+  El cierre del período lo hace el administrador desde /#/admin/billing. La app le sugiere el
+  capital final sumando los últimos balances de la cuenta al último precio ("Usar este valor");
+  si algún activo no tiene precio, lo avisa y no lo suma. El administrador puede corregirlo.
+
+  Comisiones: al cerrar queda una comisión "Pendiente". Cuando el pago llega, el administrador
+  la marca "Cobrada" (o "Condonar" si decide no cobrarla). En "Mi inversión" el inversor ve
+  cuánto ha pagado y cuánto tiene pendiente, y puede descargar su extracto en CSV.
+
+  Aportes y retiros: si el inversor deposita o retira dinero, el administrador lo registra en
+  Cuentas gestionadas → "Aportes y retiros". La marca de agua se mueve en el mismo monto, así
+  la comisión nunca se cobra sobre dinero depositado.
+    Ejemplo: marca de agua 10.000. El inversor aporta 2.000 → la marca pasa a 12.000. Si la
+    cuenta cierra el mes en 12.500, la comisión se cobra solo sobre 500 de ganancia.
 
 5.4 Roles del sistema (con M10)
 ─────────────────────────────────

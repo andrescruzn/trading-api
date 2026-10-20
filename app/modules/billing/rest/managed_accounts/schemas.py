@@ -1,8 +1,17 @@
 # -*- coding: utf-8 -*-
 
+from datetime import datetime
 from decimal import Decimal
+from typing import Literal
 
 from pydantic import BaseModel, Field
+
+
+class CapitalMovementRequest(BaseModel):
+    kind: Literal["deposit", "withdrawal"] = Field(description="Aporte o retiro")
+    amount: Decimal = Field(gt=Decimal("0"), max_digits=30, decimal_places=12)
+    ts: datetime | None = Field(default=None, description="Cuándo entró o salió (por defecto, ahora)")
+    notes: str | None = Field(default=None, max_length=500)
 
 
 class CreateManagedAccountRequest(BaseModel):

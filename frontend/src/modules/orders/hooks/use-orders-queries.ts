@@ -1,8 +1,10 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import {
+	getBotPerformance,
 	listFills,
 	listOrders,
 	listPositions,
+	listStrategyTrackRecord,
 	type OrderFilters,
 } from '@/modules/orders/api/orders.api';
 
@@ -44,6 +46,24 @@ function useBotFillsQuery(botId: number | null) {
 	});
 }
 
+// El rendimiento sale de los fills: vive bajo FILLS_QUERY_KEY para que crear,
+// cancelar o aprobar órdenes (que invalidan los fills) también lo refresque.
+function useBotPerformanceQuery(botId: number | null) {
+	return useQuery({
+		queryKey: [...FILLS_QUERY_KEY, 'performance', botId],
+		queryFn: () => getBotPerformance(botId as number),
+		enabled: !!botId,
+	});
+}
+
+function useStrategyTrackRecordQuery(mode?: 'paper' | 'live') {
+	return useQuery({
+		queryKey: [...FILLS_QUERY_KEY, 'track-record', mode ?? 'all'],
+		queryFn: () => listStrategyTrackRecord(mode ? { mode } : {}),
+		placeholderData: keepPreviousData,
+	});
+}
+
 function useOrderFillsQuery(orderId: number | null) {
 	return useQuery({
 		queryKey: [...FILLS_QUERY_KEY, { order_id: orderId }],
@@ -58,7 +78,9 @@ export {
 	POSITIONS_QUERY_KEY,
 	useBotFillsQuery,
 	useBotOrdersQuery,
+	useBotPerformanceQuery,
 	useBotPositionsQuery,
 	useOrderFillsQuery,
 	useOrdersQuery,
+	useStrategyTrackRecordQuery,
 };

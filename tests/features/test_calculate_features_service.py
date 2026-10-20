@@ -12,9 +12,13 @@ import pandas as pd
 import pytest
 
 from app.modules.features.domain.feature_set_entity import FeatureSet
+from app.modules.features.domain.indicator_engine import (
+    MIN_CANDLES as _MIN_CANDLES,
+    _detect_regime,
+    _safe_float,
+)
 from app.modules.features.services.calculations.calculate_features_service import (
     CalculateFeaturesService,
-    _MIN_CANDLES,
 )
 from app.modules.market.domain.candle_entity import Candle
 from app.modules.market.domain.symbol_entity import Symbol
@@ -256,21 +260,21 @@ class TestCalculateFeaturesServiceSuccess:
 class TestSafeFloat:
 
     def test_returns_float_for_valid_value(self):
-        result = CalculateFeaturesService._safe_float(55.12345678)
+        result = _safe_float(55.12345678)
         assert isinstance(result, float)
         assert result == 55.12345678
 
     def test_returns_none_for_nan(self):
         import math
-        result = CalculateFeaturesService._safe_float(float("nan"))
+        result = _safe_float(float("nan"))
         assert result is None
 
     def test_returns_none_for_none(self):
-        result = CalculateFeaturesService._safe_float(None)
+        result = _safe_float(None)
         assert result is None
 
     def test_rounds_to_8_decimals(self):
-        result = CalculateFeaturesService._safe_float(1.123456789012)
+        result = _safe_float(1.123456789012)
         assert result == round(1.123456789012, 8)
 
 
@@ -307,7 +311,7 @@ class TestDetectRegime:
         df = self._make_df(n=30)
         ts = df.index[5]  # idx < 20 → sideways siempre
 
-        result = CalculateFeaturesService._detect_regime(df, ts)
+        result = _detect_regime(df, df.index.get_loc(ts))
 
         assert result == "sideways"
 
@@ -316,7 +320,7 @@ class TestDetectRegime:
         df = self._make_df(n=60, trend="up")
         ts = df.index[-1]
 
-        result = CalculateFeaturesService._detect_regime(df, ts)
+        result = _detect_regime(df, df.index.get_loc(ts))
 
         # Con precios crecientes monotónicamente puede haber pocos swings locales,
         # aceptamos sideways o trend_up como válido
@@ -326,7 +330,7 @@ class TestDetectRegime:
         df = self._make_df(n=60, trend="down")
         ts = df.index[-1]
 
-        result = CalculateFeaturesService._detect_regime(df, ts)
+        result = _detect_regime(df, df.index.get_loc(ts))
 
         assert result in ("trend_down", "sideways")
 
@@ -335,7 +339,7 @@ class TestDetectRegime:
         df = pd.DataFrame(columns=["open", "high", "low", "close", "volume"])
         df.index.name = "ts"
 
-        result = CalculateFeaturesService._detect_regime(df, "nonexistent")
+        result = _detect_regime(df, 999)
 
         assert result == "sideways"
 
@@ -343,6 +347,6 @@ class TestDetectRegime:
         df = self._make_df(n=30, trend="up")
         ts = df.index[25]
 
-        result = CalculateFeaturesService._detect_regime(df, ts)
+        result = _detect_regime(df, df.index.get_loc(ts))
 
         assert result in ("trend_up", "trend_down", "sideways")

@@ -1,7 +1,8 @@
-import { IconUserCog } from '@tabler/icons-react';
+import { IconUserCog, IconUserPlus } from '@tabler/icons-react';
 import { useState } from 'react';
 import { usePageBreadcrumb } from '@/modules/app-shell/hooks/use-page-breadcrumb';
 import type { UserSummary } from '@/modules/auth/api/users.api';
+import { InviteUserDialog } from '@/modules/auth/components/invite-user-dialog';
 import { OwnerCell } from '@/modules/auth/components/owner-cell';
 import { UserRoleDialog } from '@/modules/auth/components/user-role-dialog';
 import { useAuth } from '@/modules/auth/hooks/use-auth';
@@ -36,6 +37,7 @@ export function AdminUsersPage() {
 	const owners = useOwners(ALL);
 	const [role, setRole] = useState(ALL);
 	const [editing, setEditing] = useState<UserSummary | null>(null);
+	const [inviting, setInviting] = useState(false);
 
 	const allUsers = owners.usersQuery.data ?? [];
 	const users = allUsers.filter(
@@ -102,6 +104,13 @@ export function AdminUsersPage() {
 			<PageListHeader
 				title="Usuarios"
 				description="Quién tiene cuenta y con qué rol. El rol decide qué ve cada persona en el menú y qué puede hacer."
+				actions={[
+					{
+						label: 'Invitar usuario',
+						icon: <IconUserPlus />,
+						onClick: () => setInviting(true),
+					},
+				]}
 			/>
 			<div className="grid gap-3 sm:max-w-xs">
 				<OptionSelect
@@ -122,9 +131,10 @@ export function AdminUsersPage() {
 				empty={
 					allUsers.length > 0
 						? 'No hay usuarios con ese rol.'
-						: 'Aún no hay usuarios.'
+						: 'Aún no hay usuarios. Invita al primero.'
 				}
 			/>
+			<InviteUserDialog open={inviting} onOpenChange={setInviting} />
 			<UserRoleDialog
 				user={editing}
 				onOpenChange={(open) => !open && setEditing(null)}

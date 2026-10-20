@@ -60,6 +60,7 @@ from app.modules.agent.infrastructure.model_run_model import ModelRunORM  # noqa
 # --------------------------------------------------------------
 from app.modules.bots.infrastructure.bot_model import BotModel  # noqa: F401
 from app.modules.bots.infrastructure.signal_model import SignalModel  # noqa: F401
+from app.modules.bots.infrastructure.signal_subscription_model import SignalSubscriptionModel  # noqa: F401
 
 # --------------------------------------------------------------
 # Orders module models
@@ -81,6 +82,7 @@ from app.modules.billing.infrastructure.investor_model import InvestorModel  # n
 from app.modules.billing.infrastructure.managed_account_model import ManagedAccountModel  # noqa: F401
 from app.modules.billing.infrastructure.billing_period_model import BillingPeriodModel  # noqa: F401
 from app.modules.billing.infrastructure.fee_transaction_model import FeeTransactionModel  # noqa: F401
+from app.modules.billing.infrastructure.capital_movement_model import CapitalMovementModel  # noqa: F401
 
 # --------------------------------------------------------------
 # Tablas sin servicios todavía (el esquema las incluye; Alembic las gestiona)

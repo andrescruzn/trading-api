@@ -1,11 +1,15 @@
-import { IconReceipt } from '@tabler/icons-react';
-import type { ReactNode } from 'react';
+import { IconReceipt, IconX } from '@tabler/icons-react';
+import { type ReactNode, useState } from 'react';
 import type { Order } from '@/modules/orders/api/orders.api';
+import { CancelOrderDialog } from '@/modules/orders/components/cancel-order-dialog';
 import {
 	OrderSideBadge,
 	OrderStatusBadge,
 } from '@/modules/orders/components/order-badges';
-import { ORDER_TYPE_LABELS } from '@/modules/orders/lib/orders-labels';
+import {
+	isCancelable,
+	ORDER_TYPE_LABELS,
+} from '@/modules/orders/lib/orders-labels';
 import {
 	DataTable,
 	type DataTableColumn,
@@ -40,6 +44,7 @@ export function OrdersTable({
 	botNames,
 	renderOwner,
 }: OrdersTableProps) {
+	const [canceling, setCanceling] = useState<Order | null>(null);
 	const columns: DataTableColumn<Order>[] = [
 		{
 			id: 'id',
@@ -109,23 +114,42 @@ export function OrdersTable({
 			header: <span className="sr-only">Acciones</span>,
 			className: 'text-right',
 			cell: (row) => (
-				<Button variant="ghost" size="sm" onClick={() => onViewFills(row)}>
-					<IconReceipt />
-					Ver ejecuciones
-				</Button>
+				<div className="flex justify-end gap-1">
+					{isCancelable(row) && (
+						<Button
+							variant="ghost"
+							size="sm"
+							className="text-destructive"
+							onClick={() => setCanceling(row)}
+						>
+							<IconX />
+							Cancelar
+						</Button>
+					)}
+					<Button variant="ghost" size="sm" onClick={() => onViewFills(row)}>
+						<IconReceipt />
+						Ver ejecuciones
+					</Button>
+				</div>
 			),
 		},
 	];
 
 	return (
-		<DataTable
-			columns={columns}
-			rows={orders}
-			getRowId={(row) => row.id}
-			isLoading={isLoading}
-			error={error}
-			errorTitle="No pudimos cargar las órdenes"
-			empty={empty}
-		/>
+		<>
+			<DataTable
+				columns={columns}
+				rows={orders}
+				getRowId={(row) => row.id}
+				isLoading={isLoading}
+				error={error}
+				errorTitle="No pudimos cargar las órdenes"
+				empty={empty}
+			/>
+			<CancelOrderDialog
+				order={canceling}
+				onOpenChange={(open) => !open && setCanceling(null)}
+			/>
+		</>
 	);
 }

@@ -1,4 +1,5 @@
 import type {
+	Order,
 	OrderSide,
 	OrderStatus,
 	OrderType,
@@ -55,7 +56,16 @@ function orderNeedsStopPrice(type: string | null | undefined): boolean {
 	return type === 'stop' || type === 'stop_limit';
 }
 
+/** Orden live que sigue abierta en el exchange (paper se ejecuta al instante). */
+function isCancelable(order: Pick<Order, 'status' | 'meta'>): boolean {
+	return (
+		(order.status === 'sent' || order.status === 'partially_filled') &&
+		order.meta?.mode === 'live'
+	);
+}
+
 export {
+	isCancelable,
 	ORDER_SIDE_LABELS,
 	ORDER_SIDE_OPTIONS,
 	ORDER_STATUS_LABELS,

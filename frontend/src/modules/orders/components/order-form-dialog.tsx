@@ -67,6 +67,16 @@ function isPositiveDecimal(value: string): boolean {
 	return normalized !== '' && Number(normalized) > 0;
 }
 
+/** Vacío (no se envía) o un número mayor que 0. */
+function isEmptyOrPositive(value: string): boolean {
+	return value.trim() === '' || isPositiveDecimal(value);
+}
+
+/** SL/TP automáticos solo en compras a mercado (lo exige el backend). */
+function allowsProtection(side: string | null, type: string | null): boolean {
+	return side === 'buy' && type === 'market';
+}
+
 const orderSchema = z
 	.object({
 		side: requiredSelectField('Elige el lado'),
@@ -76,6 +86,12 @@ const orderSchema = z
 			.refine(isPositiveDecimal, 'Escribe una cantidad mayor que 0'),
 		price: z.string(),
 		stop_price: z.string(),
+		stop_loss: z
+			.string()
+			.refine(isEmptyOrPositive, 'Escribe un número mayor que 0'),
+		take_profit: z
+			.string()
+			.refine(isEmptyOrPositive, 'Escribe un número mayor que 0'),
 	})
 	.superRefine((values, ctx) => {
 		if (orderNeedsPrice(values.type) && !isPositiveDecimal(values.price)) {
@@ -105,6 +121,8 @@ const DEFAULT_VALUES: z.input<typeof orderSchema> = {
 	qty: '',
 	price: '',
 	stop_price: '',
+	stop_loss: '',
+	take_profit: '',
 };
 
 type OrderFormDialogProps = {
@@ -133,6 +151,8 @@ export function OrderFormDialog({
 		defaultValues: DEFAULT_VALUES,
 	});
 	const type = useWatch({ control: form.control, name: 'type' });
+	const side = useWatch({ control: form.control, name: 'side' });
+	const showProtection = allowsProtection(side, type);
 
 	useEffect(() => {
 		if (!open) return;
@@ -171,6 +191,14 @@ export function OrderFormDialog({
 			...(orderNeedsStopPrice(values.type) && {
 				stop_price: normalizeDecimal(values.stop_price),
 			}),
+			...(allowsProtection(values.side, values.type) &&
+				values.stop_loss.trim() && {
+					stop_loss: normalizeDecimal(values.stop_loss),
+				}),
+			...(allowsProtection(values.side, values.type) &&
+				values.take_profit.trim() && {
+					take_profit: normalizeDecimal(values.take_profit),
+				}),
 		};
 		if (isLive) {
 			setPendingLive(input);
@@ -236,8 +264,8 @@ export function OrderFormDialog({
 									<IconAlertTriangle />
 									<AlertTitle>El agente no está activo</AlertTitle>
 									<AlertDescription>
-										Solo los agentes activos aceptan órdenes. Inícialo desde Mis
-										agentes.
+										Solo los agentes activos aceptan órdenes. Inícialo desde su
+										página.
 									</AlertDescription>
 								</Alert>
 							)}
@@ -340,6 +368,65 @@ export function OrderFormDialog({
 									))}
 								</div>
 							)}
+							{showProtection && (
+								<div className="flex flex-col gap-3 rounded-lg border p-3">
+									<div>
+										<p className="text-sm font-medium">
+											Protección automática (opcional)
+										</p>
+										<p className="text-sm text-muted-foreground">
+											Cierra la posición sola si el precio baja al stop loss o
+											sube al take profit. Con los dos, el take profit debe
+											estar al menos el doble de lejos que el stop loss.
+										</p>
+									</div>
+									<div className="grid gap-4 sm:grid-cols-2">
+										{(
+											[
+												{
+													name: 'stop_loss',
+													label: 'Stop loss',
+													placeholder: '62000',
+												},
+												{
+													name: 'take_profit',
+													label: 'Take profit',
+													placeholder: '71000',
+												},
+											] as const
+										).map((item) => (
+											<Controller
+												key={item.name}
+												name={item.name}
+												control={form.control}
+												render={({ field, fieldState }) => (
+													<Field data-invalid={fieldState.invalid}>
+														<FieldLabel htmlFor={`order-${item.name}`}>
+															{item.label}
+														</FieldLabel>
+														<Input
+															{...field}
+															id={`order-${item.name}`}
+															inputMode="decimal"
+															placeholder={item.placeholder}
+															autoComplete="off"
+															aria-invalid={fieldState.invalid}
+														/>
+														{fieldState.invalid && (
+															<FieldError errors={[fieldState.error]} />
+														)}
+													</Field>
+												)}
+											/>
+										))}
+									</div>
+									{isLive && (
+										<p className="text-sm text-muted-foreground">
+											En live, el stop loss queda como orden en el exchange.
+										</p>
+									)}
+								</div>
+							)}
 						</FieldGroup>
 					</DialogBody>
 				</form>
@@ -395,6 +482,21 @@ export function OrderFormDialog({
 										{formatNumber(pendingLive.qty)}
 									</dd>
 								</div>
+								{(pendingLive.stop_loss || pendingLive.take_profit) && (
+									<div className="col-span-2">
+										<dt className="text-muted-foreground">Protección</dt>
+										<dd className="font-mono font-medium">
+											SL{' '}
+											{pendingLive.stop_loss
+												? formatPrice(pendingLive.stop_loss)
+												: '—'}{' '}
+											· TP{' '}
+											{pendingLive.take_profit
+												? formatPrice(pendingLive.take_profit)
+												: '—'}
+										</dd>
+									</div>
+								)}
 								<div>
 									<dt className="text-muted-foreground">Precio</dt>
 									<dd className="font-mono font-medium">

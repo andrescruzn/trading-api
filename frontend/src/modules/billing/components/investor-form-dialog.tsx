@@ -3,16 +3,21 @@ import { IconLoader2 } from '@tabler/icons-react';
 import { useEffect } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
+import { useOwners } from '@/modules/auth/hooks/use-users-queries';
+import { ROLES } from '@/modules/auth/lib/roles';
 import type { Investor } from '@/modules/billing/api/billing.api';
 import {
 	useCreateInvestorMutation,
 	useUpdateInvestorMutation,
 } from '@/modules/billing/hooks/use-billing-mutations';
+import { useInvestorsQuery } from '@/modules/billing/hooks/use-billing-queries';
 import {
 	fractionToPercentText,
 	percentToFraction,
 } from '@/modules/billing/lib/billing-labels';
+import { OptionSelect } from '@/modules/shared/components/option-select';
 import { getErrorMessage } from '@/modules/shared/lib/get-error-message';
+import { requiredSelectField } from '@/modules/shared/lib/required-select-field';
 import { Button } from '@/modules/ui/components/button';
 import { Checkbox } from '@/modules/ui/components/checkbox';
 import {
@@ -37,16 +42,7 @@ import { toast } from '@/modules/ui/components/toast';
 // En el formulario la comisión va en % (20 = 20 %); la API la recibe como
 // fracción (0.2000), igual que hacía la versión anterior.
 const investorSchema = z.object({
-	user_id: z
-		.string()
-		.trim()
-		.min(1, 'Escribe el ID del usuario')
-		.pipe(
-			z.coerce
-				.number<string>({ message: 'Escribe un número' })
-				.int('Debe ser un número entero')
-				.min(1, 'Debe ser mayor que 0'),
-		),
+	user_id: requiredSelectField('Elige el usuario'),
 	fee_percent: z
 		.string()
 		.trim()
@@ -79,16 +75,30 @@ export function InvestorFormDialog({
 	const createMutation = useCreateInvestorMutation();
 	const updateMutation = useUpdateInvestorMutation();
 	const isPending = createMutation.isPending || updateMutation.isPending;
+	const owners = useOwners('');
+	const investorsQuery = useInvestorsQuery();
+
+	// Candidatos: usuarios con rol Inversor que aún no tienen perfil.
+	const takenUserIds = new Set(
+		(investorsQuery.data ?? []).map((item) => item.user_id),
+	);
+	const candidates = (owners.usersQuery.data ?? []).filter(
+		(user) => user.role_code === ROLES.INVESTOR && !takenUserIds.has(user.id),
+	);
+	const userOptions = owners.options.filter((option) =>
+		candidates.some((user) => String(user.id) === option.value),
+	);
+	const editingUser = investor ? owners.byId.get(investor.user_id) : undefined;
 
 	const form = useForm<InvestorFormInput, unknown, InvestorFormOutput>({
 		resolver: zodResolver(investorSchema),
-		defaultValues: { user_id: '', fee_percent: '', is_active: true },
+		defaultValues: { user_id: null, fee_percent: '', is_active: true },
 	});
 
 	useEffect(() => {
 		if (!open) return;
 		form.reset({
-			user_id: investor ? String(investor.user_id) : '',
+			user_id: investor ? String(investor.user_id) : null,
 			fee_percent: investor ? fractionToPercentText(investor.fee_pct) : '',
 			is_active: investor?.is_active ?? true,
 		});
@@ -124,7 +134,7 @@ export function InvestorFormDialog({
 			);
 		} else {
 			createMutation.mutate(
-				{ user_id: values.user_id, fee_pct: feePct },
+				{ user_id: Number(values.user_id), fee_pct: feePct },
 				callbacks,
 			);
 		}
@@ -139,7 +149,9 @@ export function InvestorFormDialog({
 					</DialogTitle>
 					<DialogDescription>
 						{investor
-							? `Inversor #${investor.id} · usuario #${investor.user_id}`
+							? editingUser
+								? `${editingUser.full_name?.trim() || editingUser.email} · ${editingUser.email}`
+								: `Inversor #${investor.id} · usuario #${investor.user_id}`
 							: 'Perfil de inversor para un usuario con rol Inversor.'}
 					</DialogDescription>
 				</DialogHeader>
@@ -158,18 +170,26 @@ export function InvestorFormDialog({
 									render={({ field, fieldState }) => (
 										<Field data-invalid={fieldState.invalid}>
 											<FieldLabel htmlFor="investor-user" required>
-												ID del usuario
+												Usuario
 											</FieldLabel>
-											<Input
-												{...field}
+											<OptionSelect
 												id="investor-user"
-												type="number"
-												inputMode="numeric"
-												placeholder="12"
+												value={field.value}
+												onChange={field.onChange}
+												options={userOptions}
+												placeholder={
+													owners.usersQuery.isLoading
+														? 'Cargando usuarios…'
+														: 'Elige un usuario'
+												}
+												disabled={userOptions.length === 0}
 												aria-invalid={fieldState.invalid}
 											/>
 											<FieldDescription>
-												El usuario debe tener el rol Inversor.
+												{!owners.usersQuery.isLoading &&
+												userOptions.length === 0
+													? 'No hay usuarios con rol Inversor sin perfil. Asígnale ese rol a alguien primero.'
+													: 'Solo aparecen usuarios con rol Inversor que aún no tienen perfil.'}
 											</FieldDescription>
 											{fieldState.invalid && (
 												<FieldError errors={[fieldState.error]} />

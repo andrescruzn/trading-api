@@ -1,4 +1,6 @@
 import type { Account } from '@/modules/accounts/api/accounts.api';
+import type { UserSummary } from '@/modules/auth/api/users.api';
+import { userDisplayName } from '@/modules/auth/hooks/use-users-queries';
 import type {
 	BillingPeriod,
 	BillingPeriodStatus,
@@ -77,14 +79,24 @@ function sumClosedPeriods(
 		.reduce((total, period) => total + (toNumber(period[key]) ?? 0), 0);
 }
 
-function investorLabel(investor: Investor): string {
-	return `Inversor #${investor.id} · usuario #${investor.user_id}`;
+/** Nombre (o correo) del usuario del inversor; sin catálogo, su ID. */
+function investorLabel(
+	investor: Investor,
+	users?: Map<number, UserSummary>,
+): string {
+	const user = users?.get(investor.user_id);
+	return user
+		? `${userDisplayName(user)} · ${user.email}`
+		: `Inversor #${investor.id} · usuario #${investor.user_id}`;
 }
 
-function investorOptions(investors: Investor[] | undefined): SelectOption[] {
+function investorOptions(
+	investors: Investor[] | undefined,
+	users?: Map<number, UserSummary>,
+): SelectOption[] {
 	return (investors ?? []).map((investor) => ({
 		value: String(investor.id),
-		label: investorLabel(investor),
+		label: investorLabel(investor, users),
 	}));
 }
 

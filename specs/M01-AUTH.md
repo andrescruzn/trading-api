@@ -7,9 +7,9 @@
 | Campo | Valor |
 |---|---|
 | Estado | ✅ Completo |
-| Avance (alcance original) | 100 % — 7/7 entregables (+ 2 de 2026-10-19: endurecimiento de seguridad y vínculo de Telegram; + 2 de 2026-10-20: perfil propio y aviso de sesión abierta) |
+| Avance (alcance original) | 100 % — 7/7 entregables (+ 2 de 2026-10-19: endurecimiento de seguridad y vínculo de Telegram; + 4 de 2026-10-20: perfil propio, aviso de sesión abierta, bloquear/desactivar usuarios y auditoría visible) |
 | Madurez (estimada) | 84 % — ver [Avance](#avance) |
-| Tablas | `users` (R/W), `roles` (R) |
+| Tablas | `users` (R/W), `roles` (R), `http_audit_<año>` (R; las escribe `AuditMiddleware`) |
 | Depende de | — (es la base) |
 | Lo usan | Todos los módulos (guardas `jwt_guard` / `role_guard`, helpers `owner_scope` / `is_admin`); el shell del frontend (`app-shell`) aloja todas las páginas; [M9](M09-ALERTS.md) usa el chat de Telegram vinculado |
 | Prefijo API | `/api/users` (incluye `/api/users/me/telegram`) |
@@ -43,7 +43,8 @@ Hash routing: la URL real es `/#/<ruta>`.
 - Menú de usuario (`nav-user`) → **Conectar Telegram** / **Telegram conectado**: diálogo para generar el enlace de vinculación (un solo uso, 10 min), confirmar con "Ya lo vinculé" o desvincular
 
 **Admin:**
-- `/#/admin/users` — "Usuarios" (Administración → Configuración): lista de usuarios con rol, estado y último ingreso, filtro por rol y diálogo **Cambiar rol** (Usuario / Administrador / Inversor) con aviso de lo que gana o pierde la persona. En la fila propia dice "Tú" (no se puede cambiar el propio rol).
+- `/#/admin/users` — "Usuarios" (Administración → Configuración): lista de usuarios con rol, estado y último ingreso, filtro por rol y menú de acciones por fila: **Cambiar rol** (Usuario / Administrador / Inversor, con aviso de lo que gana o pierde la persona) y **Bloquear / Desactivar / Activar cuenta** con confirmación. En la fila propia dice "Tú" (no se puede cambiar el propio rol ni el propio estado).
+- `/#/admin/audit` — "Auditoría" (Administración → Configuración): registro de cada petición a la API (quién, cuándo, qué ruta, resultado y duración), paginado en el servidor, con filtros por persona, tipo de evento, consultas/cambios, solo errores, texto en la ruta y rango de fechas; al hacer clic en una fila se abre el detalle (IP, navegador, mensaje que vio la persona).
 
 **Inversor:** no tiene páginas propias en este módulo; el shell solo muestra la sección "Administración" a `admin` y "Mi inversión" a `investor`.
 
@@ -66,6 +67,8 @@ Entregables:
 - ✅ (2026-10-19) **Vínculo de Telegram**: `POST /api/users/me/telegram/link`, `DELETE /api/users/me/telegram`, `telegram_linked` en `GET /api/users/me`, diálogo en el menú de usuario
 
 Tablas usadas: `users`, `roles`
+- ✅ (2026-10-20) **Bloquear / desactivar usuarios:** `PUT /api/users/{id}/status` (`UpdateUserStatusService`) + menú de acciones en Usuarios con confirmación; al bloquear o desactivar se cierra la sesión al instante
+- ✅ (2026-10-20) **Auditoría visible:** `GET /api/audit-logs` (admin, paginado en el servidor, lee `http_audit_<año>`) + página Auditoría
 - ✅ (2026-10-20) **Registro solo por invitación:** `POST /api/users` (admin) crea la cuenta activa (correo, nombre, rol) y envía el correo de bienvenida (`WELCOME_TEMPLATE`, ahora con el enlace de entrada); "Invitar usuario" en Configuración → Usuarios
 
 ## Decisiones de diseño
@@ -101,6 +104,10 @@ Tablas usadas: `users`, `roles`
 | `CredentialsCipher` con **MultiFernet**: cifra con `CREDENTIALS_SECRET_KEY` y descifra también con `CREDENTIALS_PREVIOUS_KEYS`; `rotate(token)` re-cifra; sin clave fuera de development/testing → `RuntimeError` (en `Settings` y en el cipher) | Rotar la clave sin perder las credenciales guardadas; nunca arrancar con la clave de ejemplo en producción | Una sola clave (cambiarla invalidaba todo) |
 | `owner_scope(identity)` e `is_admin(identity)` en `app/common/security/jwt/role_guard.py` | Una sola regla de propiedad (`user_id` o `None` para admin) para todos los módulos | Copiarla en cada router |
 | Vínculo de Telegram por código de un solo uso (`secrets.token_urlsafe(24)`, 10 min) guardado como **SHA-256** en `users.telegram_link_hash`; `telegram_chat_id` UNIQUE (si el chat ya era de otro usuario, se le quita) | El código no queda en claro; un chat pertenece a una sola cuenta | Guardar el código en claro o pedir el `chat_id` a mano |
+| **Estado de la cuenta por un admin** (`PUT /api/users/{id}/status`): `active` · `blocked` (suspensión temporal, p. ej. actividad sospechosa) · `disabled` (la cuenta ya no se usa); los dos últimos impiden entrar por igual. Nunca sobre la propia cuenta (422); sin cambio no se escribe. Al bloquear/desactivar se pone `token_current_jti = NULL` y se borra el OTP pendiente | Efecto inmediato aunque el guard ya rechace cuentas inactivas; la diferencia blocked/disabled es solo de significado para quien administra | Borrar la cuenta (perdería el historial de órdenes y comisiones) |
+| **Cuenta inactiva → 401 en el guard** (`AUTH_USER_NOT_ALLOWED`, antes 403 y sin texto en `AUTH_ERROR_MESSAGES`: la UI veía el código crudo) | El front solo cierra la sesión con un 401: con 403 la persona bloqueada seguía dentro del shell viendo errores; ahora vuelve a `/login` con "Tu cuenta no está activa…" | Distinguir en el front un 403 de rol de uno de cuenta (el envelope no trae el código) |
+| **Bloquear o desactivar pausa los agentes** de la persona (decisión del usuario, 2026-10-20) | Sin la pausa, el scheduler (que no mira `users.status`) seguiría abriendo órdenes en modo Automático, también en live, con nadie supervisando. `UpdateUserStatusService` pasa sus agentes `running` a `paused` en el mismo commit; `paused` sigue bajando velas, así el SL/TP de las posiciones abiertas sigue vigilado. Al reactivar no se reanudan solos | Dejarlos corriendo y que el admin los detenga a mano; detenerlos (`stopped`), que deja el TP vigilado sin velas frescas |
+| **Auditoría visible en M1** (`GET /api/audit-logs`): contrato `AuditEventRepository` en `users/domain`, lectura Core de `http_audit_<año>` (UNION ALL si el rango abarca varios años) en `users/infrastructure`. Solo devuelve método, ruta, status, duración, IP, user agent, el `msg` de la respuesta y, en pedir/verificar código, el correo con el que se intentó entrar | La auditoría ya es parte de la seguridad de M1 y la página vive junto a Usuarios. Los payloads completos no salen (datos personales, respuestas enteras); los secretos ya vienen redactados | Leer `audit_logs` (nadie la escribe) · módulo nuevo `audit` · devolver los payloads |
 | **Alta solo por invitación del admin** (`InviteUserService`): la cuenta nace activa y la persona entra con el OTP de siempre; el correo de bienvenida sale en segundo plano | El login ya es por código: no hace falta token de invitación ni contraseña; si el correo falla, la persona igual puede pedir su código | Enlace de invitación con token que caduca (tabla nueva) · registro abierto |
 
 ## Avance
@@ -112,7 +119,7 @@ Tablas usadas: `users`, `roles`
 
 - **Tests (60):** hay tests de `get_me`, security headers / API headless y 3 suites de auditoría; **no hay** tests de `login_otp` ni `verify_otp` (el único camino de login, ahora con contador de intentos), `logout`, `rotate_token`, `OriginGuardMiddleware`, la redacción recursiva, `CredentialsCipher` con rotación, `TelegramLinkService`, ni tests del frontend.
 - **Seguridad (95):** OTP hasheado con secreto propio, de un solo uso e invalidado tras 5 fallos; rate limit por correo e IP (IP real solo detrás de proxy de confianza); anti-enumeración; cookies seguras; defensa CSRF por `Origin`; docs ocultos en producción; auditoría sin secretos; fail fast sin claves en producción.
-- **Operación (80):** rotación de la clave de credenciales sin downtime y script de purga de la auditoría; sin gestión de usuarios desde la UI; si el correo (SMTP) falla, nadie puede entrar.
+- **Operación (80):** rotación de la clave de credenciales sin downtime y script de purga de la auditoría; gestión de usuarios desde la UI (invitar, rol y estado) y auditoría visible para el admin (2026-10-20); si el correo (SMTP) falla, nadie puede entrar.
 
 ## Posibles mejoras
 
@@ -176,10 +183,14 @@ Todas las rutas REST se montan bajo `settings.API_PREFIX` (`/api`) en `app/app_f
 | POST | `/api/users` | admin (`{email, full_name?, role_code}`; 409 `USER_EMAIL_TAKEN`, 422 `USER_INVALID_EMAIL` / `USER_INVALID_ROLE`) |
 | GET  | `/api/users` | admin (`id`, `email`, `full_name`, `role_code`, `role_label`, `status`, `last_login_at`; sin OTP, JTI ni Telegram) |
 | PUT  | `/api/users/{id}/role` | admin (`{role_code: user\|admin\|investor}`; 422 `USER_CANNOT_CHANGE_OWN_ROLE` / `USER_INVALID_ROLE`, 404 `USER_NOT_FOUND`) |
+| PUT  | `/api/users/{id}/status` | admin (`{status: active\|blocked\|disabled}`; 422 `USER_CANNOT_CHANGE_OWN_STATUS` / `USER_INVALID_STATUS` (o 422 de Pydantic), 404 `USER_NOT_FOUND`; blocked/disabled revoca la sesión) |
+| GET  | `/api/audit-logs` | admin (`page`, `page_size` ≤ 100, `user_id`, `event_type`, `date_from` incluida, `date_to` excluida (ISO; sin zona = UTC), `path` (texto en la ruta, ≤ 200), `kind` = `read`\|`write`, `only_errors`; `data: {items, pagination}`; 422 `AUDIT_INVALID_DATE_RANGE` / `AUDIT_INVALID_EVENT_TYPE` / `AUDIT_INVALID_KIND` / `AUDIT_INVALID_PATH`) |
 | POST | `/api/users/me/telegram/link` | cookie (enlace de vinculación de un solo uso) |
 | DELETE | `/api/users/me/telegram` | cookie (desvincula el chat) |
 
-El router de Telegram (`app/modules/users/rest/telegram/routes.py`, `prefix="/users/me/telegram"`) se registra como `telegram_link_router`; textos en `rest/telegram/error_messages.py`. `GET /api/users` vive en `rest/users/routes.py` (`users_router`) → `ListUsersService` / `UpdateUserRoleService` (`services/users/`) → `UserRepository.list_all()` / `update()`; textos en `rest/users/error_messages.py`. En el front: `auth/api/users.api.ts`, `useUsersQuery` / `useOwners` (`auth/hooks/use-users-queries.ts`) y `OwnerCell` (`auth/components/owner-cell.tsx`); página `auth/pages/admin-users.tsx` + `auth/components/user-role-dialog.tsx` + `useUpdateUserRoleMutation` (`auth/hooks/use-users-mutations.ts`); `ROLE_LABELS` / `ROLE_OPTIONS` en `auth/lib/roles.ts`.
+El router de Telegram (`app/modules/users/rest/telegram/routes.py`, `prefix="/users/me/telegram"`) se registra como `telegram_link_router`; textos en `rest/telegram/error_messages.py`. `GET /api/users` vive en `rest/users/routes.py` (`users_router`) → `ListUsersService` / `UpdateUserRoleService` / `UpdateUserStatusService` (`services/users/`) → `UserRepository.list_all()` / `update()`; textos en `rest/users/error_messages.py`. En el front: `auth/api/users.api.ts`, `useUsersQuery` / `useOwners` (`auth/hooks/use-users-queries.ts`) y `OwnerCell` (`auth/components/owner-cell.tsx`); página `auth/pages/admin-users.tsx` + `auth/components/user-role-dialog.tsx` + `auth/components/user-status-dialog.tsx` + `useUpdateUserRoleMutation` / `useUpdateUserStatusMutation` (`auth/hooks/use-users-mutations.ts`); `ROLE_LABELS` / `ROLE_OPTIONS` en `auth/lib/roles.ts`; `USER_STATUSES` / `USER_STATUS_LABELS` / `UserStatusChange` en `auth/lib/user-status.ts`.
+
+**Auditoría (lectura):** `rest/audit/routes.py` (`audit_router`, `prefix="/audit-logs"`, textos en `rest/audit/error_messages.py`) → `AuditServiceFactory` (`providers/audit_provider.py`) → `ListAuditEventsService` (`services/audit/`) → `AuditEventRepository` (`domain/audit_event_repository.py`; entidad `AuditEvent` + `AuditEventFilters` en `domain/audit_event.py`) → `SqlAlchemyAuditEventRepository` (`infrastructure/audit_event_repository_impl.py`, **no** exportado en el barrel de `infrastructure` para no crear un ciclo con `jwt_guard`). Usa `get_existing_table(year, bind)` de `app/common/audit/audit_table_factory.py` (nunca crea tablas al leer) y `Page` / `PageRequest` de `app/common/contracts/pagination.py`. Sin `date_from` busca el año de `date_to` (o el actual) y el anterior.
 
 ### Errores
 - Todo error (401/403/404/405/422/429) sale con el envelope `{msg, errorCode, data}` (`app/common/errors/errors.py`).
@@ -191,6 +202,8 @@ El router de Telegram (`app/modules/users/rest/telegram/routes.py`, `prefix="/us
 |-----|----------|----|
 | `/#/login` | `routes/_auth/login.lazy.tsx` | `auth/pages/login.tsx` + `auth/components/login-form.tsx` (correo → código, `InputOTP`, `useCountdown`) |
 | `/#/dashboard` | `routes/_app/dashboard.lazy.tsx` | `dashboard/pages/dashboard.tsx` (las tarjetas son `AgentCard` de [M7](M07-BOTS-SIGNALS.md)) |
+| `/#/admin/users` | `routes/_app/admin/users.lazy.tsx` | `auth/pages/admin-users.tsx` + `user-role-dialog.tsx` + `user-status-dialog.tsx` |
+| `/#/admin/audit` | `routes/_app/admin/audit.lazy.tsx` | `auth/pages/admin-audit.tsx` + `auth/components/audit-event-sheet.tsx`; `auth/api/audit.api.ts`, `auth/hooks/use-audit-queries.ts` (`useAuditEventsQuery`, `keepPreviousData`), `auth/lib/audit-labels.ts`. Paginación propia con `TablePagination` (DataTable con `paginate={false}`); las fechas del filtro son días locales enviados como ISO con offset |
 
 - **API:** `auth/api/auth.api.ts` (`requestOtp`, `verifyOtp`, `logout`, `me` con `telegram_linked`, y las llamadas de vincular/desvincular Telegram) y `auth/hooks/use-auth-mutations.ts`.
 - **Telegram:** `app-shell/components/telegram-link-dialog.tsx` (`TelegramLinkDialog`: "Generar enlace" → "Abrir Telegram" → "Ya lo vinculé" refresca `GET /users/me`; "Desvincular"), abierto desde `nav-user.tsx` ("Conectar Telegram" / "Telegram conectado").
@@ -225,7 +238,9 @@ El router de Telegram (`app/modules/users/rest/telegram/routes.py`, `prefix="/us
 - Todo request HTTP queda auditado automáticamente vía `AuditMiddleware` (`BaseHTTPMiddleware`).
 - Tablas dinámicas por año: `http_audit_2026`, `http_audit_2027`… se crean solas en el primer request del año.
 - **No bloqueante:** el insert se hace en un hilo daemon, no afecta la latencia del usuario.
-- `event_type`: `POST /users/login` → siempre `LOGIN_OTP_REQUEST`.
+- `event_type`: `POST /users/login` → siempre `LOGIN_OTP_REQUEST`; además `VERIFY_OTP`, `LOGOUT`, `GET_PROFILE`, `ROTATE_TOKEN` y el resto `HTTP_REQUEST`.
+- **Se ve en la app** desde 2026-10-20: `GET /api/audit-logs` + página Auditoría (ver Endpoints). La tabla ORM `audit_logs` (`audit_log_model.py`) sigue sin escribirse: la auditoría real está en `http_audit_<año>`.
+- Índices por tabla: `(ts)`, `(user_id, ts)`, `(event_type, ts)`: cubren el orden y los filtros por persona y tipo. El filtro por texto en la ruta (`LIKE '%x%'`), por consultas/cambios (`method`) y "solo errores" (`status_code`) no usan índice: recorren las filas del rango de fechas. Si la tabla crece mucho, valorar `(status_code, ts)` o `(method, ts)` (las tablas se crean en runtime: cambiar `audit_table_factory.py` y añadirlos a mano en las ya creadas).
 - Campos redactados (`audit_sanitizer.py`, en cualquier nivel de dicts y listas, hasta 20 niveles, clave sin distinguir mayúsculas) → `"***REDACTED***"` (la clave se preserva). Request: `password`, `current_password`, `new_password`, `otp_code`, `token`, `access_token`, `api_key`, `apikey`, `api_secret`, `secret`, `passphrase`, `private_key`, `enc_creds`, `credentials_ref`, `webhook`, `webhook_url`, `authorization`. Response: `token`, `access_token`, `otp_code`, `enc_creds`, `credentials_ref`, `link_url`, `webhook`, `webhook_url`.
 - Rutas excluidas: `/health`, `/docs`, `/redoc`, `/openapi.json`, `/favicon` y `/api/telegram/webhook` (lleva el código de vinculación).
 - IP: `client_ip()` del rate limiter (misma regla de `TRUST_PROXY_HEADERS`).
@@ -281,6 +296,7 @@ TELEGRAM_BOT_USERNAME=         # para el enlace de vinculación (M9)
 
 ## Tests
 
+- `tests/users/test_update_user_status_service.py` (10: revoca sesión y OTP, no escribe si no cambia, propio estado, estado inválido, 404, rollback) y `tests/users/test_list_audit_events_service.py` (12: años consultados, fechas UTC/offset, rango inválido, validación de tipo de evento, tipo de acción y ruta, página acotada). La consulta SQL (`SqlAlchemyAuditEventRepository`) no tiene test contra MySQL.
 - `tests/users/test_get_me_service.py` y 45 tests de auditoría en `tests/common/audit/` (incluye que `/users/login` se registra como `LOGIN_OTP_REQUEST` aunque llegue `password`). Los tests de `login_password` y `change_password` se eliminaron junto con esos servicios.
 - `tests/common/security/test_security_headers.py`: CSP restrictiva en la API, CSP de `/docs`, `X-Frame-Options`, `nosniff`; API headless (raíz → 404 JSON, las páginas viejas ya no existen, endpoint protegido exige auth, 422 con envelope).
 - `tests/web/` se eliminó junto con las páginas Jinja.
@@ -301,6 +317,8 @@ TELEGRAM_BOT_USERNAME=         # para el enlace de vinculación (M9)
 - `JWT_SECRET_KEY` débil comprometería todas las sesiones; en desarrollo hay un valor por defecto (`dev-only-change-me`) y fuera de desarrollo `Settings` falla rápido si falta (también si falta `CREDENTIALS_SECRET_KEY`).
 - Las filas de `http_audit_*` anteriores a 2026-10-19 pueden tener API keys de exchange en claro hasta que se ejecute `redact_audit_payloads.py` (y conviene rotar esas claves).
 - Quien controle el chat de Telegram vinculado puede aprobar señales de la cuenta ([M9](M09-ALERTS.md)).
+- **Bloquear o desactivar una cuenta pausa sus agentes `running`** (no los `stopped` ni los que estén en `error`). Sus reglas de alerta se siguen evaluando y sus posiciones abiertas siguen protegidas. Al reactivar la cuenta, los agentes siguen en pausa.
+- La página Auditoría hace `COUNT(*)` sobre el rango filtrado: con millones de filas y filtros sin índice (texto en la ruta) puede ir lenta.
 
 ## Historial
 
@@ -322,3 +340,4 @@ TELEGRAM_BOT_USERNAME=         # para el enlace de vinculación (M9)
 - **2026-10-20** — Registro por invitación: `POST /api/users` (`InviteUserService`) + diálogo "Invitar usuario" y correo de bienvenida con enlace.
 - **2026-10-20** — Columna `users.notifications_seen_at` (campana de notificaciones de [M9](M09-ALERTS.md), estado de "visto" compartido entre dispositivos) + `UserRepository.set_notifications_seen_at`. La campana vive en la cabecera del shell (`app-shell/layouts/app-shell.tsx`).
 - **2026-10-20** — **Perfil propio** (`PUT /api/users/me`, `UpdateProfileService`, diálogo Mi perfil) y **una sesión con aviso**: mensaje `AUTH_SESSION_REVOKED` que nombra el otro dispositivo, mostrado en el diálogo de sesión; aviso en el correo del código si ya hay sesión abierta; refresco de `/users/me` cada 5 min y al volver a la pestaña. Tests `tests/users/test_update_profile_service.py`.
+- **2026-10-20** — **Bloquear / desactivar usuarios** (`PUT /api/users/{id}/status`, `UpdateUserStatusService`, menú de acciones + `UserStatusDialog` en Usuarios): revoca la sesión y el OTP pendiente; el guard responde **401** (antes 403 sin texto) a cuentas inactivas para que el front cierre la sesión con el motivo. Sus agentes `running` pasan a `paused` en el mismo commit (decisión del usuario). **Auditoría visible** (`GET /api/audit-logs`, paginado en el servidor, filtros por persona, tipo de evento, fechas, ruta, consultas/cambios y errores; página `/admin/audit` con detalle en `Sheet`), leyendo `http_audit_<año>` con `get_existing_table`. Tests `test_update_user_status_service.py` y `test_list_audit_events_service.py`.

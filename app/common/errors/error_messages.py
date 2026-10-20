@@ -48,6 +48,10 @@ COMMON_ERROR_MESSAGES: Dict[str, str] = {
     "AUTH_INVALID_IDENTITY": "Tu sesión no es válida. Inicia sesión de nuevo.",
     "AUTH_MISSING_JTI": "Tu sesión no es válida. Inicia sesión de nuevo.",
     "AUTH_USER_NOT_FOUND": "Tu usuario ya no existe o está inactivo.",
+    "AUTH_USER_NOT_ALLOWED": (
+        "Tu cuenta no está activa, así que cerramos tu sesión. "
+        "Si crees que es un error, escríbele a un administrador."
+    ),
     "AUTH_ROLE_NOT_FOUND": "Tu usuario no tiene un rol válido. Contacta al administrador.",
     "AUTH_ROLE_INACTIVE": "Tu rol está desactivado. Contacta al administrador.",
     "AUTH_FORBIDDEN_ROLE": "No tienes permiso para hacer esta acción.",

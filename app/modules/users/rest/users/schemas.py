@@ -21,3 +21,13 @@ class UpdateUserRoleRequest(BaseModel):
     role_code: Literal["user", "admin", "investor"] = Field(
         ..., description="Rol nuevo: user, admin o investor."
     )
+
+
+class UpdateUserStatusRequest(BaseModel):
+    status: Literal["active", "blocked", "disabled"] = Field(
+        ...,
+        description=(
+            "Estado nuevo: active (puede entrar), blocked (suspensión temporal) "
+            "o disabled (cuenta que ya no se usa)."
+        ),
+    )

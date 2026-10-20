@@ -1,4 +1,5 @@
 import type { RoleCode } from '@/modules/auth/lib/roles';
+import type { UserStatus } from '@/modules/auth/lib/user-status';
 import { api } from '@/modules/shared/lib/api-client';
 
 /** `GET /users` (solo admin): identificación de cada usuario. */
@@ -8,8 +9,7 @@ type UserSummary = {
 	full_name: string | null;
 	role_code: RoleCode | null;
 	role_label: string | null;
-	/** `active` | `blocked` | `disabled`. */
-	status: string;
+	status: UserStatus;
 	last_login_at: string | null;
 };
 
@@ -33,5 +33,13 @@ function updateUserRole(id: number, roleCode: RoleCode) {
 	return api.put<UserSummary>(`/users/${id}/role`, { role_code: roleCode });
 }
 
+/**
+ * Solo admin y nunca sobre uno mismo (422). Bloquear o desactivar cierra la
+ * sesión de la persona al instante.
+ */
+function updateUserStatus(id: number, status: UserStatus) {
+	return api.put<UserSummary>(`/users/${id}/status`, { status });
+}
+
 export type { InviteUserInput, UserSummary };
-export { inviteUser, listUsers, updateUserRole };
+export { inviteUser, listUsers, updateUserRole, updateUserStatus };

@@ -1,13 +1,31 @@
-import { IconUserCog, IconUserPlus } from '@tabler/icons-react';
+import {
+	IconBan,
+	IconDots,
+	IconUserCheck,
+	IconUserCog,
+	IconUserOff,
+	IconUserPlus,
+} from '@tabler/icons-react';
 import { useState } from 'react';
 import { usePageBreadcrumb } from '@/modules/app-shell/hooks/use-page-breadcrumb';
 import type { UserSummary } from '@/modules/auth/api/users.api';
 import { InviteUserDialog } from '@/modules/auth/components/invite-user-dialog';
 import { OwnerCell } from '@/modules/auth/components/owner-cell';
 import { UserRoleDialog } from '@/modules/auth/components/user-role-dialog';
+import { UserStatusDialog } from '@/modules/auth/components/user-status-dialog';
 import { useAuth } from '@/modules/auth/hooks/use-auth';
-import { useOwners } from '@/modules/auth/hooks/use-users-queries';
+import {
+	useOwners,
+	userDisplayName,
+} from '@/modules/auth/hooks/use-users-queries';
 import { ROLE_OPTIONS, ROLES } from '@/modules/auth/lib/roles';
+import {
+	USER_STATUS_ACTION_LABELS,
+	USER_STATUSES,
+	type UserStatus,
+	type UserStatusChange,
+	userStatusLabel,
+} from '@/modules/auth/lib/user-status';
 import {
 	DataTable,
 	type DataTableColumn,
@@ -17,14 +35,27 @@ import { PageListHeader } from '@/modules/shared/components/page-list-header';
 import { formatDateTime } from '@/modules/shared/lib/format';
 import { Badge } from '@/modules/ui/components/badge';
 import { Button } from '@/modules/ui/components/button';
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from '@/modules/ui/components/dropdown-menu';
 
 const ALL = 'all';
 
-const STATUS_LABELS: Record<string, string> = {
-	active: 'Activo',
-	blocked: 'Bloqueado',
-	disabled: 'Desactivado',
+const STATUS_ACTION_ICONS: Record<UserStatus, typeof IconBan> = {
+	active: IconUserCheck,
+	blocked: IconBan,
+	disabled: IconUserOff,
 };
+
+const STATUS_ACTIONS: UserStatus[] = [
+	USER_STATUSES.ACTIVE,
+	USER_STATUSES.BLOCKED,
+	USER_STATUSES.DISABLED,
+];
 
 const ROLE_FILTER_OPTIONS = [
 	{ value: ALL, label: 'Todos los roles' },
@@ -37,6 +68,9 @@ export function AdminUsersPage() {
 	const owners = useOwners(ALL);
 	const [role, setRole] = useState(ALL);
 	const [editing, setEditing] = useState<UserSummary | null>(null);
+	const [statusChange, setStatusChange] = useState<UserStatusChange | null>(
+		null,
+	);
 	const [inviting, setInviting] = useState(false);
 
 	const allUsers = owners.usersQuery.data ?? [];
@@ -67,7 +101,7 @@ export function AdminUsersPage() {
 			header: 'Estado',
 			cell: (row) => (
 				<Badge variant={row.status === 'active' ? 'outline' : 'destructive'}>
-					{STATUS_LABELS[row.status] ?? row.status}
+					{userStatusLabel(row.status)}
 				</Badge>
 			),
 		},
@@ -88,13 +122,46 @@ export function AdminUsersPage() {
 			className: 'text-right',
 			cell: (row) =>
 				row.id === currentUser?.id ? (
-					// El backend no deja cambiar el propio rol: así nunca falta un admin.
+					// El backend no deja cambiar el propio rol ni el propio estado:
+					// así nunca falta un admin ni alguien se deja fuera por error.
 					<span className="text-sm text-muted-foreground">Tú</span>
 				) : (
-					<Button variant="ghost" size="sm" onClick={() => setEditing(row)}>
-						<IconUserCog />
-						Cambiar rol
-					</Button>
+					<DropdownMenu>
+						<DropdownMenuTrigger
+							render={<Button variant="ghost" size="icon-sm" />}
+						>
+							<IconDots />
+							<span className="sr-only">
+								Acciones de {userDisplayName(row)}
+							</span>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent align="end" className="w-auto min-w-44">
+							<DropdownMenuItem onClick={() => setEditing(row)}>
+								<IconUserCog />
+								Cambiar rol
+							</DropdownMenuItem>
+							<DropdownMenuSeparator />
+							{STATUS_ACTIONS.filter((status) => status !== row.status).map(
+								(status) => {
+									const Icon = STATUS_ACTION_ICONS[status];
+									return (
+										<DropdownMenuItem
+											key={status}
+											variant={
+												status === USER_STATUSES.ACTIVE
+													? 'default'
+													: 'destructive'
+											}
+											onClick={() => setStatusChange({ user: row, status })}
+										>
+											<Icon />
+											{USER_STATUS_ACTION_LABELS[status]}
+										</DropdownMenuItem>
+									);
+								},
+							)}
+						</DropdownMenuContent>
+					</DropdownMenu>
 				),
 		},
 	];
@@ -103,7 +170,7 @@ export function AdminUsersPage() {
 		<div className="flex flex-col gap-6">
 			<PageListHeader
 				title="Usuarios"
-				description="Quién tiene cuenta y con qué rol. El rol decide qué ve cada persona en el menú y qué puede hacer."
+				description="Quién tiene cuenta, con qué rol y si puede entrar. El rol decide qué ve cada persona en el menú; bloquear o desactivar una cuenta cierra su sesión."
 				actions={[
 					{
 						label: 'Invitar usuario',
@@ -138,6 +205,10 @@ export function AdminUsersPage() {
 			<UserRoleDialog
 				user={editing}
 				onOpenChange={(open) => !open && setEditing(null)}
+			/>
+			<UserStatusDialog
+				change={statusChange}
+				onOpenChange={(open) => !open && setStatusChange(null)}
 			/>
 		</div>
 	);

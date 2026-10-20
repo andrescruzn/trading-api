@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 
 from app.common.contracts import ServiceResult
 from app.modules.users.domain import UserRepository
@@ -29,6 +30,7 @@ class UserSummaryPayload:
     role_code: str
     role_name: str
     status: str
+    last_login_at: datetime | None
 
 
 class ListUsersService:
@@ -55,6 +57,7 @@ class ListUsersService:
                     role_code=str(role["code"]),
                     role_name=str(role["name"]),
                     status=user.status,
+                    last_login_at=user.last_login_at,
                 )
             )
 

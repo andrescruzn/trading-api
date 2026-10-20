@@ -1,5 +1,6 @@
 import type {
 	BillingPeriod,
+	CapitalMovement,
 	FeeTransaction,
 	ManagedAccount,
 } from '@/modules/billing/api/billing.api';
@@ -26,6 +27,7 @@ function buildStatementCsv(
 	account: ManagedAccount,
 	periods: BillingPeriod[],
 	fees: FeeTransaction[],
+	movements: CapitalMovement[] = [],
 ): string {
 	const feeByPeriod = new Map(fees.map((fee) => [fee.billing_period_id, fee]));
 	const header = [
@@ -65,7 +67,24 @@ function buildStatementCsv(
 		`Extracto · ${account.name}`,
 		`Capital inicial ${account.initial_capital}`,
 	];
-	return [title, [], header, ...rows]
+	const movementRows = [...movements]
+		.sort((a, b) => (a.ts ?? '').localeCompare(b.ts ?? ''))
+		.map((movement) => [
+			day(movement.ts),
+			movement.kind === 'deposit' ? 'Aporte' : 'Retiro',
+			movement.kind === 'deposit' ? movement.amount : `-${movement.amount}`,
+			movement.notes,
+		]);
+	const movementSection =
+		movementRows.length > 0
+			? [
+					[],
+					['Aportes y retiros'],
+					['Fecha', 'Tipo', 'Monto', 'Nota'],
+					...movementRows,
+				]
+			: [];
+	return [title, [], header, ...rows, ...movementSection]
 		.map((row) => row.map(cell).join(SEPARATOR))
 		.join('\r\n');
 }

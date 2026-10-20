@@ -6,8 +6,10 @@ import {
 	BillingPeriodsTable,
 	FeeTransactionsTable,
 } from '@/modules/billing/components/billing-tables';
+import { CapitalMovementsTable } from '@/modules/billing/components/capital-movements-table';
 import {
 	useBillingPeriodsQuery,
+	useCapitalMovementsQuery,
 	useFeeTransactionsQuery,
 	useInvestorsQuery,
 	useManagedAccountsQuery,
@@ -69,6 +71,7 @@ export function InvestorDashboardPage() {
 	const accountId = account?.id ?? null;
 
 	const periodsQuery = useBillingPeriodsQuery(accountId);
+	const movementsQuery = useCapitalMovementsQuery(accountId);
 	const feesQuery = useFeeTransactionsQuery(accountId);
 
 	const totalNetPnl = sumClosedPeriods(periodsQuery.data, 'net_pnl');
@@ -85,7 +88,12 @@ export function InvestorDashboardPage() {
 		if (!account) return;
 		downloadCsv(
 			`extracto-${account.name.toLowerCase().replaceAll(/[^a-z0-9]+/g, '-')}.csv`,
-			buildStatementCsv(account, periodsQuery.data ?? [], fees),
+			buildStatementCsv(
+				account,
+				periodsQuery.data ?? [],
+				fees,
+				movementsQuery.data?.movements ?? [],
+			),
 		);
 	}
 	const isLoadingProfile = investorsQuery.isLoading || accountsQuery.isLoading;
@@ -208,6 +216,21 @@ export function InvestorDashboardPage() {
 								isLoading={feesQuery.isLoading}
 								error={feesQuery.error}
 								empty="Aún no se te ha cobrado ninguna comisión en esta cuenta."
+							/>
+						</section>
+
+						<section className="flex flex-col gap-3">
+							<h2 className="text-base font-semibold">Aportes y retiros</h2>
+							<p className="text-sm text-muted-foreground">
+								El dinero que aportas o retiras ajusta la marca de agua: la
+								comisión solo se cobra sobre la ganancia, nunca sobre tus
+								depósitos.
+							</p>
+							<CapitalMovementsTable
+								rows={movementsQuery.data?.movements}
+								isLoading={movementsQuery.isLoading}
+								error={movementsQuery.error}
+								empty="Aún no hay aportes ni retiros en esta cuenta."
 							/>
 						</section>
 					</>

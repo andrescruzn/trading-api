@@ -19,8 +19,10 @@
 #      filled / partially_filled → Fill + Position; sent → solo la orden;
 #      rechazo → rejected; sin respuesta → sent + needs_reconciliation
 #   8. Commit y hook de alertas
-#   9. Protección manual (opcional, compras a mercado): SL/TP en la
-#      posición y, en live, el SL como orden nativa en el exchange
+#   9. Protección (opcional, compras a mercado; también la de las
+#      señales): SL/TP en la posición y, en live, el SL como orden nativa.
+#      Si la compra no se ejecutó al instante (sent / sin respuesta), queda
+#      pendiente en `meta.protection` y la aplica la reconciliación.
 #
 # DECISIÓN DE DISEÑO — Persistir antes de enviar:
 #   Si se revierte la orden cuando la llamada al exchange falla por red,
@@ -59,6 +61,14 @@ from app.modules.orders.services.risk.risk_gate_service import RiskGateService
 if TYPE_CHECKING:
     from app.modules.alerts.services.evaluation.evaluate_alerts_service import EvaluateAlertsService
     from app.modules.orders.services.execution.native_stop_service import NativeStopService
+
+
+def _protection_meta(stop_loss: Decimal | None, take_profit: Decimal | None) -> dict:
+    """Protección pendiente guardada en la orden (JSON: decimales como texto)."""
+    return {
+        "stop_loss": str(stop_loss) if stop_loss is not None else None,
+        "take_profit": str(take_profit) if take_profit is not None else None,
+    }
 
 
 class CreateOrderService:
@@ -299,6 +309,8 @@ class CreateOrderService:
         except ExecutionUncertainError as exc:
             order.status = "sent"
             order.meta = {**order.meta, "needs_reconciliation": True, "error": str(exc)}
+            if wants_protection:
+                order.meta = {**order.meta, "protection": _protection_meta(stop_loss, take_profit)}
             self._order_repo.update(order)
             self._order_repo.commit()
             return ServiceResult.fail(
@@ -335,6 +347,10 @@ class CreateOrderService:
                 fill_price=fill.price,
                 side=side,
             )
+        elif wants_protection:
+            # Sin ejecución todavía: la reconciliación aplica la protección
+            # cuando registre el fill
+            order.meta = {**order.meta, "protection": _protection_meta(stop_loss, take_profit)}
 
         order = self._order_repo.update(order)
 
@@ -345,10 +361,15 @@ class CreateOrderService:
         self._fire_order_alerts(order, bot_id)
 
         # ------------------------------------------------------------------
-        # 9. Protección manual de la posición abierta
+        # 9. Protección de la posición abierta por esta compra
         # ------------------------------------------------------------------
-        if wants_protection and position is not None and not position.is_flat():
-            self._protect(bot, position, stop_loss, take_profit)
+        if (
+            wants_protection
+            and result.fill is not None
+            and position is not None
+            and not position.is_flat()
+        ):
+            self._protect(bot, position, stop_loss, take_profit, signal_id)
 
         return ServiceResult.ok(data=order)
 
@@ -414,13 +435,21 @@ class CreateOrderService:
         position,
         stop_loss: Decimal | None,
         take_profit: Decimal | None,
+        signal_id: int | None = None,
     ) -> None:
         """
         Guarda SL/TP en la posición (los vigila el scheduler) y, en live,
         deja el SL como orden nativa. Un fallo aquí no deshace la compra: la
         orden ya está confirmada y el scheduler sigue de respaldo.
+
+        Solo cambia el nivel que se pide: comprar más con solo TP no borra el
+        SL que ya tenía la posición (p. ej. el de la señal que la abrió).
         """
-        position.set_protection(stop_loss, take_profit, signal_id=None)
+        position.set_protection(
+            stop_loss if stop_loss is not None else position.stop_loss,
+            take_profit if take_profit is not None else position.take_profit,
+            signal_id=signal_id or position.signal_id,
+        )
         self._position_repo.update(position)
         self._position_repo.commit()
 

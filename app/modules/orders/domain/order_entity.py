@@ -35,7 +35,9 @@ class Order:
     - stop_limit : disparar una orden límite cuando el precio toca `stop_price`
 
     Estados válidos y transiciones permitidas:
-    - new              → sent, canceled
+    - new              → sent, partially_filled, filled, canceled, rejected
+                         (la orden se guarda `new` antes de enviarla y pasa
+                         directo al estado que reporta el exchange)
     - sent             → partially_filled, filled, canceled, rejected
     - partially_filled → filled, canceled
     - filled           → (estado final, sin transiciones)
@@ -56,7 +58,7 @@ class Order:
 
     # Mapa de transiciones válidas: estado_actual → estados_permitidos
     _ALLOWED_TRANSITIONS: dict[str, tuple[str, ...]] = {
-        "new":              ("sent", "canceled"),
+        "new":              ("sent", "partially_filled", "filled", "canceled", "rejected"),
         "sent":             ("partially_filled", "filled", "canceled", "rejected"),
         "partially_filled": ("filled", "canceled"),
         "filled":           (),

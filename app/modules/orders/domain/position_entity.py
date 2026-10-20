@@ -111,9 +111,11 @@ class Position:
         Reduce la cantidad y acumula el P&L realizado:
           pnl_realizado = (precio_venta - avg_price) × qty_vendida
 
-        Si se vende toda la posición, avg_price se resetea a 0.
+        Si se vende toda la posición, avg_price se resetea a 0. El P&L se
+        calcula solo sobre lo que había (en spot no se vende de más).
         """
-        pnl = (fill_price - self.avg_price) * fill_qty
+        sold_qty = min(fill_qty, self.qty)
+        pnl = (fill_price - self.avg_price) * sold_qty
         self.realized_pnl += pnl
         self.qty -= fill_qty
 

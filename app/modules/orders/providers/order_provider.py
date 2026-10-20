@@ -190,6 +190,8 @@ class OrderServiceFactory:
             bot_repo=self._bot_repo,
             live_executor=self._live_executor,
             evaluate_alerts=build_evaluate_alerts_service(self._session),
+            signal_repo=self._signal_repo,
+            native_stop=self.native_stop() if settings.ORDER_NATIVE_STOP_LOSS else None,
         )
 
     def execute_signal(self) -> ExecuteSignalService:
@@ -201,7 +203,6 @@ class OrderServiceFactory:
             position_repo=self._position_repo,
             create_order=self.create_order(),
             min_rr_ratio=settings.AGENT_MIN_RR_RATIO,
-            native_stop=self.native_stop() if settings.ORDER_NATIVE_STOP_LOSS else None,
         )
 
     def protect_positions(self) -> ProtectPositionsService:

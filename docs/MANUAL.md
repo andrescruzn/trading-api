@@ -379,7 +379,8 @@ Todo lo que pertenece a un agente se ve dentro del agente: sus señales, sus ór
 posiciones y los precios e indicadores de su mercado. No hay páginas sueltas de órdenes, velas o
 indicadores porque esos datos solo existen para los agentes que creaste y están activos.
 
-El inicio muestra tus agentes. Si aún no tienes ninguno, te explica qué es un agente y te ofrece
+El inicio muestra tus agentes; cada tarjeta trae el último precio de su mercado, cuánto subió o
+bajó frente a la vela anterior y el régimen (tendencia o rango). Si aún no tienes ninguno, te explica qué es un agente y te ofrece
 crear el primero.
 
 3.0.1 Módulo 2 — Explorar mercados (¿dónde crear un agente?)
@@ -663,7 +664,7 @@ features_hash:
   exactamente qué datos vio la IA cuando tomó la decisión.
 
 Páginas de la UI:
-  /#/agents       → Mis agentes: tarjetas con estado, símbolo, estrategia y última señal
+  /#/agents       → Mis agentes: tarjetas con estado, símbolo, precio, estrategia y última señal
   /#/agents/new   → Asistente para crear un agente
   /#/agents/12    → Detalle del agente 12
   /#/admin/agents → Vista admin: todos los agentes del sistema con filtros de estado y modo

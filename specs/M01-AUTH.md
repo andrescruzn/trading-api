@@ -14,7 +14,7 @@
 | Lo usan | Todos los módulos (guardas `jwt_guard` / `role_guard`, helpers `owner_scope` / `is_admin`); el shell del frontend (`app-shell`) aloja todas las páginas; [M9](M09-ALERTS.md) usa el chat de Telegram vinculado |
 | Prefijo API | `/api/users` (incluye `/api/users/me/telegram`) |
 | Frontend | `frontend/src/modules/auth`, `app-shell`, `dashboard` |
-| Última revisión | 2026-10-19 |
+| Última revisión | 2026-10-20 |
 
 ## Descripción
 
@@ -39,7 +39,7 @@ Hash routing: la URL real es `/#/<ruta>`.
 - `/#/login` — Inicio de sesión con código por correo: se escribe el correo, llega un OTP de 6 dígitos (cuenta regresiva y botón para reenviar). `/` redirige a `/dashboard` o `/login` según haya sesión.
 
 **Usuario (y demás roles):**
-- `/#/dashboard` — Panel principal centrado en los **agentes** ([M7](M07-BOTS-SIGNALS.md)): sin agentes, bienvenida con "Crear agente"; con agentes, KPIs, tarjeta **Señales por aprobar** (solo si hay alguna), tarjetas de los agentes y el mercado que están viendo
+- `/#/dashboard` — Panel principal centrado en los **agentes** ([M7](M07-BOTS-SIGNALS.md)): sin agentes, bienvenida con "Crear agente"; con agentes, KPIs, tarjeta **Señales por aprobar** (solo si hay alguna), tarjetas de los agentes (cada una con el precio, la variación y el régimen de su mercado)
 - Menú de usuario (`nav-user`) → **Conectar Telegram** / **Telegram conectado**: diálogo para generar el enlace de vinculación (un solo uso, 10 min), confirmar con "Ya lo vinculé" o desvincular
 
 **Admin / Inversor:** no tiene páginas propias; el shell solo muestra la sección "Administración" a `admin` y "Mi inversión" a `investor`.
@@ -176,7 +176,7 @@ El router de Telegram (`app/modules/users/rest/telegram/routes.py`, `prefix="/us
 | Ruta | Archivo de ruta | Página / componentes |
 |-----|----------|----|
 | `/#/login` | `routes/_auth/login.lazy.tsx` | `auth/pages/login.tsx` + `auth/components/login-form.tsx` (correo → código, `InputOTP`, `useCountdown`) |
-| `/#/dashboard` | `routes/_app/dashboard.lazy.tsx` | `dashboard/pages/dashboard.tsx` + `dashboard/components/price-chart.tsx` + `dashboard/hooks/use-symbol-snapshot.ts` |
+| `/#/dashboard` | `routes/_app/dashboard.lazy.tsx` | `dashboard/pages/dashboard.tsx` (las tarjetas son `AgentCard` de [M7](M07-BOTS-SIGNALS.md)) |
 
 - **API:** `auth/api/auth.api.ts` (`requestOtp`, `verifyOtp`, `logout`, `me` con `telegram_linked`, y las llamadas de vincular/desvincular Telegram) y `auth/hooks/use-auth-mutations.ts`.
 - **Telegram:** `app-shell/components/telegram-link-dialog.tsx` (`TelegramLinkDialog`: "Generar enlace" → "Abrir Telegram" → "Ya lo vinculé" refresca `GET /users/me`; "Desvincular"), abierto desde `nav-user.tsx` ("Conectar Telegram" / "Telegram conectado").
@@ -220,9 +220,9 @@ El router de Telegram (`app/modules/users/rest/telegram/routes.py`, `prefix="/us
 ### Dashboard — agentes primero (`/#/dashboard`)
 - Saludo con el nombre y cuántos agentes están analizando el mercado (`GET /api/users/me`, `GET /api/bots?mine=true`).
 - **Sin agentes:** `AgentsEmptyState` (qué es un agente, cómo funciona en 3 pasos y botón "Crear agente" → `/#/agents/new`).
-- **Con agentes:** 3 `StatCard` (agentes activos, paper/live, mis cuentas), aviso si ninguno está activo y hasta 6 `AgentCard` con su última señal y controles.
-- **Mercado:** tarjetas y gráfica (SVG propio, `price-chart.tsx`) de los pares que operan los agentes; sin agentes, BTC/USDT y ETH/USDT en 1h.
-- Sidebar reorganizado: **General** (Inicio) · **Operar** (Mis agentes, Órdenes, Alertas, Mis cuentas) · **Explorar** (Estrategias, Indicadores, Símbolos, Velas) · Mi inversión · Administración.
+- **Con agentes:** 3 `StatCard` (agentes activos, paper/live, mis cuentas), aviso si ninguno está activo y hasta 6 `AgentCard` con el precio de su mercado, su última señal y controles.
+- Sin sección de mercado propia (retirada el 2026-10-20): mostraba solo los dos primeros pares y, sin agentes, BTC/ETH en 1h casi siempre sin velas. El precio va en cada tarjeta y las velas en la pestaña Mercado del agente.
+- Sidebar: **General** (Inicio) · **Operar** (Mis agentes, Alertas, Mis cuentas) · **Explorar** (Explorar mercados, Estrategias) · Mi inversión · Administración (Datos de mercado, Supervisión, Inversores).
 
 ## Gotchas críticos
 
@@ -300,3 +300,4 @@ TELEGRAM_BOT_USERNAME=         # para el enlace de vinculación (M9)
 - **2026-10-08** — Se quita el lockout de cuenta (migración `9ca3ab02fd7a`) y se reemplaza por rate limit por correo; el correo del OTP sale en segundo plano (sin 502); el 429 dice cuánto esperar.
 - **2026-10-19** — Auditoría de seguridad: `APP_ENV` por defecto `production`, `DEV_RETURN_OTP`, `OTP_HMAC_SECRET`, `users.otp_failed_attempts` (máx. `OTP_MAX_FAILED_ATTEMPTS`, migración `218d50385270`), `TRUST_PROXY_HEADERS`, `OriginGuardMiddleware` (CSRF), `/docs` y `/openapi.json` solo en desarrollo, `/health` sin entorno ni error de BD, `X-Request-ID` validado, `X-XSS-Protection: 0`, redacción recursiva en la auditoría + `database/scripts/redact_audit_payloads.py`, `CredentialsCipher` con MultiFernet y `CREDENTIALS_PREVIOUS_KEYS` (fail fast sin clave), `owner_scope` / `is_admin` en `role_guard.py`.
 - **2026-10-19** — Vínculo de Telegram: `POST /api/users/me/telegram/link`, `DELETE /api/users/me/telegram`, `telegram_linked` en `GET /api/users/me`, columnas `users.telegram_*` (migración `f51e2dad9c13`), "Conectar Telegram" en el menú de usuario (`TelegramLinkDialog`); tarjeta "Señales por aprobar" en el dashboard.
+- **2026-10-20** — Dashboard sin sección "Mercado" (y sin `price-chart.tsx`): el precio, la variación y el régimen pasan a cada tarjeta de agente (`AgentPrice` en [M7](M07-BOTS-SIGNALS.md)).

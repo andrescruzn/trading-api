@@ -188,6 +188,10 @@ order_rate_limiter = RateLimiter(
     window_seconds=60,
 )
 
+# Backtests por usuario y minuto: cada uno trae miles de velas del exchange
+# y calcula indicadores en memoria.
+backtest_rate_limiter = RateLimiter(requests_per_minute=3, window_seconds=60)
+
 # Actualizar los datos de un agente por usuario y minuto: cada uno descarga
 # velas del exchange (ccxt) y recalcula indicadores.
 market_sync_rate_limiter = RateLimiter(requests_per_minute=3, window_seconds=60)

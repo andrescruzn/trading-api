@@ -34,7 +34,7 @@ from app.modules.market.rest import (
 )
 from app.modules.features.rest import feature_sets_router, candle_features_router
 from app.modules.accounts.rest import accounts_router, balances_router
-from app.modules.strategies.rest import strategies_router, datasets_router
+from app.modules.strategies.rest import backtests_router, datasets_router, strategies_router
 from app.modules.agent.rest import agent_router, models_router, model_runs_router
 from app.modules.bots.rest import bots_router, signals_router
 from app.modules.orders.rest import (
@@ -141,7 +141,7 @@ def create_app() -> FastAPI:
         # Accounts & Portfolio
         accounts_router, balances_router,
         # Strategies
-        strategies_router, datasets_router,
+        strategies_router, datasets_router, backtests_router,
         # Agent (AI Agent + ML Models + Model Runs)
         agent_router, models_router, model_runs_router,
         # Bots & Signals (signals_router antes: GET /signals/pending)

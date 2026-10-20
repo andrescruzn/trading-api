@@ -26,6 +26,15 @@ from app.modules.strategies.services.datasets import (
     GetDatasetService,
     CreateDatasetService,
 )
+from app.modules.strategies.services.backtests import RunBacktestService
+
+# Repos tomados de M2 (borrowing) para traer la historia del exchange
+from app.modules.market.infrastructure import (
+    SqlAlchemyExchangeRepository,
+    SqlAlchemySymbolRepository,
+    SqlAlchemyTimeframeRepository,
+)
+from app.modules.market.services.candles import FetchCandleHistoryService
 
 
 class StrategyServiceFactory:
@@ -70,3 +79,17 @@ class StrategyServiceFactory:
 
     def create_dataset(self) -> CreateDatasetService:
         return CreateDatasetService(repo=self._dataset_repo)
+
+    # ------------------------------------------------------------------
+    # Backtesting
+    # ------------------------------------------------------------------
+
+    def run_backtest(self) -> RunBacktestService:
+        return RunBacktestService(
+            strategy_repo=self._strategy_repo,
+            fetch_history=FetchCandleHistoryService(
+                symbol_repo=SqlAlchemySymbolRepository(self._session),
+                timeframe_repo=SqlAlchemyTimeframeRepository(self._session),
+                exchange_repo=SqlAlchemyExchangeRepository(self._session),
+            ),
+        )

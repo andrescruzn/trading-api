@@ -41,7 +41,7 @@
 Hash routing: la URL real es `/#/<ruta>`.
 
 **Páginas — Usuario (cualquier usuario autenticado):**
-- Las órdenes de cada agente viven en su detalle (`/#/agents/:id`, [M7](M07-BOTS-SIGNALS.md)): pestaña **Órdenes** (con "Nueva orden") y **Posiciones** (con las ejecuciones debajo). `/#/orders` redirige a `/#/agents` (era un selector de agente que repetía esas pestañas). Las posiciones con protección muestran "Protección automática: SL … · TP …" y, si el SL está en el exchange (live), "El stop loss está como orden en el exchange."
+- Las órdenes de cada agente viven en su detalle (`/#/agents/:id`, [M7](M07-BOTS-SIGNALS.md)): pestaña **Órdenes** (con "Nueva orden") y **Posiciones** (con las ejecuciones debajo). `/#/orders` redirige al inicio (`/#/dashboard`) (era un selector de agente que repetía esas pestañas). Las posiciones con protección muestran "Protección automática: SL … · TP …" y, si el SL está en el exchange (live), "El stop loss está como orden en el exchange."
 - Aprobar / descartar una señal pendiente: en el detalle de la señal del agente y en la tarjeta "Señales por aprobar" del dashboard ([M7](M07-BOTS-SIGNALS.md)); llaman a `POST /api/signals/{id}/approve|reject` de este módulo.
 
 **Páginas — Administrador (solo admin):**
@@ -279,7 +279,7 @@ Por agente: `risk_params.max_notional` (tope propio; se aplica el menor) y `risk
 | Ruta | Archivo de ruta | Página / componentes |
 |-----|----------|----|
 | `/#/agents/:id` (pestañas Órdenes y Posiciones, página de [M7](M07-BOTS-SIGNALS.md)) | — | `components/orders-table.tsx` + `components/positions-grid.tsx` + `components/fills-table.tsx` + `components/order-form-dialog.tsx` + `components/order-fills-dialog.tsx` |
-| `/#/orders` | `routes/_app/orders.tsx` | Redirección a `/agents` |
+| `/#/orders` | `routes/_app/orders.tsx` | Redirección a `/dashboard` |
 | `/#/admin/orders` | `routes/_app/admin/orders.lazy.tsx` | `pages/admin-orders.tsx` + `components/order-fills-dialog.tsx` |
 
 - API: `api/orders.api.ts` (`listOrders`, `getOrder`, `createOrder`, `listPositions`, `listFills`; `Position` con `stop_loss`, `take_profit`, `signal_id`, `sl_order_id`); hooks `use-orders-queries.ts` / `use-orders-mutations.ts`; etiquetas `lib/orders-labels.ts`; badges `components/order-badges.tsx`.

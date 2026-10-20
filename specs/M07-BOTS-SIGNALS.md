@@ -37,11 +37,11 @@
 Hash routing: la URL real es `/#/<ruta>`.
 
 **Páginas — Usuario (cualquier usuario autenticado):**
-- `/#/agents` — **Mis agentes**: tarjetas con estado (punto que late si está activo), símbolo · timeframe, precio (último cierre, variación frente a la vela anterior y régimen), estrategia, última señal y botones Iniciar/Reanudar/Pausar. Filtro Todos / Activos / Detenidos. Sin agentes: bienvenida que explica qué es un agente.
+- `/#/dashboard` ([M1](M01-AUTH.md)) — **Inicio = lista de agentes** (desde 2026-10-20; `/#/agents` redirige aquí): tarjetas con estado (punto que late si está activo), símbolo · timeframe, precio (último cierre, variación frente a la vela anterior y régimen), estrategia, última señal y botones Iniciar/Reanudar/Pausar. Filtro Todos / Activos / Detenidos. Sin agentes: bienvenida que explica qué es un agente.
 - `/#/agents/new` — **Asistente de creación** en 4 pasos: (1) qué operar (solo símbolos con velas automáticas), (2) cómo opera (estrategia + conjunto de indicadores compatible, con el recomendado preseleccionado), (3) con qué dinero (cuentas propias con su saldo; crea una cuenta de práctica en línea si no hay), (4) revisar: nombre sugerido editable, riesgo de la estrategia en solo lectura, **"Cuando la IA aprueba una operación"** (selector Manual / Con aprobación / Automático, Manual por defecto; aviso en rojo si es Automático con cuenta live), "Iniciarlo al crear".
 - `/#/agents/:id` — **Detalle**: nombre editable, badge del modo de ejecución, controles, **Analizar ahora** (genera una señal y abre su detalle), aviso "Preparando datos" hasta que hay indicadores, pestañas Señales (columna **Ejecución**) · Órdenes (con Nueva orden) · Posiciones (+ ejecuciones) · **Mercado** (velas e indicadores del símbolo y timeframe del agente, con selector de cantidad y botón **Actualizar datos**, que descarga velas y recalcula indicadores también con el agente detenido; si no hay datos dice si se están preparando o cómo conseguirlos) · Configuración (tarjeta "Cuando la IA aprueba una operación" para cambiar el modo en cualquier estado —Automático pide confirmación—; en Con aprobación incluye **Minutos para aprobar**, 1–1440, vacío = valor por defecto del servidor; reglas e indicadores explicados). El detalle de una señal pendiente muestra **Aprobar** / **Descartar** con la cuenta atrás ("Vence en 45 min") y, en live, una confirmación extra.
 - `/#/dashboard` ([M1](M01-AUTH.md)) — tarjeta **Señales por aprobar** (solo si hay alguna): agente, acción, precios, R/R y botones Aprobar/Descartar; se refresca cada 30 s.
-- `/#/bots` y `/#/agent` redirigen a `/#/agents`.
+- `/#/agents`, `/#/bots` y `/#/agent` redirigen a `/#/dashboard`. La miga del detalle y del asistente es "Inicio".
 
 **Páginas — Administrador (solo admin):**
 - `/#/admin/agents` — "Todos los agentes" (Administración → Supervisión): vista global de todos los agentes con filtros por estado y modo; clic en una fila abre el detalle. `/#/admin/bots` redirige aquí.
@@ -57,7 +57,7 @@ Entregables:
 - ✅ Señales: BUY / SELL / HOLD con entry, SL, TP, position_size, rr_ratio (migración m07a)
 - ✅ Señales rechazadas persisten con approved=False (trazabilidad completa)
 - ✅ features_hash: SHA-256 del snapshot de features para auditoría
-- ✅ Web UI en React: Mis agentes, asistente, detalle y vista admin
+- ✅ Web UI en React: lista de agentes (en el inicio), asistente, detalle y vista admin
 - ✅ 55 tests unitarios pasando (bot entity, status transitions, signal generation)
 - ✅ **Agentes con nombre** (`bots.name`, migración `m07 add name to bots`)
 - ✅ **Propiedad** en todas las rutas de bots y señales (404 para bots ajenos)
@@ -240,11 +240,11 @@ Routers registrados en `app/app_factory.py` (dentro de `api_routers`, con `prefi
 ### Frontend (`frontend/src/modules/bots/`)
 | Ruta | Archivo de ruta | Página / componentes |
 |-----|----------|----|
-| `/#/agents` | `routes/_app/agents/index.lazy.tsx` | `pages/agents.tsx` + `components/agent-card.tsx` + `components/agent-price.tsx` (`hooks/use-symbol-snapshot.ts`) + `components/agents-empty-state.tsx` |
+| `/#/dashboard` (lista de agentes) | `routes/_app/dashboard.lazy.tsx` | `dashboard/pages/dashboard.tsx` ([M1](M01-AUTH.md)) + `components/agent-card.tsx` + `components/agent-price.tsx` (`hooks/use-symbol-snapshot.ts`) + `components/agents-empty-state.tsx` |
 | `/#/agents/new` | `routes/_app/agents/new.lazy.tsx` | `pages/agent-new.tsx` + `components/agent-wizard/{choice-card,symbol-step,strategy-step,account-step}.tsx` + `components/execution-mode-picker.tsx` + `shared/components/stepper.tsx` |
 | `/#/agents/:id` | `routes/_app/agents/$agentId.lazy.tsx` | `pages/agent-detail.tsx` + `components/{agent-controls,analyze-now-button,signals-table,signal-detail-sheet,signal-decision-actions,execution-mode-card,approval-ttl-field,agent-market-tab}.tsx` (Mercado: `useSyncBotMarketMutation`, invalida velas e indicadores) |
 | `/#/admin/agents` | `routes/_app/admin/agents.lazy.tsx` | `pages/admin-agents.tsx` + `components/bot-actions-menu.tsx` |
-| `/#/bots`, `/#/admin/bots`, `/#/agent` | `routes/_app/{bots,agent}.tsx`, `routes/_app/admin/bots.tsx` | Redirecciones (`beforeLoad` + `redirect`) |
+| `/#/agents`, `/#/bots`, `/#/admin/bots`, `/#/agent` | `routes/_app/agents/index.tsx`, `routes/_app/{bots,agent}.tsx`, `routes/_app/admin/bots.tsx` | Redirecciones (`beforeLoad` + `redirect`) |
 
 - API: `api/bots.api.ts` (`listBots({account_id, mine})`, `getBot`, `createBot`, `updateBot`, transiciones, `listSignals`, `generateSignal`, `listPendingSignals`, aprobar/rechazar; tipos `BotExecutionMode`, `SignalDecisionStatus`, `SignalDecisionChannel`).
 - Queries: `useBotsQuery`, `useMyBotsQuery` (`?mine=true`), `useBotQuery`, `useSignalsQuery`, `usePendingSignalsQuery` (clave bajo `SIGNALS_QUERY_KEY`, `refetchInterval` 30 s). Mutations: create, update, transition, generate signal, `useApproveSignalMutation`, `useRejectSignalMutation`. `hooks/use-bot-transition.ts` centraliza las transiciones con sus toasts.
@@ -298,4 +298,5 @@ Routers registrados en `app/app_factory.py` (dentro de `api_routers`, con `prefi
 - **2026-10-19** — **Modo de ejecución** Manual / Con aprobación / Automático (`bots.execution_mode`, `approval_ttl_minutes`), decisión por señal (`signals.decision_*`, `expires_at`, `candle_ts` UNIQUE; migración `f51e2dad9c13`), señales automáticas por vela cerrada en el scheduler, `GET /api/signals/pending`, aviso por Telegram en Con aprobación, UI (selector, badges, Aprobar/Descartar, tarjeta del dashboard).
 - **2026-10-19** — Campo **Minutos para aprobar** (`ApprovalTtlField`) en la tarjeta del modo de ejecución (solo en Con aprobación). El ciclo de ejecución del scheduler suma la reconciliación de órdenes de [M8](M08-ORDERS-EXECUTION.md) antes de proteger posiciones.
 - **2026-10-19** — Pestaña **Mercado** en el detalle del agente (`AgentMarketTab`: velas + indicadores de su símbolo/timeframe) con **Actualizar datos** (`SyncBotMarketDataService` → `POST /api/bots/{id}/market/sync`, reutiliza `FetchCandlesService` y `CalculateFeaturesService`). El agente concentra todo lo suyo: el menú del usuario pierde Órdenes, Símbolos, Velas e Indicadores, y el admin pierde Descargar velas y Calcular indicadores. El grupo admin "Operación" pasa a **Supervisión** con nombres que dicen el alcance (Todos los agentes, Todas las cuentas, Gestionar estrategias, Todas las órdenes, Todas las alertas) para no confundirlos con Mis agentes / Mis cuentas.
-- **2026-10-20** — Fila **Precio** en `AgentCard` (`AgentPrice` + `useSymbolSnapshot`, movido desde el dashboard): último cierre, variación y régimen del mercado de cada agente, en Mis agentes y en el inicio.
+- **2026-10-20** — Fila **Precio** en `AgentCard` (`AgentPrice` + `useSymbolSnapshot`, movido desde el dashboard): último cierre, variación y régimen del mercado de cada agente, en el inicio.
+- **2026-10-20** — Se retira la página "Mis agentes" (`pages/agents.tsx`): el inicio lista todos los agentes con el filtro por estado; `/agents` redirige a `/dashboard`.

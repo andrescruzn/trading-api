@@ -34,7 +34,7 @@
 Hash routing: la URL real es `/#/<ruta>`.
 
 **Páginas — Usuario (cualquier usuario autenticado):**
-- No tiene página propia. La antigua `/#/agent` (análisis puntual sin bot) redirige a `/#/agents`: el análisis se lanza con **Analizar ahora** en el detalle de cada agente ([M7](M07-BOTS-SIGNALS.md)), que llama a `POST /api/signals/generate` y guarda el resultado como señal. En la UI el LLM se nombra "la IA" ("agente" es el bot).
+- No tiene página propia. La antigua `/#/agent` (análisis puntual sin bot) redirige al inicio (`/#/dashboard`): el análisis se lanza con **Analizar ahora** en el detalle de cada agente ([M7](M07-BOTS-SIGNALS.md)), que llama a `POST /api/signals/generate` y guarda el resultado como señal. En la UI el LLM se nombra "la IA" ("agente" es el bot).
 
 **Páginas — Administrador (solo admin):**
 - No hay página admin específica en este módulo; la gestión de modelos ML se hace vía API
@@ -227,7 +227,7 @@ from app.modules.agent.rest import agent_router, models_router, model_runs_route
 ```
 
 ### Frontend
-- Se eliminó `frontend/src/modules/agent` (página `analyze.tsx`, `analysis-result-panel.tsx`, api y labels). `routes/_app/agent.tsx` solo redirige a `/agents`.
+- Se eliminó `frontend/src/modules/agent` (página `analyze.tsx`, `analysis-result-panel.tsx`, api y labels). `routes/_app/agent.tsx` solo redirige a `/dashboard`.
 - El análisis se usa desde `bots/components/analyze-now-button.tsx` ([M7](M07-BOTS-SIGNALS.md)); el resultado se ve en `signal-detail-sheet.tsx`.
 - `POST /api/agent/analyze` sigue disponible en la API (sin UI).
 - `models` / `model_runs` siguen sin UI.

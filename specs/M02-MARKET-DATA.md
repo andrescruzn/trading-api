@@ -35,7 +35,7 @@ Hash routing: la URL real es `/#/<ruta>`.
 
 **Usuario (todos los roles):**
 - `/#/market/explorer` — "Explorar mercados": ranking por fuerza de tendencia (velas 1d) con filtro por clase de activo y "Crear agente" (abre el asistente con el símbolo elegido). Los admin ven además "Actualizar datos"
-- Las velas del símbolo y timeframe de cada agente se ven en su pestaña **Mercado** (`/#/agents/:id`, [M7](M07-BOTS-SIGNALS.md)): solo existen velas para agentes activos, así que no hay visor suelto para el usuario. `/#/market/symbols` redirige a `/#/market/explorer` y `/#/market/candles` a `/#/agents`.
+- Las velas del símbolo y timeframe de cada agente se ven en su pestaña **Mercado** (`/#/agents/:id`, [M7](M07-BOTS-SIGNALS.md)): solo existen velas para agentes activos, así que no hay visor suelto para el usuario. `/#/market/symbols` redirige a `/#/market/explorer` y `/#/market/candles` al inicio (`/#/dashboard`).
 
 **Admin:**
 - `/#/admin/exchanges` — Gestionar exchanges
@@ -185,7 +185,7 @@ from app.modules.market.rest import exchanges_router, symbols_router, timeframes
 | Ruta | Archivo de ruta | Página |
 |-----|----------|----|
 | `/#/market/explorer` | `routes/_app/market/explorer.lazy.tsx` | `pages/explorer.tsx` (`useTrendExplorerQuery`, `useRefreshExplorerMutation`) |
-| `/#/market/symbols`, `/#/market/candles` | `routes/_app/market/{symbols,candles}.tsx` | Redirecciones (a `/market/explorer` y `/agents`) |
+| `/#/market/symbols`, `/#/market/candles` | `routes/_app/market/{symbols,candles}.tsx` | Redirecciones (a `/market/explorer` y `/dashboard`) |
 | `/#/admin/exchanges` | `routes/_app/admin/exchanges.lazy.tsx` | `pages/admin-exchanges.tsx` + `components/exchange-form-dialog.tsx` |
 | `/#/admin/symbols` | `routes/_app/admin/symbols.lazy.tsx` | `pages/admin-symbols.tsx` + `components/symbol-form-dialog.tsx` |
 | `/#/admin/timeframes` | `routes/_app/admin/timeframes.lazy.tsx` | `pages/admin-timeframes.tsx` |

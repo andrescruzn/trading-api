@@ -39,7 +39,7 @@
 Hash routing: la URL real es `/#/<ruta>`.
 
 **Páginas — Usuario (cualquier usuario autenticado):**
-- Los indicadores de cada agente se ven en su pestaña **Mercado** (`/#/agents/:id` → Indicadores, [M7](M07-BOTS-SIGNALS.md)), con la explicación de qué mide cada uno. Solo se calculan para agentes activos, así que no hay visor suelto para el usuario: `/#/features` redirige a `/#/agents`.
+- Los indicadores de cada agente se ven en su pestaña **Mercado** (`/#/agents/:id` → Indicadores, [M7](M07-BOTS-SIGNALS.md)), con la explicación de qué mide cada uno. Solo se calculan para agentes activos, así que no hay visor suelto para el usuario: `/#/features` redirige al inicio (`/#/dashboard`).
 
 **Páginas — Administrador (solo admin):**
 - `/#/admin/feature-sets` — "Conjuntos de indicadores": lista con enfoque e indicadores y crear nuevos (spec `{focus, indicators}`). El cálculo ya no se lanza desde aquí: se hace por agente (scheduler mientras está activo, o "Actualizar datos" en su pestaña Mercado). `POST /api/candle-features/calculate` sigue disponible para el admin solo por API
@@ -164,7 +164,7 @@ from app.modules.features.rest import feature_sets_router, candle_features_route
 | Ruta | Archivo de ruta | Página / componentes |
 |-----|----------|----|
 | — (pestaña Mercado de `/#/agents/:id`, [M7](M07-BOTS-SIGNALS.md)) | — | `components/candle-features-table.tsx` + `components/indicators-glossary.tsx` + `components/regime-badge.tsx` |
-| `/#/features` | `routes/_app/features.tsx` | Redirección a `/agents` |
+| `/#/features` | `routes/_app/features.tsx` | Redirección a `/dashboard` |
 | `/#/admin/feature-sets` | `routes/_app/admin/feature-sets.lazy.tsx` | `pages/admin-feature-sets.tsx` + `components/feature-set-form-dialog.tsx` |
 
 - API: `api/features.api.ts`; hooks `use-features-queries.ts` (`useCandleFeaturesQuery`, también lo usa el dashboard de [M1](M01-AUTH.md)) y `use-features-mutations.ts`; etiquetas y régimen en `lib/features-labels.ts` y `lib/regime.ts` (`regimeLabel`, `REGIME_BADGE_VARIANT`).

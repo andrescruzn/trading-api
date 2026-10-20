@@ -354,7 +354,6 @@ La aplicación tiene dos partes que se encienden por separado:
 Las direcciones de la web llevan un "#" después del dominio. Por ejemplo:
   http://localhost:5193/#/login       → pantalla de inicio de sesión
   http://localhost:5193/#/dashboard   → panel principal
-  http://localhost:5193/#/agents      → tus agentes
 
 Para iniciar sesión no hay contraseña: escribes tu correo, te llega un código de 6 dígitos
 y lo escribes antes de que venza (10 minutos). Si no te llegó o se venció, pide uno nuevo;
@@ -373,16 +372,16 @@ sesión anterior se cierra y la web te muestra "Tu sesión expiró" y te lleva a
 Todo se navega desde el menú lateral: Inicio, Operar (mis agentes, alertas, mis cuentas),
 Explorar (explorar mercados, estrategias) y, según tu rol, "Mi inversión" (inversores)
 o "Administración" (administradores). En Administración, "Supervisión" muestra lo de todos los
-usuarios: "Todos los agentes" son los mismos agentes de "Mis agentes", pero de todo el sistema.
+usuarios: "Todos los agentes" son los mismos agentes del inicio, pero de todo el sistema.
 
 Todo lo que pertenece a un agente se ve dentro del agente: sus señales, sus órdenes, sus
 posiciones y los precios e indicadores de su mercado. No hay páginas sueltas de órdenes, velas o
 indicadores porque esos datos solo existen para los agentes que creaste y están activos.
 
-El inicio muestra tus agentes; cada tarjeta trae el último precio de su mercado, cuánto subió o
-bajó frente a la vela anterior y el régimen (tendencia o rango). Si aún no tienes ninguno, te
-explica qué es un agente y te ofrece
-crear el primero.
+El inicio muestra todos tus agentes (con filtro Todos / Activos / Detenidos). Cada tarjeta trae
+el último precio de su mercado, cuánto subió o bajó frente a la vela anterior y el régimen
+(tendencia o rango). Si aún no tienes ninguno, te explica qué es un agente y te ofrece crear el
+primero.
 
 3.0.1 Módulo 2 — Explorar mercados (¿dónde crear un agente?)
 ─────────────────────────────────────────────────────────────
@@ -572,7 +571,7 @@ métricas (accuracy, F1, etc.) y parámetros usados. Permite comparar versiones 
 Un agente es la pieza que automatiza todo y el punto de entrada de la app. Une un símbolo, una
 estrategia, un conjunto de indicadores y una cuenta en una sola unidad que analiza el mercado.
 
-Cómo crear un agente (menú "Mis agentes" → "Nuevo agente", o "Crear agente" en el inicio):
+Cómo crear un agente ("Crear agente" en el inicio):
 
   Paso 1 — ¿Qué quieres operar?
     Eliges el símbolo (por ejemplo BTC/USDT). Solo aparecen los que el sistema puede descargar solo.
@@ -665,7 +664,8 @@ features_hash:
   exactamente qué datos vio la IA cuando tomó la decisión.
 
 Páginas de la UI:
-  /#/agents       → Mis agentes: tarjetas con estado, símbolo, precio, estrategia y última señal
+  /#/dashboard    → Inicio: todos tus agentes (filtro Todos / Activos / Detenidos) con estado,
+                    símbolo, precio, estrategia y última señal
   /#/agents/new   → Asistente para crear un agente
   /#/agents/12    → Detalle del agente 12
   /#/admin/agents → Vista admin: todos los agentes del sistema con filtros de estado y modo
@@ -747,7 +747,7 @@ Esto permite acumular 50-100+ operaciones y calcular métricas reales de la estr
 
 Páginas de la UI:
   /#/agents/12    → Pestañas Órdenes y Posiciones del agente 12; "Nueva orden" abre un formulario
-                    para crear una orden manual (/#/orders ahora lleva a Mis agentes)
+                    para crear una orden manual (/#/orders ahora lleva al inicio)
   /#/admin/orders → Vista admin: todas las órdenes del sistema con filtros de lado, estado y tipo
 
 ---

@@ -374,7 +374,9 @@ Explorar (explorar mercados, estrategias) y, según tu rol, "Mi inversión" (inv
 o "Administración" (administradores). En Administración, "Supervisión" muestra lo de todos los
 usuarios: "Todos los agentes" son los mismos agentes del inicio, pero de todo el sistema. Cada
 vista dice quién es el dueño (nombre y correo) y se puede filtrar por persona. "Configuración"
-reúne lo que el administrador define para todos: las estrategias y el canal de Telegram.
+reúne lo que el administrador define para todos: los usuarios (y su rol), las estrategias y el
+canal de Telegram. En "Usuarios" se cambia el rol de cada persona (Usuario, Administrador o
+Inversor); nadie puede cambiar el suyo, para que la app nunca se quede sin administrador.
 
 Todo lo que pertenece a un agente se ve dentro del agente: sus señales, sus órdenes, sus
 posiciones y los precios e indicadores de su mercado. No hay páginas sueltas de órdenes, velas o

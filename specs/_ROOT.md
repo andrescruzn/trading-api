@@ -153,7 +153,7 @@ Hash routing: la URL real es `/#/<ruta>`. Cada ruta vive en `frontend/src/routes
 |---|---|
 | Público | `/login` |
 | Usuario (y demás roles) | `/dashboard` (inicio = lista de agentes), `/agents/new`, `/agents/:id`, `/alerts`, `/portfolio`, `/strategies`, `/market/explorer` (`/agents`, `/bots`, `/agent`, `/orders`, `/features` y `/market/candles` redirigen a `/dashboard`; `/market/symbols` a `/market/explorer`) |
-| Admin (`_app/admin/*`) | `/admin/exchanges`, `/admin/symbols`, `/admin/timeframes`, `/admin/feature-sets`, `/admin/accounts`, `/admin/strategies`, `/admin/agents`, `/admin/orders`, `/admin/alerts`, `/admin/telegram`, `/admin/investors`, `/admin/managed-accounts`, `/admin/billing` |
+| Admin (`_app/admin/*`) | `/admin/exchanges`, `/admin/symbols`, `/admin/timeframes`, `/admin/feature-sets`, `/admin/users`, `/admin/accounts`, `/admin/strategies`, `/admin/agents`, `/admin/orders`, `/admin/alerts`, `/admin/telegram`, `/admin/investors`, `/admin/managed-accounts`, `/admin/billing` |
 | Inversor (`_app/investor/*`) | `/investor/dashboard` |
 
 Comprar/Vender vive en el [Módulo 8 — Orders & Execution](M08-ORDERS-EXECUTION.md).
@@ -166,7 +166,7 @@ Cambios del 2026-10-19 (nuevas piezas dentro de páginas existentes y reorganiza
 - `/agents/:id` → Configuración, en modo Con aprobación: campo **Minutos para aprobar** — [M7](M07-BOTS-SIGNALS.md).
 - Menú de usuario (todas las páginas): **Conectar Telegram** (diálogo) — [M1](M01-AUTH.md) / [M9](M09-ALERTS.md).
 
-En la UI los bots se llaman **agentes** y son el punto de entrada: el inicio es la lista de agentes (con filtro por estado) y el menú se organiza en **Operar** (Alertas, Mis cuentas) y **Explorar** (Explorar mercados, Estrategias). Todo lo que depende de un agente (órdenes, posiciones, velas, indicadores) vive dentro de su detalle, porque esos datos solo existen para agentes creados y activos. En Administración, el grupo **Supervisión** reúne las vistas de solo lectura de todos los usuarios con nombres que dicen su alcance (Todos los agentes, Todas las cuentas, Todas las órdenes, Todas las alertas), cada una con columna y filtro de **Dueño**; **Configuración** reúne lo que el admin define para el sistema (Gestionar estrategias, Telegram). En código, tablas y API siguen siendo `bot`.
+En la UI los bots se llaman **agentes** y son el punto de entrada: el inicio es la lista de agentes (con filtro por estado) y el menú se organiza en **Operar** (Alertas, Mis cuentas) y **Explorar** (Explorar mercados, Estrategias). Todo lo que depende de un agente (órdenes, posiciones, velas, indicadores) vive dentro de su detalle, porque esos datos solo existen para agentes creados y activos. En Administración, el grupo **Supervisión** reúne las vistas de solo lectura de todos los usuarios con nombres que dicen su alcance (Todos los agentes, Todas las cuentas, Todas las órdenes, Todas las alertas), cada una con columna y filtro de **Dueño**; **Configuración** reúne lo que el admin define para el sistema (Usuarios —con el cambio de rol—, Gestionar estrategias, Telegram). En código, tablas y API siguen siendo `bot`.
 
 ---
 

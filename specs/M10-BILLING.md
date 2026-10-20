@@ -45,7 +45,7 @@
 Hash routing: la URL real es `/#/<ruta>`.
 
 **Páginas — Administrador (solo admin):**
-- `/#/admin/investors` — CRUD de inversores: crear (el usuario se elige de una lista: solo usuarios con rol Inversor sin perfil, por nombre y correo, vía `GET /api/users` de [M1](M01-AUTH.md)), editar fee (en %) y estado. La tabla muestra el usuario con nombre y correo
+- `/#/admin/investors` — CRUD de inversores: crear (el usuario se elige de una lista: solo usuarios con rol Inversor sin perfil, por nombre y correo, vía `GET /api/users` de [M1](M01-AUTH.md); el rol se asigna en Configuración → Usuarios), editar fee (en %) y estado. La tabla muestra el usuario con nombre y correo
 - `/#/admin/managed-accounts` — CRUD de cuentas administradas: capital, HWM, período, bot asignado. El inversor se muestra por nombre y correo (tabla y selector)
 - `/#/admin/billing` — Gestión de períodos: abrir/cerrar período (diálogos con vista previa del fee) + High-Water Mark + historial de fees
 

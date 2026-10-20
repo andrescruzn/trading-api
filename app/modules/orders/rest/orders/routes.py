@@ -7,6 +7,9 @@
 # - POST /orders         → crear y ejecutar una orden
 # - GET  /orders         → listar órdenes (admin: todas; user: por bot_id)
 # - GET  /orders/{id}    → detalle de una orden
+# - POST /orders/{id}/cancel → cancelar una orden live abierta
+#
+# Crear y cancelar tienen rate limit por usuario (ORDER_REQUESTS_PER_MINUTE).
 # ======================================================================
 
 from __future__ import annotations
@@ -24,6 +27,7 @@ from app.common.http import (
     build_success_response,
 )
 from app.common.security.jwt import owner_scope, token_required_actual
+from app.common.security.rate_limiter import check_user_rate_limit, order_rate_limiter
 from app.extensions.db import get_db
 from app.modules.orders.domain.order_entity import Order
 from app.modules.orders.providers import OrderServiceFactory, get_order_factory
@@ -95,6 +99,8 @@ def create_order(
     por las salvaguardas del servidor (RiskGate) y se ejecuta via
     PaperExecutor (paper) o LiveExecutor (live).
     """
+    check_user_rate_limit(order_rate_limiter, identity["user_id"])
+
     result = factory.create_order().create(
         bot_id=payload.bot_id,
         side=payload.side,
@@ -105,6 +111,8 @@ def create_order(
         time_in_force=payload.time_in_force,
         signal_id=payload.signal_id,
         owner_id=owner_scope(identity),
+        stop_loss=payload.stop_loss,
+        take_profit=payload.take_profit,
     )
 
     if not result.success:
@@ -164,3 +172,38 @@ def get_order(
         return build_error_response(result, ORDER_ERROR_MESSAGES)
 
     return build_success_response(data=_order_to_dict(result.data), msg="OK")
+
+
+# ======================================================================
+# POST /orders/{order_id}/cancel
+# ======================================================================
+
+# Mensaje según cómo quedó la orden después de sincronizarla
+_ORDER_CANCEL_MESSAGES: dict[str, str] = {
+    "canceled": "Orden cancelada.",
+    "filled":   "La orden ya se había ejecutado en el exchange; actualizamos su estado.",
+}
+
+
+@router.post("/{order_id}/cancel", status_code=200)
+def cancel_order(
+    order_id: int,
+    identity: dict = Depends(token_required_actual),
+    factory: OrderServiceFactory = Depends(get_factory),
+):
+    """Cancela una orden live abierta (límite, stop o ejecutada en parte)."""
+    check_user_rate_limit(order_rate_limiter, identity["user_id"])
+
+    result = factory.cancel_order().cancel(order_id=order_id, owner_id=owner_scope(identity))
+
+    if not result.success:
+        return build_error_response(result, ORDER_ERROR_MESSAGES)
+
+    return build_success_response(
+        data=_order_to_dict(result.data),
+        msg=_ORDER_CANCEL_MESSAGES.get(
+            result.data.status,
+            "Pedimos la cancelación al exchange. El estado se actualiza en unos minutos.",
+        ),
+    )
+

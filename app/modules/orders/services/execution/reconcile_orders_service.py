@@ -94,6 +94,14 @@ class ReconcileOrdersService:
 
         return ServiceResult.ok(data=report)
 
+    def sync_one(self, order: Order) -> dict | None:
+        """
+        Sincroniza una sola orden ahora (p. ej. justo después de cancelarla,
+        para registrar lo que se ejecutó desde el último ciclo). None si no
+        cambió nada o el exchange no respondió (lo retoma el siguiente ciclo).
+        """
+        return self._reconcile(order, utc_now())
+
     # ------------------------------------------------------------------
 
     def _reconcile(self, order: Order, now) -> dict | None:

@@ -373,6 +373,9 @@ class Settings:
             os.getenv("TRADING_LIVE_ENABLED", "false").lower() == "true"
         )
         self.ORDER_MAX_NOTIONAL: float = _env_float("ORDER_MAX_NOTIONAL", 10000.0)
+        # ORDER_REQUESTS_PER_MINUTE: crear, cancelar o aprobar órdenes por
+        #   usuario y minuto (cada una puede llegar al exchange).
+        self.ORDER_REQUESTS_PER_MINUTE: int = _env_int("ORDER_REQUESTS_PER_MINUTE", 20)
 
         # ORDER_NATIVE_STOP_LOSS: en live, al abrir una posición desde una señal
         #   se deja el stop loss como orden en el exchange (protege aunque la

@@ -16,7 +16,10 @@ import {
 } from '@/modules/ui/components/dropdown-menu';
 
 export function AdminStrategiesPage() {
-	usePageBreadcrumb([{ label: 'Administración' }, { label: 'Estrategias' }]);
+	usePageBreadcrumb([
+		{ label: 'Administración' },
+		{ label: 'Gestionar estrategias' },
+	]);
 	const strategiesQuery = useStrategiesQuery();
 	// `undefined` = diálogo cerrado; `null` = crear; una estrategia = editar.
 	const [editing, setEditing] = useState<Strategy | null | undefined>(
@@ -33,7 +36,7 @@ export function AdminStrategiesPage() {
 	return (
 		<div className="flex flex-col gap-6">
 			<PageListHeader
-				title="Estrategias"
+				title="Gestionar estrategias"
 				description="Crea y edita las reglas con las que el sistema evalúa cada operación."
 				actions={[
 					{

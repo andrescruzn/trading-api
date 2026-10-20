@@ -3,8 +3,8 @@ import {
 	IconBook,
 	IconBriefcase,
 	IconCompass,
-	IconCpu,
 	IconDatabase,
+	IconEye,
 	IconHome,
 	IconRobot,
 	IconTrendingUp,
@@ -80,14 +80,16 @@ const navSections: NavSectionData[] = [
 				],
 			},
 			{
-				title: 'Operación',
-				icon: IconCpu,
+				// Lo de todos los usuarios: los nombres dicen el alcance para no
+				// confundirse con "Mis agentes", "Mis cuentas"… de Operar.
+				title: 'Supervisión',
+				icon: IconEye,
 				items: [
-					{ title: 'Cuentas', url: '/admin/accounts' },
-					{ title: 'Estrategias', url: '/admin/strategies' },
-					{ title: 'Agentes', url: '/admin/agents' },
-					{ title: 'Órdenes', url: '/admin/orders' },
-					{ title: 'Alertas', url: '/admin/alerts' },
+					{ title: 'Todos los agentes', url: '/admin/agents' },
+					{ title: 'Todas las cuentas', url: '/admin/accounts' },
+					{ title: 'Gestionar estrategias', url: '/admin/strategies' },
+					{ title: 'Todas las órdenes', url: '/admin/orders' },
+					{ title: 'Todas las alertas', url: '/admin/alerts' },
 					{ title: 'Telegram', url: '/admin/telegram' },
 				],
 			},

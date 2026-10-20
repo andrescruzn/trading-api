@@ -28,7 +28,10 @@ import {
 const EMPTY_CELL = <span className="text-muted-foreground">—</span>;
 
 export function AdminAlertsPage() {
-	usePageBreadcrumb([{ label: 'Administración' }, { label: 'Alertas' }]);
+	usePageBreadcrumb([
+		{ label: 'Administración' },
+		{ label: 'Todas las alertas' },
+	]);
 	const rulesQuery = useAlertRulesQuery();
 	const botsQuery = useBotsQuery();
 	const symbolsQuery = useSymbolsQuery();
@@ -86,7 +89,7 @@ export function AdminAlertsPage() {
 	return (
 		<div className="flex flex-col gap-6">
 			<PageListHeader
-				title="Alertas"
+				title="Todas las alertas"
 				description="Reglas y eventos de alerta de todos los usuarios. Solo lectura."
 				actions={[
 					{

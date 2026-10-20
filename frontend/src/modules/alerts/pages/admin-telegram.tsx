@@ -30,7 +30,7 @@ TELEGRAM_DEFAULT_CHAT_ID=<id_del_chat>`;
 export function AdminTelegramPage() {
 	usePageBreadcrumb([
 		{ label: 'Administración' },
-		{ label: 'Alertas', href: '/admin/alerts' },
+		{ label: 'Todas las alertas', href: '/admin/alerts' },
 		{ label: 'Telegram' },
 	]);
 	const testMutation = useSendTelegramTestMutation();
@@ -42,7 +42,7 @@ export function AdminTelegramPage() {
 				description="Comprueba que el servidor puede enviar alertas al chat de Telegram configurado."
 				actions={[
 					{
-						label: 'Volver a alertas',
+						label: 'Volver a todas las alertas',
 						icon: <IconArrowLeft />,
 						variant: 'outline',
 						render: <Link to="/admin/alerts" />,

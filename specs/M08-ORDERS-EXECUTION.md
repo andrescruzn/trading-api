@@ -149,6 +149,7 @@ Entregables:
 |---|---|---|
 | Alta | **Tests** de `CreateOrderService` (paper y live con ccxt mockeado: `filled`/`sent`/rechazo/incierto, cancelación del SL nativo), `RiskGateService`, `ExecuteSignalService` (carrera app/Telegram, precio movido, cantidad recalculada, SL nativo que falla), `ProtectPositionsService` (con y sin SL nativo), `ReconcileOrdersService` (fill tardío, parcial, delta de comisión, perdida a los 10 min, desvincular SL), `NativeStopService`, `LiveExecutor.fetch`/`_to_result`, `Position.apply_*_fill`/`protection_hit` y la máquina de estados de `Order` | M |
 | Alta | **Correr** la prueba de testnet (`scripts/testnet_check.py` y el checklist de `docs/TESTNET.md`) con cada exchange que se vaya a usar y anotar el resultado aquí | S |
+| Media | **Índice `idx_orders_ts`** (migración): "Todas las órdenes" sin filtros hace `COUNT` y `ORDER BY ts, id` sin índice propio; con mucho volumen se notará | S |
 | Media | **TP nativo / OCO** en los exchanges que lo soporten (`create_take_profit_order` o OCO propia del exchange): hoy el TP se vigila por ciclo y un hueco de precio cierra más lejos del nivel | L |
 | Media | Ajustar la cantidad del SL nativo si la posición cambia (compra manual sobre una posición protegida: hoy el SL cubre solo la cantidad que había al colocarlo) | S |
 | Media | `PaperExecutor` realista: comisión y *slippage* configurables, y cierre por SL/TP al precio del nivel (hoy usa el cierre de la última vela) | S |

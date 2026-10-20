@@ -13,6 +13,8 @@ import {
 	ACCOUNT_STATUS_OPTIONS,
 } from '@/modules/accounts/lib/accounts-labels';
 import { usePageBreadcrumb } from '@/modules/app-shell/hooks/use-page-breadcrumb';
+import { OwnerCell } from '@/modules/auth/components/owner-cell';
+import { useOwners } from '@/modules/auth/hooks/use-users-queries';
 import { useExchangesQuery } from '@/modules/market/hooks/use-market-queries';
 import {
 	DataTable,
@@ -45,6 +47,8 @@ export function AdminAccountsPage() {
 	]);
 	const accountsQuery = useAccountsQuery();
 	const exchangesQuery = useExchangesQuery();
+	const owners = useOwners(ALL);
+	const [owner, setOwner] = useState(ALL);
 	const [mode, setMode] = useState(ALL);
 	const [status, setStatus] = useState(ALL);
 	const [viewingBalances, setViewingBalances] = useState<Account | null>(null);
@@ -52,10 +56,11 @@ export function AdminAccountsPage() {
 	// El endpoint no filtra: con pocas cuentas basta con hacerlo en el navegador.
 	const accounts = accountsQuery.data?.filter(
 		(account) =>
+			(owner === ALL || account.user_id === Number(owner)) &&
 			(mode === ALL || account.mode === mode) &&
 			(status === ALL || account.status === status),
 	);
-	const isFiltered = mode !== ALL || status !== ALL;
+	const isFiltered = owner !== ALL || mode !== ALL || status !== ALL;
 
 	const exchangeName = (id: number | null) =>
 		id === null
@@ -71,15 +76,14 @@ export function AdminAccountsPage() {
 			cell: (row) => row.id,
 		},
 		{
-			id: 'user',
-			header: 'Usuario',
-			className: 'font-mono',
-			cell: (row) => `#${row.user_id}`,
-		},
-		{
 			id: 'name',
 			header: 'Nombre',
 			cell: (row) => <span className="font-medium">{row.name}</span>,
+		},
+		{
+			id: 'owner',
+			header: 'Dueño',
+			cell: (row) => <OwnerCell userId={row.user_id} users={owners.byId} />,
 		},
 		{
 			id: 'exchange',
@@ -135,7 +139,14 @@ export function AdminAccountsPage() {
 				title="Todas las cuentas"
 				description="Todas las cuentas del sistema, de todos los usuarios. Solo lectura."
 			/>
-			<div className="grid gap-3 sm:grid-cols-2 lg:max-w-xl">
+			<div className="grid gap-3 sm:grid-cols-3 lg:max-w-3xl">
+				<OptionSelect
+					aria-label="Dueño"
+					size="sm"
+					value={owner}
+					onChange={(value) => setOwner(value ?? ALL)}
+					options={owners.options}
+				/>
 				<OptionSelect
 					aria-label="Modo"
 					size="sm"

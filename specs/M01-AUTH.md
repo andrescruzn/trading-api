@@ -14,7 +14,7 @@
 | Lo usan | Todos los módulos (guardas `jwt_guard` / `role_guard`, helpers `owner_scope` / `is_admin`); el shell del frontend (`app-shell`) aloja todas las páginas; [M9](M09-ALERTS.md) usa el chat de Telegram vinculado |
 | Prefijo API | `/api/users` (incluye `/api/users/me/telegram`) |
 | Frontend | `frontend/src/modules/auth`, `app-shell`, `dashboard` |
-| Última revisión | 2026-10-19 |
+| Última revisión | 2026-10-20 |
 
 ## Descripción
 
@@ -39,10 +39,13 @@ Hash routing: la URL real es `/#/<ruta>`.
 - `/#/login` — Inicio de sesión con código por correo: se escribe el correo, llega un OTP de 6 dígitos (cuenta regresiva y botón para reenviar). `/` redirige a `/dashboard` o `/login` según haya sesión.
 
 **Usuario (y demás roles):**
-- `/#/dashboard` — Panel principal centrado en los **agentes** ([M7](M07-BOTS-SIGNALS.md)): sin agentes, bienvenida con "Crear agente"; con agentes, KPIs, tarjeta **Señales por aprobar** (solo si hay alguna), tarjetas de los agentes y el mercado que están viendo
+- `/#/dashboard` — Panel principal centrado en los **agentes** ([M7](M07-BOTS-SIGNALS.md)): sin agentes, bienvenida con "Crear agente"; con agentes, KPIs, tarjeta **Señales por aprobar** (solo si hay alguna), **todos** los agentes con filtro Todos / Activos / Detenidos (cada tarjeta con el precio, la variación y el régimen de su mercado). Es la lista de agentes: la antigua página "Mis agentes" (`/#/agents`) redirige aquí
 - Menú de usuario (`nav-user`) → **Conectar Telegram** / **Telegram conectado**: diálogo para generar el enlace de vinculación (un solo uso, 10 min), confirmar con "Ya lo vinculé" o desvincular
 
-**Admin / Inversor:** no tiene páginas propias; el shell solo muestra la sección "Administración" a `admin` y "Mi inversión" a `investor`.
+**Admin:**
+- `/#/admin/users` — "Usuarios" (Administración → Configuración): lista de usuarios con rol, estado y último ingreso, filtro por rol y diálogo **Cambiar rol** (Usuario / Administrador / Inversor) con aviso de lo que gana o pierde la persona. En la fila propia dice "Tú" (no se puede cambiar el propio rol).
+
+**Inversor:** no tiene páginas propias en este módulo; el shell solo muestra la sección "Administración" a `admin` y "Mi inversión" a `investor`.
 
 ## Entregables
 
@@ -52,6 +55,8 @@ Entregables:
 - ~~Cambiar contraseña~~ (eliminado el 2026-10-08: no hay contraseñas)
 - Logout con cookie HTTP-only
 - `GET /api/users/me` (perfil del usuario autenticado)
+- `GET /api/users` (solo admin): id, nombre, correo, rol, estado y último ingreso de cada usuario, para la columna Dueño de Supervisión y la página Usuarios (2026-10-20)
+- `PUT /api/users/{id}/role` (solo admin): cambiar el rol de otro usuario (2026-10-20)
 - Security headers middleware (CSP, X-Frame-Options, etc.)
 - 42 tests unitarios pasando
 - ✅ (2026-10-08) Frontend React: shell con sidebar, login por código, dashboard y aviso de sesión expirada
@@ -71,6 +76,7 @@ Tablas usadas: `users`, `roles`
 | Páginas admin del front redirigen a `/dashboard` (`RoleGuard` en `_app/admin.tsx` / `_app/investor.tsx`); la API responde 403 | UX: el usuario sin permiso no ve un error crudo. El guard es solo UX: el backend valida el rol en cada endpoint | 403 con página de error |
 | OTP se genera con `otp_generator` y se guarda **hasheado** (`otp_hasher`) | Si se filtra la BD, los códigos no son utilizables | OTP en claro con expiración corta |
 | **Anti-enumeración en el login:** `POST /users/login` responde igual (200 `otp_required`) si el correo no tiene cuenta o está inactiva, sin generar OTP ni enviar correo; en `verify`, correo sin cuenta / sin código / vencido / incorrecto → 401 con el mismo texto (`OTP_VERIFY_ERROR_MESSAGES`), y `USER_NOT_ALLOWED` solo tras un código correcto. El front dice "Si {correo} tiene una cuenta, te enviamos un código" | La pantalla no confirma qué correos están registrados | Mensaje "No encontramos una cuenta con ese correo" (eliminado el 2026-10-08) |
+| **Cambio de rol solo por un admin y nunca sobre sí mismo** (`PUT /api/users/{id}/role`, código → ID con `AUTH_*_ROLE_ID`). Aplica desde la siguiente petición: el guard JWT lee el rol de la BD en cada request, así que no hace falta cerrar la sesión de la persona | Sin auto-cambio el sistema nunca se queda sin admin y nadie se quita el acceso por error | Regla de "último admin" (redundante si nadie puede cambiar su propio rol); revocar la sesión al cambiar el rol |
 | **Sin lockout de cuenta; rate limit por correo e IP.** Por correo: 3 códigos pedidos y 5 intentos de verificación cada 10 min (`otp_request_rate_limiter` / `otp_verify_rate_limiter`); por IP: 10/min por ruta. Cuenta igual exista o no el correo. Pedir otro código reemplaza al anterior. Se eliminan `users.failed_attempts` y `users.login_locked_until` (migración `9ca3ab02fd7a`) | Con 6 dígitos y 10 min de vigencia, 5 intentos por ventana dejan ~1 en 200.000 de acertar; el lockout delataba qué correos tienen cuenta y dejaba bloquear cuentas ajenas | Lockout 3 fallos → 1 h (eliminado el 2026-10-08) |
 | **Correo del OTP en segundo plano** (`MailerService.send_by_template_in_background` → `app/common/utils/background.py`, pool de 4 hilos, 3 intentos con esperas de 2 s y 10 s; el fallo final va al log con el correo enmascarado) | La respuesta no espera al SMTP: tarda lo mismo exista o no la cuenta y ya no hay 502 por el proveedor de correo | Envío síncrono con 502 `OTP_EMAIL_SEND_FAILED` (eliminado) · cola externa (Celery/Redis) |
 | API **headless** bajo `/api` + SPA React separada (`frontend/`, hash routing) | Un solo contrato JSON para cualquier cliente; el front se despliega aparte y las URLs (`/#/bots`) no chocan con la API | Páginas Jinja2 servidas por FastAPI (eliminadas el 2026-10-08) |
@@ -162,10 +168,12 @@ Todas las rutas REST se montan bajo `settings.API_PREFIX` (`/api`) en `app/app_f
 | POST | `/api/users/logout` | cookie |
 | POST | `/api/users/token/rotate` | cookie |
 | GET  | `/api/users/me` | cookie (incluye `telegram_linked`) |
+| GET  | `/api/users` | admin (`id`, `email`, `full_name`, `role_code`, `role_label`, `status`, `last_login_at`; sin OTP, JTI ni Telegram) |
+| PUT  | `/api/users/{id}/role` | admin (`{role_code: user\|admin\|investor}`; 422 `USER_CANNOT_CHANGE_OWN_ROLE` / `USER_INVALID_ROLE`, 404 `USER_NOT_FOUND`) |
 | POST | `/api/users/me/telegram/link` | cookie (enlace de vinculación de un solo uso) |
 | DELETE | `/api/users/me/telegram` | cookie (desvincula el chat) |
 
-El router de Telegram (`app/modules/users/rest/telegram/routes.py`, `prefix="/users/me/telegram"`) se registra como `telegram_link_router`; textos en `rest/telegram/error_messages.py`.
+El router de Telegram (`app/modules/users/rest/telegram/routes.py`, `prefix="/users/me/telegram"`) se registra como `telegram_link_router`; textos en `rest/telegram/error_messages.py`. `GET /api/users` vive en `rest/users/routes.py` (`users_router`) → `ListUsersService` / `UpdateUserRoleService` (`services/users/`) → `UserRepository.list_all()` / `update()`; textos en `rest/users/error_messages.py`. En el front: `auth/api/users.api.ts`, `useUsersQuery` / `useOwners` (`auth/hooks/use-users-queries.ts`) y `OwnerCell` (`auth/components/owner-cell.tsx`); página `auth/pages/admin-users.tsx` + `auth/components/user-role-dialog.tsx` + `useUpdateUserRoleMutation` (`auth/hooks/use-users-mutations.ts`); `ROLE_LABELS` / `ROLE_OPTIONS` en `auth/lib/roles.ts`.
 
 ### Errores
 - Todo error (401/403/404/405/422/429) sale con el envelope `{msg, errorCode, data}` (`app/common/errors/errors.py`).
@@ -176,7 +184,7 @@ El router de Telegram (`app/modules/users/rest/telegram/routes.py`, `prefix="/us
 | Ruta | Archivo de ruta | Página / componentes |
 |-----|----------|----|
 | `/#/login` | `routes/_auth/login.lazy.tsx` | `auth/pages/login.tsx` + `auth/components/login-form.tsx` (correo → código, `InputOTP`, `useCountdown`) |
-| `/#/dashboard` | `routes/_app/dashboard.lazy.tsx` | `dashboard/pages/dashboard.tsx` + `dashboard/components/price-chart.tsx` + `dashboard/hooks/use-symbol-snapshot.ts` |
+| `/#/dashboard` | `routes/_app/dashboard.lazy.tsx` | `dashboard/pages/dashboard.tsx` (las tarjetas son `AgentCard` de [M7](M07-BOTS-SIGNALS.md)) |
 
 - **API:** `auth/api/auth.api.ts` (`requestOtp`, `verifyOtp`, `logout`, `me` con `telegram_linked`, y las llamadas de vincular/desvincular Telegram) y `auth/hooks/use-auth-mutations.ts`.
 - **Telegram:** `app-shell/components/telegram-link-dialog.tsx` (`TelegramLinkDialog`: "Generar enlace" → "Abrir Telegram" → "Ya lo vinculé" refresca `GET /users/me`; "Desvincular"), abierto desde `nav-user.tsx` ("Conectar Telegram" / "Telegram conectado").
@@ -220,9 +228,9 @@ El router de Telegram (`app/modules/users/rest/telegram/routes.py`, `prefix="/us
 ### Dashboard — agentes primero (`/#/dashboard`)
 - Saludo con el nombre y cuántos agentes están analizando el mercado (`GET /api/users/me`, `GET /api/bots?mine=true`).
 - **Sin agentes:** `AgentsEmptyState` (qué es un agente, cómo funciona en 3 pasos y botón "Crear agente" → `/#/agents/new`).
-- **Con agentes:** 3 `StatCard` (agentes activos, paper/live, mis cuentas), aviso si ninguno está activo y hasta 6 `AgentCard` con su última señal y controles.
-- **Mercado:** tarjetas y gráfica (SVG propio, `price-chart.tsx`) de los pares que operan los agentes; sin agentes, BTC/USDT y ETH/USDT en 1h.
-- Sidebar reorganizado: **General** (Inicio) · **Operar** (Mis agentes, Órdenes, Alertas, Mis cuentas) · **Explorar** (Estrategias, Indicadores, Símbolos, Velas) · Mi inversión · Administración.
+- **Con agentes:** 3 `StatCard` (agentes activos, paper/live, mis cuentas), aviso si ninguno está activo, filtro por estado y todas las `AgentCard` con el precio de su mercado, su última señal y controles.
+- Sin sección de mercado propia (retirada el 2026-10-20): mostraba solo los dos primeros pares y, sin agentes, BTC/ETH en 1h casi siempre sin velas. El precio va en cada tarjeta y las velas en la pestaña Mercado del agente.
+- Sidebar: **General** (Inicio) · **Operar** (Alertas, Mis cuentas) · **Explorar** (Explorar mercados, Estrategias) · Mi inversión · Administración (Datos de mercado, Supervisión, Configuración, Inversores).
 
 ## Gotchas críticos
 
@@ -300,3 +308,7 @@ TELEGRAM_BOT_USERNAME=         # para el enlace de vinculación (M9)
 - **2026-10-08** — Se quita el lockout de cuenta (migración `9ca3ab02fd7a`) y se reemplaza por rate limit por correo; el correo del OTP sale en segundo plano (sin 502); el 429 dice cuánto esperar.
 - **2026-10-19** — Auditoría de seguridad: `APP_ENV` por defecto `production`, `DEV_RETURN_OTP`, `OTP_HMAC_SECRET`, `users.otp_failed_attempts` (máx. `OTP_MAX_FAILED_ATTEMPTS`, migración `218d50385270`), `TRUST_PROXY_HEADERS`, `OriginGuardMiddleware` (CSRF), `/docs` y `/openapi.json` solo en desarrollo, `/health` sin entorno ni error de BD, `X-Request-ID` validado, `X-XSS-Protection: 0`, redacción recursiva en la auditoría + `database/scripts/redact_audit_payloads.py`, `CredentialsCipher` con MultiFernet y `CREDENTIALS_PREVIOUS_KEYS` (fail fast sin clave), `owner_scope` / `is_admin` en `role_guard.py`.
 - **2026-10-19** — Vínculo de Telegram: `POST /api/users/me/telegram/link`, `DELETE /api/users/me/telegram`, `telegram_linked` en `GET /api/users/me`, columnas `users.telegram_*` (migración `f51e2dad9c13`), "Conectar Telegram" en el menú de usuario (`TelegramLinkDialog`); tarjeta "Señales por aprobar" en el dashboard.
+- **2026-10-20** — Dashboard sin sección "Mercado" (y sin `price-chart.tsx`): el precio, la variación y el régimen pasan a cada tarjeta de agente (`AgentPrice` en [M7](M07-BOTS-SIGNALS.md)).
+- **2026-10-20** — El inicio absorbe "Mis agentes": muestra todos los agentes con filtro por estado (antes, hasta 6); `/agents` redirige a `/dashboard`, "Inicio" queda marcado también dentro de un agente (`activePaths`) y sale "Mis agentes" del menú.
+- **2026-10-20** — `GET /api/users` (admin) y piezas del front para mostrar el dueño (`OwnerCell`, `useOwners`) en Supervisión.
+- **2026-10-20** — Página **Usuarios** (`/admin/users`, Configuración) y `PUT /api/users/{id}/role`: el admin cambia el rol de otros usuarios (no el propio). `GET /api/users` suma `last_login_at`.

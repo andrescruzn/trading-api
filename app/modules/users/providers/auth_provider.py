@@ -35,6 +35,7 @@ from app.modules.users.services.auth import (
     GetMeService,
 )
 from app.modules.users.services.telegram import TelegramLinkService
+from app.modules.users.services.users import ListUsersService, UpdateUserRoleService
 
 
 class AuthServiceFactory:
@@ -156,6 +157,21 @@ class AuthServiceFactory:
     def telegram_link(self) -> TelegramLinkService:
         """Vincular / desvincular el chat de Telegram del usuario."""
         return TelegramLinkService(repo=self._repo, settings=self._config)
+
+    def list_users(self) -> ListUsersService:
+        """Listado de usuarios para las vistas de administración."""
+        return ListUsersService(repo=self._repo)
+
+    def update_user_role(self) -> UpdateUserRoleService:
+        """Cambio de rol por un admin (códigos → IDs desde los settings)."""
+        return UpdateUserRoleService(
+            repo=self._repo,
+            role_ids={
+                "user": self._config.AUTH_USER_ROLE_ID,
+                "admin": self._config.AUTH_ADMIN_ROLE_ID,
+                "investor": self._config.AUTH_INVESTOR_ROLE_ID,
+            },
+        )
 
 
 # ======================================================================

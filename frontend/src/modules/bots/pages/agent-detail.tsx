@@ -452,7 +452,7 @@ export function AgentDetailPage() {
 	const bot = botQuery.data;
 
 	// Un admin puede abrir agentes de otros usuarios desde "Todos los
-	// agentes": la miga lleva de vuelta allí en vez de a "Mis agentes".
+	// agentes": la miga lleva de vuelta allí en vez de al inicio.
 	const isAdmin = useHasRole(ROLES.ADMIN);
 	const myBotsQuery = useMyBotsQuery({ enabled: isAdmin });
 	const isOthersAgent =
@@ -464,7 +464,7 @@ export function AgentDetailPage() {
 	usePageBreadcrumb([
 		isOthersAgent
 			? { label: 'Todos los agentes', href: '/admin/agents' }
-			: { label: 'Mis agentes', href: '/agents' },
+			: { label: 'Inicio', href: '/dashboard' },
 		{ label: bot ? describeBot(bot) : 'Agente' },
 	]);
 
@@ -485,9 +485,9 @@ export function AgentDetailPage() {
 					title="No pudimos abrir el agente"
 					error={botQuery.error ?? new Error('No encontramos ese agente.')}
 				/>
-				<Button variant="outline" render={<Link to="/agents" />}>
+				<Button variant="outline" render={<Link to="/dashboard" />}>
 					<IconArrowLeft />
-					Volver a mis agentes
+					Volver al inicio
 				</Button>
 			</div>
 		);

@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { usePageBreadcrumb } from '@/modules/app-shell/hooks/use-page-breadcrumb';
+import { OwnerCell } from '@/modules/auth/components/owner-cell';
+import { useOwners } from '@/modules/auth/hooks/use-users-queries';
 import { useBotCatalogs } from '@/modules/bots/hooks/use-bot-catalogs';
 import { useBotsQuery } from '@/modules/bots/hooks/use-bots-queries';
 import { describeBot, describeBotMarket } from '@/modules/bots/lib/bots-labels';
@@ -28,7 +30,9 @@ export function AdminOrdersPage() {
 	// Sin `bot_id` el backend devuelve todas las órdenes (solo admin).
 	const ordersQuery = useOrdersQuery({ limit: ORDERS_LIMIT });
 	const botsQuery = useBotsQuery();
-	const { catalogs } = useBotCatalogs();
+	const { accountsQuery, catalogs } = useBotCatalogs();
+	const owners = useOwners(ALL);
+	const [owner, setOwner] = useState(ALL);
 	const [side, setSide] = useState(ALL);
 	const [status, setStatus] = useState(ALL);
 	const [type, setType] = useState(ALL);
@@ -41,9 +45,21 @@ export function AdminOrdersPage() {
 			`${describeBot(bot)} · ${describeBotMarket(bot, catalogs)}`,
 		);
 
+	// Dueño de una orden: orden → agente → cuenta → usuario.
+	const accountOwner = new Map<number, number>();
+	for (const account of accountsQuery.data ?? [])
+		accountOwner.set(account.id, account.user_id);
+	const botOwner = new Map<number, number>();
+	for (const bot of botsQuery.data ?? []) {
+		const userId = accountOwner.get(bot.account_id);
+		if (userId !== undefined) botOwner.set(bot.id, userId);
+	}
+	const ownerOf = (order: Order) => botOwner.get(order.bot_id);
+
 	const allOrders = ordersQuery.data ?? [];
 	const filteredOrders = allOrders.filter(
 		(order) =>
+			(owner === ALL || ownerOf(order) === Number(owner)) &&
 			(side === ALL || order.side === side) &&
 			(status === ALL || order.status === status) &&
 			(type === ALL || order.type === type),
@@ -59,7 +75,14 @@ export function AdminOrdersPage() {
 						: 'Todas las órdenes del sistema.'
 				}
 			/>
-			<div className="grid gap-3 sm:grid-cols-3 lg:max-w-3xl">
+			<div className="grid gap-3 sm:grid-cols-2 lg:max-w-4xl lg:grid-cols-4">
+				<OptionSelect
+					aria-label="Dueño"
+					size="sm"
+					value={owner}
+					onChange={(value) => setOwner(value ?? ALL)}
+					options={owners.options}
+				/>
 				<OptionSelect
 					aria-label="Lado"
 					size="sm"
@@ -102,6 +125,9 @@ export function AdminOrdersPage() {
 				}
 				onViewFills={setFillsOrder}
 				botNames={botNames}
+				renderOwner={(order) => (
+					<OwnerCell userId={ownerOf(order)} users={owners.byId} />
+				)}
 			/>
 			<OrderFillsDialog
 				order={fillsOrder}

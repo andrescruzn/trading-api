@@ -5,6 +5,7 @@ import { Controller, useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
 import { useAccountsQuery } from '@/modules/accounts/hooks/use-accounts-queries';
 import { botOptions } from '@/modules/alerts/lib/alerts-labels';
+import { useOwners } from '@/modules/auth/hooks/use-users-queries';
 import type {
 	ManagedAccount,
 	ManagedAccountUpdate,
@@ -88,6 +89,7 @@ export function ManagedAccountFormDialog({
 }: ManagedAccountFormDialogProps) {
 	const isEdit = !!managedAccount;
 	const investorsQuery = useInvestorsQuery({ only_active: true });
+	const owners = useOwners('all');
 	const accountsQuery = useAccountsQuery();
 	const botsQuery = useBotsQuery();
 	const symbolsQuery = useSymbolsQuery();
@@ -247,7 +249,10 @@ export function ManagedAccountFormDialog({
 														id="managed-account-investor"
 														value={field.value}
 														onChange={field.onChange}
-														options={investorOptions(investorsQuery.data)}
+														options={investorOptions(
+															investorsQuery.data,
+															owners.byId,
+														)}
 														aria-invalid={fieldState.invalid}
 													/>
 													{fieldState.invalid && (

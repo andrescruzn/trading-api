@@ -3,13 +3,17 @@ import { useState } from 'react';
 import { useAccountsQuery } from '@/modules/accounts/hooks/use-accounts-queries';
 import { botLabel } from '@/modules/alerts/lib/alerts-labels';
 import { usePageBreadcrumb } from '@/modules/app-shell/hooks/use-page-breadcrumb';
+import { useOwners } from '@/modules/auth/hooks/use-users-queries';
 import type { ManagedAccount } from '@/modules/billing/api/billing.api';
 import { ManagedAccountFormDialog } from '@/modules/billing/components/managed-account-form-dialog';
 import {
 	useInvestorsQuery,
 	useManagedAccountsQuery,
 } from '@/modules/billing/hooks/use-billing-queries';
-import { PERIOD_TYPE_LABELS } from '@/modules/billing/lib/billing-labels';
+import {
+	investorLabel,
+	PERIOD_TYPE_LABELS,
+} from '@/modules/billing/lib/billing-labels';
 import { useBotsQuery } from '@/modules/bots/hooks/use-bots-queries';
 import { useSymbolsQuery } from '@/modules/market/hooks/use-market-queries';
 import {
@@ -30,6 +34,7 @@ export function AdminManagedAccountsPage() {
 	]);
 	const managedAccountsQuery = useManagedAccountsQuery();
 	const investorsQuery = useInvestorsQuery();
+	const owners = useOwners('all');
 	const accountsQuery = useAccountsQuery();
 	const botsQuery = useBotsQuery();
 	const symbolsQuery = useSymbolsQuery();
@@ -42,9 +47,7 @@ export function AdminManagedAccountsPage() {
 		const investor = investorsQuery.data?.find(
 			(item) => item.id === investorId,
 		);
-		return investor
-			? `#${investor.id} · usuario #${investor.user_id}`
-			: `#${investorId}`;
+		return investor ? investorLabel(investor, owners.byId) : `#${investorId}`;
 	}
 
 	function accountName(accountId: number) {

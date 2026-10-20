@@ -11,6 +11,18 @@ const ROLES = {
 
 type RoleCode = (typeof ROLES)[keyof typeof ROLES];
 
+/** Etiquetas para elegir un rol (la tabla muestra `role_label` de la BD). */
+const ROLE_LABELS: Record<RoleCode, string> = {
+	user: 'Usuario',
+	admin: 'Administrador',
+	investor: 'Inversor',
+};
+
+const ROLE_OPTIONS = (Object.keys(ROLE_LABELS) as RoleCode[]).map((code) => ({
+	value: code,
+	label: ROLE_LABELS[code],
+}));
+
 type WithRole = { role_code: string | null };
 
 function hasRole(user: WithRole, role: RoleCode): boolean {
@@ -22,4 +34,4 @@ function hasAnyRole(user: WithRole, roles: readonly RoleCode[]): boolean {
 }
 
 export type { RoleCode };
-export { hasAnyRole, hasRole, ROLES };
+export { hasAnyRole, hasRole, ROLE_LABELS, ROLE_OPTIONS, ROLES };

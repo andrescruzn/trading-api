@@ -6,7 +6,7 @@ import {
 	IconDatabase,
 	IconEye,
 	IconHome,
-	IconRobot,
+	IconSettings,
 	IconTrendingUp,
 	IconWallet,
 } from '@tabler/icons-react';
@@ -33,12 +33,19 @@ import {
 const navSections: NavSectionData[] = [
 	{
 		label: 'General',
-		items: [{ title: 'Inicio', icon: IconHome, url: '/dashboard' }],
+		// El inicio es la lista de agentes: queda marcado también dentro de uno.
+		items: [
+			{
+				title: 'Inicio',
+				icon: IconHome,
+				url: '/dashboard',
+				activePaths: ['/agents'],
+			},
+		],
 	},
 	{
 		label: 'Operar',
 		items: [
-			{ title: 'Mis agentes', icon: IconRobot, url: '/agents' },
 			{ title: 'Alertas', icon: IconBell, url: '/alerts' },
 			{ title: 'Mis cuentas', icon: IconWallet, url: '/portfolio' },
 		],
@@ -80,16 +87,25 @@ const navSections: NavSectionData[] = [
 				],
 			},
 			{
-				// Lo de todos los usuarios: los nombres dicen el alcance para no
-				// confundirse con "Mis agentes", "Mis cuentas"… de Operar.
+				// Lo de todos los usuarios (solo lectura): los nombres dicen el
+				// alcance para no confundirse con los agentes del inicio o "Mis
+				// cuentas" de Operar.
 				title: 'Supervisión',
 				icon: IconEye,
 				items: [
 					{ title: 'Todos los agentes', url: '/admin/agents' },
 					{ title: 'Todas las cuentas', url: '/admin/accounts' },
-					{ title: 'Gestionar estrategias', url: '/admin/strategies' },
 					{ title: 'Todas las órdenes', url: '/admin/orders' },
 					{ title: 'Todas las alertas', url: '/admin/alerts' },
+				],
+			},
+			{
+				// Lo que el admin define para todo el sistema.
+				title: 'Configuración',
+				icon: IconSettings,
+				items: [
+					{ title: 'Usuarios', url: '/admin/users' },
+					{ title: 'Gestionar estrategias', url: '/admin/strategies' },
 					{ title: 'Telegram', url: '/admin/telegram' },
 				],
 			},

@@ -2,6 +2,7 @@ import { IconChevronRight } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
 import type { Bot } from '@/modules/bots/api/bots.api';
 import { AgentControls } from '@/modules/bots/components/agent-controls';
+import { AgentPrice } from '@/modules/bots/components/agent-price';
 import {
 	AgentStatusDot,
 	BotModeBadge,
@@ -48,8 +49,9 @@ type AgentCardProps = {
 };
 
 /**
- * Resumen de un agente: qué opera, con qué estrategia, su última señal y
- * los controles para iniciarlo o pausarlo sin entrar al detalle.
+ * Resumen de un agente: qué opera y a qué precio, con qué estrategia, su
+ * última señal y los controles para iniciarlo o pausarlo sin entrar al
+ * detalle.
  */
 export function AgentCard({ bot, catalogs, className }: AgentCardProps) {
 	const strategy =
@@ -86,6 +88,12 @@ export function AgentCard({ bot, catalogs, className }: AgentCardProps) {
 					<dt className="text-muted-foreground">Opera</dt>
 					<dd className="truncate font-mono font-medium">
 						{describeBotMarket(bot, catalogs)}
+					</dd>
+				</div>
+				<div className="flex items-start justify-between gap-3">
+					<dt className="shrink-0 text-muted-foreground">Precio</dt>
+					<dd className="text-right">
+						<AgentPrice bot={bot} />
 					</dd>
 				</div>
 				<div className="flex items-baseline justify-between gap-3">

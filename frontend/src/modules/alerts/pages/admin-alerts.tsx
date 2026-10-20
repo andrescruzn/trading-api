@@ -1,5 +1,6 @@
 import { IconBrandTelegram } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
+import { useState } from 'react';
 import type { AlertRule } from '@/modules/alerts/api/alerts.api';
 import {
 	ChannelsList,
@@ -10,12 +11,15 @@ import { AlertEventsTable } from '@/modules/alerts/components/alert-events-table
 import { useAlertRulesQuery } from '@/modules/alerts/hooks/use-alerts-queries';
 import { botLabel } from '@/modules/alerts/lib/alerts-labels';
 import { usePageBreadcrumb } from '@/modules/app-shell/hooks/use-page-breadcrumb';
+import { OwnerCell } from '@/modules/auth/components/owner-cell';
+import { useOwners } from '@/modules/auth/hooks/use-users-queries';
 import { useBotsQuery } from '@/modules/bots/hooks/use-bots-queries';
 import { useSymbolsQuery } from '@/modules/market/hooks/use-market-queries';
 import {
 	DataTable,
 	type DataTableColumn,
 } from '@/modules/shared/components/data-table';
+import { OptionSelect } from '@/modules/shared/components/option-select';
 import { PageListHeader } from '@/modules/shared/components/page-list-header';
 import { formatDate } from '@/modules/shared/lib/format';
 import {
@@ -25,7 +29,7 @@ import {
 	TabsTrigger,
 } from '@/modules/ui/components/tabs';
 
-const EMPTY_CELL = <span className="text-muted-foreground">—</span>;
+const ALL = 'all';
 
 export function AdminAlertsPage() {
 	usePageBreadcrumb([
@@ -35,6 +39,13 @@ export function AdminAlertsPage() {
 	const rulesQuery = useAlertRulesQuery();
 	const botsQuery = useBotsQuery();
 	const symbolsQuery = useSymbolsQuery();
+	const owners = useOwners(ALL);
+	const [owner, setOwner] = useState(ALL);
+	const ownerId = owner === ALL ? undefined : Number(owner);
+
+	const rules = rulesQuery.data?.filter(
+		(rule) => ownerId === undefined || rule.user_id === ownerId,
+	);
 
 	const columns: DataTableColumn<AlertRule>[] = [
 		{
@@ -55,9 +66,9 @@ export function AdminAlertsPage() {
 			cell: (row) => <RuleTypeBadge type={row.rule_type} />,
 		},
 		{
-			id: 'user',
-			header: 'Usuario',
-			cell: (row) => (row.user_id ? `Usuario #${row.user_id}` : EMPTY_CELL),
+			id: 'owner',
+			header: 'Dueño',
+			cell: (row) => <OwnerCell userId={row.user_id} users={owners.byId} />,
 		},
 		{
 			id: 'bot',
@@ -100,6 +111,15 @@ export function AdminAlertsPage() {
 					},
 				]}
 			/>
+			<div className="grid gap-3 sm:max-w-xs">
+				<OptionSelect
+					aria-label="Dueño"
+					size="sm"
+					value={owner}
+					onChange={(value) => setOwner(value ?? ALL)}
+					options={owners.options}
+				/>
+			</div>
 			<Tabs defaultValue="rules">
 				<TabsList>
 					<TabsTrigger value="rules">Reglas</TabsTrigger>
@@ -108,16 +128,24 @@ export function AdminAlertsPage() {
 				<TabsContent value="rules" className="pt-2">
 					<DataTable
 						columns={columns}
-						rows={rulesQuery.data}
+						rows={rules}
 						getRowId={(row) => row.id}
 						isLoading={rulesQuery.isLoading}
 						error={rulesQuery.error}
 						errorTitle="No pudimos cargar las reglas de alerta"
-						empty="Aún no hay reglas de alerta. Cada usuario crea las suyas desde Alertas."
+						empty={
+							ownerId === undefined
+								? 'Aún no hay reglas de alerta. Cada usuario crea las suyas desde Alertas.'
+								: 'Este usuario aún no tiene reglas de alerta.'
+						}
 					/>
 				</TabsContent>
 				<TabsContent value="events" className="pt-2">
-					<AlertEventsTable variant="admin" />
+					<AlertEventsTable
+						variant="admin"
+						users={owners.byId}
+						ownerId={ownerId}
+					/>
 				</TabsContent>
 			</Tabs>
 		</div>

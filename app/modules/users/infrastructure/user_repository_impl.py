@@ -154,6 +154,10 @@ class SqlAlchemyUserRepository(SqlAlchemyRepository, UserRepository):
         )
         return None if model is None else self._to_domain(model)
 
+    def list_all(self) -> list[User]:
+        models = self._session.query(UserModel).order_by(UserModel.id).all()
+        return [self._to_domain(model) for model in models]
+
     def get_role_info(self, role_id: int) -> Optional[dict[str, str]]:
         role = self._session.get(RoleModel, int(role_id))
         if role is None:

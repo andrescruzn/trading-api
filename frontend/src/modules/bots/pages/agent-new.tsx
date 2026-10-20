@@ -130,7 +130,7 @@ const routeApi = getRouteApi('/_app/agents/new');
 
 export function AgentNewPage() {
 	usePageBreadcrumb([
-		{ label: 'Mis agentes', href: '/agents' },
+		{ label: 'Inicio', href: '/dashboard' },
 		{ label: 'Nuevo agente' },
 	]);
 	const navigate = useNavigate();
@@ -503,7 +503,7 @@ export function AgentNewPage() {
 					</CardContent>
 					<CardFooter className="justify-between gap-2 border-t">
 						{step === 0 ? (
-							<Button variant="ghost" render={<Link to="/agents" />}>
+							<Button variant="ghost" render={<Link to="/dashboard" />}>
 								Cancelar
 							</Button>
 						) : (

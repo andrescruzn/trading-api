@@ -1,6 +1,8 @@
 import { IconPencil, IconPlus } from '@tabler/icons-react';
 import { useState } from 'react';
 import { usePageBreadcrumb } from '@/modules/app-shell/hooks/use-page-breadcrumb';
+import { OwnerCell } from '@/modules/auth/components/owner-cell';
+import { useOwners } from '@/modules/auth/hooks/use-users-queries';
 import type { Investor } from '@/modules/billing/api/billing.api';
 import { InvestorFormDialog } from '@/modules/billing/components/investor-form-dialog';
 import { useInvestorsQuery } from '@/modules/billing/hooks/use-billing-queries';
@@ -16,6 +18,7 @@ import { Button } from '@/modules/ui/components/button';
 export function AdminInvestorsPage() {
 	usePageBreadcrumb([{ label: 'Administración' }, { label: 'Inversores' }]);
 	const investorsQuery = useInvestorsQuery();
+	const owners = useOwners('all');
 	// `undefined` = diálogo cerrado; `null` = crear; un inversor = editar.
 	const [editing, setEditing] = useState<Investor | null | undefined>(
 		undefined,
@@ -31,9 +34,7 @@ export function AdminInvestorsPage() {
 		{
 			id: 'user',
 			header: 'Usuario',
-			cell: (row) => (
-				<span className="font-medium">Usuario #{row.user_id}</span>
-			),
+			cell: (row) => <OwnerCell userId={row.user_id} users={owners.byId} />,
 		},
 		{
 			id: 'fee',

@@ -28,11 +28,7 @@ const ENV_EXAMPLE = `TELEGRAM_BOT_TOKEN=<token_del_bot>
 TELEGRAM_DEFAULT_CHAT_ID=<id_del_chat>`;
 
 export function AdminTelegramPage() {
-	usePageBreadcrumb([
-		{ label: 'Administración' },
-		{ label: 'Todas las alertas', href: '/admin/alerts' },
-		{ label: 'Telegram' },
-	]);
+	usePageBreadcrumb([{ label: 'Administración' }, { label: 'Telegram' }]);
 	const testMutation = useSendTelegramTestMutation();
 
 	return (

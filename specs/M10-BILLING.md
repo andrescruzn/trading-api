@@ -14,7 +14,7 @@
 | Lo usan | Es el módulo final (modelo de negocio) |
 | Prefijo API | `/api/investors`, `/api/managed-accounts`, `/api/billing-periods`, `/api/fee-transactions` |
 | Frontend | `frontend/src/modules/billing` |
-| Última revisión | 2026-10-19 |
+| Última revisión | 2026-10-20 |
 
 ## Descripción
 
@@ -45,8 +45,8 @@
 Hash routing: la URL real es `/#/<ruta>`.
 
 **Páginas — Administrador (solo admin):**
-- `/#/admin/investors` — CRUD de inversores: crear, editar fee (en %) y estado
-- `/#/admin/managed-accounts` — CRUD de cuentas administradas: capital, HWM, período, bot asignado
+- `/#/admin/investors` — CRUD de inversores: crear (el usuario se elige de una lista: solo usuarios con rol Inversor sin perfil, por nombre y correo, vía `GET /api/users` de [M1](M01-AUTH.md); el rol se asigna en Configuración → Usuarios), editar fee (en %) y estado. La tabla muestra el usuario con nombre y correo
+- `/#/admin/managed-accounts` — CRUD de cuentas administradas: capital, HWM, período, bot asignado. El inversor se muestra por nombre y correo (tabla y selector)
 - `/#/admin/billing` — Gestión de períodos: abrir/cerrar período (diálogos con vista previa del fee) + High-Water Mark + historial de fees
 
 **Páginas — Inversor (usuario con rol `investor`):**
@@ -247,3 +247,4 @@ AUTH_INVESTOR_ROLE_ID: int = 3  # leído de env AUTH_INVESTOR_ROLE_ID, default 3
 - **2026-03** — Módulo completado: migración `m10_billing.sql` + seed `seed_billing.sql` (rol `investor` id=3), dominio con HWM, servicios, REST, UI `/admin/investors`, `/admin/managed-accounts`, `/admin/billing` y `/investor/dashboard`.
 - **2026-10-08** — API headless (/api), páginas migradas a React (frontend/).
 - **2026-10-19** — Auditoría de seguridad: `GET /api/managed-accounts/{id}` responde 403 a quien no es admin ni inversor (antes cualquier usuario autenticado podía leer cualquier cuenta gestionada); `limit` de `/api/billing-periods` y `/api/fee-transactions` acotado a 1–500.
+- **2026-10-20** — Nuevo inversor: selector de usuario (rol Inversor, sin perfil) en lugar de escribir el ID; inversores y cuentas administradas muestran nombre y correo (`investorLabel(investor, users)`).

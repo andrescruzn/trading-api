@@ -601,7 +601,9 @@ La página de cada agente:
     Mercado y Configuración (reglas de la estrategia y qué mide cada indicador).
   - Mercado: las últimas velas del símbolo y timeframe del agente y, en "Indicadores", lo que la
     IA lee de cada vela (RSI, EMA, MACD, régimen…). Puedes elegir cuántas velas ver (50 a 500).
-    Si el agente está detenido no hay datos: inícialo y aparecen en uno o dos minutos.
+    Mientras el agente está activo, los datos se actualizan solos. "Actualizar datos" los trae
+    en ese momento (las últimas 500 velas del exchange y sus indicadores), también con el agente
+    detenido; se puede usar hasta 3 veces por minuto.
 
 "Analizar ahora" le pide a la IA que evalúe el mercado en ese momento. El resultado queda guardado
 como señal (aprobada o rechazada) y se abre su detalle con los filtros que pasó o no pasó, y

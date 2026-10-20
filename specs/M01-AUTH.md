@@ -109,7 +109,7 @@ Tablas usadas: `users`, `roles`
 | Prioridad | Mejora | Esfuerzo |
 |---|---|---|
 | Alta | Tests para `login_otp` y `verify_otp` (único camino de login, con `otp_failed_attempts`), `logout`, `rotate_token`, `OriginGuardMiddleware` y la redacción recursiva de la auditoría | S |
-| Media | Extender el rate limit a `/api/candles/fetch` y `/api/orders` (desde 2026-10-19 ya cubre auth y las dos rutas de la IA, por usuario) | S |
+| Media | Extender el rate limit a `/api/candles/fetch` y `/api/orders` (desde 2026-10-19 ya cubre auth, las dos rutas de la IA y "Actualizar datos" del agente, por usuario) | S |
 | Media | Script para re-cifrar todas las credenciales con la clave nueva (`CredentialsCipher.rotate`) y poder retirar `CREDENTIALS_PREVIOUS_KEYS` | S |
 | Media | Tests del frontend (al menos login, api-client y guards de rol) | M |
 | Media | 2FA/TOTP opcional para admin e inversores (manejan dinero) | M |

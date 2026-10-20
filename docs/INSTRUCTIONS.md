@@ -12,7 +12,8 @@ Paso 1 — Verificar datos base (ya vienen con los seeds)
 
   Sin velas no hay features, sin features no hay señales.
 
-  Ve a /admin/candles/ingest y usa el endpoint de fetch:
+  Lo normal: crea el agente e inícialo (el scheduler descarga solo) o pulsa
+  "Actualizar datos" en su pestaña Mercado. Como admin, también por API:
   POST /candles/fetch
   {
     "symbol_id": 1,        ← id del símbolo (ej: BTC/USDT Binance)

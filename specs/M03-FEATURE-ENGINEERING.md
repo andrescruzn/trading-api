@@ -42,8 +42,7 @@ Hash routing: la URL real es `/#/<ruta>`.
 - Los indicadores de cada agente se ven en su pestaña **Mercado** (`/#/agents/:id` → Indicadores, [M7](M07-BOTS-SIGNALS.md)), con la explicación de qué mide cada uno. Solo se calculan para agentes activos, así que no hay visor suelto para el usuario: `/#/features` redirige a `/#/agents`.
 
 **Páginas — Administrador (solo admin):**
-- `/#/admin/indicators` — "Indicadores": visor de los valores calculados por vela, filtrando por símbolo, timeframe y conjunto
-- `/#/admin/feature-sets` — "Conjuntos de indicadores": lista con enfoque e indicadores, crear nuevos (spec `{focus, indicators}`) y lanzar el cálculo sobre cualquier símbolo y timeframe
+- `/#/admin/feature-sets` — "Conjuntos de indicadores": lista con enfoque e indicadores y crear nuevos (spec `{focus, indicators}`). El cálculo ya no se lanza desde aquí: se hace por agente (scheduler mientras está activo, o "Actualizar datos" en su pestaña Mercado). `POST /api/candle-features/calculate` sigue disponible para el admin solo por API
 
 ## Entregables
 
@@ -55,7 +54,7 @@ Entregables:
 - ✅ Detección de régimen de mercado: trend_up / trend_down / sideways (HH/HL swing analysis)
 - ✅ `POST /api/candle-features/calculate` (admin) — bulk upsert
 - ✅ `GET /api/candle-features` — consulta con filtros
-- ✅ Web UI: pestaña Mercado del agente (usuario) + `/#/admin/indicators` (visor) + `/#/admin/feature-sets` (gestión + calcular) — en React desde 2026-10-08; visor movido a admin el 2026-10-19
+- ✅ Web UI: pestaña Mercado del agente (ver y recalcular) + `/#/admin/feature-sets` (gestión) — en React desde 2026-10-08; visor y cálculo movidos al agente el 2026-10-19
 - ✅ TA library: pandas-ta 0.4.71b0
 - ✅ Test unitarios (18 tests)
 - ✅ **El cálculo y la IA respetan el `spec`** (`indicator_catalog`): solo se guardan y se envían al LLM los indicadores del conjunto
@@ -164,9 +163,9 @@ from app.modules.features.rest import feature_sets_router, candle_features_route
 ### Frontend (`frontend/src/modules/features/`)
 | Ruta | Archivo de ruta | Página / componentes |
 |-----|----------|----|
-| `/#/admin/indicators` | `routes/_app/admin/indicators.lazy.tsx` | `pages/admin-indicators.tsx` (`AdminIndicatorsPage`) + `components/candle-features-table.tsx` + `components/indicators-glossary.tsx` + `components/regime-badge.tsx` (tabla y glosario reutilizados por la pestaña Mercado del agente) |
+| — (pestaña Mercado de `/#/agents/:id`, [M7](M07-BOTS-SIGNALS.md)) | — | `components/candle-features-table.tsx` + `components/indicators-glossary.tsx` + `components/regime-badge.tsx` |
 | `/#/features` | `routes/_app/features.tsx` | Redirección a `/agents` |
-| `/#/admin/feature-sets` | `routes/_app/admin/feature-sets.lazy.tsx` | `pages/admin-feature-sets.tsx` + `components/feature-set-form-dialog.tsx` + `components/calculate-features-dialog.tsx` |
+| `/#/admin/feature-sets` | `routes/_app/admin/feature-sets.lazy.tsx` | `pages/admin-feature-sets.tsx` + `components/feature-set-form-dialog.tsx` |
 
 - API: `api/features.api.ts`; hooks `use-features-queries.ts` (`useCandleFeaturesQuery`, también lo usa el dashboard de [M1](M01-AUTH.md)) y `use-features-mutations.ts`; etiquetas y régimen en `lib/features-labels.ts` y `lib/regime.ts` (`regimeLabel`, `REGIME_BADGE_VARIANT`).
 
@@ -236,4 +235,4 @@ Solo las claves de los grupos del conjunto, más `regime`:
 - **Posterior** — `feature_set_id` opcional en `candle_features` (commit `ddc4336`).
 - **2026-10-08** — API headless (/api), páginas migradas a React (frontend/).
 - **2026-10-08** — Conjuntos por enfoque: `indicator_catalog`, el cálculo y la IA respetan el `spec`, seed Completo/Tendencia/Rango, `focus`/`indicators`/`outputs` en la API; páginas renombradas a "Conjuntos de indicadores".
-- **2026-10-19** — Indicadores sale del menú del usuario: se ven en la pestaña **Mercado** del agente; el visor pasa a admin (`/admin/indicators`) y la tabla y el glosario se extraen a `components/`.
+- **2026-10-19** — Indicadores centrados en el agente: salen del menú del usuario y se ven en la pestaña **Mercado** del agente, que también los recalcula ("Actualizar datos"); se retira "Calcular indicadores" de Conjuntos (el endpoint queda solo por API); la tabla y el glosario se extraen a `components/`.

@@ -188,7 +188,7 @@ export function InvestorFormDialog({
 											<FieldDescription>
 												{!owners.usersQuery.isLoading &&
 												userOptions.length === 0
-													? 'No hay usuarios con rol Inversor sin perfil. Asígnale ese rol a alguien primero.'
+													? 'No hay usuarios con rol Inversor sin perfil. Asígnale ese rol a alguien en Configuración → Usuarios.'
 													: 'Solo aparecen usuarios con rol Inversor que aún no tienen perfil.'}
 											</FieldDescription>
 											{fieldState.invalid && (

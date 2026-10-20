@@ -104,6 +104,7 @@ const navSections: NavSectionData[] = [
 				title: 'Configuración',
 				icon: IconSettings,
 				items: [
+					{ title: 'Usuarios', url: '/admin/users' },
 					{ title: 'Gestionar estrategias', url: '/admin/strategies' },
 					{ title: 'Telegram', url: '/admin/telegram' },
 				],

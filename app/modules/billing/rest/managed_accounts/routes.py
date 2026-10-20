@@ -23,11 +23,12 @@ from app.common.security.jwt import token_required_actual
 from app.common.security.jwt.role_guard import admin_required
 from app.extensions.db import get_db
 from app.modules.billing.domain.managed_account_entity import ManagedAccount
-from app.modules.billing.services.managed_accounts import EquityEstimate
+from app.modules.billing.domain.capital_movement_entity import CapitalMovement
+from app.modules.billing.services.managed_accounts import CapitalSummary, EquityEstimate
 from app.modules.billing.providers.billing_provider import BillingServiceFactory, get_billing_factory
 
 from .error_messages import MANAGED_ACCOUNT_ERROR_MESSAGES
-from .schemas import CreateManagedAccountRequest, UpdateManagedAccountRequest
+from .schemas import CapitalMovementRequest, CreateManagedAccountRequest, UpdateManagedAccountRequest
 
 router = APIRouter(prefix="/managed-accounts", tags=["Billing — Managed Accounts"])
 
@@ -211,4 +212,81 @@ def estimate_equity(
     if not result.success:
         return build_error_response(result, MANAGED_ACCOUNT_ERROR_MESSAGES)
     return send(msg="OK", status_code=200, data=_estimate_to_dict(result.data))
+
+
+# ======================================================================
+# GET | POST /api/managed-accounts/{id}/capital-movements
+# ======================================================================
+
+def _movement_to_dict(m: CapitalMovement) -> dict[str, Any]:
+    return {
+        "id":         m.id,
+        "kind":       m.kind,
+        "amount":     str(m.amount),
+        "ts":         m.ts.isoformat() if m.ts else None,
+        "notes":      m.notes,
+        "created_at": m.created_at.isoformat() if m.created_at else None,
+    }
+
+
+def _summary_to_dict(s: CapitalSummary) -> dict[str, Any]:
+    return {
+        "deposits":    str(s.deposits),
+        "withdrawals": str(s.withdrawals),
+        "net":         str(s.net),
+        "movements":   [_movement_to_dict(m) for m in s.movements],
+    }
+
+
+@router.get("/{managed_account_id}/capital-movements", status_code=200)
+def list_capital_movements(
+    managed_account_id: int,
+    identity: dict = Depends(token_required_actual),
+    factory: BillingServiceFactory = Depends(get_factory),
+):
+    """Aportes y retiros de la cuenta (admin, o el inversor dueño)."""
+    investor_id: int | None = None
+    if int(identity.get("role_id", 0)) == int(settings.AUTH_INVESTOR_ROLE_ID):
+        inv = factory._investor_repo.find_by_user_id(identity.get("user_id"))
+        if not inv:
+            return send(msg="No tienes acceso a esta cuenta gestionada.", status_code=403, data={})
+        investor_id = inv.id
+    elif int(identity.get("role_id", 0)) != int(settings.AUTH_ADMIN_ROLE_ID):
+        return send(msg="No tienes permiso para hacer esta acción.", status_code=403, data={})
+
+    result = factory.list_capital_movements().execute(
+        managed_account_id=managed_account_id, investor_id=investor_id
+    )
+    if not result.success:
+        return build_error_response(result, MANAGED_ACCOUNT_ERROR_MESSAGES)
+    return send(msg="OK", status_code=200, data=_summary_to_dict(result.data))
+
+
+_MOVEMENT_MESSAGES: dict[str, str] = {
+    "deposit":    "Aporte registrado. La marca de agua subió en el mismo monto.",
+    "withdrawal": "Retiro registrado. La marca de agua bajó en el mismo monto.",
+}
+
+
+@router.post("/{managed_account_id}/capital-movements", status_code=201)
+def record_capital_movement(
+    managed_account_id: int,
+    payload: CapitalMovementRequest,
+    identity: dict = Depends(admin_required),
+    factory: BillingServiceFactory = Depends(get_factory),
+):
+    """Registra un aporte o retiro y ajusta la marca de agua (solo admin)."""
+    result = factory.record_capital_movement().execute(
+        managed_account_id=managed_account_id,
+        kind=payload.kind,
+        amount=payload.amount,
+        ts=payload.ts,
+        notes=payload.notes,
+        created_by_user_id=int(identity["user_id"]),
+    )
+    if not result.success:
+        return build_error_response(result, MANAGED_ACCOUNT_ERROR_MESSAGES)
+    return build_created_response(
+        data=_movement_to_dict(result.data), msg=_MOVEMENT_MESSAGES[result.data.kind]
+    )
 

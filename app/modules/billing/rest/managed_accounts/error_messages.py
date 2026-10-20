@@ -9,4 +9,6 @@ MANAGED_ACCOUNT_ERROR_MESSAGES: dict[str, str] = {
     "BILLING_INVALID_PERIOD_TYPE":        "Tipo de período inválido. Use: daily, weekly o monthly.",
     "BILLING_INVALID_CAPITAL":            "El capital inicial no puede ser negativo.",
     "BILLING_ACCOUNT_NOT_FOUND":          "La cuenta de exchange de esta cuenta gestionada no existe.",
+    "CAPITAL_INVALID_KIND":               "Elige si es un aporte o un retiro.",
+    "CAPITAL_INVALID_AMOUNT":             "El monto debe ser mayor que 0.",
 }

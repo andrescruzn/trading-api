@@ -41,11 +41,11 @@
 Hash routing: la URL real es `/#/<ruta>`.
 
 **Páginas — Usuario (cualquier usuario autenticado):**
-- `/#/orders` — Libro de órdenes: selector de agente (agentes de tus cuentas, por nombre), pestañas Órdenes / Posiciones / Ejecuciones, diálogo para crear nueva orden. Las posiciones con protección muestran "Protección automática: SL … · TP …" y, si el SL está en el exchange (live), "El stop loss está como orden en el exchange."
+- Las órdenes de cada agente viven en su detalle (`/#/agents/:id`, [M7](M07-BOTS-SIGNALS.md)): pestaña **Órdenes** (con "Nueva orden") y **Posiciones** (con las ejecuciones debajo). `/#/orders` redirige a `/#/agents` (era un selector de agente que repetía esas pestañas). Las posiciones con protección muestran "Protección automática: SL … · TP …" y, si el SL está en el exchange (live), "El stop loss está como orden en el exchange."
 - Aprobar / descartar una señal pendiente: en el detalle de la señal del agente y en la tarjeta "Señales por aprobar" del dashboard ([M7](M07-BOTS-SIGNALS.md)); llaman a `POST /api/signals/{id}/approve|reject` de este módulo.
 
 **Páginas — Administrador (solo admin):**
-- `/#/admin/orders` — Vista global de todas las órdenes del sistema con filtros por lado, estado y tipo, y diálogo con los fills de cada orden
+- `/#/admin/orders` — "Todas las órdenes" (Administración → Supervisión): vista global de todas las órdenes del sistema con filtros por lado, estado y tipo, y diálogo con los fills de cada orden
 
 ## Entregables
 
@@ -59,7 +59,7 @@ Entregables:
 - ✅ CreateOrderService: valida bot, selecciona executor según bot.mode, crea order+fill+position
 - ✅ Provider: OrderServiceFactory con repos propios + borrowed de M7/M2/M4
 - ✅ REST: `POST /api/orders`, `GET /api/orders`, `GET /api/orders/{id}`, `GET /api/fills`, `GET /api/positions`
-- ✅ Web UI usuario: `/#/orders` con tabs Órdenes/Posiciones/Ejecuciones + diálogo crear orden (React desde 2026-10-08)
+- ✅ Web UI usuario: pestañas Órdenes y Posiciones (+ ejecuciones) del detalle del agente + diálogo crear orden (página `/#/orders` retirada el 2026-10-19)
 - ✅ Web UI admin: `/#/admin/orders` con filtros por lado/estado/tipo + diálogo de fills
 - ✅ LiveExecutor: integración completa ccxt + Fernet credentials
 - ✅ (2026-10-19) **Propiedad** en `POST/GET /api/orders`, `GET /api/orders/{id}`, `/api/fills` y `/api/positions` vía `find_accessible_bot`
@@ -278,13 +278,14 @@ Por agente: `risk_params.max_notional` (tope propio; se aplica el menor) y `risk
 ### Frontend (`frontend/src/modules/orders/`)
 | Ruta | Archivo de ruta | Página / componentes |
 |-----|----------|----|
-| `/#/orders` | `routes/_app/orders.lazy.tsx` | `pages/orders.tsx` (`OrdersPage`) + `components/orders-table.tsx` + `components/positions-grid.tsx` + `components/fills-table.tsx` + `components/order-form-dialog.tsx` |
+| `/#/agents/:id` (pestañas Órdenes y Posiciones, página de [M7](M07-BOTS-SIGNALS.md)) | — | `components/orders-table.tsx` + `components/positions-grid.tsx` + `components/fills-table.tsx` + `components/order-form-dialog.tsx` + `components/order-fills-dialog.tsx` |
+| `/#/orders` | `routes/_app/orders.tsx` | Redirección a `/agents` |
 | `/#/admin/orders` | `routes/_app/admin/orders.lazy.tsx` | `pages/admin-orders.tsx` + `components/order-fills-dialog.tsx` |
 
 - API: `api/orders.api.ts` (`listOrders`, `getOrder`, `createOrder`, `listPositions`, `listFills`; `Position` con `stop_loss`, `take_profit`, `signal_id`, `sl_order_id`); hooks `use-orders-queries.ts` / `use-orders-mutations.ts`; etiquetas `lib/orders-labels.ts`; badges `components/order-badges.tsx`.
 - `positions-grid.tsx` muestra "Protección automática: SL … · TP …" cuando la posición la tiene y, si `sl_order_id` no es `null`, "El stop loss está como orden en el exchange."
 - Aprobar/descartar: `bots/components/signal-decision-actions.tsx` ([M7](M07-BOTS-SIGNALS.md)).
-- El selector de bot de `/#/orders` usa `useBotsByAccountsQuery` de [M7](M07-BOTS-SIGNALS.md); la página admin usa `useBotsQuery()` sin filtro.
+- La página admin usa `useBotsQuery()` sin filtro de [M7](M07-BOTS-SIGNALS.md).
 
 ## Gotchas críticos
 
@@ -331,3 +332,4 @@ Por agente: `risk_params.max_notional` (tope propio; se aplica el menor) y `risk
 - **2026-10-19** — Auditoría de seguridad: propiedad en órdenes, fills y posiciones (antes cualquier usuario podía operar el agente de otro, incluso en live); `RiskGateService` (kill switch, live apagado por defecto, notional máximo, drawdown → `error`); orden confirmada antes de llamar al exchange con `client_order_id` (migración `218d50385270`), estado real del exchange, rechazos guardados y `ORDER_EXECUTION_UNCERTAIN`; señal vinculada validada y spot sin cortos.
 - **2026-10-19** — Modo de ejecución: `ExecuteSignalService` (aprobar/rechazar con reclamo atómico, revalidación al precio actual), `ProtectPositionsService` (SL/TP por ciclo del scheduler, columnas en `positions` de la migración `f51e2dad9c13`), `POST /api/signals/{id}/approve|reject`, protección visible en Posiciones.
 - **2026-10-19** — Reconciliación y SL nativo: `LiveExecutor` con cliente compartido, `fetch`/`cancel`/`place_stop_loss` y `LIVE_USE_SANDBOX`; `ReconcileOrdersService` en el ciclo del scheduler (fills tardíos y parciales, órdenes perdidas a los 10 min); `NativeStopService` (SL como orden en el exchange en live, `positions.sl_order_id`, migración `3ac9fef574cb`, `ORDER_NATIVE_STOP_LOSS`, `ORDER_NATIVE_STOP_ACTIVE`); TP sigue por ciclo, sin OCO; `position_updater.apply_fill` compartido; aviso en Posiciones. Verificado solo con pruebas de humo con mocks.
+- **2026-10-19** — Página `/orders` retirada (duplicaba las pestañas Órdenes y Posiciones del agente): redirige a `/agents` y sale del menú.

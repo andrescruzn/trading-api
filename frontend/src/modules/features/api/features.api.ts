@@ -65,23 +65,6 @@ type FeatureSetInput = {
 	spec: Record<string, unknown>;
 };
 
-type CalculateFeaturesInput = {
-	symbol_id: number;
-	timeframe_id: number;
-	feature_set_id: number;
-};
-
-type CalculateFeaturesResult = {
-	symbol_id: number;
-	timeframe_id: number;
-	feature_set_id: number;
-	candles_loaded: number;
-	/** Velas con todos los indicadores calculados. */
-	rows_calculated: number;
-	/** Filas insertadas o actualizadas en la base (upsert). */
-	rows_affected: number;
-};
-
 // ======================================================================
 // Feature sets
 // ======================================================================
@@ -104,14 +87,7 @@ function listCandleFeatures(filters: CandleFeatureFilters) {
 	return api.get<CandleFeature[]>('/candle-features', filters);
 }
 
-/** Calcula y guarda los indicadores de las velas ya descargadas. Solo admin. */
-function calculateFeatures(input: CalculateFeaturesInput) {
-	return api.post<CalculateFeaturesResult>('/candle-features/calculate', input);
-}
-
 export type {
-	CalculateFeaturesInput,
-	CalculateFeaturesResult,
 	CandleFeature,
 	CandleFeatureFilters,
 	FeatureSet,
@@ -120,9 +96,4 @@ export type {
 	FeatureValues,
 	IndicatorGroup,
 };
-export {
-	calculateFeatures,
-	createFeatureSet,
-	listCandleFeatures,
-	listFeatureSets,
-};
+export { createFeatureSet, listCandleFeatures, listFeatureSets };

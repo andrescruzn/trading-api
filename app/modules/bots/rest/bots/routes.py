@@ -11,6 +11,7 @@
 # - POST /bots/{id}/start   → iniciar bot  (stopped  → running)
 # - POST /bots/{id}/stop    → detener bot  (running/paused → stopped)
 # - POST /bots/{id}/pause   → pausar bot   (running → paused)
+# - POST /bots/{id}/market/sync → descargar velas y recalcular indicadores
 #
 # NOTAS:
 # - En la UI los bots se llaman "agentes"; los mensajes usan esa palabra.
@@ -32,6 +33,7 @@ from app.common.http import (
     build_success_response,
 )
 from app.common.security.jwt import owner_scope, token_required_actual
+from app.common.security.rate_limiter import check_user_rate_limit, market_sync_rate_limiter
 from app.extensions.db import get_db
 from app.modules.bots.domain.bot_entity import Bot
 from app.modules.bots.providers import BotServiceFactory, get_bot_factory
@@ -248,3 +250,27 @@ def pause_bot(
         return build_error_response(result, BOT_ERROR_MESSAGES)
 
     return build_success_response(data=_bot_to_dict(result.data), msg="Agente pausado.")
+
+
+# ======================================================================
+# POST /bots/{bot_id}/market/sync
+# ======================================================================
+
+@router.post("/{bot_id}/market/sync", status_code=200)
+def sync_bot_market_data(
+    bot_id: int,
+    identity: dict = Depends(token_required_actual),
+    factory: BotServiceFactory = Depends(get_factory),
+):
+    """Descarga las velas del agente y recalcula sus indicadores."""
+    # Cada llamada pega al exchange: límite por usuario
+    check_user_rate_limit(market_sync_rate_limiter, identity["user_id"])
+
+    result = factory.sync_bot_market_data().sync(
+        bot_id=bot_id, owner_id=owner_scope(identity)
+    )
+
+    if not result.success:
+        return build_error_response(result, BOT_ERROR_MESSAGES)
+
+    return build_success_response(data=result.data, msg="Datos del agente actualizados.")

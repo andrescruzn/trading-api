@@ -35,7 +35,7 @@ Hash routing: la URL real es `/#/<ruta>`.
 - `/#/portfolio` — "Mis cuentas": lista tus cuentas, crea/edita (diálogo), y abre un panel lateral con el historial de balances donde puedes registrar uno nuevo
 
 **Páginas — Administrador (solo admin):**
-- `/#/admin/accounts` — Vista global de todas las cuentas del sistema (con su panel de balances)
+- `/#/admin/accounts` — "Todas las cuentas" (Administración → Supervisión): vista global de todas las cuentas del sistema (con su panel de balances)
 
 ## Entregables
 

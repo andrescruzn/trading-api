@@ -1,12 +1,8 @@
-import { createFileRoute } from '@tanstack/react-router';
-import { z } from 'zod';
+import { createFileRoute, redirect } from '@tanstack/react-router';
 
-// `?symbol_id=` llega desde "Ver velas" en Símbolos o en Descargar velas.
-const candlesSearchSchema = z.object({
-	symbol_id: z.coerce.number().int().positive().optional().catch(undefined),
-	timeframe_id: z.coerce.number().int().positive().optional().catch(undefined),
-});
-
+// Las velas de cada agente viven en su pestaña Mercado.
 export const Route = createFileRoute('/_app/market/candles')({
-	validateSearch: candlesSearchSchema,
+	beforeLoad: () => {
+		throw redirect({ to: '/agents', replace: true });
+	},
 });

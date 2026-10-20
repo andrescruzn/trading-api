@@ -21,7 +21,10 @@ const ALL = 'all';
 const ORDERS_LIMIT = 500;
 
 export function AdminOrdersPage() {
-	usePageBreadcrumb([{ label: 'Administración' }, { label: 'Órdenes' }]);
+	usePageBreadcrumb([
+		{ label: 'Administración' },
+		{ label: 'Todas las órdenes' },
+	]);
 	// Sin `bot_id` el backend devuelve todas las órdenes (solo admin).
 	const ordersQuery = useOrdersQuery({ limit: ORDERS_LIMIT });
 	const botsQuery = useBotsQuery();
@@ -49,7 +52,7 @@ export function AdminOrdersPage() {
 	return (
 		<div className="flex flex-col gap-6">
 			<PageListHeader
-				title="Órdenes"
+				title="Todas las órdenes"
 				description={
 					ordersQuery.data
 						? `Todas las órdenes del sistema. ${filteredOrders.length} de ${allOrders.length} órdenes.`

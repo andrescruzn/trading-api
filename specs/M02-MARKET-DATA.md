@@ -35,14 +35,13 @@ Hash routing: la URL real es `/#/<ruta>`.
 
 **Usuario (todos los roles):**
 - `/#/market/explorer` — "Explorar mercados": ranking por fuerza de tendencia (velas 1d) con filtro por clase de activo y "Crear agente" (abre el asistente con el símbolo elegido). Los admin ven además "Actualizar datos"
-- `/#/market/symbols` — Lista de todos los símbolos disponibles, con filtros y acceso "Ver velas"
-- `/#/market/candles` — Ver las velas/precios de un símbolo (acepta `?symbol_id=&timeframe_id=`)
+- Las velas del símbolo y timeframe de cada agente se ven en su pestaña **Mercado** (`/#/agents/:id`, [M7](M07-BOTS-SIGNALS.md)): solo existen velas para agentes activos, así que no hay visor suelto para el usuario. `/#/market/symbols` redirige a `/#/market/explorer` y `/#/market/candles` a `/#/agents`.
 
 **Admin:**
 - `/#/admin/exchanges` — Gestionar exchanges
 - `/#/admin/symbols` — Gestionar símbolos
 - `/#/admin/timeframes` — Gestionar timeframes
-- `/#/admin/candles/ingest` — "Descargar velas": trae velas del exchange real con ccxt (`POST /api/candles/fetch`)
+- Sin páginas de velas para el admin: las velas solo importan para el símbolo y timeframe de un agente, así que se ven y se actualizan desde su pestaña **Mercado** ("Actualizar datos", `POST /api/bots/{id}/market/sync` de [M7](M07-BOTS-SIGNALS.md)). `POST /api/candles/fetch` y `/api/candles/ingest` siguen disponibles para el admin solo por API (Swagger) para cargas puntuales.
 
 ## Entregables
 
@@ -96,7 +95,7 @@ Entregables:
 | Prioridad | Mejora | Esfuerzo |
 |---|---|---|
 | Alta | Tests de `ingest_candles`, `fetch_candles` (ccxt mockeado) y del scheduler (`_should_fetch`, `_cleanup_candles`) | M |
-| Baja | UI para la carga manual `POST /api/candles/ingest` (hoy solo por API; la página "Descargar velas" usa `/api/candles/fetch`) | S |
+| Baja | UI para la carga manual `POST /api/candles/ingest` (hoy solo por API, igual que `/api/candles/fetch`; el usuario descarga desde su agente) | S |
 | Media | Ejecutar el scheduler en un proceso/worker dedicado: el *lock* ya evita que corra varias veces (2026-10-19), pero sigue siendo un hilo dentro del proceso web y comparte su CPU con las peticiones | M |
 | Media | Tests de `SchedulerLock` (con BD) y de `execution_cycle` | S |
 | Media | Detección y relleno de huecos: el ciclo incremental pide solo 3 velas, así que una caída del servidor de más de 3 timeframes deja velas faltantes | M |
@@ -186,12 +185,11 @@ from app.modules.market.rest import exchanges_router, symbols_router, timeframes
 | Ruta | Archivo de ruta | Página |
 |-----|----------|----|
 | `/#/market/explorer` | `routes/_app/market/explorer.lazy.tsx` | `pages/explorer.tsx` (`useTrendExplorerQuery`, `useRefreshExplorerMutation`) |
-| `/#/market/symbols` | `routes/_app/market/symbols.lazy.tsx` | `pages/symbols.tsx` |
-| `/#/market/candles` | `routes/_app/market/candles.tsx` (`validateSearch`: `symbol_id`, `timeframe_id`) + `candles.lazy.tsx` | `pages/candles.tsx` |
+| `/#/market/symbols`, `/#/market/candles` | `routes/_app/market/{symbols,candles}.tsx` | Redirecciones (a `/market/explorer` y `/agents`) |
 | `/#/admin/exchanges` | `routes/_app/admin/exchanges.lazy.tsx` | `pages/admin-exchanges.tsx` + `components/exchange-form-dialog.tsx` |
 | `/#/admin/symbols` | `routes/_app/admin/symbols.lazy.tsx` | `pages/admin-symbols.tsx` + `components/symbol-form-dialog.tsx` |
 | `/#/admin/timeframes` | `routes/_app/admin/timeframes.lazy.tsx` | `pages/admin-timeframes.tsx` |
-| `/#/admin/candles/ingest` | `routes/_app/admin/candles/ingest.lazy.tsx` | `pages/admin-candles-ingest.tsx` (usa `useFetchCandlesMutation` → `/api/candles/fetch`) |
+| — (pestaña Mercado de `/#/agents/:id`, [M7](M07-BOTS-SIGNALS.md)) | — | `components/candles-table.tsx` (`CandlesTable`) |
 
 - API: `api/market.api.ts`; queries `hooks/use-market-queries.ts` (`useExchangesQuery`, `useSymbolsQuery`, `useTimeframesQuery`, `useCandlesQuery`, reutilizadas por dashboard, features, bots, orders…); mutations `hooks/use-market-mutations.ts`; etiquetas `lib/market-labels.ts`.
 - Las páginas admin están bajo `_app/admin.tsx` (`AdminGuardLayout`: sin rol admin → `/dashboard`); la API responde 403 a quien no es admin.
@@ -273,3 +271,4 @@ Desde 2026-10-19, después de `run_cycle()` el scheduler corre `run_execution_cy
 - **2026-10-19** — Scheduler con elección de líder por `GET_LOCK` de MySQL (`scheduler_lock.py`): corre una sola vez aunque haya varios workers. Tras cada ciclo de velas corre el ciclo de ejecución (`execution_cycle.py`: señales automáticas, caducidad, SL/TP, Telegram).
 - **2026-10-08** — Scheduler: recalcula features atrasadas aunque no haya velas nuevas. `CCXT_EXCHANGE_MAP` movido al dominio (`ccxt_exchanges.py`) y `supports_auto_fetch` en la respuesta de símbolos. Páginas de usuario movidas a la sección "Explorar" del menú.
 - **2026-10-19** — El ciclo de ejecución suma la **reconciliación de órdenes** ([M8](M08-ORDERS-EXECUTION.md)): señales automáticas → caducar → reconciliar → proteger posiciones → Telegram.
+- **2026-10-19** — Velas centradas en el agente: Símbolos y Velas salen del menú del usuario (las velas se ven en la pestaña **Mercado** del agente, con "Actualizar datos"); se retira la página admin "Descargar velas" (el endpoint queda solo por API); la tabla se extrae a `components/candles-table.tsx`. Datos de mercado (admin) queda en Exchanges · Símbolos · Timeframes · Conjuntos de indicadores.

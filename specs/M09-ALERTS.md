@@ -42,7 +42,7 @@ Hash routing: la URL real es `/#/<ruta>`.
 - Menú de usuario → **Conectar Telegram** (diálogo, [M1](M01-AUTH.md)): genera el enlace de vinculación con el bot
 
 **Páginas — Administrador (solo admin):**
-- `/#/admin/alerts` — Vista admin: todas las reglas y eventos del sistema
+- `/#/admin/alerts` — "Todas las alertas" (Administración → Supervisión): todas las reglas y eventos del sistema
 - `/#/admin/telegram` — Ver la configuración y probar la conexión con Telegram Bot
 
 ## Entregables

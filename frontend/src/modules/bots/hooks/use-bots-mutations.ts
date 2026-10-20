@@ -7,6 +7,7 @@ import {
 	createBot,
 	generateSignal,
 	rejectSignal,
+	syncBotMarket,
 	transitionBot,
 	updateBot,
 } from '@/modules/bots/api/bots.api';
@@ -14,6 +15,8 @@ import {
 	BOTS_QUERY_KEY,
 	SIGNALS_QUERY_KEY,
 } from '@/modules/bots/hooks/use-bots-queries';
+import { CANDLE_FEATURES_QUERY_KEY } from '@/modules/features/hooks/use-features-queries';
+import { CANDLES_QUERY_KEY } from '@/modules/market/hooks/use-market-queries';
 import {
 	FILLS_QUERY_KEY,
 	ORDERS_QUERY_KEY,
@@ -94,11 +97,25 @@ function useRejectSignalMutation() {
 	});
 }
 
+/** Velas e indicadores nuevos: se refrescan las tablas de la pestaña Mercado. */
+function useSyncBotMarketMutation() {
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: (botId: number) => syncBotMarket(botId),
+		onSuccess: () => {
+			for (const queryKey of [CANDLES_QUERY_KEY, CANDLE_FEATURES_QUERY_KEY]) {
+				queryClient.invalidateQueries({ queryKey });
+			}
+		},
+	});
+}
+
 export {
 	useApproveSignalMutation,
 	useCreateBotMutation,
 	useGenerateSignalMutation,
 	useRejectSignalMutation,
+	useSyncBotMarketMutation,
 	useTransitionBotMutation,
 	useUpdateBotMutation,
 };

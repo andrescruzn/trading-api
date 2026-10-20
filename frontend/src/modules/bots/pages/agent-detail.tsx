@@ -10,8 +10,11 @@ import {
 import { getRouteApi, Link } from '@tanstack/react-router';
 import { type ReactNode, useState } from 'react';
 import { usePageBreadcrumb } from '@/modules/app-shell/hooks/use-page-breadcrumb';
+import { useHasRole } from '@/modules/auth/hooks/use-has-role';
+import { ROLES } from '@/modules/auth/lib/roles';
 import type { Bot, Signal } from '@/modules/bots/api/bots.api';
 import { AgentControls } from '@/modules/bots/components/agent-controls';
+import { AgentMarketTab } from '@/modules/bots/components/agent-market-tab';
 import { AnalyzeNowButton } from '@/modules/bots/components/analyze-now-button';
 import {
 	AgentStatusDot,
@@ -24,7 +27,10 @@ import { SignalDetailSheet } from '@/modules/bots/components/signal-detail-sheet
 import { SignalsTable } from '@/modules/bots/components/signals-table';
 import { useBotCatalogs } from '@/modules/bots/hooks/use-bot-catalogs';
 import { useUpdateBotMutation } from '@/modules/bots/hooks/use-bots-mutations';
-import { useBotQuery } from '@/modules/bots/hooks/use-bots-queries';
+import {
+	useBotQuery,
+	useMyBotsQuery,
+} from '@/modules/bots/hooks/use-bots-queries';
 import {
 	describeBot,
 	describeBotMarket,
@@ -445,8 +451,20 @@ export function AgentDetailPage() {
 	const [selectedSignal, setSelectedSignal] = useState<Signal | null>(null);
 	const bot = botQuery.data;
 
+	// Un admin puede abrir agentes de otros usuarios desde "Todos los
+	// agentes": la miga lleva de vuelta allí en vez de a "Mis agentes".
+	const isAdmin = useHasRole(ROLES.ADMIN);
+	const myBotsQuery = useMyBotsQuery({ enabled: isAdmin });
+	const isOthersAgent =
+		isAdmin &&
+		!!bot &&
+		!!myBotsQuery.data &&
+		!myBotsQuery.data.some((item) => item.id === bot.id);
+
 	usePageBreadcrumb([
-		{ label: 'Mis agentes', href: '/agents' },
+		isOthersAgent
+			? { label: 'Todos los agentes', href: '/admin/agents' }
+			: { label: 'Mis agentes', href: '/agents' },
 		{ label: bot ? describeBot(bot) : 'Agente' },
 	]);
 
@@ -515,6 +533,7 @@ export function AgentDetailPage() {
 					<TabsTrigger value="signals">Señales</TabsTrigger>
 					<TabsTrigger value="orders">Órdenes</TabsTrigger>
 					<TabsTrigger value="positions">Posiciones</TabsTrigger>
+					<TabsTrigger value="market">Mercado</TabsTrigger>
 					<TabsTrigger value="config">Configuración</TabsTrigger>
 				</TabsList>
 				<TabsContent value="signals" className="pt-2">
@@ -525,6 +544,9 @@ export function AgentDetailPage() {
 				</TabsContent>
 				<TabsContent value="positions" className="pt-2">
 					<PositionsTab botId={bot.id} symbolNames={catalogs.symbols} />
+				</TabsContent>
+				<TabsContent value="market" className="pt-2">
+					<AgentMarketTab bot={bot} />
 				</TabsContent>
 				<TabsContent value="config" className="pt-2">
 					<ConfigTab bot={bot} accountName={accountName} />

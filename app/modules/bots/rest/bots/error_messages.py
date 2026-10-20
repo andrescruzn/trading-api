@@ -41,4 +41,19 @@ BOT_ERROR_MESSAGES: dict[str, str] = {
     "BOT_TIMEFRAME_TOO_SHORT_FOR_AUTOMATION": (
         "Los modos Con aprobación y Automático necesitan un timeframe de 15 minutos o más."
     ),
+
+    # Actualizar datos del agente (POST /bots/{id}/market/sync)
+    "SYMBOL_NOT_FOUND":            "No encontramos el símbolo de este agente.",
+    "TIMEFRAME_NOT_FOUND":         "No encontramos el timeframe de este agente.",
+    "FEATURE_SET_NOT_FOUND":       "No encontramos el conjunto de indicadores de este agente.",
+    "EXCHANGE_NOT_FOUND":          "No encontramos el exchange del símbolo de este agente.",
+    "EXCHANGE_NOT_SUPPORTED_CCXT": "No podemos descargar velas de este exchange automáticamente.",
+    "CCXT_SYMBOL_NOT_FOUND":       "El exchange ya no ofrece el símbolo de este agente.",
+    "CCXT_NETWORK_ERROR":          "No pudimos conectar con el exchange. Intenta de nuevo en un momento.",
+    "CCXT_FETCH_ERROR":            "El exchange no devolvió las velas. Intenta de nuevo en un momento.",
+    "CANDLES_EMPTY_PAYLOAD":       "El exchange no devolvió velas para este símbolo y timeframe.",
+    "INSUFFICIENT_CANDLES": (
+        "Descargamos las velas, pero aún no alcanzan para calcular los indicadores "
+        "(se necesitan al menos 220)."
+    ),
 }

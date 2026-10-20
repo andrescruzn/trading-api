@@ -39,12 +39,12 @@ Hash routing: la URL real es `/#/<ruta>`.
 **Páginas — Usuario (cualquier usuario autenticado):**
 - `/#/agents` — **Mis agentes**: tarjetas con estado (punto que late si está activo), símbolo · timeframe, estrategia, última señal y botones Iniciar/Reanudar/Pausar. Filtro Todos / Activos / Detenidos. Sin agentes: bienvenida que explica qué es un agente.
 - `/#/agents/new` — **Asistente de creación** en 4 pasos: (1) qué operar (solo símbolos con velas automáticas), (2) cómo opera (estrategia + conjunto de indicadores compatible, con el recomendado preseleccionado), (3) con qué dinero (cuentas propias con su saldo; crea una cuenta de práctica en línea si no hay), (4) revisar: nombre sugerido editable, riesgo de la estrategia en solo lectura, **"Cuando la IA aprueba una operación"** (selector Manual / Con aprobación / Automático, Manual por defecto; aviso en rojo si es Automático con cuenta live), "Iniciarlo al crear".
-- `/#/agents/:id` — **Detalle**: nombre editable, badge del modo de ejecución, controles, **Analizar ahora** (genera una señal y abre su detalle), aviso "Preparando datos" hasta que hay indicadores, pestañas Señales (columna **Ejecución**) · Órdenes (con Nueva orden) · Posiciones (+ ejecuciones) · Configuración (tarjeta "Cuando la IA aprueba una operación" para cambiar el modo en cualquier estado —Automático pide confirmación—; en Con aprobación incluye **Minutos para aprobar**, 1–1440, vacío = valor por defecto del servidor; reglas e indicadores explicados). El detalle de una señal pendiente muestra **Aprobar** / **Descartar** con la cuenta atrás ("Vence en 45 min") y, en live, una confirmación extra.
+- `/#/agents/:id` — **Detalle**: nombre editable, badge del modo de ejecución, controles, **Analizar ahora** (genera una señal y abre su detalle), aviso "Preparando datos" hasta que hay indicadores, pestañas Señales (columna **Ejecución**) · Órdenes (con Nueva orden) · Posiciones (+ ejecuciones) · **Mercado** (velas e indicadores del símbolo y timeframe del agente, con selector de cantidad y botón **Actualizar datos**, que descarga velas y recalcula indicadores también con el agente detenido; si no hay datos dice si se están preparando o cómo conseguirlos) · Configuración (tarjeta "Cuando la IA aprueba una operación" para cambiar el modo en cualquier estado —Automático pide confirmación—; en Con aprobación incluye **Minutos para aprobar**, 1–1440, vacío = valor por defecto del servidor; reglas e indicadores explicados). El detalle de una señal pendiente muestra **Aprobar** / **Descartar** con la cuenta atrás ("Vence en 45 min") y, en live, una confirmación extra.
 - `/#/dashboard` ([M1](M01-AUTH.md)) — tarjeta **Señales por aprobar** (solo si hay alguna): agente, acción, precios, R/R y botones Aprobar/Descartar; se refresca cada 30 s.
 - `/#/bots` y `/#/agent` redirigen a `/#/agents`.
 
 **Páginas — Administrador (solo admin):**
-- `/#/admin/agents` — Vista global de todos los agentes con filtros por estado y modo; clic en una fila abre el detalle. `/#/admin/bots` redirige aquí.
+- `/#/admin/agents` — "Todos los agentes" (Administración → Supervisión): vista global de todos los agentes con filtros por estado y modo; clic en una fila abre el detalle. `/#/admin/bots` redirige aquí.
 
 ## Entregables
 
@@ -118,7 +118,7 @@ Entregables:
 
 - **Funcionalidad (95):** flujo guiado de punta a punta y tres modos de ejecución; señales automáticas por vela cerrada, aprobación en app o Telegram, ejecución automática. Falta el resumen por agente (PnL, win rate).
 - **Tests (65):** los 55 tests siguen (solo se ajustó la llamada a `analyze` en `test_generate_signal_service.py`), pero **nada nuevo está cubierto**: `execution_mode_rules`, `pending`/`expires_at` en `GenerateSignalService`, `transition_decision`, `ListPendingSignalsService`, el ciclo del scheduler y la UI.
-- **Seguridad (90):** propiedad en todas las rutas (también en `/signals/pending` y al aprobar); UPDATE condicional para la decisión; `auto` + live apagado por defecto; rate limit por usuario en `POST /api/signals/generate` ([M6](M06-AI-AGENT.md)); `risk_params` con máximo 20 claves.
+- **Seguridad (90):** propiedad en todas las rutas (también en `/signals/pending` y al aprobar); UPDATE condicional para la decisión; `auto` + live apagado por defecto; rate limit por usuario en `POST /api/signals/generate` ([M6](M06-AI-AGENT.md)) y en `POST /api/bots/{id}/market/sync`; `risk_params` con máximo 20 claves.
 - **Operación (75):** el scheduler (proceso líder) genera, caduca y ejecuta solo, con tope diario por usuario, timeframe mínimo y descarte de datos viejos; todo configurable por entorno. Sin métricas del ciclo ni avisos cuando un agente automático falla seguido.
 
 ## Posibles mejoras
@@ -225,6 +225,7 @@ AGENT_MAX_AUTO_ANALYSES_PER_DAY=96       # análisis automáticos por usuario y 
 | POST | `/api/bots/{id}/start` | token | Transición → running |
 | POST | `/api/bots/{id}/pause` | token | Transición → paused |
 | POST | `/api/bots/{id}/stop` | token | Transición → stopped |
+| POST | `/api/bots/{id}/market/sync` | token | "Actualizar datos": descarga 500 velas del símbolo/timeframe del agente (ccxt, M2) y recalcula sus indicadores (M3). 404 si no es del usuario; rate limit 3/min por usuario (`market_sync_rate_limiter`). Devuelve `rows_fetched` y `rows_calculated` (null sin conjunto) |
 | GET | `/api/signals` | token | Lista señales (requiere `?bot_id=`; 404 si el bot no es del usuario) |
 | GET | `/api/signals/pending` | token | Señales `pending` de mis agentes, con `bot_name` y `bot_mode`. `?mine=true` por defecto (también para admin); `mine=false` → admin ve todas. `limit` 1–200 (50) |
 | POST | `/api/signals/generate` | token | Genera señal invocando M6 ("Analizar ahora"); rate limit por usuario (`AGENT_ANALYSES_PER_MINUTE`) |
@@ -241,7 +242,7 @@ Routers registrados en `app/app_factory.py` (dentro de `api_routers`, con `prefi
 |-----|----------|----|
 | `/#/agents` | `routes/_app/agents/index.lazy.tsx` | `pages/agents.tsx` + `components/agent-card.tsx` + `components/agents-empty-state.tsx` |
 | `/#/agents/new` | `routes/_app/agents/new.lazy.tsx` | `pages/agent-new.tsx` + `components/agent-wizard/{choice-card,symbol-step,strategy-step,account-step}.tsx` + `components/execution-mode-picker.tsx` + `shared/components/stepper.tsx` |
-| `/#/agents/:id` | `routes/_app/agents/$agentId.lazy.tsx` | `pages/agent-detail.tsx` + `components/{agent-controls,analyze-now-button,signals-table,signal-detail-sheet,signal-decision-actions,execution-mode-card,approval-ttl-field}.tsx` |
+| `/#/agents/:id` | `routes/_app/agents/$agentId.lazy.tsx` | `pages/agent-detail.tsx` + `components/{agent-controls,analyze-now-button,signals-table,signal-detail-sheet,signal-decision-actions,execution-mode-card,approval-ttl-field,agent-market-tab}.tsx` (Mercado: `useSyncBotMarketMutation`, invalida velas e indicadores) |
 | `/#/admin/agents` | `routes/_app/admin/agents.lazy.tsx` | `pages/admin-agents.tsx` + `components/bot-actions-menu.tsx` |
 | `/#/bots`, `/#/admin/bots`, `/#/agent` | `routes/_app/{bots,agent}.tsx`, `routes/_app/admin/bots.tsx` | Redirecciones (`beforeLoad` + `redirect`) |
 
@@ -296,3 +297,4 @@ Routers registrados en `app/app_factory.py` (dentro de `api_routers`, con `prefi
 - **2026-10-19** — Auditoría de seguridad: el agente pasa su `effective_risk_pct` a la IA; cambiar a live exige cuenta live (`BOT_MODE_ACCOUNT_MISMATCH`); rate limit en `POST /signals/generate`; `owner_scope` movido a `role_guard`.
 - **2026-10-19** — **Modo de ejecución** Manual / Con aprobación / Automático (`bots.execution_mode`, `approval_ttl_minutes`), decisión por señal (`signals.decision_*`, `expires_at`, `candle_ts` UNIQUE; migración `f51e2dad9c13`), señales automáticas por vela cerrada en el scheduler, `GET /api/signals/pending`, aviso por Telegram en Con aprobación, UI (selector, badges, Aprobar/Descartar, tarjeta del dashboard).
 - **2026-10-19** — Campo **Minutos para aprobar** (`ApprovalTtlField`) en la tarjeta del modo de ejecución (solo en Con aprobación). El ciclo de ejecución del scheduler suma la reconciliación de órdenes de [M8](M08-ORDERS-EXECUTION.md) antes de proteger posiciones.
+- **2026-10-19** — Pestaña **Mercado** en el detalle del agente (`AgentMarketTab`: velas + indicadores de su símbolo/timeframe) con **Actualizar datos** (`SyncBotMarketDataService` → `POST /api/bots/{id}/market/sync`, reutiliza `FetchCandlesService` y `CalculateFeaturesService`). El agente concentra todo lo suyo: el menú del usuario pierde Órdenes, Símbolos, Velas e Indicadores, y el admin pierde Descargar velas y Calcular indicadores. El grupo admin "Operación" pasa a **Supervisión** con nombres que dicen el alcance (Todos los agentes, Todas las cuentas, Gestionar estrategias, Todas las órdenes, Todas las alertas) para no confundirlos con Mis agentes / Mis cuentas.

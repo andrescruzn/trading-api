@@ -30,7 +30,10 @@ import {
 const ALL = 'all';
 
 export function AdminAgentsPage() {
-	usePageBreadcrumb([{ label: 'Administración' }, { label: 'Agentes' }]);
+	usePageBreadcrumb([
+		{ label: 'Administración' },
+		{ label: 'Todos los agentes' },
+	]);
 	const navigate = useNavigate();
 	// Sin filtros el backend devuelve todos los agentes (solo admin).
 	const botsQuery = useBotsQuery();
@@ -121,7 +124,7 @@ export function AdminAgentsPage() {
 	return (
 		<div className="flex flex-col gap-6">
 			<PageListHeader
-				title="Agentes"
+				title="Todos los agentes"
 				description={
 					botsQuery.data
 						? `Todos los agentes del sistema. ${filteredBots.length} de ${allBots.length} agentes.`

@@ -39,7 +39,10 @@ const STATUS_FILTER_OPTIONS = [
 ];
 
 export function AdminAccountsPage() {
-	usePageBreadcrumb([{ label: 'Administración' }, { label: 'Cuentas' }]);
+	usePageBreadcrumb([
+		{ label: 'Administración' },
+		{ label: 'Todas las cuentas' },
+	]);
 	const accountsQuery = useAccountsQuery();
 	const exchangesQuery = useExchangesQuery();
 	const [mode, setMode] = useState(ALL);
@@ -129,7 +132,7 @@ export function AdminAccountsPage() {
 	return (
 		<div className="flex flex-col gap-6">
 			<PageListHeader
-				title="Cuentas"
+				title="Todas las cuentas"
 				description="Todas las cuentas del sistema, de todos los usuarios. Solo lectura."
 			/>
 			<div className="grid gap-3 sm:grid-cols-2 lg:max-w-xl">

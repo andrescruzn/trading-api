@@ -1,16 +1,12 @@
 import { useState } from 'react';
 import { usePageBreadcrumb } from '@/modules/app-shell/hooks/use-page-breadcrumb';
-import type { CandleFeature } from '@/modules/features/api/features.api';
-import { RegimeBadge } from '@/modules/features/components/regime-badge';
+import { CandleFeaturesTable } from '@/modules/features/components/candle-features-table';
+import { IndicatorsGlossary } from '@/modules/features/components/indicators-glossary';
 import {
 	useCandleFeaturesQuery,
 	useFeatureSetsQuery,
 } from '@/modules/features/hooks/use-features-queries';
-import {
-	featureSetOptions,
-	INDICATOR_GROUP_HINTS,
-	INDICATOR_GROUP_LABELS,
-} from '@/modules/features/lib/features-labels';
+import { featureSetOptions } from '@/modules/features/lib/features-labels';
 import {
 	useSymbolsQuery,
 	useTimeframesQuery,
@@ -20,72 +16,14 @@ import {
 	symbolOptions,
 	timeframeOptions,
 } from '@/modules/market/lib/market-labels';
-import {
-	DataTable,
-	type DataTableColumn,
-} from '@/modules/shared/components/data-table';
 import { OptionSelect } from '@/modules/shared/components/option-select';
 import { PageListHeader } from '@/modules/shared/components/page-list-header';
-import { formatDateTime, formatNumber } from '@/modules/shared/lib/format';
 import { Field, FieldLabel } from '@/modules/ui/components/field';
 
-type NumericFeatureKey =
-	| 'rsi_14'
-	| 'ema_20'
-	| 'ema_50'
-	| 'ema_200'
-	| 'macd'
-	| 'macd_signal'
-	| 'atr_14'
-	| 'bb_upper'
-	| 'bb_lower'
-	| 'vol_rel';
-
-// RSI y volumen relativo son índices pequeños: con 2 decimales basta. El resto
-// está en unidades de precio y usa los decimales según la magnitud.
-const NUMERIC_COLUMNS: {
-	key: NumericFeatureKey;
-	header: string;
-	digits?: number;
-}[] = [
-	{ key: 'rsi_14', header: 'RSI 14', digits: 2 },
-	{ key: 'ema_20', header: 'EMA 20' },
-	{ key: 'ema_50', header: 'EMA 50' },
-	{ key: 'ema_200', header: 'EMA 200' },
-	{ key: 'macd', header: 'MACD' },
-	{ key: 'macd_signal', header: 'Señal MACD' },
-	{ key: 'atr_14', header: 'ATR 14' },
-	{ key: 'bb_upper', header: 'BB superior' },
-	{ key: 'bb_lower', header: 'BB inferior' },
-	{ key: 'vol_rel', header: 'Vol. relativo', digits: 2 },
-];
-
-const columns: DataTableColumn<CandleFeature>[] = [
-	{
-		id: 'ts',
-		header: 'Fecha',
-		className: 'whitespace-nowrap',
-		cell: (row) => formatDateTime(row.ts),
-		skeletonClassName: 'w-32',
-	},
-	{
-		id: 'regime',
-		header: 'Régimen',
-		cell: (row) => <RegimeBadge regime={row.features?.regime} />,
-		skeletonClassName: 'w-24',
-	},
-	...NUMERIC_COLUMNS.map(
-		(column): DataTableColumn<CandleFeature> => ({
-			id: column.key,
-			header: column.header,
-			className: 'text-right font-mono tabular-nums',
-			cell: (row) => formatNumber(row.features?.[column.key], column.digits),
-		}),
-	),
-];
-
-export function IndicatorsPage() {
-	usePageBreadcrumb([{ label: 'Explorar' }, { label: 'Indicadores' }]);
+// Visor de cualquier símbolo, timeframe y conjunto para revisar el cálculo. El
+// usuario ve los indicadores de su agente en la pestaña Mercado del agente.
+export function AdminIndicatorsPage() {
+	usePageBreadcrumb([{ label: 'Administración' }, { label: 'Indicadores' }]);
 	const [symbolId, setSymbolId] = useState<string | null>(null);
 	const [timeframeChoice, setTimeframeChoice] = useState<string | null>(null);
 	const [featureSetChoice, setFeatureSetChoice] = useState<string | null>(null);
@@ -117,34 +55,9 @@ export function IndicatorsPage() {
 		<div className="flex flex-col gap-6">
 			<PageListHeader
 				title="Indicadores"
-				description="Cálculos sobre las velas que tus agentes usan para decidir. Se calculan solos mientras un agente está activo."
+				description="Indicadores calculados por vela para cualquier símbolo, timeframe y conjunto."
 			/>
-			<details className="group rounded-xl border bg-card px-4 py-3 text-sm">
-				<summary className="cursor-pointer font-medium marker:text-muted-foreground">
-					¿Qué mide cada indicador?
-				</summary>
-				<dl className="mt-3 grid gap-3 sm:grid-cols-2">
-					{Object.entries(INDICATOR_GROUP_HINTS).map(([group, hint]) => (
-						<div key={group} className="flex flex-col gap-0.5">
-							<dt className="font-medium">
-								{
-									INDICATOR_GROUP_LABELS[
-										group as keyof typeof INDICATOR_GROUP_LABELS
-									]
-								}
-							</dt>
-							<dd className="text-muted-foreground">{hint}</dd>
-						</div>
-					))}
-					<div className="flex flex-col gap-0.5">
-						<dt className="font-medium">Régimen</dt>
-						<dd className="text-muted-foreground">
-							Si el mercado va en tendencia alcista, bajista o de lado. Cada
-							estrategia solo opera en el régimen que declara.
-						</dd>
-					</div>
-				</dl>
-			</details>
+			<IndicatorsGlossary />
 			<div className="grid gap-3 sm:grid-cols-2 lg:max-w-4xl lg:grid-cols-4">
 				<Field>
 					<FieldLabel htmlFor="indicators-symbol">Símbolo</FieldLabel>
@@ -196,14 +109,11 @@ export function IndicatorsPage() {
 							más antigua.
 						</p>
 					)}
-					<DataTable
-						columns={columns}
+					<CandleFeaturesTable
 						rows={featuresQuery.data}
-						getRowId={(row) => row.id}
 						isLoading={featuresQuery.isLoading}
 						error={featuresQuery.error}
-						errorTitle="No pudimos cargar los indicadores"
-						empty="No hay indicadores calculados para este símbolo y timeframe. Se calculan solos cuando un agente activo opera este símbolo y timeframe."
+						empty="No hay indicadores calculados para este símbolo, timeframe y conjunto. Se calculan solos para los agentes activos, o a mano desde Conjuntos de indicadores."
 					/>
 				</div>
 			) : (

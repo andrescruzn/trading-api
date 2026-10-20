@@ -1,7 +1,7 @@
 import { getRouteApi } from '@tanstack/react-router';
 import { useState } from 'react';
 import { usePageBreadcrumb } from '@/modules/app-shell/hooks/use-page-breadcrumb';
-import type { Candle } from '@/modules/market/api/market.api';
+import { CandlesTable } from '@/modules/market/components/candles-table';
 import {
 	useCandlesQuery,
 	useSymbolsQuery,
@@ -12,47 +12,16 @@ import {
 	symbolOptions,
 	timeframeOptions,
 } from '@/modules/market/lib/market-labels';
-import {
-	DataTable,
-	type DataTableColumn,
-} from '@/modules/shared/components/data-table';
 import { OptionSelect } from '@/modules/shared/components/option-select';
 import { PageListHeader } from '@/modules/shared/components/page-list-header';
-import { formatDateTime, formatNumber } from '@/modules/shared/lib/format';
 import { Field, FieldLabel } from '@/modules/ui/components/field';
 
-const routeApi = getRouteApi('/_app/market/candles');
+const routeApi = getRouteApi('/_app/admin/candles/view');
 
-const columns: DataTableColumn<Candle>[] = [
-	{
-		id: 'ts',
-		header: 'Fecha',
-		cell: (row) => formatDateTime(row.ts),
-		skeletonClassName: 'w-32',
-	},
-	...(['open', 'high', 'low', 'close'] as const).map(
-		(key): DataTableColumn<Candle> => ({
-			id: key,
-			header: {
-				open: 'Apertura',
-				high: 'Máximo',
-				low: 'Mínimo',
-				close: 'Cierre',
-			}[key],
-			className: 'text-right font-mono tabular-nums',
-			cell: (row) => formatNumber(row[key]),
-		}),
-	),
-	{
-		id: 'volume',
-		header: 'Volumen',
-		className: 'text-right font-mono tabular-nums',
-		cell: (row) => formatNumber(row.volume, 4),
-	},
-];
-
-export function CandlesPage() {
-	usePageBreadcrumb([{ label: 'Explorar' }, { label: 'Velas OHLCV' }]);
+// Visor de cualquier símbolo y timeframe para revisar la ingesta. El usuario
+// ve las velas de su agente en la pestaña Mercado del agente.
+export function AdminCandlesPage() {
+	usePageBreadcrumb([{ label: 'Administración' }, { label: 'Velas' }]);
 	const search = routeApi.useSearch();
 	const navigate = routeApi.useNavigate();
 	const [limit, setLimit] = useState('100');
@@ -61,7 +30,7 @@ export function CandlesPage() {
 	const timeframesQuery = useTimeframesQuery();
 
 	// El símbolo y el timeframe viven en la URL (`?symbol_id=`): así "Ver velas"
-	// desde Símbolos llega preseleccionado y el enlace se puede compartir.
+	// desde Descargar velas llega preseleccionado y el enlace se puede compartir.
 	const symbolId = search.symbol_id;
 	const timeframeId = search.timeframe_id ?? timeframesQuery.data?.[0]?.id;
 
@@ -79,7 +48,7 @@ export function CandlesPage() {
 		<div className="flex flex-col gap-6">
 			<PageListHeader
 				title="Velas OHLCV"
-				description="Precios de apertura, máximo, mínimo y cierre guardados para cada símbolo."
+				description="Precios de apertura, máximo, mínimo y cierre guardados para cada símbolo y timeframe."
 			/>
 			<div className="grid gap-3 sm:grid-cols-3 lg:max-w-3xl">
 				<Field>
@@ -119,14 +88,11 @@ export function CandlesPage() {
 				</Field>
 			</div>
 			{symbolId ? (
-				<DataTable
-					columns={columns}
+				<CandlesTable
 					rows={candlesQuery.data}
-					getRowId={(row) => row.id}
 					isLoading={candlesQuery.isLoading}
 					error={candlesQuery.error}
-					errorTitle="No pudimos cargar las velas"
-					empty="No hay velas guardadas para este símbolo y timeframe. Un administrador puede descargarlas desde Descargar velas."
+					empty="No hay velas guardadas para este símbolo y timeframe. Descárgalas desde Descargar velas."
 				/>
 			) : (
 				<p className="rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">

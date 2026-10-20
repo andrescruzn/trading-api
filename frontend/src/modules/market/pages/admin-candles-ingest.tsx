@@ -210,7 +210,7 @@ export function AdminCandlesIngestPage() {
 							variant="outline"
 							render={
 								<Link
-									to="/market/candles"
+									to="/admin/candles/view"
 									search={{
 										symbol_id: resultSymbolId,
 										timeframe_id: resultTimeframeId,

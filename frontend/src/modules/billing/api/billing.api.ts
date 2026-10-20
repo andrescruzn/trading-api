@@ -94,6 +94,23 @@ type OpenBillingPeriodInput = {
 
 type CloseBillingPeriodInput = { closing_equity: string };
 
+/** Equity sugerido desde los últimos balances (montos como texto, DECIMAL). */
+type EquityEstimate = {
+	currency: string;
+	equity: string;
+	as_of: string | null;
+	lines: {
+		asset: string;
+		qty: string;
+		price: string | null;
+		value: string | null;
+	}[];
+	/** Activos sin precio: no suman al equity. */
+	missing: string[];
+};
+
+type FeeSettleAction = 'charge' | 'waive';
+
 // ======================================================================
 // Inversores
 // ======================================================================
@@ -128,6 +145,13 @@ function updateManagedAccount(id: number, input: ManagedAccountUpdate) {
 	return api.put<ManagedAccount>(`/managed-accounts/${id}`, input);
 }
 
+/** Solo admin. */
+function getEquityEstimate(managedAccountId: number) {
+	return api.get<EquityEstimate>(
+		`/managed-accounts/${managedAccountId}/equity-estimate`,
+	);
+}
+
 // ======================================================================
 // Períodos de facturación y comisiones
 // ======================================================================
@@ -149,11 +173,24 @@ function listFeeTransactions(filters: BillingFilters) {
 	return api.get<FeeTransaction[]>('/fee-transactions', filters);
 }
 
+/** Solo admin: `charge` = cobrada, `waive` = condonada. Solo comisiones pendientes. */
+function settleFeeTransaction(
+	id: number,
+	action: FeeSettleAction,
+	notes: string | null,
+) {
+	return api.post<FeeTransaction>(`/fee-transactions/${id}/${action}`, {
+		notes,
+	});
+}
+
 export type {
 	BillingFilters,
 	BillingPeriod,
 	BillingPeriodStatus,
 	CloseBillingPeriodInput,
+	EquityEstimate,
+	FeeSettleAction,
 	FeeTransaction,
 	FeeTransactionStatus,
 	Investor,
@@ -169,11 +206,13 @@ export {
 	closeBillingPeriod,
 	createInvestor,
 	createManagedAccount,
+	getEquityEstimate,
 	listBillingPeriods,
 	listFeeTransactions,
 	listInvestors,
 	listManagedAccounts,
 	openBillingPeriod,
+	settleFeeTransaction,
 	updateInvestor,
 	updateManagedAccount,
 };

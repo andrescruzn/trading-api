@@ -4,12 +4,14 @@ import {
 	closeBillingPeriod,
 	createInvestor,
 	createManagedAccount,
+	type FeeSettleAction,
 	type InvestorInput,
 	type InvestorUpdate,
 	type ManagedAccountInput,
 	type ManagedAccountUpdate,
 	type OpenBillingPeriodInput,
 	openBillingPeriod,
+	settleFeeTransaction,
 	updateInvestor,
 	updateManagedAccount,
 } from '@/modules/billing/api/billing.api';
@@ -86,11 +88,29 @@ function useCloseBillingPeriodMutation() {
 	});
 }
 
+function useSettleFeeMutation() {
+	const queryClient = useQueryClient();
+	return useMutation({
+		mutationFn: ({
+			id,
+			action,
+			notes,
+		}: {
+			id: number;
+			action: FeeSettleAction;
+			notes: string | null;
+		}) => settleFeeTransaction(id, action, notes),
+		onSuccess: () =>
+			queryClient.invalidateQueries({ queryKey: FEE_TRANSACTIONS_QUERY_KEY }),
+	});
+}
+
 export {
 	useCloseBillingPeriodMutation,
 	useCreateInvestorMutation,
 	useCreateManagedAccountMutation,
 	useOpenBillingPeriodMutation,
+	useSettleFeeMutation,
 	useUpdateInvestorMutation,
 	useUpdateManagedAccountMutation,
 };

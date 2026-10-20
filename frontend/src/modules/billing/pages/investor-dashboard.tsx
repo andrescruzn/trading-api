@@ -1,3 +1,4 @@
+import { IconDownload } from '@tabler/icons-react';
 import { useState } from 'react';
 import { usePageBreadcrumb } from '@/modules/app-shell/hooks/use-page-breadcrumb';
 import { useAuth } from '@/modules/auth/hooks/use-auth';
@@ -17,11 +18,20 @@ import {
 	pnlClassName,
 	sumClosedPeriods,
 } from '@/modules/billing/lib/billing-labels';
+import {
+	buildStatementCsv,
+	downloadCsv,
+} from '@/modules/billing/lib/billing-statement';
 import { ErrorAlert } from '@/modules/shared/components/error-alert';
 import { OptionSelect } from '@/modules/shared/components/option-select';
 import { PageListHeader } from '@/modules/shared/components/page-list-header';
 import { StatCard } from '@/modules/shared/components/stat-card';
-import { formatPercent, formatPrice } from '@/modules/shared/lib/format';
+import {
+	formatPercent,
+	formatPrice,
+	toNumber,
+} from '@/modules/shared/lib/format';
+import { Button } from '@/modules/ui/components/button';
 import { Field, FieldLabel } from '@/modules/ui/components/field';
 
 const STAT_LABELS = [
@@ -62,7 +72,22 @@ export function InvestorDashboardPage() {
 	const feesQuery = useFeeTransactionsQuery(accountId);
 
 	const totalNetPnl = sumClosedPeriods(periodsQuery.data, 'net_pnl');
-	const totalFees = sumClosedPeriods(periodsQuery.data, 'fee_amount');
+	// Comisiones por estado real (no todas las de un período cerrado se cobraron)
+	const fees = feesQuery.data ?? [];
+	const sumFees = (status: string) =>
+		fees
+			.filter((fee) => fee.status === status)
+			.reduce((total, fee) => total + (toNumber(fee.amount) ?? 0), 0);
+	const chargedFees = sumFees('charged');
+	const pendingFees = sumFees('pending');
+
+	function downloadStatement() {
+		if (!account) return;
+		downloadCsv(
+			`extracto-${account.name.toLowerCase().replaceAll(/[^a-z0-9]+/g, '-')}.csv`,
+			buildStatementCsv(account, periodsQuery.data ?? [], fees),
+		);
+	}
 	const isLoadingProfile = investorsQuery.isLoading || accountsQuery.isLoading;
 	const loadError = investorsQuery.error ?? accountsQuery.error;
 
@@ -136,9 +161,13 @@ export function InvestorDashboardPage() {
 							/>
 							<StatCard
 								label="Comisiones pagadas"
-								value={formatPrice(totalFees)}
-								hint="Suma de los períodos cerrados"
-								isLoading={periodsQuery.isLoading}
+								value={formatPrice(chargedFees)}
+								hint={
+									pendingFees > 0
+										? `${formatPrice(pendingFees)} pendientes de cobro`
+										: 'Sin comisiones pendientes'
+								}
+								isLoading={feesQuery.isLoading}
 							/>
 							<StatCard
 								label="Comisión de desempeño"
@@ -148,9 +177,20 @@ export function InvestorDashboardPage() {
 						</div>
 
 						<section className="flex flex-col gap-3">
-							<h2 className="text-base font-semibold">
-								Períodos de facturación
-							</h2>
+							<div className="flex flex-wrap items-center justify-between gap-2">
+								<h2 className="text-base font-semibold">
+									Períodos de facturación
+								</h2>
+								<Button
+									size="sm"
+									variant="outline"
+									onClick={downloadStatement}
+									disabled={!periodsQuery.data?.length}
+								>
+									<IconDownload />
+									Descargar extracto (CSV)
+								</Button>
+							</div>
 							<BillingPeriodsTable
 								rows={periodsQuery.data}
 								isLoading={periodsQuery.isLoading}

@@ -134,6 +134,8 @@ export function BillingPeriodsTable({
 type FeeTransactionsTableProps = ListState<FeeTransaction> & {
 	/** Las notas son internas: solo las ve el administrador. */
 	showNotes?: boolean;
+	/** Columna extra al final (p. ej. "Marcar cobrada" del admin). */
+	renderActions?: (fee: FeeTransaction) => ReactNode;
 };
 
 export function FeeTransactionsTable({
@@ -142,6 +144,7 @@ export function FeeTransactionsTable({
 	error,
 	empty,
 	showNotes = false,
+	renderActions,
 }: FeeTransactionsTableProps) {
 	const columns: DataTableColumn<FeeTransaction>[] = [
 		{
@@ -189,6 +192,15 @@ export function FeeTransactionsTable({
 				) : (
 					<span className="text-muted-foreground">—</span>
 				),
+		});
+	}
+
+	if (renderActions) {
+		columns.push({
+			id: 'actions',
+			header: <span className="sr-only">Acciones</span>,
+			className: 'text-right',
+			cell: renderActions,
 		});
 	}
 

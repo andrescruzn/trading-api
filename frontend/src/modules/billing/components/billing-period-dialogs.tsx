@@ -7,6 +7,7 @@ import type {
 	BillingPeriod,
 	ManagedAccount,
 } from '@/modules/billing/api/billing.api';
+import { EquityEstimateHint } from '@/modules/billing/components/equity-estimate-hint';
 import {
 	useCloseBillingPeriodMutation,
 	useOpenBillingPeriodMutation,
@@ -148,6 +149,15 @@ export function OpenPeriodDialog({
 										)}
 									</Field>
 								)}
+							/>
+							<EquityEstimateHint
+								managedAccountId={managedAccount?.id ?? null}
+								enabled={open}
+								onUse={(value) =>
+									form.setValue('opening_equity', value, {
+										shouldValidate: true,
+									})
+								}
 							/>
 						</FieldGroup>
 					</DialogBody>
@@ -309,6 +319,15 @@ export function ClosePeriodDialog({
 										)}
 									</Field>
 								)}
+							/>
+							<EquityEstimateHint
+								managedAccountId={period?.managed_account_id ?? null}
+								enabled={!!period}
+								onUse={(value) =>
+									form.setValue('closing_equity', value, {
+										shouldValidate: true,
+									})
+								}
 							/>
 							{estimate && (
 								<div className="flex flex-col gap-1 text-sm">

@@ -437,6 +437,12 @@ class Settings:
             os.getenv("DESKTOP_NOTIFICATIONS_ENABLED", "false").lower() == "true"
         )
 
+        # ALERT_REPEAT_MINUTES: antispam de las reglas que se revisan en cada
+        #   ciclo del scheduler (precio, PnL, drawdown). Mientras la condición
+        #   siga, la regla vuelve a avisar como máximo cada N minutos.
+        #   0 = avisa en cada ciclo.
+        self.ALERT_REPEAT_MINUTES: int = max(0, _env_int("ALERT_REPEAT_MINUTES", 60))
+
         # --------------------------------------------------------------
         # Scheduler — Actualización automática de velas y features
         # --------------------------------------------------------------

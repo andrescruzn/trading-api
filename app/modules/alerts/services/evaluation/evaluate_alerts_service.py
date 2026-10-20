@@ -3,7 +3,9 @@
 # ======================================================================
 # app/modules/alerts/services/evaluation/evaluate_alerts_service.py
 #
-# Evalúa las reglas activas contra un contexto dado (señal, orden, precio).
+# Evalúa las reglas de eventos (señal, orden) en los hooks de M7/M8.
+# Las reglas periódicas (precio, P&L, drawdown) las evalúa
+# EvaluatePeriodicAlertsService en el ciclo del scheduler.
 #
 # DISEÑO (fire-and-forget):
 # - Si la evaluación falla, se loguea pero NO se propaga la excepción.
@@ -13,7 +15,6 @@
 from __future__ import annotations
 
 import logging
-from decimal import Decimal
 from typing import Any, TYPE_CHECKING
 
 from app.modules.alerts.domain.alert_rule_repository import AlertRuleRepository
@@ -33,7 +34,6 @@ class EvaluateAlertsService:
     Puntos de invocación:
     - GenerateSignalService → evaluate_signal_alerts()
     - CreateOrderService    → evaluate_order_alerts()
-    - Endpoint manual       → evaluate_price_alerts()
     """
 
     def __init__(
@@ -122,61 +122,3 @@ class EvaluateAlertsService:
                         logger.error("evaluate_order_alerts: rule %s: %s", rule.id, exc)
         except Exception as exc:
             logger.error("evaluate_order_alerts: error: %s", exc)
-
-    # ------------------------------------------------------------------
-    # Precio (endpoint manual)
-    # ------------------------------------------------------------------
-
-    def evaluate_price_alerts(self, symbol_id: int, current_price: Decimal) -> int:
-        """
-        Evalúa reglas tipo 'price' para un símbolo.
-        Retorna el número de alertas disparadas.
-        """
-        fired = 0
-        try:
-            rules = self._rule_repo.list_active_by_type_and_bot(rule_type="price")
-            for rule in rules:
-                try:
-                    spec = rule.rule_spec
-                    if spec.get("symbol_id") != symbol_id:
-                        continue
-
-                    operator = spec.get("operator", "lt")
-                    threshold = Decimal(str(spec.get("threshold", 0)))
-                    matches = self._eval_operator(current_price, operator, threshold)
-
-                    if matches:
-                        self._fire.fire(
-                            rule=rule,
-                            title=f"Precio {operator.upper()} {threshold}",
-                            message=f"Precio actual {current_price} {operator} {threshold}",
-                            severity="warning",
-                            payload={
-                                "symbol_id": symbol_id,
-                                "current_price": float(current_price),
-                                "threshold": float(threshold),
-                                "operator": operator,
-                            },
-                        )
-                        fired += 1
-                except Exception as exc:
-                    logger.error("evaluate_price_alerts: rule %s: %s", rule.id, exc)
-        except Exception as exc:
-            logger.error("evaluate_price_alerts: error: %s", exc)
-        return fired
-
-    # ------------------------------------------------------------------
-    # Helpers
-    # ------------------------------------------------------------------
-
-    @staticmethod
-    def _eval_operator(value: Decimal, operator: str, threshold: Decimal) -> bool:
-        ops = {
-            "lt":  lambda v, t: v < t,
-            "lte": lambda v, t: v <= t,
-            "gt":  lambda v, t: v > t,
-            "gte": lambda v, t: v >= t,
-            "eq":  lambda v, t: v == t,
-        }
-        fn = ops.get(operator)
-        return fn(value, threshold) if fn else False

@@ -88,6 +88,7 @@ class SqlAlchemyUserRepository(SqlAlchemyRepository, UserRepository):
             telegram_chat_id=model.telegram_chat_id,
             telegram_link_hash=model.telegram_link_hash,
             telegram_link_expires_at=self._as_utc_aware(model.telegram_link_expires_at),
+            notifications_seen_at=self._as_utc_aware(model.notifications_seen_at),
             created_at=self._as_utc_aware(model.created_at),
             updated_at=self._as_utc_aware(model.updated_at),
         )
@@ -119,6 +120,7 @@ class SqlAlchemyUserRepository(SqlAlchemyRepository, UserRepository):
         model.telegram_chat_id = user.telegram_chat_id
         model.telegram_link_hash = user.telegram_link_hash
         model.telegram_link_expires_at = user.telegram_link_expires_at
+        model.notifications_seen_at = user.notifications_seen_at
 
         return model
 
@@ -173,6 +175,17 @@ class SqlAlchemyUserRepository(SqlAlchemyRepository, UserRepository):
         self._session.refresh(model)
 
         return self._to_domain(model)
+
+    def set_notifications_seen_at(self, user_id: int, seen_at: datetime) -> bool:
+        # UPDATE de una sola columna: no pisa el JTI ni el OTP si otro request
+        # los cambió entre la lectura y la escritura (la campana se usa a menudo).
+        rows = (
+            self._session.query(UserModel)
+            .filter(UserModel.id == user_id)
+            .update({UserModel.notifications_seen_at: seen_at}, synchronize_session=False)
+        )
+        self._session.flush()
+        return rows > 0
 
     def update(self, user: User) -> User:
         model: Optional[UserModel] = self._session.get(UserModel, user.id)

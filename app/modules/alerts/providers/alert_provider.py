@@ -22,8 +22,22 @@ from app.modules.alerts.services.alert_rules import (
     UpdateAlertRuleService,
 )
 from app.modules.alerts.services.alert_events import ListAlertEventsService
-from app.modules.alerts.services.evaluation import EvaluateAlertsService, FireAlertService
+from app.modules.alerts.services.evaluation import (
+    EvaluateAlertsService,
+    EvaluatePeriodicAlertsService,
+    FireAlertService,
+)
+from app.modules.alerts.services.notifications import (
+    ListNotificationsService,
+    MarkNotificationsSeenService,
+)
 from app.modules.mailer.providers.mailer_provider import build_mailer
+from app.modules.market.infrastructure import (
+    SqlAlchemyCandleRepository,
+    SqlAlchemySymbolRepository,
+    SqlAlchemyTimeframeRepository,
+)
+from app.modules.users.infrastructure import SqlAlchemyUserRepository
 
 
 class AlertServiceFactory:
@@ -49,6 +63,8 @@ class AlertServiceFactory:
             settings=settings,
             mailer=self._mailer,
             user_email=user_email,
+            # Dueño de la regla: su chat de Telegram y, sin request, su correo
+            user_repo=SqlAlchemyUserRepository(session),
         )
 
     # ------------------------------------------------------------------
@@ -79,6 +95,19 @@ class AlertServiceFactory:
         return ListAlertEventsService(repo=self._event_repo)
 
     # ------------------------------------------------------------------
+    # Notificaciones en la app (campana): eventos + users.notifications_seen_at
+    # ------------------------------------------------------------------
+
+    def list_notifications(self) -> ListNotificationsService:
+        return ListNotificationsService(
+            event_repo=self._event_repo,
+            user_repo=SqlAlchemyUserRepository(self._session),
+        )
+
+    def mark_notifications_seen(self) -> MarkNotificationsSeenService:
+        return MarkNotificationsSeenService(user_repo=SqlAlchemyUserRepository(self._session))
+
+    # ------------------------------------------------------------------
     # Evaluation
     # ------------------------------------------------------------------
 
@@ -86,6 +115,23 @@ class AlertServiceFactory:
         return EvaluateAlertsService(
             rule_repo=self._rule_repo,
             fire_service=self._fire_service,
+        )
+
+    def evaluate_periodic_alerts(self) -> EvaluatePeriodicAlertsService:
+        # Import diferido: bots y orders → alerts (hooks) importan este provider
+        from app.modules.bots.infrastructure import SqlAlchemyBotRepository
+        from app.modules.orders.infrastructure import SqlAlchemyFillRepository
+
+        return EvaluatePeriodicAlertsService(
+            rule_repo=self._rule_repo,
+            event_repo=self._event_repo,
+            fire_service=self._fire_service,
+            candle_repo=SqlAlchemyCandleRepository(self._session),
+            timeframe_repo=SqlAlchemyTimeframeRepository(self._session),
+            symbol_repo=SqlAlchemySymbolRepository(self._session),
+            bot_repo=SqlAlchemyBotRepository(self._session),
+            fill_repo=SqlAlchemyFillRepository(self._session),
+            repeat_minutes=settings.ALERT_REPEAT_MINUTES,
         )
 
     def fire_alert(self) -> FireAlertService:
@@ -104,3 +150,8 @@ def build_evaluate_alerts_service(session: Session) -> EvaluateAlertsService:
     """
     factory = AlertServiceFactory(session=session)
     return factory.evaluate_alerts()
+
+
+def build_periodic_alerts_service(session: Session) -> EvaluatePeriodicAlertsService:
+    """Helper para el scheduler: reglas de precio, P&L y drawdown en cada ciclo."""
+    return AlertServiceFactory(session=session).evaluate_periodic_alerts()

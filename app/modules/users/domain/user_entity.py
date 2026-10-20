@@ -47,6 +47,7 @@ class User:
         telegram_chat_id: Optional[int] = None,
         telegram_link_hash: Optional[str] = None,
         telegram_link_expires_at: Optional[datetime] = None,
+        notifications_seen_at: Optional[datetime] = None,
         created_at: Optional[datetime] = None,
         updated_at: Optional[datetime] = None,
     ):
@@ -79,6 +80,9 @@ class User:
         self.telegram_chat_id = telegram_chat_id
         self.telegram_link_hash = telegram_link_hash
         self.telegram_link_expires_at = telegram_link_expires_at
+
+        # Notificaciones en la app: los eventos posteriores cuentan como nuevos
+        self.notifications_seen_at = notifications_seen_at
 
         # --------------------------------------------------------------
         # Auditoría

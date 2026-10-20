@@ -19,6 +19,7 @@ class CreateAlertRuleService:
     Reglas de negocio:
     - El bot vigilado debe ser del usuario (si no, recibiría señales ajenas).
     - El webhook, si viene, debe ser https y no apuntar a la red interna.
+    - Las reglas de PnL y drawdown miden un agente: exigen `bot_id`.
     """
 
     def __init__(
@@ -47,6 +48,9 @@ class CreateAlertRuleService:
                 http_status=422,
                 meta={"rule_type": rule_type},
             )
+
+        if rule_type in AlertRule.BOT_REQUIRED_TYPES and bot_id is None:
+            return ServiceResult.fail(code="ALERT_RULE_BOT_REQUIRED", http_status=422)
 
         if bot_id is not None and find_accessible_bot(
             self._bot_repo, self._account_repo, bot_id, owner_id

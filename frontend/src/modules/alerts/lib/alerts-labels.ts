@@ -31,13 +31,23 @@ const RULE_TYPE_VARIANTS: Record<AlertRuleType, BadgeVariant> = {
 
 const RULE_TYPE_DESCRIPTIONS: Record<AlertRuleType, string> = {
 	signal: 'Avisa cuando un agente emite una señal aprobada.',
-	price: 'Avisa cuando el precio de un símbolo cruza el umbral.',
-	pnl: 'Avisa cuando el PnL llega al porcentaje indicado.',
+	price: 'Avisa cuando el último precio del símbolo cruza el umbral.',
+	pnl: 'Avisa cuando el PnL del agente (operaciones cerradas y abiertas) llega al porcentaje de lo que invierte por operación.',
 	drawdown:
-		'Avisa cuando la caída desde el máximo supera el porcentaje indicado.',
+		'Avisa cuando la caída del agente desde su mejor resultado llega al porcentaje de lo que invierte por operación.',
 	error:
 		'Avisa cuando un agente entra en error o se rechaza una de sus órdenes.',
 };
+
+/** Tipos que el sistema revisa solo, en cada ciclo (los demás avisan al ocurrir el evento). */
+const PERIODIC_RULE_TYPES: readonly AlertRuleType[] = [
+	'price',
+	'pnl',
+	'drawdown',
+];
+
+const PERIODIC_RULE_NOTE =
+	'Se revisa automáticamente cada pocos minutos. Si la condición se mantiene, el aviso se repite cada cierto tiempo, no en cada revisión.';
 
 const SIGNAL_ACTION_LABELS: Record<SignalActionFilter, string> = {
 	any: 'Cualquier señal',
@@ -135,6 +145,8 @@ export {
 	DELIVERY_LABELS,
 	DELIVERY_VARIANTS,
 	describeChannels,
+	PERIODIC_RULE_NOTE,
+	PERIODIC_RULE_TYPES,
 	PNL_PERIOD_LABELS,
 	PNL_PERIOD_OPTIONS,
 	PRICE_OPERATOR_LABELS,

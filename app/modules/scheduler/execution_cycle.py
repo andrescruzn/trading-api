@@ -14,7 +14,9 @@
 #   3. Reconciliar órdenes live abiertas con el exchange (límites, SL
 #      nativo, respuestas perdidas por red).
 #   4. Proteger posiciones: cerrar las que tocaron su SL/TP.
-#   5. Telegram en modo polling (desarrollo): procesar mensajes y botones.
+#   5. Alertas de precio, PnL y drawdown (M9) con los datos ya guardados;
+#      antispam ALERT_REPEAT_MINUTES por regla.
+#   6. Telegram en modo polling (desarrollo): procesar mensajes y botones.
 #
 # SALVAGUARDAS:
 # - Timeframe mínimo (SIGNALS_AUTO_MIN_TIMEFRAME_SECONDS) y tope diario de
@@ -55,6 +57,7 @@ def run_execution_cycle() -> None:
         _expire_pending_signals,
         _reconcile_orders,
         _protect_positions,
+        _evaluate_alert_rules,
         _poll_telegram,
     ):
         try:
@@ -251,7 +254,28 @@ def _protect_positions() -> None:
 
 
 # ======================================================================
-# 5. Telegram (polling en desarrollo)
+# 5. Alertas periódicas (precio, PnL, drawdown)
+# ======================================================================
+
+def _evaluate_alert_rules() -> None:
+    # Va después de proteger posiciones: el PnL ya refleja los cierres por SL/TP
+    from app.modules.alerts.providers import build_periodic_alerts_service
+
+    session = SessionLocal()
+    try:
+        report = build_periodic_alerts_service(session).run().data
+        if report.fired or report.failed:
+            logger.info(
+                "[Execution] Alertas — revisadas=%d disparadas=%d en_espera=%d sin_datos=%d"
+                " fallidas=%d",
+                report.checked, report.fired, report.cooldown, report.skipped, report.failed,
+            )
+    finally:
+        session.close()
+
+
+# ======================================================================
+# 6. Telegram (polling en desarrollo)
 # ======================================================================
 
 def _poll_telegram() -> None:

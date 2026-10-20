@@ -1,6 +1,7 @@
 import { IconHome } from '@tabler/icons-react';
 import { Link, Navigate, Outlet } from '@tanstack/react-router';
 import { Fragment } from 'react';
+import { NotificationsBell } from '@/modules/alerts/components/notifications-bell';
 import { AppSidebar } from '@/modules/app-shell/components/app-sidebar';
 import { useBreadcrumbContext } from '@/modules/app-shell/hooks/use-breadcrumb-context';
 import { BreadcrumbProvider } from '@/modules/app-shell/lib/breadcrumb-provider';
@@ -57,7 +58,8 @@ function AppBreadcrumb() {
 
 /**
  * Shell de la app autenticada (todos los roles): sidebar + cabecera con
- * breadcrumb + contenido. Sin sesión, redirige a `/login`.
+ * breadcrumb y campana de notificaciones + contenido. Sin sesión, redirige a
+ * `/login`.
  */
 export function AppShellLayout() {
 	const { status } = useAuth();
@@ -79,6 +81,9 @@ export function AppShellLayout() {
 								className="mr-2 data-[orientation=vertical]:h-4 data-[orientation=vertical]:self-auto"
 							/>
 							<AppBreadcrumb />
+						</div>
+						<div className="ml-auto flex items-center gap-2 px-4">
+							<NotificationsBell />
 						</div>
 					</header>
 					<div className="flex min-w-0 flex-1 flex-col gap-4 px-4 pt-0 pb-10">

@@ -105,6 +105,15 @@ class UserModel(Base):
     telegram_link_expires_at = Column(TIMESTAMP(fsp=6), nullable=True)
 
     # ------------------------------------------------------------------
+    # Notificaciones en la app (campana del header, M9)
+    # ------------------------------------------------------------------
+    notifications_seen_at = Column(
+        TIMESTAMP(fsp=6),
+        nullable=True,
+        comment="Última vez que el usuario abrió sus notificaciones; NULL = nunca (todas sin leer)",
+    )
+
+    # ------------------------------------------------------------------
     # Auditoría
     # ------------------------------------------------------------------
     created_at = Column(

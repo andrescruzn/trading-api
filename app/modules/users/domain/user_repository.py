@@ -13,6 +13,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from datetime import datetime
 from typing import Optional
 
 from app.modules.users.domain.user_entity import User
@@ -70,4 +71,9 @@ class UserRepository(TransactionalRepository, ABC):
     @abstractmethod
     def update(self, user: User) -> User:
         """Actualiza un usuario y retorna el actualizado."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def set_notifications_seen_at(self, user_id: int, seen_at: datetime) -> bool:
+        """Marca las notificaciones como vistas (solo esa columna). False si no existe."""
         raise NotImplementedError

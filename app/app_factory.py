@@ -49,6 +49,7 @@ from app.modules.alerts.rest import (
     alert_events_router,
     alerts_admin_router,
     telegram_webhook_router,
+    notifications_router,
 )
 from app.modules.billing.rest import investors_router, managed_accounts_router, billing_periods_router
 from app.modules.users.rest import auth_router, telegram_link_router, users_router
@@ -150,6 +151,7 @@ def create_app() -> FastAPI:
         orders_router, fills_router, positions_router, signal_decisions_router, performance_router,
         # Alerts (+ webhook de Telegram)
         alert_rules_router, alert_events_router, alerts_admin_router, telegram_webhook_router,
+        notifications_router,
         # Billing & Managed Accounts
         investors_router, managed_accounts_router, billing_periods_router,
     )

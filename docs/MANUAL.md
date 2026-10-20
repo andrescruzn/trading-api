@@ -605,6 +605,12 @@ La página de cada agente:
     indicadores (uno o dos minutos). La página se actualiza sola.
   - Pestañas: Señales, Órdenes (con "Nueva orden"), Posiciones (con las ejecuciones debajo),
     Mercado y Configuración (reglas de la estrategia y qué mide cada indicador).
+  - Nueva orden: en una compra a mercado puedes poner stop loss y take profit; la app cierra la
+    posición sola si el precio llega a alguno (en live, el stop loss queda en el exchange). Con
+    los dos, el take profit debe estar al menos el doble de lejos que el stop loss, la misma
+    regla 2:1 que usa la IA. Ejemplo: compras a 100 con SL 95 → el TP debe ser 110 o más.
+  - Las órdenes live que siguen abiertas (una límite que no se ha ejecutado, por ejemplo) se
+    pueden cancelar con "Cancelar". Lo que ya se ejecutó se mantiene.
   - Mercado: las últimas velas del símbolo y timeframe del agente y, en "Indicadores", lo que la
     IA lee de cada vela (RSI, EMA, MACD, régimen…). Puedes elegir cuántas velas ver (50 a 500).
     Mientras el agente está activo, los datos se actualizan solos. "Actualizar datos" los trae

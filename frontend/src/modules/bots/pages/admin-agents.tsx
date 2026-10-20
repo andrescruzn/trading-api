@@ -1,6 +1,8 @@
 import { useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
 import { usePageBreadcrumb } from '@/modules/app-shell/hooks/use-page-breadcrumb';
+import { OwnerCell } from '@/modules/auth/components/owner-cell';
+import { useOwners } from '@/modules/auth/hooks/use-users-queries';
 import type { Bot } from '@/modules/bots/api/bots.api';
 import { BotActionsMenu } from '@/modules/bots/components/bot-actions-menu';
 import {
@@ -37,15 +39,24 @@ export function AdminAgentsPage() {
 	const navigate = useNavigate();
 	// Sin filtros el backend devuelve todos los agentes (solo admin).
 	const botsQuery = useBotsQuery();
-	const { catalogs } = useBotCatalogs();
+	const { accountsQuery, catalogs } = useBotCatalogs();
+	const owners = useOwners(ALL);
 	const [status, setStatus] = useState(ALL);
 	const [mode, setMode] = useState(ALL);
+	const [owner, setOwner] = useState(ALL);
+
+	// El dueño de un agente es el de su cuenta (el admin recibe todas).
+	const accountOwner = new Map<number, number>();
+	for (const account of accountsQuery.data ?? [])
+		accountOwner.set(account.id, account.user_id);
+	const ownerOf = (bot: Bot) => accountOwner.get(bot.account_id);
 
 	const allBots = botsQuery.data ?? [];
 	const filteredBots = allBots.filter(
 		(bot) =>
 			(status === ALL || bot.status === status) &&
-			(mode === ALL || bot.mode === mode),
+			(mode === ALL || bot.mode === mode) &&
+			(owner === ALL || ownerOf(bot) === Number(owner)),
 	);
 
 	function openAgent(bot: Bot) {
@@ -57,6 +68,11 @@ export function AdminAgentsPage() {
 			id: 'name',
 			header: 'Agente',
 			cell: (row) => <span className="font-medium">{describeBot(row)}</span>,
+		},
+		{
+			id: 'owner',
+			header: 'Dueño',
+			cell: (row) => <OwnerCell userId={ownerOf(row)} users={owners.byId} />,
 		},
 		{
 			id: 'status',
@@ -131,7 +147,14 @@ export function AdminAgentsPage() {
 						: 'Todos los agentes del sistema.'
 				}
 			/>
-			<div className="grid gap-3 sm:grid-cols-2 lg:max-w-xl">
+			<div className="grid gap-3 sm:grid-cols-3 lg:max-w-3xl">
+				<OptionSelect
+					aria-label="Dueño"
+					size="sm"
+					value={owner}
+					onChange={(value) => setOwner(value ?? ALL)}
+					options={owners.options}
+				/>
 				<OptionSelect
 					aria-label="Estado"
 					size="sm"

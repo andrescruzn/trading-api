@@ -5,6 +5,8 @@ import {
 } from '@/modules/alerts/components/alert-badges';
 import { useAlertEventsQuery } from '@/modules/alerts/hooks/use-alerts-queries';
 import { botLabel } from '@/modules/alerts/lib/alerts-labels';
+import type { UserSummary } from '@/modules/auth/api/users.api';
+import { OwnerCell } from '@/modules/auth/components/owner-cell';
 import {
 	useBotsQuery,
 	useMyBotsQuery,
@@ -17,8 +19,12 @@ import {
 import { formatDateTime } from '@/modules/shared/lib/format';
 
 type AlertEventsTableProps = {
-	/** `admin` muestra usuario y bot; `user` muestra el mensaje. */
+	/** `admin` muestra dueño y bot; `user` muestra el mensaje. */
 	variant: 'user' | 'admin';
+	/** Solo admin: usuarios para la columna Dueño. */
+	users?: Map<number, UserSummary>;
+	/** Solo admin: muestra solo los eventos de ese usuario. */
+	ownerId?: number;
 };
 
 const EMPTY_CELL = <span className="text-muted-foreground">—</span>;
@@ -27,7 +33,11 @@ const EMPTY_CELL = <span className="text-muted-foreground">—</span>;
  * Historial de eventos de alerta. Vive dentro de su pestaña: la consulta solo
  * corre cuando la pestaña se abre (Base UI no monta los paneles ocultos).
  */
-export function AlertEventsTable({ variant }: AlertEventsTableProps) {
+export function AlertEventsTable({
+	variant,
+	users = new Map(),
+	ownerId,
+}: AlertEventsTableProps) {
 	const isAdmin = variant === 'admin';
 	const eventsQuery = useAlertEventsQuery({ limit: isAdmin ? 200 : 100 });
 	// Admin ve los bots de todos; un usuario solo puede listar los suyos.
@@ -65,9 +75,9 @@ export function AlertEventsTable({ variant }: AlertEventsTableProps) {
 	const extraColumns: DataTableColumn<AlertEvent>[] = isAdmin
 		? [
 				{
-					id: 'user',
-					header: 'Usuario',
-					cell: (row) => (row.user_id ? `Usuario #${row.user_id}` : EMPTY_CELL),
+					id: 'owner',
+					header: 'Dueño',
+					cell: (row) => <OwnerCell userId={row.user_id} users={users} />,
 				},
 				{
 					id: 'bot',
@@ -97,14 +107,20 @@ export function AlertEventsTable({ variant }: AlertEventsTableProps) {
 	return (
 		<DataTable
 			columns={[...baseColumns, ...extraColumns]}
-			rows={eventsQuery.data}
+			rows={
+				ownerId === undefined
+					? eventsQuery.data
+					: eventsQuery.data?.filter((row) => row.user_id === ownerId)
+			}
 			getRowId={(row) => row.id}
 			isLoading={eventsQuery.isLoading}
 			error={eventsQuery.error}
 			errorTitle="No pudimos cargar los eventos de alerta"
 			empty={
 				isAdmin
-					? 'Aún no se ha disparado ninguna alerta.'
+					? ownerId === undefined
+						? 'Aún no se ha disparado ninguna alerta.'
+						: 'Este usuario aún no tiene eventos de alerta.'
 					: 'Aún no recibes alertas. Aparecerán aquí cuando se cumpla alguna de tus reglas.'
 			}
 		/>

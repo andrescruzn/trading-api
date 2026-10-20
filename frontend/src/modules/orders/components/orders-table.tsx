@@ -27,6 +27,8 @@ type OrdersTableProps = {
 	onViewFills: (order: Order) => void;
 	/** Si se pasa, agrega la columna "Agente" con estos nombres (`id → nombre`). */
 	botNames?: Map<number, string>;
+	/** Si se pasa, agrega la columna "Dueño" (vistas de Supervisión). */
+	renderOwner?: (order: Order) => ReactNode;
 };
 
 export function OrdersTable({
@@ -36,6 +38,7 @@ export function OrdersTable({
 	empty,
 	onViewFills,
 	botNames,
+	renderOwner,
 }: OrdersTableProps) {
 	const columns: DataTableColumn<Order>[] = [
 		{
@@ -52,6 +55,9 @@ export function OrdersTable({
 						cell: (row: Order) => botNames.get(row.bot_id) ?? `#${row.bot_id}`,
 					},
 				]
+			: []),
+		...(renderOwner
+			? [{ id: 'owner', header: 'Dueño', cell: renderOwner }]
 			: []),
 		{
 			id: 'side',

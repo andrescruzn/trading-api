@@ -6,7 +6,6 @@ import {
 	IconDatabase,
 	IconEye,
 	IconHome,
-	IconRobot,
 	IconTrendingUp,
 	IconWallet,
 } from '@tabler/icons-react';
@@ -33,12 +32,19 @@ import {
 const navSections: NavSectionData[] = [
 	{
 		label: 'General',
-		items: [{ title: 'Inicio', icon: IconHome, url: '/dashboard' }],
+		// El inicio es la lista de agentes: queda marcado también dentro de uno.
+		items: [
+			{
+				title: 'Inicio',
+				icon: IconHome,
+				url: '/dashboard',
+				activePaths: ['/agents'],
+			},
+		],
 	},
 	{
 		label: 'Operar',
 		items: [
-			{ title: 'Mis agentes', icon: IconRobot, url: '/agents' },
 			{ title: 'Alertas', icon: IconBell, url: '/alerts' },
 			{ title: 'Mis cuentas', icon: IconWallet, url: '/portfolio' },
 		],
@@ -81,7 +87,7 @@ const navSections: NavSectionData[] = [
 			},
 			{
 				// Lo de todos los usuarios: los nombres dicen el alcance para no
-				// confundirse con "Mis agentes", "Mis cuentas"… de Operar.
+				// confundirse con los agentes del inicio o "Mis cuentas" de Operar.
 				title: 'Supervisión',
 				icon: IconEye,
 				items: [

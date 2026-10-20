@@ -1,18 +1,16 @@
-import {
-	IconArrowRight,
-	IconPlus,
-	IconRobot,
-	IconWallet,
-} from '@tabler/icons-react';
+import { IconPlus, IconRobot, IconWallet } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
+import { useState } from 'react';
 import { useAccountsQuery } from '@/modules/accounts/hooks/use-accounts-queries';
 import { usePageBreadcrumb } from '@/modules/app-shell/hooks/use-page-breadcrumb';
 import { useAuth } from '@/modules/auth/hooks/use-auth';
+import type { BotStatus } from '@/modules/bots/api/bots.api';
 import { AgentCard } from '@/modules/bots/components/agent-card';
 import { AgentsEmptyState } from '@/modules/bots/components/agents-empty-state';
 import { PendingSignalsCard } from '@/modules/bots/components/pending-signals-card';
 import { useBotCatalogs } from '@/modules/bots/hooks/use-bot-catalogs';
 import { useMyBotsQuery } from '@/modules/bots/hooks/use-bots-queries';
+import { ErrorAlert } from '@/modules/shared/components/error-alert';
 import { StatCard } from '@/modules/shared/components/stat-card';
 import { formatDateTime } from '@/modules/shared/lib/format';
 import {
@@ -22,23 +20,30 @@ import {
 } from '@/modules/ui/components/alert';
 import { Button } from '@/modules/ui/components/button';
 import { Skeleton } from '@/modules/ui/components/skeleton';
+import { Tabs, TabsList, TabsTrigger } from '@/modules/ui/components/tabs';
 
-// Agentes que se muestran en el inicio; el resto, en Mis agentes.
-const DASHBOARD_AGENTS = 6;
+type StatusFilter = 'all' | 'active' | 'stopped';
 
-// El mercado de cada agente (precio, variación y régimen) va en su tarjeta;
-// velas e indicadores, en la pestaña Mercado del agente.
+const ACTIVE_STATUSES: BotStatus[] = ['running', 'paused'];
+
+// El inicio es la lista de agentes (antes también existía "Mis agentes"). El
+// mercado de cada uno (precio, variación y régimen) va en su tarjeta; velas e
+// indicadores, en la pestaña Mercado del agente.
 export function DashboardPage() {
 	usePageBreadcrumb([]);
 	const { user } = useAuth();
 	const accountsQuery = useAccountsQuery();
 	const botsQuery = useMyBotsQuery();
 	const { catalogs } = useBotCatalogs();
+	const [filter, setFilter] = useState<StatusFilter>('all');
 
 	const bots = botsQuery.data ?? [];
-	const activeBots = bots.filter(
-		(bot) => bot.status === 'running' || bot.status === 'paused',
-	);
+	const activeBots = bots.filter((bot) => ACTIVE_STATUSES.includes(bot.status));
+	const visibleBots = bots.filter((bot) => {
+		if (filter === 'active') return ACTIVE_STATUSES.includes(bot.status);
+		if (filter === 'stopped') return !ACTIVE_STATUSES.includes(bot.status);
+		return true;
+	});
 	const runningCount = bots.filter((bot) => bot.status === 'running').length;
 	const paperBots = bots.filter((bot) => bot.mode === 'paper').length;
 
@@ -81,7 +86,12 @@ export function DashboardPage() {
 
 			{hasBots && <PendingSignalsCard />}
 
-			{botsQuery.isLoading ? (
+			{botsQuery.error ? (
+				<ErrorAlert
+					title="No pudimos cargar tus agentes"
+					error={botsQuery.error}
+				/>
+			) : botsQuery.isLoading ? (
 				<div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
 					<Skeleton className="h-56 rounded-xl" />
 					<Skeleton className="h-56 rounded-xl" />
@@ -123,20 +133,34 @@ export function DashboardPage() {
 						</Alert>
 					)}
 
-					<div className="flex items-center justify-between">
+					<div className="flex flex-wrap items-center justify-between gap-3">
 						<h2 className="text-lg font-semibold">Tus agentes</h2>
-						{bots.length > DASHBOARD_AGENTS && (
-							<Button variant="ghost" size="sm" render={<Link to="/agents" />}>
-								Ver todos ({bots.length})
-								<IconArrowRight />
-							</Button>
-						)}
+						<Tabs
+							value={filter}
+							onValueChange={(value) => setFilter(value as StatusFilter)}
+						>
+							<TabsList>
+								<TabsTrigger value="all">Todos ({bots.length})</TabsTrigger>
+								<TabsTrigger value="active">
+									Activos ({activeBots.length})
+								</TabsTrigger>
+								<TabsTrigger value="stopped">
+									Detenidos ({bots.length - activeBots.length})
+								</TabsTrigger>
+							</TabsList>
+						</Tabs>
 					</div>
-					<div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-						{bots.slice(0, DASHBOARD_AGENTS).map((bot) => (
-							<AgentCard key={bot.id} bot={bot} catalogs={catalogs} />
-						))}
-					</div>
+					{visibleBots.length === 0 ? (
+						<p className="rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">
+							No hay agentes con ese estado.
+						</p>
+					) : (
+						<div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+							{visibleBots.map((bot) => (
+								<AgentCard key={bot.id} bot={bot} catalogs={catalogs} />
+							))}
+						</div>
+					)}
 				</section>
 			)}
 		</div>

@@ -21,6 +21,7 @@ from app.common.http import (
     build_created_response,
 )
 from app.common.security.jwt import is_staff, super_admin_required, token_required_actual
+from app.common.utils import to_iso_utc
 from app.extensions.db import get_db
 from app.modules.accounts.domain.account_balance_entity import AccountBalance
 from app.modules.accounts.providers import AccountServiceFactory
@@ -51,7 +52,7 @@ def _balance_to_dict(b: AccountBalance) -> dict[str, Any]:
         "free":       str(b.free),
         "locked":     str(b.locked),
         "total":      str(b.total),
-        "ts":         b.ts.isoformat() if b.ts else None,
+        "ts":         to_iso_utc(b.ts),
     }
 
 

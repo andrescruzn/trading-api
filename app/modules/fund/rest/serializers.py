@@ -14,6 +14,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
+from app.common.utils import to_iso_utc
 from app.modules.accounts.domain.wallet_gateway import DepositNetwork, ExchangeDeposit
 from app.modules.fund.domain import (
     DepositNetworkConfig,
@@ -49,7 +50,7 @@ from app.modules.fund.services.settings import DepositInfo
 
 
 def _iso(value: datetime | None) -> str | None:
-    return value.isoformat() if value else None
+    return to_iso_utc(value)
 
 
 def _money(value: Decimal | None) -> str | None:

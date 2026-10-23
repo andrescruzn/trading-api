@@ -23,6 +23,7 @@ from app.common.http import (
 )
 from app.common.security.jwt import token_required_actual
 from app.common.security.jwt.role_guard import super_admin_required
+from app.common.utils import to_iso_utc
 from app.extensions.db import get_db
 from app.modules.market.providers import MarketServiceFactory
 
@@ -41,7 +42,7 @@ def _candle_to_dict(c: Any) -> dict:
         "id": c.id,
         "symbol_id": c.symbol_id,
         "timeframe_id": c.timeframe_id,
-        "ts": c.ts.isoformat() if c.ts else None,
+        "ts": to_iso_utc(c.ts),
         "open": str(c.open),
         "high": str(c.high),
         "low": str(c.low),

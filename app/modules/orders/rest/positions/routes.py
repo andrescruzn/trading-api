@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 
 from app.common.http import build_error_response, build_list_response
 from app.common.security.jwt import read_scope, token_required_actual
+from app.common.utils import to_iso_utc
 from app.extensions.db import get_db
 from app.modules.orders.domain.position_entity import Position
 from app.modules.orders.providers import OrderServiceFactory, get_order_factory
@@ -55,7 +56,7 @@ def _position_to_dict(p: Position) -> dict[str, Any]:
         "take_profit":   _decimal_or_none(p.take_profit),
         "signal_id":     p.signal_id,
         "sl_order_id":   p.sl_order_id,
-        "updated_at":    p.updated_at.isoformat() if p.updated_at else None,
+        "updated_at":    to_iso_utc(p.updated_at),
     }
 
 

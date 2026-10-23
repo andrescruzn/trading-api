@@ -29,6 +29,7 @@ from app.common.http import (
 )
 from app.common.security.jwt import read_scope, super_admin_required, token_required_actual, write_scope
 from app.common.security.rate_limiter import agent_analysis_rate_limiter, check_user_rate_limit
+from app.common.utils import to_iso_utc
 from app.extensions.db import get_db
 from app.modules.bots.domain.signal_entity import Signal
 from app.modules.bots.providers import BotServiceFactory, get_bot_factory
@@ -63,7 +64,7 @@ def _signal_to_dict(s: Signal) -> dict[str, Any]:
     return {
         "id":             s.id,
         "bot_id":         s.bot_id,
-        "ts":             s.ts.isoformat() if s.ts else None,
+        "ts":             to_iso_utc(s.ts),
         "action":         s.action,
         "approved":       s.approved,
         "confidence":     _decimal_or_none(s.confidence),
@@ -76,10 +77,10 @@ def _signal_to_dict(s: Signal) -> dict[str, Any]:
         "llm_model":      s.llm_model,
         "llm_latency_ms": s.llm_latency_ms,
         "reasons":        s.reasons,
-        "created_at":     s.created_at.isoformat() if s.created_at else None,
+        "created_at":     to_iso_utc(s.created_at),
         "decision_status":    s.decision_status,
-        "expires_at":         s.expires_at.isoformat() if s.expires_at else None,
-        "decided_at":         s.decided_at.isoformat() if s.decided_at else None,
+        "expires_at":         to_iso_utc(s.expires_at),
+        "decided_at":         to_iso_utc(s.decided_at),
         "decision_channel":   s.decision_channel,
         "decision_reason":    s.decision_reason,
         # Texto de UI del fallo (los códigos se traducen en el backend)
@@ -87,7 +88,7 @@ def _signal_to_dict(s: Signal) -> dict[str, Any]:
             SIGNAL_DECISION_ERROR_MESSAGES.get(s.decision_reason, s.decision_reason)
             if s.decision_reason else None
         ),
-        "candle_ts":          s.candle_ts.isoformat() if s.candle_ts else None,
+        "candle_ts":          to_iso_utc(s.candle_ts),
     }
 
 

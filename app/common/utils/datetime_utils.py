@@ -47,3 +47,18 @@ def utc_to_bogota(dt: datetime | None) -> datetime | None:
         return None
 
     return dt_utc.astimezone(BOGOTA_TZ)
+
+def to_iso_utc(dt: datetime | None) -> str | None:
+    """
+    Serializa un datetime para la API: ISO 8601 en UTC con offset explícito.
+
+    Contrato front ↔ back:
+    - La BD guarda UTC y la API responde SIEMPRE `...+00:00`.
+    - El front convierte a hora de Colombia (America/Bogota, UTC-5) al pintar.
+
+    Por qué no basta `dt.isoformat()`:
+    - MySQL devuelve datetimes naive; `isoformat()` los deja sin offset
+      (`2026-10-23T15:00:00`) y el navegador los interpreta como hora local.
+    """
+    dt_utc = ensure_aware_utc(dt)
+    return dt_utc.isoformat() if dt_utc else None

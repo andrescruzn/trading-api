@@ -24,6 +24,7 @@ from app.common.http import (
     send,
 )
 from app.common.security.jwt import is_super_admin, token_required_actual
+from app.common.utils import to_iso_utc
 from app.extensions.db import get_db
 from app.modules.strategies.domain.dataset_entity import Dataset
 from app.modules.strategies.providers import StrategyServiceFactory
@@ -53,11 +54,11 @@ def _dataset_to_dict(d: Dataset) -> dict[str, Any]:
         "description":  d.description,
         "symbol_id":    d.symbol_id,
         "timeframe_id": d.timeframe_id,
-        "start_ts":     d.start_ts.isoformat() if d.start_ts else None,
-        "end_ts":       d.end_ts.isoformat() if d.end_ts else None,
+        "start_ts":     to_iso_utc(d.start_ts),
+        "end_ts":       to_iso_utc(d.end_ts),
         "dataset_hash": d.dataset_hash,
         "query_spec":   d.query_spec,
-        "created_at":   d.created_at.isoformat() if d.created_at else None,
+        "created_at":   to_iso_utc(d.created_at),
     }
 
 

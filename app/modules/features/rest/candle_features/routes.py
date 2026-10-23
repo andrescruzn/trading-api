@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 from app.common.http import build_error_response, build_list_response, build_success_response
 from app.common.security.jwt import token_required_actual
 from app.common.security.jwt.role_guard import super_admin_required
+from app.common.utils import to_iso_utc
 from app.extensions.db import get_db
 from app.modules.features.providers import FeatureServiceFactory
 
@@ -37,7 +38,7 @@ def _cf_to_dict(cf: Any) -> dict:
         "id": cf.id,
         "symbol_id": cf.symbol_id,
         "timeframe_id": cf.timeframe_id,
-        "ts": cf.ts.isoformat() if cf.ts else None,
+        "ts": to_iso_utc(cf.ts),
         "feature_set_id": cf.feature_set_id,
         "features": cf.features,
     }

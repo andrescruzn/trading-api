@@ -24,6 +24,7 @@ from app.common.http import (
     send,
 )
 from app.common.security.jwt import is_super_admin, token_required_actual
+from app.common.utils import to_iso_utc
 from app.extensions.db import get_db
 from app.modules.agent.domain.model_run_entity import ModelRun
 from app.modules.agent.providers import AgentServiceFactory
@@ -47,8 +48,8 @@ def _run_to_dict(r: ModelRun) -> dict[str, Any]:
         "metrics":     r.metrics,
         "params":      r.params,
         "logs_uri":    r.logs_uri,
-        "started_at":  r.started_at.isoformat() if r.started_at else None,
-        "finished_at": r.finished_at.isoformat() if r.finished_at else None,
+        "started_at":  to_iso_utc(r.started_at),
+        "finished_at": to_iso_utc(r.finished_at),
     }
 
 

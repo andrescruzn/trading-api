@@ -22,6 +22,7 @@ from sqlalchemy.orm import Session
 from app.common.http import build_error_response, build_list_response, build_success_response
 from app.common.security.jwt import token_required_actual
 from app.common.security.jwt.role_guard import super_admin_required
+from app.common.utils import to_iso_utc
 from app.extensions.db import get_db
 from app.modules.market.providers import MarketServiceFactory
 from app.modules.market.services.explorer import TrendRow
@@ -46,7 +47,7 @@ def _row_to_dict(row: TrendRow) -> dict:
         "has_data": m is not None,
         "candles": m.candles if m else 0,
         "last_close": m.last_close if m else None,
-        "last_ts": m.last_ts.isoformat() if m else None,
+        "last_ts": to_iso_utc(m.last_ts) if m else None,
         "ret_30d": m.ret_30d if m else None,
         "ret_90d": m.ret_90d if m else None,
         "adx_14": m.adx_14 if m else None,

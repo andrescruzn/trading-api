@@ -23,6 +23,7 @@ from sqlalchemy.orm import Session
 from app.common.http import build_error_response, build_success_response
 from app.common.security.jwt import token_required_actual
 from app.common.security.rate_limiter import backtest_rate_limiter, check_user_rate_limit
+from app.common.utils import to_iso_utc
 from app.extensions.db import get_db
 from app.modules.strategies.providers.strategy_provider import StrategyServiceFactory
 from app.modules.strategies.services.backtests import BacktestReport
@@ -42,7 +43,7 @@ def _num(value: Decimal | None) -> float | None:
 
 
 def _iso(value) -> str | None:
-    return value.isoformat() if value else None
+    return to_iso_utc(value)
 
 
 def _report_to_dict(r: BacktestReport) -> dict[str, Any]:

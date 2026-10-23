@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 
 from app.common.http import build_error_response, build_list_response
 from app.common.security.jwt import read_scope, token_required_actual
+from app.common.utils import to_iso_utc
 from app.extensions.db import get_db
 from app.modules.orders.domain.fill_entity import Fill
 from app.modules.orders.providers import OrderServiceFactory, get_order_factory
@@ -52,8 +53,8 @@ def _fill_to_dict(f: Fill) -> dict[str, Any]:
         "fee":               _decimal_or_none(f.fee),
         "fee_asset":         f.fee_asset,
         "notional_value":    _decimal_or_none(f.notional_value()),
-        "ts":                f.ts.isoformat() if f.ts else None,
-        "created_at":        f.created_at.isoformat() if f.created_at else None,
+        "ts":                to_iso_utc(f.ts),
+        "created_at":        to_iso_utc(f.created_at),
     }
 
 

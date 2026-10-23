@@ -24,6 +24,7 @@ from app.common.http import (
     build_success_response,
 )
 from app.common.security.jwt import is_super_admin, token_required_actual
+from app.common.utils import to_iso_utc
 from app.extensions.db import get_db
 from app.modules.strategies.domain.strategy_entity import Strategy
 from app.modules.strategies.providers import StrategyServiceFactory
@@ -53,7 +54,7 @@ def _strategy_to_dict(s: Strategy) -> dict[str, Any]:
         "version":     s.version,
         "description": s.description,
         "parameters":  s.parameters,
-        "created_at":  s.created_at.isoformat() if s.created_at else None,
+        "created_at":  to_iso_utc(s.created_at),
     }
 
 

@@ -24,7 +24,7 @@ from fastapi.responses import JSONResponse
 
 from app.common.contracts import ServiceResult
 from app.common.http.http_responder import send
-from app.common.utils import utc_to_bogota
+from app.common.utils import to_iso_utc
 
 
 T = TypeVar("T")
@@ -95,11 +95,13 @@ def build_data_response(
     status_code: int = 200,
 ) -> Dict[str, Any]:
     """
-    Respuesta con transformación automática de fechas UTC -> Bogotá.
+    Respuesta que serializa campos datetime a ISO 8601 UTC (`+00:00`).
+
+    La API siempre responde en UTC; el front los pinta en hora de Colombia.
 
     Parámetros:
     - data: Diccionario con datos
-    - datetime_fields: Campos datetime a convertir a Bogotá
+    - datetime_fields: Campos datetime a serializar en UTC
     """
     result_data = data.copy()
 
@@ -107,8 +109,7 @@ def build_data_response(
         if field in result_data and result_data[field] is not None:
             value = result_data[field]
             if isinstance(value, datetime):
-                bogota_dt = utc_to_bogota(value)
-                result_data[field] = bogota_dt.isoformat() if bogota_dt else None
+                result_data[field] = to_iso_utc(value)
 
     return send(msg=msg, status_code=status_code, data=result_data)
 
@@ -241,13 +242,12 @@ def build_cookie_auth_response(
     # --------------------------------------------------------------
     # 1) Construir body de respuesta (sin token)
     # --------------------------------------------------------------
-    bogota_dt = utc_to_bogota(expires_at)
     body = {
         "msg": "OK",
         "errorCode": 200,
         "data": {
             "authenticated": True,
-            "expires_at": bogota_dt.isoformat() if bogota_dt else None,
+            "expires_at": to_iso_utc(expires_at),
         },
     }
 
@@ -323,7 +323,7 @@ def build_from_service_result(
     - result: ServiceResult del service
     - error_messages: Diccionario de códigos -> mensajes UI
     - transform: Función para convertir data a dict
-    - datetime_fields: Campos datetime a convertir a Bogotá
+    - datetime_fields: Campos datetime a serializar en UTC
     """
     if not result.success:
         return build_error_response(result, error_messages)

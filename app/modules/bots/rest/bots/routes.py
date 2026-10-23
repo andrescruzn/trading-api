@@ -43,6 +43,7 @@ from app.common.http import (
 )
 from app.common.security.jwt import read_scope, super_admin_required, token_required_actual, write_scope
 from app.common.security.rate_limiter import check_user_rate_limit, market_sync_rate_limiter
+from app.common.utils import to_iso_utc
 from app.extensions.db import get_db
 from app.modules.bots.domain.bot_entity import Bot
 from app.modules.bots.providers import BotServiceFactory, get_bot_factory
@@ -81,9 +82,9 @@ def _bot_to_dict(b: Bot) -> dict[str, Any]:
         "execution_mode": b.execution_mode,
         "approval_ttl_minutes": b.approval_ttl_minutes,
         "share_signals":  b.share_signals,
-        "started_at":     b.started_at.isoformat() if b.started_at else None,
-        "stopped_at":     b.stopped_at.isoformat() if b.stopped_at else None,
-        "created_at":     b.created_at.isoformat() if b.created_at else None,
+        "started_at":     to_iso_utc(b.started_at),
+        "stopped_at":     to_iso_utc(b.stopped_at),
+        "created_at":     to_iso_utc(b.created_at),
     }
 
 

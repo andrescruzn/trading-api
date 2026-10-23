@@ -23,6 +23,7 @@ from sqlalchemy.orm import Session
 
 from app.common.http import build_error_response, build_list_response, build_success_response
 from app.common.security.jwt import staff_required, super_admin_required
+from app.common.utils import to_iso_utc
 from app.extensions.db import get_db
 from app.modules.accounts.domain.account_entity import Account
 from app.modules.accounts.domain.platform_wallet_entity import PlatformWallet
@@ -60,7 +61,7 @@ def _wallet_to_dict(w: PlatformWallet) -> dict[str, Any]:
     return {
         "account_id":         w.account_id,
         "base_asset":         w.base_asset,
-        "last_synced_at":     w.last_synced_at.isoformat() if w.last_synced_at else None,
+        "last_synced_at":     to_iso_utc(w.last_synced_at),
         "last_sync_error":    w.last_sync_error,
         "last_sync_error_msg": (
             WALLET_ERROR_MESSAGES.get(w.last_sync_error, w.last_sync_error)
@@ -68,7 +69,7 @@ def _wallet_to_dict(w: PlatformWallet) -> dict[str, Any]:
             else None
         ),
         "updated_by_user_id": w.updated_by_user_id,
-        "updated_at":         w.updated_at.isoformat() if w.updated_at else None,
+        "updated_at":         to_iso_utc(w.updated_at),
     }
 
 
@@ -93,7 +94,7 @@ def _snapshot_to_dict(s: WalletSnapshot) -> dict[str, Any]:
             }
             for line in s.assets
         ],
-        "ts": s.ts.isoformat() if s.ts else None,
+        "ts": to_iso_utc(s.ts),
     }
 
 

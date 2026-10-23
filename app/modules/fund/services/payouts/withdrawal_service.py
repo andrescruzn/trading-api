@@ -29,7 +29,7 @@ from __future__ import annotations
 from decimal import Decimal
 
 from app.common.contracts import Page, PageRequest, ServiceResult
-from app.common.utils import utc_now
+from app.common.utils import to_iso_utc, utc_now
 from app.modules.fund.domain.fund_notifier import (
     FUND_WITHDRAWAL_PAID,
     FUND_WITHDRAWAL_REJECTED,
@@ -105,7 +105,7 @@ class WithdrawalService:
             return ServiceResult.fail(
                 code="FUND_PAYOUT_COOLING_DOWN",
                 http_status=409,
-                meta={"usable_from": method.usable_from.isoformat()},
+                meta={"usable_from": to_iso_utc(method.usable_from)},
             )
         free = self.free_available(user_id)
         if amount > free:

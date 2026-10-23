@@ -28,6 +28,7 @@ from app.common.http import (
     build_success_response,
 )
 from app.common.security.jwt import is_staff, super_admin_required, token_required_actual
+from app.common.utils import to_iso_utc
 from app.extensions.db import get_db
 from app.modules.accounts.domain.account_entity import Account
 from app.modules.accounts.providers import AccountServiceFactory
@@ -64,8 +65,8 @@ def _account_to_dict(account: Account) -> dict[str, Any]:
         "credentials_ref": account.credentials_ref,
         "has_credentials": "enc_creds" in account.meta,
         "meta":            safe_meta,
-        "created_at":      account.created_at.isoformat() if account.created_at else None,
-        "updated_at":      account.updated_at.isoformat() if account.updated_at else None,
+        "created_at":      to_iso_utc(account.created_at),
+        "updated_at":      to_iso_utc(account.updated_at),
     }
 
 

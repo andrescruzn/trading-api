@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 from app.common.http import build_error_response, build_list_response, build_created_response
 from app.common.security.jwt import token_required_actual
 from app.common.security.jwt.role_guard import super_admin_required
+from app.common.utils import to_iso_utc
 from app.extensions.db import get_db
 from app.modules.features.domain.indicator_catalog import focus_of, groups_for, outputs_for
 from app.modules.features.providers import FeatureServiceFactory
@@ -44,7 +45,7 @@ def _fs_to_dict(fs: Any) -> dict:
         "focus": focus_of(fs.spec),
         "indicators": list(groups_for(fs.spec)),
         "outputs": sorted(outputs_for(fs.spec)),
-        "created_at": fs.created_at.isoformat() if fs.created_at else None,
+        "created_at": to_iso_utc(fs.created_at),
     }
 
 

@@ -54,6 +54,7 @@ from app.common.security.rate_limiter import (
     otp_request_rate_limiter,
     otp_verify_rate_limiter,
 )
+from app.common.utils import to_iso_utc
 from app.extensions.db import get_db
 from app.modules.users.providers import AuthServiceFactory
 
@@ -280,8 +281,8 @@ def get_me(
             "role_code": profile.role_code,   # "super_admin" | "partner" | "investor"
             "role_label": profile.role_name,  # "Usuario" | "Administrador" (desde BD)
             "status": profile.status,
-            "last_login_at": profile.last_login_at.isoformat() if profile.last_login_at else None,
-            "created_at": profile.created_at.isoformat() if profile.created_at else None,
+            "last_login_at": to_iso_utc(profile.last_login_at),
+            "created_at": to_iso_utc(profile.created_at),
             "telegram_linked": profile.telegram_linked,
         },
         msg="OK",

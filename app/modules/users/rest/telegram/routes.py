@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 
 from app.common.http import build_error_response, build_success_response
 from app.common.security.jwt import token_required_actual
+from app.common.utils import to_iso_utc
 from app.extensions.db import get_db
 from app.modules.users.providers import AuthServiceFactory, get_auth_factory
 
@@ -45,7 +46,7 @@ def create_telegram_link(
     return build_success_response(
         data={
             "link_url": result.data.link_url,
-            "expires_at": result.data.expires_at.isoformat(),
+            "expires_at": to_iso_utc(result.data.expires_at),
         },
         msg="Abre el enlace en Telegram y pulsa Iniciar para vincular tu chat.",
     )

@@ -2,6 +2,7 @@ import {
 	IconBell,
 	IconBook,
 	IconBriefcase,
+	IconCoins,
 	IconCompass,
 	IconDatabase,
 	IconEye,
@@ -87,6 +88,13 @@ const navSections: NavSectionData[] = [
 		label: 'Administración',
 		role: STAFF_ROLES,
 		items: [
+			{
+				// El fondo común: la billetera única y, después, depósitos,
+				// retiros y comisiones. El socio lo ve en solo lectura.
+				title: 'Fondo',
+				icon: IconCoins,
+				items: [{ title: 'Billetera', url: '/admin/wallet' }],
+			},
 			{
 				title: 'Datos de mercado',
 				icon: IconDatabase,

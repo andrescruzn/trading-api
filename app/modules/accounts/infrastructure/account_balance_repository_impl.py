@@ -11,6 +11,7 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import Optional
 
+from sqlalchemy import and_, func
 from sqlalchemy.orm import Session
 
 from app.modules.accounts.domain.account_balance_entity import AccountBalance
@@ -71,6 +72,32 @@ class SqlAlchemyAccountBalanceRepository(SqlAlchemyRepository, AccountBalanceRep
         )
         return None if model is None else self._to_domain(model)
 
+    def list_latest_by_account(self, account_id: int) -> list[AccountBalance]:
+        # Último ts por activo (subconsulta) → una fila por activo
+        latest = (
+            self._session.query(
+                AccountBalanceModel.asset,
+                func.max(AccountBalanceModel.ts).label("max_ts"),
+            )
+            .filter(AccountBalanceModel.account_id == account_id)
+            .group_by(AccountBalanceModel.asset)
+            .subquery()
+        )
+        rows = (
+            self._session.query(AccountBalanceModel)
+            .join(
+                latest,
+                and_(
+                    AccountBalanceModel.asset == latest.c.asset,
+                    AccountBalanceModel.ts == latest.c.max_ts,
+                ),
+            )
+            .filter(AccountBalanceModel.account_id == account_id)
+            .order_by(AccountBalanceModel.asset)
+            .all()
+        )
+        return [self._to_domain(m) for m in rows]
+
     def record(self, balance: AccountBalance) -> AccountBalance:
         model = AccountBalanceModel(
             account_id=balance.account_id,
@@ -78,6 +105,10 @@ class SqlAlchemyAccountBalanceRepository(SqlAlchemyRepository, AccountBalanceRep
             free=balance.free,
             locked=balance.locked,
         )
+        # La sincronización con el exchange graba todos los activos con la
+        # misma hora; el registro manual deja que la ponga el servidor.
+        if balance.ts is not None:
+            model.ts = balance.ts
         self._session.add(model)
         self._session.flush()
         self._session.refresh(model)

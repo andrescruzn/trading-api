@@ -11,11 +11,15 @@ from __future__ import annotations
 
 from sqlalchemy.orm import Session
 
+from app.common.config import settings
 from app.common.security.credentials_cipher import CredentialsCipher
 from app.modules.accounts.infrastructure import (
     SqlAlchemyAccountRepository,
     SqlAlchemyAccountBalanceRepository,
+    SqlAlchemyPlatformWalletRepository,
+    SqlAlchemyWalletSnapshotRepository,
 )
+from app.modules.accounts.infrastructure.ccxt_wallet_gateway import CcxtWalletGateway
 from app.modules.accounts.services.accounts import (
     ListAccountsService,
     GetAccountService,
@@ -25,6 +29,11 @@ from app.modules.accounts.services.accounts import (
 from app.modules.accounts.services.balances import (
     ListBalancesService,
     RecordBalanceService,
+)
+from app.modules.accounts.services.wallet import (
+    GetWalletService,
+    SetPlatformWalletService,
+    SyncWalletService,
 )
 from app.modules.market.infrastructure import SqlAlchemyExchangeRepository
 
@@ -44,6 +53,8 @@ class AccountServiceFactory:
         # Repositorios del módulo
         self._account_repo = SqlAlchemyAccountRepository(session)
         self._balance_repo = SqlAlchemyAccountBalanceRepository(session)
+        self._wallet_repo = SqlAlchemyPlatformWalletRepository(session)
+        self._snapshot_repo = SqlAlchemyWalletSnapshotRepository(session)
 
         # Repositorio externo (market) para validar exchange_id
         self._exchange_repo = SqlAlchemyExchangeRepository(session)
@@ -89,6 +100,33 @@ class AccountServiceFactory:
         return RecordBalanceService(
             account_repo=self._account_repo,
             balance_repo=self._balance_repo,
+        )
+
+    # ------------------------------------------------------------------
+    # Billetera de la plataforma (fondo común)
+    # ------------------------------------------------------------------
+
+    def get_wallet(self) -> GetWalletService:
+        return GetWalletService(
+            wallet_repo=self._wallet_repo,
+            snapshot_repo=self._snapshot_repo,
+            account_repo=self._account_repo,
+        )
+
+    def set_platform_wallet(self) -> SetPlatformWalletService:
+        return SetPlatformWalletService(
+            wallet_repo=self._wallet_repo,
+            account_repo=self._account_repo,
+            base_asset=settings.WALLET_BASE_ASSET,
+        )
+
+    def sync_wallet(self) -> SyncWalletService:
+        return SyncWalletService(
+            wallet_repo=self._wallet_repo,
+            snapshot_repo=self._snapshot_repo,
+            account_repo=self._account_repo,
+            balance_repo=self._balance_repo,
+            gateway=CcxtWalletGateway(exchange_repo=self._exchange_repo, cipher=self._cipher),
         )
 
 

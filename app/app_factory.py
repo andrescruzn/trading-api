@@ -33,7 +33,7 @@ from app.modules.market.rest import (
     explorer_router,
 )
 from app.modules.features.rest import feature_sets_router, candle_features_router
-from app.modules.accounts.rest import accounts_router, balances_router
+from app.modules.accounts.rest import accounts_router, balances_router, wallet_router
 from app.modules.strategies.rest import backtests_router, datasets_router, strategies_router
 from app.modules.agent.rest import agent_router, models_router, model_runs_router
 from app.modules.bots.rest import bots_router, signals_router
@@ -140,7 +140,7 @@ def create_app() -> FastAPI:
         # Feature Engineering
         feature_sets_router, candle_features_router,
         # Accounts & Portfolio
-        accounts_router, balances_router,
+        accounts_router, balances_router, wallet_router,
         # Strategies
         strategies_router, datasets_router, backtests_router,
         # Agent (AI Agent + ML Models + Model Runs)

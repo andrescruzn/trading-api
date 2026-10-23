@@ -262,7 +262,7 @@ Gateway ([M4](M04-ACCOUNTS-PORTFOLIO.md)): `WalletGateway.fetch_deposits`, `fetc
 
 - **Billetera de práctica:** no hay exchange, así que los depósitos nunca se verifican solos (solo vencen): se confirman a mano con nota.
 - **`ledger_entries.entry_type`** tiene CHECK con los tipos de la F3: al añadir tipos (F4/F5) hay que ampliar el CHECK a mano en la migración (autogenerate no detecta cambios de CHECK en tablas existentes).
-- **Fechas:** MySQL devuelve `TIMESTAMP` sin zona; los repos del fondo y de la billetera las marcan como UTC (`ensure_aware_utc`) para compararlas con `utc_now()` y para que el front no las lea como hora local. El código anterior a la F2 serializa fechas sin zona (posible desfase de 5 h en la UI; pendiente de revisar).
+- **Fechas:** MySQL devuelve `TIMESTAMP` sin zona; los repos del fondo y de la billetera las marcan como UTC (`ensure_aware_utc`) para compararlas con `utc_now()` y para que el front no las lea como hora local. Desde el 2026-10-23 toda la API serializa con `to_iso_utc()` (también lo anterior a la F2) y el front pinta en hora de Colombia: resuelto el desfase de 5 h.
 - **Agentes de la billetera sin pool no generan señales** (`AGENT_NO_FUND_CAPITAL`): hay que abrirlos al fondo, asignarles dinero y liquidarlos una vez.
 - **Órdenes manuales** sobre un agente del fondo cuentan en su resultado; sobre uno sin participantes bloquean la liquidación (equity sin dueño).
 - **Comisión en la moneda base del par** (Binance sin BNB cobra la compra en BTC): la posición puede quedar con un residuo que bloquea la liquidación por "posición abierta".

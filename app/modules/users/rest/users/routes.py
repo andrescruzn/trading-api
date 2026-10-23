@@ -29,6 +29,7 @@ from app.common.http import (
     build_success_response,
 )
 from app.common.security.jwt.role_guard import staff_required, super_admin_required
+from app.common.utils import to_iso_utc
 from app.extensions.db import get_db
 from app.modules.users.providers.auth_provider import AuthServiceFactory
 from app.modules.users.services.users import UserSummaryPayload
@@ -51,7 +52,7 @@ def _user_to_dict(u: UserSummaryPayload) -> dict[str, Any]:
         "role_code":     u.role_code,
         "role_label":    u.role_name,
         "status":        u.status,
-        "last_login_at": u.last_login_at.isoformat() if u.last_login_at else None,
+        "last_login_at": to_iso_utc(u.last_login_at),
     }
 
 

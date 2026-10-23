@@ -20,6 +20,7 @@ from app.common.contracts import PageRequest
 from app.common.contracts.pagination import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 from app.common.http import build_list_response, build_paginated_response
 from app.common.security.jwt import is_staff, token_required_actual
+from app.common.utils import to_iso_utc
 from app.extensions.db import get_db
 from app.modules.alerts.domain.alert_event_entity import AlertEvent
 from app.modules.alerts.providers import AlertServiceFactory, get_alert_factory
@@ -37,7 +38,7 @@ def _event_to_dict(e: AlertEvent) -> dict[str, Any]:
         "alert_rule_id":   e.alert_rule_id,
         "user_id":         e.user_id,
         "bot_id":          e.bot_id,
-        "ts":              e.ts.isoformat() if e.ts else None,
+        "ts":              to_iso_utc(e.ts),
         "severity":        e.severity,
         "title":           e.title,
         "message":         e.message,

@@ -21,6 +21,7 @@ from sqlalchemy.orm import Session
 from app.common.http import build_error_response, build_success_response
 from app.common.security.jwt import super_admin_required, write_scope
 from app.common.security.rate_limiter import check_user_rate_limit, order_rate_limiter
+from app.common.utils import to_iso_utc
 from app.extensions.db import get_db
 from app.modules.orders.providers import OrderServiceFactory, get_order_factory
 from app.modules.orders.services.execution import SignalDecision
@@ -41,7 +42,7 @@ def _decision_to_dict(decision: SignalDecision) -> dict[str, Any]:
         "bot_id":           signal.bot_id,
         "decision_status":  signal.decision_status,
         "decision_channel": signal.decision_channel,
-        "decided_at":       signal.decided_at.isoformat() if signal.decided_at else None,
+        "decided_at":       to_iso_utc(signal.decided_at),
         "order_id":         decision.order.id if decision.order else None,
         "order_status":     decision.order.status if decision.order else None,
     }

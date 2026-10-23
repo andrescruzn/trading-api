@@ -24,6 +24,7 @@ from app.common.http import (
 )
 from app.common.security.jwt import token_required_actual
 from app.common.security.jwt.role_guard import super_admin_required
+from app.common.utils import to_iso_utc
 from app.extensions.db import get_db
 from app.modules.market.domain.ccxt_exchanges import supports_auto_fetch
 from app.modules.market.providers import MarketServiceFactory
@@ -52,7 +53,7 @@ def _symbol_to_dict(s: Any) -> dict:
         "is_active": s.is_active,
         # Las velas de este símbolo se descargan solas (exchange con ccxt)
         "supports_auto_fetch": supports_auto_fetch(getattr(s, "exchange_name", None)),
-        "created_at": s.created_at.isoformat() if s.created_at else None,
+        "created_at": to_iso_utc(s.created_at),
     }
 
 

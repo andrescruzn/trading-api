@@ -4,10 +4,18 @@
  * El backend serializa precios, cantidades y balances (`DECIMAL(30,12)`) como
  * string para no perder precisión: aquí se aceptan `string | number` y se
  * devuelve `'—'` para valores vacíos o no numéricos.
+ *
+ * Fechas: la BD guarda UTC y la API responde ISO 8601 con offset (`+00:00`).
+ * Toda hora se pinta en hora de Colombia (`America/Bogota`, UTC-5), sin
+ * importar la zona horaria del dispositivo.
  */
 
 const LOCALE = 'es-CO';
 const EMPTY = '—';
+const APP_TIME_ZONE = 'America/Bogota';
+/** Colombia no tiene horario de verano: el offset es fijo. */
+const APP_UTC_OFFSET = '-05:00';
+const OFFSET_SUFFIX = /(Z|[+-]\d{2}:?\d{2})$/i;
 
 type Numeric = string | number | null | undefined;
 
@@ -70,32 +78,95 @@ function formatSignedPercentValue(value: Numeric, fractionDigits = 2): string {
 	return `${sign}${number.toFixed(fractionDigits).replace('.', ',')} %`;
 }
 
+/**
+ * Fecha de la API → `Date`. Si llega sin offset (`2026-10-23T15:00:00`) se
+ * asume UTC: `new Date()` la tomaría como hora local del dispositivo.
+ */
+function parseApiDate(iso: string | null | undefined): Date | null {
+	if (!iso) return null;
+	const normalized =
+		iso.includes('T') && !OFFSET_SUFFIX.test(iso) ? `${iso}Z` : iso;
+	const date = new Date(normalized);
+	return Number.isNaN(date.getTime()) ? null : date;
+}
+
+/** Milisegundos epoch de una fecha de la API (para ordenar o contar). */
+function toTimestamp(iso: string | null | undefined): number | null {
+	return parseApiDate(iso)?.getTime() ?? null;
+}
+
 function formatDateTime(iso: string | null | undefined): string {
-	if (!iso) return EMPTY;
-	const date = new Date(iso);
-	if (Number.isNaN(date.getTime())) return EMPTY;
+	const date = parseApiDate(iso);
+	if (!date) return EMPTY;
 	return date.toLocaleString(LOCALE, {
 		dateStyle: 'medium',
 		timeStyle: 'short',
+		timeZone: APP_TIME_ZONE,
+	});
+}
+
+/** Como `formatDateTime` pero con segundos (auditoría, orden exacto). */
+function formatDateTimeSeconds(iso: string | null | undefined): string {
+	const date = parseApiDate(iso);
+	if (!date) return EMPTY;
+	return date.toLocaleString(LOCALE, {
+		dateStyle: 'medium',
+		timeStyle: 'medium',
+		timeZone: APP_TIME_ZONE,
 	});
 }
 
 function formatDate(iso: string | null | undefined): string {
-	if (!iso) return EMPTY;
-	const date = new Date(iso);
-	if (Number.isNaN(date.getTime())) return EMPTY;
-	return date.toLocaleDateString(LOCALE, { dateStyle: 'medium' });
+	const date = parseApiDate(iso);
+	if (!date) return EMPTY;
+	return date.toLocaleDateString(LOCALE, {
+		dateStyle: 'medium',
+		timeZone: APP_TIME_ZONE,
+	});
+}
+
+/** `2026-10-23 10:00:00` en hora de Colombia: para CSV y archivos. */
+function formatTimestamp(iso: string | null | undefined): string {
+	const date = parseApiDate(iso);
+	if (!date) return '';
+	// `sv-SE` da el orden ISO (`AAAA-MM-DD HH:mm:ss`) que entienden las hojas de cálculo.
+	return date.toLocaleString('sv-SE', { timeZone: APP_TIME_ZONE });
+}
+
+/** Día de hoy en Colombia como `AAAA-MM-DD`. */
+function todayInAppTimeZone(): string {
+	return new Date().toLocaleDateString('sv-SE', { timeZone: APP_TIME_ZONE });
+}
+
+/** `AAAA-MM-DD` (p. ej. de un `<input type="date">`) → inicio de ese día en Colombia, en ISO UTC. */
+function startOfAppDayIso(day: string): string {
+	return new Date(`${day}T00:00:00${APP_UTC_OFFSET}`).toISOString();
+}
+
+/** Inicio del día siguiente en Colombia, en ISO UTC (fin exclusivo de un rango). */
+function startOfNextAppDayIso(day: string): string {
+	const date = new Date(`${day}T00:00:00${APP_UTC_OFFSET}`);
+	date.setUTCDate(date.getUTCDate() + 1);
+	return date.toISOString();
 }
 
 export {
+	APP_TIME_ZONE,
 	EMPTY,
 	formatDate,
 	formatDateTime,
+	formatDateTimeSeconds,
 	formatNumber,
 	formatPercent,
 	formatPercentValue,
 	formatPrice,
 	formatSignedPercentValue,
 	formatSignedPrice,
+	formatTimestamp,
+	parseApiDate,
+	startOfAppDayIso,
+	startOfNextAppDayIso,
+	todayInAppTimeZone,
 	toNumber,
+	toTimestamp,
 };

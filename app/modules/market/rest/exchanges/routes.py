@@ -24,6 +24,7 @@ from app.common.http import (
 )
 from app.common.security.jwt import token_required_actual
 from app.common.security.jwt.role_guard import super_admin_required
+from app.common.utils import to_iso_utc
 from app.extensions.db import get_db
 from app.modules.market.providers import MarketServiceFactory
 
@@ -51,7 +52,7 @@ def _exchange_to_dict(ex: Any) -> dict:
         "name": ex.name,
         "type": ex.type,
         "is_active": ex.is_active,
-        "created_at": ex.created_at.isoformat() if ex.created_at else None,
+        "created_at": to_iso_utc(ex.created_at),
     }
 
 

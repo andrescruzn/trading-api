@@ -32,6 +32,7 @@ from app.common.http import (
 )
 from app.common.security.jwt import read_scope, super_admin_required, token_required_actual, write_scope
 from app.common.security.rate_limiter import check_user_rate_limit, order_rate_limiter
+from app.common.utils import to_iso_utc
 from app.extensions.db import get_db
 from app.modules.orders.domain.order_entity import Order
 from app.modules.orders.providers import OrderServiceFactory, get_order_factory
@@ -81,8 +82,8 @@ def _order_to_dict(o: Order) -> dict[str, Any]:
         "time_in_force":       o.time_in_force,
         "client_order_id":     o.client_order_id,
         "meta":                o.meta,
-        "ts":                  o.ts.isoformat() if o.ts else None,
-        "created_at":          o.created_at.isoformat() if o.created_at else None,
+        "ts":                  to_iso_utc(o.ts),
+        "created_at":          to_iso_utc(o.created_at),
     }
 
 

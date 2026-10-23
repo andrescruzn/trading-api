@@ -4,6 +4,8 @@
 
 Observa el mercado, calcula indicadores, consulta a una IA, y si la operación vale la pena, compra o vende automáticamente.
 
+**Horas:** el sistema guarda todo en hora universal (UTC), pero en la app, en Telegram y en el extracto del fondo verás siempre la **hora de Colombia** (UTC-5), estés donde estés. Una vela que cierra a las 15:00 UTC aparece como 10:00 a. m.
+
 ---
 PARTE 1 — Conceptos de Trading que necesitas dominar
 

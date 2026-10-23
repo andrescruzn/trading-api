@@ -7,6 +7,7 @@ import {
 	LEDGER_BUCKET_LABELS,
 	LEDGER_ENTRY_TYPE_LABELS,
 } from '@/modules/fund/lib/fund-labels';
+import { formatTimestamp } from '@/modules/shared/lib/format';
 import { saveBlob } from '@/modules/shared/lib/save-blob';
 
 /** Mismo límite y tipos que el backend (se valida también por el contenido). */
@@ -55,9 +56,16 @@ function csvCell(value: string | number | null | undefined) {
  * español lo abra en columnas). El BOM hace que lea bien las tildes.
  */
 function downloadLedgerCsv(entries: LedgerEntry[], fileName: string) {
-	const header = ['Fecha', 'Movimiento', 'Saldo', 'Monto', 'Moneda', 'Detalle'];
+	const header = [
+		'Fecha (hora de Colombia)',
+		'Movimiento',
+		'Saldo',
+		'Monto',
+		'Moneda',
+		'Detalle',
+	];
 	const rows = entries.map((entry) => [
-		entry.created_at ?? '',
+		formatTimestamp(entry.created_at),
 		LEDGER_ENTRY_TYPE_LABELS[entry.entry_type] ?? entry.entry_type,
 		LEDGER_BUCKET_LABELS[entry.bucket] ?? entry.bucket,
 		entry.amount.replace('.', ','),

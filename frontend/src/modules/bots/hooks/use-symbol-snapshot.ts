@@ -1,5 +1,6 @@
 import { useCandleFeaturesQuery } from '@/modules/features/hooks/use-features-queries';
 import { useCandlesQuery } from '@/modules/market/hooks/use-market-queries';
+import { toTimestamp } from '@/modules/shared/lib/format';
 
 // Precio y variación salen de las dos últimas velas.
 const SNAPSHOT_CANDLES = 2;
@@ -27,7 +28,7 @@ function useSymbolSnapshot(
 
 	// Se ordena igual por fecha para no depender del orden de la API.
 	const [last, previous] = [...(candlesQuery.data ?? [])].sort(
-		(a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime(),
+		(a, b) => (toTimestamp(b.ts) ?? 0) - (toTimestamp(a.ts) ?? 0),
 	);
 	const price = last ? Number(last.close) : null;
 	const changePct =

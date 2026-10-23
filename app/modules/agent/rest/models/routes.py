@@ -25,6 +25,7 @@ from app.common.http import (
     send,
 )
 from app.common.security.jwt import is_super_admin, token_required_actual
+from app.common.utils import to_iso_utc
 from app.extensions.db import get_db
 from app.modules.agent.domain.ml_model_entity import MLModel
 from app.modules.agent.providers import AgentServiceFactory
@@ -49,7 +50,7 @@ def _model_to_dict(m: MLModel) -> dict[str, Any]:
         "artifact_uri":   m.artifact_uri,
         "status":         m.status,
         "meta":           m.meta,
-        "created_at":     m.created_at.isoformat() if m.created_at else None,
+        "created_at":     to_iso_utc(m.created_at),
     }
 
 

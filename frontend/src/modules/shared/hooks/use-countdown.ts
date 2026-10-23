@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
+import { toTimestamp } from '@/modules/shared/lib/format';
 
 function useCountdown(targetIso: string | null): number {
-	const targetMs = targetIso ? new Date(targetIso).getTime() : null;
+	const targetMs = toTimestamp(targetIso);
 
 	const [remainingSeconds, setRemainingSeconds] = useState(() =>
 		targetMs ? Math.max(Math.ceil((targetMs - Date.now()) / 1000), 0) : 0,

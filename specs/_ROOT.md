@@ -178,6 +178,8 @@ Orden sugerido cuando se retome: F5.2 (barato y afecta la calidad de las señale
 
 Desde el 2026-10-08 la API es **headless**: FastAPI no renderiza vistas (se eliminaron `app/modules/web`, `app/templates` y `app/static`). Todas las rutas REST viven bajo `/api` (salvo `/health`) y todo error sale con el envelope `{msg, errorCode, data}`. La UI es un frontend React en [`frontend/`](../frontend/) (Vite + TanStack Router/Query + shadcn); convenciones en el skill [`frontend`](../.claude/skills/frontend/SKILL.md).
 
+**Zona horaria (desde el 2026-10-23):** la BD guarda UTC (`SET time_zone = '+00:00'` por conexión) y la API responde **toda** fecha en ISO 8601 UTC con offset (`…+00:00`) vía `to_iso_utc()` de `app.common.utils`; nunca `dt.isoformat()` directo, porque MySQL devuelve fechas sin zona y el navegador las leería como hora local. El front pinta siempre en **hora de Colombia** (`America/Bogota`, UTC-5) con los helpers de `shared/lib/format.ts` (`formatDateTime`, `formatDate`, `formatDateTimeSeconds`, `formatTimestamp`, `toTimestamp`), sin importar la zona del dispositivo; los filtros por día se envían como el inicio del día en Colombia (`startOfAppDayIso`). Telegram y los cálculos "del día" (PnL `daily`) también usan Bogotá.
+
 ---
 
 ## Mapa de páginas (frontend React)

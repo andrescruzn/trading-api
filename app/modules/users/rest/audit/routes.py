@@ -24,6 +24,7 @@ from sqlalchemy.orm import Session
 from app.common.contracts.pagination import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 from app.common.http import build_error_response, build_paginated_response
 from app.common.security.jwt.role_guard import staff_required
+from app.common.utils import to_iso_utc
 from app.extensions.db import get_db
 from app.modules.users.domain import AuditEvent
 from app.modules.users.providers.audit_provider import AuditServiceFactory
@@ -43,7 +44,7 @@ def _event_to_dict(event: AuditEvent) -> dict[str, Any]:
         "key":          f"{event.year}-{event.id}",
         "id":           event.id,
         "year":         event.year,
-        "ts":           event.ts.isoformat(),
+        "ts":           to_iso_utc(event.ts),
         "user_id":      event.user_id,
         "event_type":   event.event_type,
         "method":       event.method,

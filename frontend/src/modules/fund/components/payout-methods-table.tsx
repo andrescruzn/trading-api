@@ -7,7 +7,7 @@ import {
 	DataTable,
 	type DataTableColumn,
 } from '@/modules/shared/components/data-table';
-import { formatDateTime } from '@/modules/shared/lib/format';
+import { formatDateTime, toTimestamp } from '@/modules/shared/lib/format';
 import { getErrorMessage } from '@/modules/shared/lib/get-error-message';
 import {
 	AlertDialog,
@@ -72,7 +72,7 @@ export function PayoutMethodsTable({
 			id: 'usable',
 			header: 'Estado',
 			cell: (row) =>
-				new Date(row.usable_from).getTime() <= now ? (
+				(toTimestamp(row.usable_from) ?? 0) <= now ? (
 					<Badge>Listo</Badge>
 				) : (
 					<Badge variant="secondary">

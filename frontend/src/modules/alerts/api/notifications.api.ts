@@ -8,7 +8,7 @@ import { api } from '@/modules/shared/lib/api-client';
 /** Un evento de alerta del usuario, tal como lo muestra la campana. */
 type AppNotification = {
 	id: number;
-	/** UTC con offset (`+00:00`): `formatDateTime` lo pasa a la hora local. */
+	/** UTC con offset (`+00:00`): `formatDateTime` lo pasa a la hora de Colombia. */
 	ts: string | null;
 	title: string;
 	message: string | null;

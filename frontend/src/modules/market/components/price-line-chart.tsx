@@ -6,6 +6,7 @@ import {
 	formatDateTime,
 	formatPrice,
 	toNumber,
+	toTimestamp,
 } from '@/modules/shared/lib/format';
 import { cn } from '@/modules/ui/lib/utils';
 
@@ -69,7 +70,7 @@ export function PriceLineChart({
 	const points = useMemo(
 		() =>
 			[...candles]
-				.sort((a, b) => new Date(a.ts).getTime() - new Date(b.ts).getTime())
+				.sort((a, b) => (toTimestamp(a.ts) ?? 0) - (toTimestamp(b.ts) ?? 0))
 				.map((candle) => ({ candle, close: toNumber(candle.close) ?? 0 })),
 		[candles],
 	);

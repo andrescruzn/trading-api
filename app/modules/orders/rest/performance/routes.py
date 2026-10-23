@@ -23,6 +23,7 @@ from sqlalchemy.orm import Session
 
 from app.common.http import build_error_response, build_list_response, build_success_response
 from app.common.security.jwt import read_scope, token_required_actual
+from app.common.utils import to_iso_utc
 from app.extensions.db import get_db
 from app.modules.orders.providers import OrderServiceFactory, get_order_factory
 from app.modules.orders.services.performance import BotPerformance, StrategyTrackRecord
@@ -41,7 +42,7 @@ def _num(value: Decimal | None) -> float | None:
 
 
 def _iso(value) -> str | None:
-    return value.isoformat() if value else None
+    return to_iso_utc(value)
 
 
 def _bot_performance_to_dict(data: BotPerformance) -> dict[str, Any]:

@@ -26,6 +26,7 @@ from app.common.http import (
     send,
 )
 from app.common.security.jwt import is_staff, is_super_admin, token_required_actual, write_scope
+from app.common.utils import to_iso_utc
 from app.extensions.db import get_db
 from app.modules.alerts.domain.alert_rule_entity import AlertRule
 from app.modules.alerts.providers import AlertServiceFactory, get_alert_factory
@@ -50,7 +51,7 @@ def _rule_to_dict(r: AlertRule) -> dict[str, Any]:
         "is_active":  r.is_active,
         "user_id":    r.user_id,
         "bot_id":     r.bot_id,
-        "created_at": r.created_at.isoformat() if r.created_at else None,
+        "created_at": to_iso_utc(r.created_at),
     }
 
 

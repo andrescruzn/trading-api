@@ -125,6 +125,7 @@ export function AdminExchangesPage() {
 - **Filtros**: `OptionSelect` con opción `'all'` y `aria-label`; el filtro va en la query key.
 - **KPIs**: `StatCard`. Errores de carga fuera de tablas: `ErrorAlert`.
 - **Formato**: `formatNumber`, `formatPrice`, `formatPercent` (ratio 0–1), `formatPercentValue` (ya en %), `formatDateTime`, `formatDate` de `shared/lib/format.ts` (locale `es-CO`). No `toFixed` sueltos en la UI.
+- **Fechas y zona horaria**: la API manda UTC (`+00:00`); se pinta **siempre en hora de Colombia** (`America/Bogota`) con `formatDateTime` / `formatDate` / `formatDateTimeSeconds` / `formatTimestamp` (CSV), nunca con `toLocaleString` suelto ni `new Date(iso)` directo (usa `parseApiDate` / `toTimestamp`, que tratan como UTC una fecha sin offset). Inputs `type="date"` → `startOfAppDayIso` / `startOfNextAppDayIso`; "hoy" → `todayInAppTimeZone()`.
 - Etiquetas de enums del backend (`trend_up`, `paper`, `crypto_exchange`…) en `lib/<x>-labels.ts`, con su `*_OPTIONS` para selects.
 
 ## Formularios y diálogos

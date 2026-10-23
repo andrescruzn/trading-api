@@ -74,13 +74,16 @@ const navSections: NavSectionData[] = [
 		],
 	},
 	{
+		// Todos son participantes del fondo común: propietarios, socios e
+		// inversores tienen su saldo. El dashboard viejo (M10) es solo del inversor.
 		label: 'Mi inversión',
-		role: ROLES.INVESTOR,
 		items: [
+			{ title: 'Mi saldo', icon: IconCoins, url: '/my-fund' },
 			{
 				title: 'Mi dashboard',
 				icon: IconTrendingUp,
 				url: '/investor/dashboard',
+				role: ROLES.INVESTOR,
 			},
 		],
 	},
@@ -93,7 +96,12 @@ const navSections: NavSectionData[] = [
 				// retiros y comisiones. El socio lo ve en solo lectura.
 				title: 'Fondo',
 				icon: IconCoins,
-				items: [{ title: 'Billetera', url: '/admin/wallet' }],
+				items: [
+					{ title: 'Billetera', url: '/admin/wallet' },
+					{ title: 'Depósitos', url: '/admin/deposits' },
+					{ title: 'Participantes', url: '/admin/participants' },
+					{ title: 'Ajustes del fondo', url: '/admin/fund-settings' },
+				],
 			},
 			{
 				title: 'Datos de mercado',

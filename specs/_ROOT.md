@@ -125,8 +125,24 @@ Módulo 11 (Fondo común) ← necesita M1 (roles) + M4 (billetera); usa M7/M8 (c
 | 3 | ~~Alta~~ ✅ | ~~Seguridad: validar URL del webhook (SSRF) y ampliar el rate limit~~ **Resuelto (2026-10-19):** guarda SSRF del webhook y rate limit por usuario en las rutas de la IA (además: propiedad en órdenes y en `/agent/analyze`, CSRF por Origin, auditoría sin secretos) | [M9](M09-ALERTS.md), [M1](M01-AUTH.md), [M6](M06-AI-AGENT.md) |
 | 4 | Alta (parcial) | Salvaguardas para `live`. **Hecho:** tamaño máximo (`ORDER_MAX_NOTIONAL` / `max_notional`), kill switch, live apagado por defecto, drawdown máximo, idempotencia (`client_order_id`), reconciliación con el exchange y SL nativo (2026-10-19). Cancelar órdenes desde la API/UI (2026-10-20). **Pendiente:** correr la prueba en testnet (`scripts/testnet_check.py` + `docs/TESTNET.md`) antes del primer peso real | [M8](M08-ORDERS-EXECUTION.md) |
 | 5 | Media (parcial) | Scheduler: **lock hecho** (un solo líder con `GET_LOCK`); sigue recomendado sacarlo a un proceso aparte. Pendiente el relleno de huecos de velas. Detalle en [Fase 5](#fase-5--operación-e-infraestructura-posible-cambio-a-futuro-nada-implementado) (F5.1, F5.2) | [M2](M02-MARKET-DATA.md) |
-| 6 | Media | Sincronizar balances con el exchange y derivar `closing_equity` de ellos; registrar cobros del fee | [M4](M04-ACCOUNTS-PORTFOLIO.md), [M10](M10-BILLING.md) |
+| 6 | Media (parcial) | Sincronizar balances con el exchange. **Hecho (2026-10-23):** la billetera única del fondo se sincroniza sola. **Pendiente:** las demás cuentas live. (La parte de `closing_equity` y cobros del fee era de M10, retirado) | [M4](M04-ACCOUNTS-PORTFOLIO.md) |
 | 7 | ~~Media~~ ✅ | ~~Backtesting~~ **Hecho (2026-10-20):** backtesting sin IA (`POST /api/backtests`, página Backtesting) con las mismas reglas y métricas que los agentes reales | [M5](M05-STRATEGIES.md) |
+
+### Fondo común: antes de recibir dinero real de terceros
+
+El fondo ([M11](M11-FUND.md)) está completo en código, pero **no está listo para dinero de terceros** hasta cerrar su lista [Antes de recibir dinero real de terceros](M11-FUND.md#antes-de-recibir-dinero-real-de-terceros). Sus riesgos, con impacto y mitigación, están en [Riesgos y problemas conocidos](M11-FUND.md#riesgos-y-problemas-conocidos). Las prioridades:
+
+| # | Prioridad | Qué | Riesgo |
+|---|---|---|---|
+| F1 | Crítica | Validación legal y contrato con cada inversor | R1 |
+| F2 | Crítica | Prueba de punta a punta en paper y luego testnet | R12, R18 |
+| F3 | Alta | API key de la billetera sin retiro y con lista blanca de IP; tope de dinero en el exchange | R2, R3 |
+| F4 | Alta | 2FA para super admin | R4 |
+| F5 | Alta | Alarma y bloqueo de pagos con conciliación negativa | R8 |
+| F6 | Alta | Tests unitarios de las piezas de dinero (`tests/fund/`) | R12 |
+| F7 | Media | Doble aprobación de retiros sobre un umbral | R5 |
+| F8 | Media | Scheduler en un proceso aparte con alerta si se detiene | R11 |
+| F9 | Media | Calendario de liquidaciones | R6, R7 |
 
 ### Fase 5 — Operación e infraestructura (posible cambio a futuro, nada implementado)
 

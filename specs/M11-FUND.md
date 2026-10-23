@@ -143,9 +143,13 @@ Hash routing: la URL real es `/#/<ruta>`.
 
 | Prioridad | Mejora | Esfuerzo |
 |---|---|---|
+| Alta | Aviso automático y bloqueo de pagos de retiros cuando la conciliación es negativa (R8) | S |
+| Alta | Exigir API key de la billetera sin permiso de retiro y con lista blanca de IP (R3) | S |
 | Alta | Tests unitarios de `tiered_fee`, `split_commission`, `plan_settlement` con salidas, `WithdrawalService`, `VerifyDepositsService`, `DepositCreditor`, `normalize_txid` | M |
-| Media | Doble aprobación de retiros sobre un umbral (los dos super admin) | M |
-| Baja | Calendario de liquidaciones (p. ej. el día 1 de cada mes) visible para los inversores | S |
+| Media | Doble aprobación de retiros sobre un umbral (los dos super admin) (R5) | M |
+| Media | Avisar a los dos super admin de cada cambio de la tabla de comisión o del reparto (R4) | S |
+| Media | Test que compruebe el 403 del socio en todas las rutas de escritura (R13) | S |
+| Baja | Calendario de liquidaciones (p. ej. el día 1 de cada mes) visible para los inversores (R6) | S |
 | Media | Prueba de punta a punta en paper y luego en testnet (plan: invitar, depositar, asignar, operar, liquidar con salida, pagar, conciliar ≈ 0, revisar socio e inversor) | M |
 | Media | Conciliación con las posiciones abiertas a precio de mercado (hoy a costo) | M |
 | Baja | Preferencias de avisos por persona (canal y tipos) | S |
@@ -275,16 +279,54 @@ Gateway ([M4](M04-ACCOUNTS-PORTFOLIO.md)): `WalletGateway.fetch_deposits`, `fetc
 - Quitado `tests/billing/` (M10).
 - Sin archivos en `tests/fund/`. Verificación manual con dobles de prueba (script fuera del repo): normalización de txid, confirmación automática, revisión por monto y por tope, vencimiento, carrera de confirmación, validaciones al crear, nota obligatoria y límite de la devolución.
 
-## Riesgos
+## Riesgos y problemas conocidos
 
-- Un txid reclamado por quien no envió el dinero: mitigado por la unicidad (el primero que lo registra) y por `address_from` visible para el super admin; para montos grandes, la revisión manual.
-- Administrar dinero de terceros en un fondo común con comisión de desempeño es actividad regulada (SFC en Colombia); validarlo con un abogado antes de recibir dinero real de terceros.
+Riesgos del negocio y de la operación del fondo (los problemas técnicos puntuales están en [Gotchas críticos](#gotchas-críticos)). Revisado el 2026-10-23.
+
+| # | Riesgo | Impacto | Mitigación hoy | Qué falta |
+|---|---|---|---|---|
+| R1 | **Legal**: administrar dinero de terceros con comisión de desempeño es actividad regulada (SFC en Colombia y en la mayoría de países) | Crítico | Ninguna en el código | Validarlo con un abogado y tener contrato (tabla de comisión, permanencia, cómo se piden los retiros) **antes** de recibir dinero de terceros |
+| R2 | **Concentración**: todo el dinero está en una sola billetera de un solo exchange (hackeo, quiebra, congelamiento de la cuenta, cambio de reglas del exchange) | Crítico | Ninguna: es una decisión de diseño | Definir un tope de dinero en el exchange, tener el resto fuera y avisarlo a los inversores |
+| R3 | **API key de la billetera filtrada** | Alto | Credenciales cifradas (Fernet); recomendación de API key sin permiso de retiro ([M4](M04-ACCOUNTS-PORTFOLIO.md)) | Exigir (no solo recomendar) API key **sin retiro** y con **lista blanca de IP**; `CREDENTIALS_SECRET_KEY` propia en producción |
+| R4 | **Cuenta de super admin tomada**: quien entra puede pagar retiros, cambiar la tabla de comisión o el reparto | Alto | Login solo por código OTP al correo, una sesión por persona, auditoría, 48 h de espera para medios de pago nuevos | **2FA** para super admin ([M1](M01-AUTH.md), mejora); avisar a los dos super admin de cada cambio de comisión o reparto |
+| R5 | **Error humano al pagar un retiro** (tasa, pesos o cuenta equivocada) | Alto | Datos del medio de pago para copiar, pesos sugeridos según la tasa, referencia obligatoria y comprobante opcional en el historial | **Doble aprobación** sobre un umbral (los dos super admin) |
+| R6 | **Retiros que se demoran**: solo se sale en una liquidación, y no se puede liquidar con el agente corriendo, con posiciones abiertas o con un residuo de comisión en BTC | Medio | La persona ve su salida "esperando la liquidación"; el bloqueo se explica en la vista previa | **Calendario de liquidaciones** publicado; política de qué pasa si un agente no queda plano |
+| R7 | **Una liquidación detiene el agente para todos** | Medio | Se hace a propósito para que el saldo sea exacto | Liquidar en horario de poco mercado y avisar antes |
+| R8 | **Conciliación negativa (falta dinero) sin alarma**: solo se ve si alguien abre el Resumen del fondo | Alto | La página la marca en rojo con las causas probables | Aviso automático (M9) a los super admin cuando la diferencia pase de un umbral; bloquear pagos de retiros mientras sea negativa |
+| R9 | **Conciliación aproximada con posiciones abiertas** (capital de los agentes a costo, billetera a mercado) | Bajo | Se explica en la página; es exacta con todo liquidado y plano | Valorar las posiciones abiertas a mercado |
+| R10 | **Comisiones del exchange en otra moneda (BNB)** no se restan del resultado del agente | Medio | Se informan en la vista previa de la liquidación | Desactivar "pagar comisiones con BNB" en la billetera (recomendado) o valorarlas a precio de mercado |
+| R11 | **El scheduler corre dentro de la API**: si la API se cae o se reinicia, se dejan de verificar depósitos y de sincronizar la billetera | Medio | Lock de MySQL (un solo líder); "Verificar ahora" manual | Proceso aparte para el scheduler y una alerta si deja de correr ([M2](M02-MARKET-DATA.md)) |
+| R12 | **Lógica de dinero sin tests en el repo**: comisión, reparto, liquidación, retiros y conciliación se verificaron solo con scripts y dobles de prueba | Alto | Verificación manual por fase; UPDATE condicionales e índices únicos contra doble cobro | Tests unitarios en `tests/fund/` y la prueba de punta a punta en paper y testnet |
+| R13 | **Permisos del socio por lista de excepciones** (`read_only_policy.py`): un endpoint de escritura nuevo queda bloqueado para él, pero uno mal clasificado como suyo le daría acceso | Medio | El socio recibe 403 en toda escritura que no esté en la lista; las rutas de dinero exigen además `super_admin_required` | Test que recorra todas las rutas de escritura y compruebe el 403 del socio |
+| R14 | **Privacidad**: los avisos por correo y Telegram llevan montos de la persona | Bajo | Telegram solo al chat de la persona, nunca al general | Preferencias de avisos por persona; no incluir montos si la persona lo pide |
+| R15 | **Fechas del código anterior a la F2 sin zona** (posible desfase de 5 h en pantalla) | Bajo | Los repos del fondo y de la billetera marcan UTC | Revisar los serializadores del resto de módulos |
+| R16 | **La BD crece con los comprobantes** (hasta 5 MB cada uno) | Bajo | Límite de 5 MB y uno por retiro | Vigilar el tamaño de los respaldos; si crece mucho, pasar a almacenamiento de objetos |
+| R17 | **Un txid reclamado por quien no envió el dinero** | Medio | El txid es único (el primero que lo registra) y el super admin ve `address_from`; lo grande va a revisión manual | Registrar las direcciones de origen de cada persona (mejora) |
+| R18 | **Rendimiento**: el sistema no garantiza ganancias; un agente puede perder | Alto | Regla del 1 %, R/R mínimo 2:1, filtro de régimen, drawdown máximo, kill switch ([M8](M08-ORDERS-EXECUTION.md)) | Historial verificable de 3 a 6 meses en paper antes de recibir dinero de terceros |
+
+## Antes de recibir dinero real de terceros
+
+Lista de verificación (todo debe estar en ✅ antes del primer depósito de un inversor):
+
+- [ ] **Abogado**: validar la figura legal y firmar contrato con cada inversor (R1).
+- [ ] **Prueba de punta a punta en paper**: invitar socio e inversor → depósito confirmado → asignar a un agente → operar → pausar sin posiciones → liquidar con una salida pedida → comprobar comisión, reparto y neto → pagar el retiro con comprobante → conciliación ≈ 0 → entrar como socio (sin botones, la API responde 403) y como inversor (no ve el total de la billetera).
+- [ ] **Testnet** de la billetera y de las órdenes (`docs/TESTNET.md`, `scripts/testnet_check.py`): saldo Spot + Funding, depósitos y órdenes reales de prueba.
+- [ ] **API key de la billetera** sin permiso de retiro, con lista blanca de IP y lectura de Funding (R3).
+- [ ] **"Pagar comisiones con BNB" desactivado** en la billetera (R10).
+- [ ] **`CREDENTIALS_SECRET_KEY`** propia y respaldada fuera del servidor (sin ella no se pueden leer las API keys ni los medios de pago).
+- [ ] **2FA** para los super admin o, como mínimo, correo de cada super admin con 2FA del proveedor (R4).
+- [ ] **Tabla de comisión y reparto publicados** en Comisiones (sin ellos no se puede liquidar con salidas).
+- [ ] **Calendario de liquidaciones** acordado y comunicado a los inversores (R6).
+- [ ] **Tope de dinero en el exchange** y plan si el exchange falla (R2).
+- [ ] **Respaldos de MySQL** automáticos y probados (el libro mayor y los comprobantes viven ahí).
+- [ ] **Historial en paper** de 3 a 6 meses de los agentes que recibirán dinero (R18).
 
 ## Historial
 
 - **2026-10-22** — Plan del fondo común aprobado (6 fases). F1: roles super admin / socio / inversor ([M1](M01-AUTH.md)).
 - **2026-10-23** — F2: billetera única de la plataforma ([M4](M04-ACCOUNTS-PORTFOLIO.md)).
 - **2026-10-23** — **F3: módulo `fund`**: ajustes del fondo, libro mayor append-only, depósitos verificados contra el exchange (automático hasta 1.000 USDT, vencimiento 72 h), depósitos sin reclamar, devolución excepcional; páginas Mi saldo, Depósitos, Participantes y Ajustes del fondo (migración `00abfeaac3b4`).
+- **2026-10-23** — Sección **Riesgos y problemas conocidos** (18 riesgos con impacto, mitigación y qué falta) y lista **Antes de recibir dinero real de terceros**.
 - **2026-10-23** — **F6: resumen y cierre**: resumen del fondo con conciliación y ganancias por propietario o socio, mis ganancias y extracto CSV, comprobante del pago en la BD, avisos por campana / correo / Telegram y retiro de M10 (migración `ff5577d3faef`). Módulo completo.
 - **2026-10-23** — **F5: salidas, comisión y retiros**: salidas en cola aplicadas en la liquidación (FIFO + permanencia, lo demás se queda), comisión escalonada marginal versionada, reparto versionado entre super admin y socios (residuo al de menor id), medios de pago cifrados con 48 h de espera, retiros pagados por fuera (COP, tasa, referencia); páginas Retiros y Comisiones y Mi saldo con Retirar / Sacar dinero (migración `a159e69da372`).
 - **2026-10-23** — **F4: agentes del fondo**: pools por agente con NAV y unidades, cola de asignaciones, liquidación con vista previa (agente pausado y sin posiciones, equity por flujo de caja, lotes, UPDATE condicional), `FundCapitalPort` para el 1 % y el drawdown (agente de la billetera sin pool = sin capital); páginas Agentes del fondo y Mis agentes (migración `521b4d0aac1b`).

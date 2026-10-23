@@ -1413,5 +1413,24 @@ PARTE 5 — El modelo de negocio: el fondo común
   Requisito de confianza: 3-6 meses de historial paper verificable antes de pedirle
                           dinero real a alguien
 
+  Antes del primer peso de un inversor hay una lista de verificación completa en la spec del
+  fondo (specs/M11-FUND.md → "Antes de recibir dinero real de terceros"). Lo más importante:
+  - Probar todo el recorrido en práctica: depositar, asignar a un agente, liquidar con una
+    salida, pagar el retiro y ver que la conciliación da 0.
+  - Probarlo en testnet con el exchange real.
+  - La API key de la billetera SIN permiso de retiro y con lista blanca de IP: si alguien la
+    roba, no puede sacar el dinero.
+  - Desactivar "pagar comisiones con BNB" en la billetera.
+  - Respaldos automáticos de la base de datos: ahí vive la cuenta de cada persona.
+
+  Riesgos que hay que tener presentes:
+  - Todo el dinero está en un solo exchange: si el exchange falla, se afecta a todos. Conviene
+    tener un tope y guardar el resto fuera.
+  - Los retiros solo se atienden en una liquidación, y un agente con una operación abierta no se
+    puede liquidar: acuerden un calendario (p. ej. el día 1 de cada mes).
+  - Los retiros se pagan a mano: revisen dos veces la tasa y la cuenta antes de transferir.
+  - Si la conciliación del Resumen del fondo sale negativa (falta dinero), no paguen retiros
+    hasta entender por qué.
+
 La plataforma hace el cálculo automático y transparente — el inversor puede ver
 cada operación que ejecutó el bot con su capital.

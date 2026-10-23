@@ -2,6 +2,7 @@ import {
 	IconArrowDownToArc,
 	IconClockHour4,
 	IconCoins,
+	IconRobot,
 	IconWallet,
 } from '@tabler/icons-react';
 import { useState } from 'react';
@@ -12,6 +13,8 @@ import { DepositFormDialog } from '@/modules/fund/components/deposit-form-dialog
 import { DepositInstructions } from '@/modules/fund/components/deposit-instructions';
 import { DepositRequestsTable } from '@/modules/fund/components/deposit-requests-table';
 import { LedgerTable } from '@/modules/fund/components/ledger-table';
+import { ParticipationsTable } from '@/modules/fund/components/participations-table';
+import { useMyParticipationsQuery } from '@/modules/fund/hooks/use-fund-pools-queries';
 import {
 	useDepositInfoQuery,
 	useDepositsQuery,
@@ -49,12 +52,18 @@ export function MyFundPage() {
 	const depositsQuery = useDepositsQuery(NO_FILTERS, deposits.params);
 	const ledger = useServerPagination('my-ledger');
 	const ledgerQuery = useLedgerQuery(null, ledger.params);
+	const participationsQuery = useMyParticipationsQuery();
 	const [registering, setRegistering] = useState(false);
 	const [canceling, setCanceling] = useState<DepositRequest | null>(null);
 
 	const balances = balancesQuery.data;
 	const info = infoQuery.data;
 	const asset = info?.asset ?? 'USDT';
+	// Lo invertido vale lo de la última liquidación de cada agente
+	const inAgents = (participationsQuery.data ?? []).reduce(
+		(total, participation) => total + Number(participation.value),
+		0,
+	);
 
 	return (
 		<div className="flex flex-col gap-6">
@@ -78,7 +87,7 @@ export function MyFundPage() {
 				/>
 			)}
 
-			<div className="grid gap-4 sm:grid-cols-3">
+			<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
 				<StatCard
 					label="Pendiente de asignar"
 					value={
@@ -98,11 +107,22 @@ export function MyFundPage() {
 					isLoading={balancesQuery.isLoading}
 				/>
 				<StatCard
+					label="En agentes"
+					value={`${formatNumber(inAgents, 2)} ${asset}`}
+					hint="Lo que vale tu dinero en los agentes a su última liquidación"
+					icon={<IconRobot className="size-4" />}
+					isLoading={participationsQuery.isLoading}
+				/>
+				<StatCard
 					label="Total"
-					value={balances ? `${formatNumber(balances.total, 2)} ${asset}` : '—'}
-					hint="Sin contar lo que tienes invertido en agentes"
+					value={
+						balances
+							? `${formatNumber(Number(balances.total) + inAgents, 2)} ${asset}`
+							: '—'
+					}
+					hint="Pendiente + disponible + en agentes"
 					icon={<IconWallet className="size-4" />}
-					isLoading={balancesQuery.isLoading}
+					isLoading={balancesQuery.isLoading || participationsQuery.isLoading}
 				/>
 			</div>
 
@@ -118,11 +138,19 @@ export function MyFundPage() {
 			)}
 			{info?.enabled && <DepositInstructions info={info} />}
 
-			<Tabs defaultValue="deposits">
+			<Tabs defaultValue="agents">
 				<TabsList>
+					<TabsTrigger value="agents">Mis agentes</TabsTrigger>
 					<TabsTrigger value="deposits">Mis depósitos</TabsTrigger>
 					<TabsTrigger value="ledger">Movimientos</TabsTrigger>
 				</TabsList>
+				<TabsContent value="agents" className="pt-2">
+					<ParticipationsTable
+						rows={participationsQuery.data}
+						isLoading={participationsQuery.isLoading}
+						error={participationsQuery.error}
+					/>
+				</TabsContent>
 				<TabsContent value="deposits" className="pt-2">
 					<DepositRequestsTable
 						rows={depositsQuery.data?.items}

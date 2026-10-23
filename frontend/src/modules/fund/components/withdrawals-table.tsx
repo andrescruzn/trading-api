@@ -1,7 +1,8 @@
-import { IconCash, IconDots, IconX } from '@tabler/icons-react';
+import { IconCash, IconDots, IconPaperclip, IconX } from '@tabler/icons-react';
 import type { UserSummary } from '@/modules/auth/api/users.api';
 import { OwnerCell } from '@/modules/auth/components/owner-cell';
 import type { Withdrawal } from '@/modules/fund/api/fund-payouts.api';
+import { ReceiptDownloadButton } from '@/modules/fund/components/receipt-controls';
 import {
 	WITHDRAWAL_STATUS_BADGE_VARIANT,
 	WITHDRAWAL_STATUS_LABELS,
@@ -35,6 +36,8 @@ type WithdrawalsTableProps = {
 	/** Super admin: pagar o rechazar. */
 	onPay?: (withdrawal: Withdrawal) => void;
 	onReject?: (withdrawal: Withdrawal) => void;
+	/** Super admin: adjuntar o cambiar el comprobante de uno pagado. */
+	onAttachReceipt?: (withdrawal: Withdrawal) => void;
 };
 
 function Paid({ row }: { row: Withdrawal }) {
@@ -49,6 +52,11 @@ function Paid({ row }: { row: Withdrawal }) {
 				Ref. {row.payment_reference}
 				{row.resolution_note ? ` · ${row.resolution_note}` : ''}
 			</span>
+			{row.receipt_name && (
+				<div className="-ml-2.5">
+					<ReceiptDownloadButton withdrawal={row} />
+				</div>
+			)}
 		</div>
 	);
 }
@@ -65,6 +73,7 @@ export function WithdrawalsTable({
 	onCancel,
 	onPay,
 	onReject,
+	onAttachReceipt,
 }: WithdrawalsTableProps) {
 	const columns: DataTableColumn<Withdrawal>[] = [
 		{
@@ -159,6 +168,15 @@ export function WithdrawalsTable({
 							</DropdownMenuItem>
 						</DropdownMenuContent>
 					</DropdownMenu>
+				) : row.status === 'paid' && onAttachReceipt ? (
+					<Button
+						variant="ghost"
+						size="sm"
+						onClick={() => onAttachReceipt(row)}
+					>
+						<IconPaperclip />
+						{row.receipt_name ? 'Cambiar comprobante' : 'Adjuntar comprobante'}
+					</Button>
 				) : null,
 		});
 	}

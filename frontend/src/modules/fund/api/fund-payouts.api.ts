@@ -3,6 +3,7 @@ import type {
 	RedemptionRequest,
 	TierCharge,
 } from '@/modules/fund/api/fund.api';
+import type { ReceiptFile } from '@/modules/fund/api/fund-overview.api';
 import { api } from '@/modules/shared/lib/api-client';
 import type { PageParams, Paginated } from '@/modules/shared/types/api';
 
@@ -108,6 +109,8 @@ type Withdrawal = {
 	resolved_by_user_id: number | null;
 	resolved_at: string | null;
 	created_at: string | null;
+	/** Nombre del comprobante del pago, si tiene (F6). */
+	receipt_name: string | null;
 };
 
 type WithdrawalFilters = { status?: WithdrawalStatus; user_id?: number };
@@ -215,9 +218,14 @@ function payWithdrawal(
 		cop_rate: string;
 		payment_reference: string;
 		note: string | null;
+		receipt: ReceiptFile | null;
 	},
 ) {
 	return api.post<Withdrawal>(`/fund/withdrawals/${id}/pay`, input);
+}
+
+function attachWithdrawalReceipt(id: number, receipt: ReceiptFile) {
+	return api.put<Withdrawal>(`/fund/withdrawals/${id}/receipt`, receipt);
 }
 
 function rejectWithdrawal(id: number, note: string) {
@@ -240,6 +248,7 @@ export type {
 	WithdrawalStatus,
 };
 export {
+	attachWithdrawalReceipt,
 	cancelRedemption,
 	cancelWithdrawal,
 	createFeeSchedule,

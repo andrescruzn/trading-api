@@ -3,7 +3,6 @@ import type { ReactNode } from 'react';
 import { useHasRole } from '@/modules/auth/hooks/use-has-role';
 import {
 	MANAGER_ROLES,
-	ROLES,
 	type RoleCode,
 	STAFF_ROLES,
 } from '@/modules/auth/lib/roles';

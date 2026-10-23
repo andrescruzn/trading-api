@@ -6,6 +6,7 @@ import type {
 	Withdrawal,
 	WithdrawalStatus,
 } from '@/modules/fund/api/fund-payouts.api';
+import { AttachReceiptDialog } from '@/modules/fund/components/receipt-controls';
 import {
 	PayWithdrawalDialog,
 	RejectWithdrawalDialog,
@@ -33,6 +34,7 @@ export function AdminWithdrawalsPage() {
 	const [owner, setOwner] = useState(ALL);
 	const [paying, setPaying] = useState<Withdrawal | null>(null);
 	const [rejecting, setRejecting] = useState<Withdrawal | null>(null);
+	const [attaching, setAttaching] = useState<Withdrawal | null>(null);
 
 	const filters = {
 		status: status === ALL ? undefined : (status as WithdrawalStatus),
@@ -79,6 +81,7 @@ export function AdminWithdrawalsPage() {
 				users={owners.byId}
 				onPay={canManage ? setPaying : undefined}
 				onReject={canManage ? setRejecting : undefined}
+				onAttachReceipt={canManage ? setAttaching : undefined}
 			/>
 			<PayWithdrawalDialog
 				withdrawal={paying}
@@ -87,6 +90,10 @@ export function AdminWithdrawalsPage() {
 			<RejectWithdrawalDialog
 				withdrawal={rejecting}
 				onClose={() => setRejecting(null)}
+			/>
+			<AttachReceiptDialog
+				withdrawal={attaching}
+				onClose={() => setAttaching(null)}
 			/>
 		</div>
 	);

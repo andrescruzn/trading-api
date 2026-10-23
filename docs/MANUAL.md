@@ -555,6 +555,56 @@ hoy (según la última liquidación) y el resultado.
 La regla del 1 % en un agente del fondo se calcula sobre el dinero de ESE agente, no sobre toda la
 billetera. Un agente de la billetera que no está en el fondo no opera.
 
+3.0.5 Módulo 11 — Sacar dinero, la comisión y los retiros
+───────────────────────────────────────────────────────────
+Retirar tu dinero tiene dos pasos: primero sale del agente y queda "Disponible"; después pides que
+te lo paguen a tu cuenta.
+
+Paso 1 — Sacar dinero de un agente (Mi saldo → Mis agentes → "Sacar dinero"):
+  - Eliges un monto o "Sacar todo". La salida queda EN COLA y se aplica en la próxima liquidación
+    del agente, al valor de la unidad de ese momento.
+  - Solo sale el dinero que lleva al menos la PERMANENCIA MÍNIMA en el agente (p. ej. 30 días). Sale
+    primero lo más antiguo. Si una parte todavía no cumple, sale lo que cumple y el resto se queda
+    en el agente; lo verás como "aún sin la permanencia mínima".
+  - Sobre la GANANCIA de lo que sale se cobra la comisión. Lo que queda (valor − comisión) pasa a tu
+    saldo Disponible.
+  - Mientras está en cola puedes anularla.
+
+La comisión es escalonada, como los impuestos:
+  Cada tramo de ganancia paga su propio %, y solo sobre la parte que cae en ese tramo. Por eso ganar
+  más nunca te deja con menos dinero neto. Si sales con pérdida, no hay comisión. La tabla vigente la
+  ves en Mi saldo → Comisión. Los propietarios también la pagan sobre su propio dinero.
+
+  Ejemplo con esta tabla: de 0 % a 50 % de ganancia → 10 %; de 50 % a 100 % → 15 %; desde 100 % → 20 %.
+  Pusiste 1.000 USDT y al salir valen 3.000 (ganaste 2.000, un +200 %).
+    Primeros 500 de ganancia (hasta +50 %)     × 10 % =  50
+    Siguientes 500 (de +50 % a +100 %)         × 15 % =  75
+    Los otros 1.000 (más de +100 %)            × 20 % = 200
+    Comisión total = 325 USDT (16,25 % de la ganancia) → recibes 2.675 USDT en tu Disponible.
+
+  La comisión se reparte entre los propietarios y los socios según los % acordados (que suman 100 %).
+  Con 40 % / 40 % / 20 %, esos 325 se reparten así: 130 + 130 + 65.
+
+Paso 2 — Retirar a tu cuenta (Mi saldo → "Retirar"):
+  1. Primero registra a dónde te pagamos (pestaña Retiros → "Agregar medio"): una cuenta bancaria o
+     Nequi. Por seguridad, un medio nuevo se puede usar 48 horas después de registrarlo.
+  2. Pulsa "Retirar", elige el medio y el monto. Solo puedes retirar lo Disponible; ese dinero queda
+     reservado mientras el retiro está por pagar.
+  3. Un super admin te transfiere en pesos y registra cuánto pagó, la tasa (COP por USDT) y la
+     referencia de la transferencia. Lo verás como "Pagado" con esos datos.
+  4. Si el retiro se rechaza (con motivo) o lo anulas, el dinero vuelve a estar disponible.
+
+  Ejemplo: retiras 500 USDT. El super admin paga con una tasa de 4.000 → 2.000.000 COP a tu Nequi,
+  con la referencia del banco.
+
+Para los super admin (Administración → Fondo):
+  Retiros      → los "Por pagar": "Pagar" muestra los datos completos de la cuenta para copiarlos y
+                 pide la tasa, los pesos pagados y la referencia; "Rechazar" pide un motivo.
+  Comisiones   → la tabla escalonada (cada cambio es una versión nueva y no cambia lo ya cobrado), el
+                 reparto entre propietarios y socios, y cuánto ha recibido cada uno.
+  Liquidar     → la vista previa muestra quién sale, su comisión y su neto. Sin tabla de comisión o
+                 sin reparto no se puede liquidar un agente que tiene salidas pedidas.
+
 3.1 Módulo 5 — Strategies (Estrategias)
 
 Una estrategia es el conjunto de reglas que define cuándo el sistema debe considerar una operación.

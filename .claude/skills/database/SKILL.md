@@ -23,7 +23,7 @@ El esquema lo definen los **modelos ORM** (`app/modules/*/infrastructure/*_model
 | Ejecución de bots | `bots`, `signals`, `orders`, `fills`, `positions`, `predictions`, `portfolio_snapshots` |
 | Alertas y auditoría | `alert_rules`, `alert_events`, `audit_logs`, `system_events` |
 | Billing (M10) | `investors`, `managed_accounts`, `billing_periods`, `fee_transactions`, `capital_movements` |
-| Fondo común (M4 + M11) | `platform_wallet` (una fila), `wallet_snapshots`, `fund_settings` (una fila), `ledger_entries` (append-only), `deposit_requests`, `agent_pools`, `agent_settlements`, `unit_lots`, `allocation_orders` |
+| Fondo común (M4 + M11) | `platform_wallet` (una fila), `wallet_snapshots`, `fund_settings` (una fila), `ledger_entries` (append-only), `deposit_requests`, `agent_pools`, `agent_settlements`, `unit_lots`, `allocation_orders`, `fee_schedules`, `commission_share_versions`, `redemption_requests`, `settlement_redemptions`, `commission_credits`, `payout_methods`, `withdrawal_requests` |
 
 ## Valores permitidos (CHECK constraints)
 
@@ -51,7 +51,10 @@ managed_accounts.period_type: daily | weekly | monthly
 billing_periods.status     : open | closed
 fee_transactions.status    : pending | charged | waived
 wallet_snapshots.source    : exchange | manual
-ledger_entries.entry_type  : deposit | refund | allocation   (F5 lo amplía)
+ledger_entries.entry_type  : deposit | refund | allocation | redemption | fee | commission | withdrawal
+redemption_requests.status : queued | applied | canceled
+withdrawal_requests.status : requested | paid | rejected | canceled
+payout_methods.kind        : bank | nequi
 allocation_orders.status   : queued | applied | canceled
 allocation_orders.source_bucket: pending | available
 ledger_entries.bucket      : pending | available

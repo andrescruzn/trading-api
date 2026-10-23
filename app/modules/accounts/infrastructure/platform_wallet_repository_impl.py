@@ -14,6 +14,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
+from app.common.utils import ensure_aware_utc
 from app.extensions.db.sqlalchemy_repository import SqlAlchemyRepository
 from app.modules.accounts.domain.platform_wallet_entity import PlatformWallet
 from app.modules.accounts.domain.platform_wallet_repository import (
@@ -40,10 +41,11 @@ class SqlAlchemyPlatformWalletRepository(SqlAlchemyRepository, PlatformWalletRep
         return PlatformWallet(
             account_id=model.account_id,
             base_asset=model.base_asset,
-            last_synced_at=model.last_synced_at,
+            # MySQL devuelve TIMESTAMP sin zona: se marcan como UTC
+            last_synced_at=ensure_aware_utc(model.last_synced_at),
             last_sync_error=model.last_sync_error,
             updated_by_user_id=model.updated_by_user_id,
-            updated_at=model.updated_at,
+            updated_at=ensure_aware_utc(model.updated_at),
         )
 
     def get(self) -> PlatformWallet | None:
@@ -111,7 +113,7 @@ class SqlAlchemyWalletSnapshotRepository(SqlAlchemyRepository, WalletSnapshotRep
             source=model.source,
             assets=[_line_from_json(item) for item in (model.assets or [])],
             missing_prices=list(model.missing_prices or []),
-            ts=model.ts,
+            ts=ensure_aware_utc(model.ts),
         )
 
     def record(self, snapshot: WalletSnapshot) -> WalletSnapshot:

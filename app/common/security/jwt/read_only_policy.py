@@ -26,7 +26,8 @@ from app.common.config import settings
 _UNSAFE_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
 
 # Escrituras que un socio sí puede hacer: su sesión, su perfil, su
-# Telegram, la campana, simular estrategias y seguir señales compartidas.
+# Telegram, la campana, simular estrategias, seguir señales compartidas y
+# depositar dinero propio en el fondo (o anular su solicitud).
 _PARTNER_WRITE_ALLOWLIST: tuple[re.Pattern[str], ...] = tuple(
     re.compile(pattern)
     for pattern in (
@@ -37,6 +38,8 @@ _PARTNER_WRITE_ALLOWLIST: tuple[re.Pattern[str], ...] = tuple(
         r"^/notifications/seen$",
         r"^/backtests$",
         r"^/bots/\d+/subscription$",
+        r"^/fund/deposits$",
+        r"^/fund/deposits/\d+/cancel$",
     )
 )
 

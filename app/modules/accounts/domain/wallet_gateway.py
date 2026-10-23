@@ -16,11 +16,16 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+from datetime import datetime
 from decimal import Decimal
 from typing import Protocol
 
 from app.modules.accounts.domain.account_entity import Account
 from app.modules.accounts.domain.wallet_snapshot_entity import AssetBalance
+
+# Estado de un depósito en el exchange (unificado por ccxt)
+EXCHANGE_DEPOSIT_STATUSES = ("pending", "ok", "failed", "canceled")
 
 
 class WalletGatewayError(Exception):
@@ -29,6 +34,38 @@ class WalletGatewayError(Exception):
     def __init__(self, code: str, detail: str = ""):
         super().__init__(detail or code)
         self.code = code
+
+
+@dataclass(frozen=True)
+class ExchangeDeposit:
+    """Un depósito tal como lo reporta el exchange."""
+
+    txid: str
+    amount: Decimal
+    asset: str
+    network: str | None
+    status: str
+    address_from: str | None
+    exchange_id: str | None
+    ts: datetime | None
+
+
+@dataclass(frozen=True)
+class DepositNetwork:
+    """Red por la que el exchange acepta depósitos de un activo (p. ej. TRC20)."""
+
+    code: str
+    name: str
+    deposit_enabled: bool
+
+
+@dataclass(frozen=True)
+class DepositAddress:
+    """Dirección de depósito de la billetera en una red (`tag` = memo, si la red lo usa)."""
+
+    network: str
+    address: str
+    tag: str | None
 
 
 class WalletGateway(Protocol):
@@ -44,4 +81,20 @@ class WalletGateway(Protocol):
         Último precio de cada activo en `quote` (par `ACTIVO/quote`).
         Los activos sin mercado o sin precio no vienen en el resultado.
         """
+        ...
+
+    def fetch_deposits(
+        self, account: Account, asset: str, since: datetime | None
+    ) -> list[ExchangeDeposit]:
+        """Depósitos recibidos de `asset` desde `since` (con su txid y estado)."""
+        ...
+
+    def fetch_deposit_networks(self, account: Account, asset: str) -> list[DepositNetwork]:
+        """Redes del exchange para `asset` (con si aceptan depósitos hoy)."""
+        ...
+
+    def fetch_deposit_address(
+        self, account: Account, asset: str, network: str
+    ) -> DepositAddress:
+        """Dirección de depósito de la cuenta en esa red."""
         ...

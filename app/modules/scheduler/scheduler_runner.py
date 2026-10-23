@@ -7,7 +7,8 @@
 # - Gestionar el hilo de fondo que ejecuta run_cycle() periódicamente,
 #   una vez al día refresh_explorer() (velas 1d del explorador) y cada
 #   WALLET_SYNC_INTERVAL_SECONDS sync_platform_wallet() (saldo de la
-#   billetera de la plataforma).
+#   billetera de la plataforma) seguido de verify_fund_deposits() (depósitos
+#   del fondo contra el exchange).
 # - Expone start() / stop() para integrarse con el lifespan de FastAPI.
 #
 # DISEÑO:
@@ -51,6 +52,7 @@ def _run_loop() -> None:
         refresh_explorer,
         run_cycle,
         sync_platform_wallet,
+        verify_fund_deposits,
     )
 
     lock = SchedulerLock()
@@ -87,6 +89,7 @@ def _run_loop() -> None:
         ):
             last_wallet_sync = now
             sync_platform_wallet()
+            verify_fund_deposits()
 
         try:
             run_cycle()

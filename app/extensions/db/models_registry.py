@@ -46,6 +46,11 @@ from app.modules.accounts.infrastructure.platform_wallet_model import (  # noqa:
     PlatformWalletModel,
     WalletSnapshotModel,
 )
+from app.modules.fund.infrastructure.fund_models import (  # noqa: F401
+    DepositRequestModel,
+    FundSettingsModel,
+    LedgerEntryModel,
+)
 
 # --------------------------------------------------------------
 # Strategies module models

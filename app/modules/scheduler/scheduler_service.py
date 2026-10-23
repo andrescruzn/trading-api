@@ -149,6 +149,35 @@ def sync_platform_wallet() -> None:
         session.close()
 
 
+def verify_fund_deposits() -> None:
+    """
+    Revisa las solicitudes de depósito pendientes contra el exchange (fondo
+    común, F3): confirma, manda a revisión o vence. Sin pendientes no hace nada.
+    """
+    # Import diferido: el fondo arma el gateway del exchange al construirse
+    from app.modules.fund.providers import FundServiceFactory
+
+    session = SessionLocal()
+    try:
+        result = FundServiceFactory(session).verify_deposits().verify()
+        if result.success:
+            s = result.data
+            if s.checked:
+                logger.info(
+                    "[Scheduler] Depósitos — revisados=%d confirmados=%d revisión=%d vencidos=%d esperando=%d",
+                    s.checked, s.confirmed, s.review, s.expired, s.waiting,
+                )
+        else:
+            logger.warning(
+                "[Scheduler] Depósitos FAIL — code=%s",
+                result.error.code if result.error else "UNKNOWN",
+            )
+    except Exception:
+        logger.exception("[Scheduler] Depósitos ERROR")
+    finally:
+        session.close()
+
+
 # ======================================================================
 # Ciclo principal
 # ======================================================================

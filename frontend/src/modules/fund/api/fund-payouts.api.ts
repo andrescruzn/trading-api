@@ -119,8 +119,13 @@ type WithdrawalFilters = { status?: WithdrawalStatus; user_id?: number };
 // Comisión
 // ======================================================================
 
-function getFeeSchedule() {
-	return api.get<FeeSchedule | null>('/fund/fees');
+/**
+ * Sin tabla publicada el backend responde `data: []` (el envelope nunca manda
+ * `null`): se normaliza a `null` para que `if (schedule)` no lo tome como tabla.
+ */
+async function getFeeSchedule(): Promise<FeeSchedule | null> {
+	const schedule = await api.get<FeeSchedule | []>('/fund/fees');
+	return Array.isArray(schedule) ? null : schedule;
 }
 
 function createFeeSchedule(input: {

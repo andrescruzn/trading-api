@@ -272,6 +272,7 @@ Gateway ([M4](M04-ACCOUNTS-PORTFOLIO.md)): `WalletGateway.fetch_deposits`, `fetc
 - **Las tablas sin modelo ORM no salen en autogenerate** (`env.py` las ignora): por eso los DROP de M10 se escribieron a mano en `ff5577d3faef`.
 - **Comprobantes en base64:** un archivo de 5 MB viaja como ~7 MB de JSON; el middleware de auditoría no guarda cuerpos de más de 10 KB, así que no queda en `audit_logs`.
 - **Migraciones y FK:** en `downgrade()` no borrar con `drop_index` un índice que use una FK (MySQL 1553); borrar la tabla directamente.
+- **`GET /api/fund/fees` sin tabla publicada** responde `data: []`, no `null` (el envelope normaliza `None` a `[]`). Un `[]` es verdadero en JS: Comisiones y Mi saldo intentaban pintar `[].tiers` y la página se caía (`Cannot read properties of undefined (reading 'map')`). `getFeeSchedule` (`fund-payouts.api.ts`) lo convierte a `null`. Cualquier endpoint nuevo que devuelva "un objeto o nada" necesita lo mismo, o envolverlo como `{current: ...}` (ver `/fund/commission-shares`).
 
 ## Tests
 
@@ -330,3 +331,4 @@ Lista de verificación (todo debe estar en ✅ antes del primer depósito de un 
 - **2026-10-23** — **F6: resumen y cierre**: resumen del fondo con conciliación y ganancias por propietario o socio, mis ganancias y extracto CSV, comprobante del pago en la BD, avisos por campana / correo / Telegram y retiro de M10 (migración `ff5577d3faef`). Módulo completo.
 - **2026-10-23** — **F5: salidas, comisión y retiros**: salidas en cola aplicadas en la liquidación (FIFO + permanencia, lo demás se queda), comisión escalonada marginal versionada, reparto versionado entre super admin y socios (residuo al de menor id), medios de pago cifrados con 48 h de espera, retiros pagados por fuera (COP, tasa, referencia); páginas Retiros y Comisiones y Mi saldo con Retirar / Sacar dinero (migración `a159e69da372`).
 - **2026-10-23** — **F4: agentes del fondo**: pools por agente con NAV y unidades, cola de asignaciones, liquidación con vista previa (agente pausado y sin posiciones, equity por flujo de caja, lotes, UPDATE condicional), `FundCapitalPort` para el 1 % y el drawdown (agente de la billetera sin pool = sin capital); páginas Agentes del fondo y Mis agentes (migración `521b4d0aac1b`).
+- **2026-10-23** — Fix: Comisiones y Mi saldo se caían si aún no había tabla de comisión (`data: []` tomado como tabla); `getFeeSchedule` normaliza `[]` a `null`.

@@ -57,7 +57,11 @@ import { ErrorAlert } from '@/modules/shared/components/error-alert';
 import { PageListHeader } from '@/modules/shared/components/page-list-header';
 import { StatCard } from '@/modules/shared/components/stat-card';
 import { useServerPagination } from '@/modules/shared/hooks/use-server-pagination';
-import { formatNumber, formatSignedPrice } from '@/modules/shared/lib/format';
+import {
+	formatNumber,
+	formatSignedPrice,
+	todayInAppTimeZone,
+} from '@/modules/shared/lib/format';
 import { getErrorMessage } from '@/modules/shared/lib/get-error-message';
 import {
 	Alert,
@@ -188,7 +192,7 @@ export function MyFundPage() {
 			onSuccess: (entries) =>
 				downloadLedgerCsv(
 					entries,
-					`extracto-fondo-${new Date().toISOString().slice(0, 10)}.csv`,
+					`extracto-fondo-${todayInAppTimeZone()}.csv`,
 				),
 			onError: (error) =>
 				toast.add({

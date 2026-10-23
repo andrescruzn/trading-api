@@ -46,37 +46,12 @@ function isErrorStatus(status: number): boolean {
 	return status >= 400;
 }
 
-/** Fecha con segundos (en auditoría importa el orden exacto), hora local. */
-function formatAuditTime(iso: string): string {
-	const date = new Date(iso);
-	if (Number.isNaN(date.getTime())) return '—';
-	return date.toLocaleString('es-CO', {
-		dateStyle: 'medium',
-		timeStyle: 'medium',
-	});
-}
-
-/** `YYYY-MM-DD` del `<input type="date">` → inicio de ese día local en ISO. */
-function startOfLocalDayIso(day: string): string {
-	return new Date(`${day}T00:00:00`).toISOString();
-}
-
-/** Fin exclusivo del rango: inicio del día local siguiente en ISO. */
-function startOfNextLocalDayIso(day: string): string {
-	const date = new Date(`${day}T00:00:00`);
-	date.setDate(date.getDate() + 1);
-	return date.toISOString();
-}
-
 export {
 	AUDIT_EVENT_TYPE_LABELS,
 	AUDIT_EVENT_TYPE_OPTIONS,
 	AUDIT_KIND_LABELS,
 	AUDIT_KIND_OPTIONS,
 	auditEventTypeLabel,
-	formatAuditTime,
 	httpMethodLabel,
 	isErrorStatus,
-	startOfLocalDayIso,
-	startOfNextLocalDayIso,
 };

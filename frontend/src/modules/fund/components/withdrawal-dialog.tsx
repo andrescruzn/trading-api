@@ -10,7 +10,11 @@ import {
 } from '@/modules/fund/hooks/use-fund-payouts-queries';
 import { positiveAmountField } from '@/modules/fund/lib/fund-forms';
 import { OptionSelect } from '@/modules/shared/components/option-select';
-import { formatDateTime, formatNumber } from '@/modules/shared/lib/format';
+import {
+	formatDateTime,
+	formatNumber,
+	toTimestamp,
+} from '@/modules/shared/lib/format';
 import { getErrorMessage } from '@/modules/shared/lib/get-error-message';
 import { requiredSelectField } from '@/modules/shared/lib/required-select-field';
 import { Button } from '@/modules/ui/components/button';
@@ -67,7 +71,7 @@ export function WithdrawalDialog({
 	const options = (methodsQuery.data ?? [])
 		.filter((method) => method.is_active)
 		.map((method) => {
-			const ready = new Date(method.usable_from).getTime() <= now;
+			const ready = (toTimestamp(method.usable_from) ?? 0) <= now;
 			return {
 				value: String(method.id),
 				label: ready

@@ -5,10 +5,10 @@ import type { UserSummary } from '@/modules/auth/api/users.api';
 import { OwnerCell } from '@/modules/auth/components/owner-cell';
 import {
 	auditEventTypeLabel,
-	formatAuditTime,
 	httpMethodLabel,
 	isErrorStatus,
 } from '@/modules/auth/lib/audit-labels';
+import { formatDateTimeSeconds } from '@/modules/shared/lib/format';
 import { Badge } from '@/modules/ui/components/badge';
 import {
 	Sheet,
@@ -60,7 +60,7 @@ export function AuditEventSheet({
 					</SheetTitle>
 					<SheetDescription>
 						{current
-							? `${formatAuditTime(current.ts)} · hora de tu dispositivo`
+							? `${formatDateTimeSeconds(current.ts)} · hora de Colombia`
 							: ''}
 					</SheetDescription>
 				</SheetHeader>

@@ -15,10 +15,7 @@ import {
 	AUDIT_EVENT_TYPE_OPTIONS,
 	AUDIT_KIND_OPTIONS,
 	auditEventTypeLabel,
-	formatAuditTime,
 	isErrorStatus,
-	startOfLocalDayIso,
-	startOfNextLocalDayIso,
 } from '@/modules/auth/lib/audit-labels';
 import {
 	DataTable,
@@ -28,6 +25,11 @@ import { OptionSelect } from '@/modules/shared/components/option-select';
 import { PageListHeader } from '@/modules/shared/components/page-list-header';
 import { TablePagination } from '@/modules/shared/components/table-pagination';
 import { useDebouncedValue } from '@/modules/shared/hooks/use-debounced-value';
+import {
+	formatDateTimeSeconds,
+	startOfAppDayIso,
+	startOfNextAppDayIso,
+} from '@/modules/shared/lib/format';
 import { DEFAULT_PAGE_LIMIT, type PageLimit } from '@/modules/shared/types/api';
 import { Badge } from '@/modules/ui/components/badge';
 import { Field, FieldLabel } from '@/modules/ui/components/field';
@@ -102,11 +104,9 @@ export function AdminAuditPage() {
 		only_errors: filters.result === ERRORS ? true : undefined,
 		path: debouncedPath || undefined,
 		date_from: filters.dateFrom
-			? startOfLocalDayIso(filters.dateFrom)
+			? startOfAppDayIso(filters.dateFrom)
 			: undefined,
-		date_to: filters.dateTo
-			? startOfNextLocalDayIso(filters.dateTo)
-			: undefined,
+		date_to: filters.dateTo ? startOfNextAppDayIso(filters.dateTo) : undefined,
 	};
 	const eventsQuery = useAuditEventsQuery(query, { enabled: !rangeInvalid });
 	const data = rangeInvalid ? undefined : eventsQuery.data;
@@ -122,7 +122,7 @@ export function AdminAuditPage() {
 			id: 'ts',
 			header: 'Fecha',
 			className: 'whitespace-nowrap',
-			cell: (row) => formatAuditTime(row.ts),
+			cell: (row) => formatDateTimeSeconds(row.ts),
 			skeletonClassName: 'w-36',
 		},
 		{

@@ -6,6 +6,7 @@ import {
 	useApproveSignalMutation,
 	useRejectSignalMutation,
 } from '@/modules/bots/hooks/use-bots-mutations';
+import { toTimestamp } from '@/modules/shared/lib/format';
 import { getErrorMessage } from '@/modules/shared/lib/get-error-message';
 import {
 	AlertDialog,
@@ -30,8 +31,9 @@ type SignalDecisionActionsProps = {
 
 /** Minutos que faltan para que venza, redondeando hacia arriba; `null` sin límite. */
 function minutesLeft(expiresAt: string | null, now: number): number | null {
-	if (!expiresAt) return null;
-	return Math.max(0, Math.ceil((new Date(expiresAt).getTime() - now) / 60_000));
+	const expiresMs = toTimestamp(expiresAt);
+	if (expiresMs === null) return null;
+	return Math.max(0, Math.ceil((expiresMs - now) / 60_000));
 }
 
 function formatTimeLeft(minutes: number): string {

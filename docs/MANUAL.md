@@ -406,8 +406,9 @@ Explorar (explorar mercados, estrategias, track record) y, según tu rol, "Mi in
 o "Administración" (administradores). En Administración, "Supervisión" muestra lo de todos los
 usuarios: "Todos los agentes" son los mismos agentes del inicio, pero de todo el sistema. Cada
 vista dice quién es el dueño (nombre y correo) y se puede filtrar por persona. "Configuración"
-reúne lo que el administrador define para todos: los usuarios (y su rol), las estrategias y el
-canal de Telegram. En "Usuarios" se cambia el rol de cada persona (Usuario, Administrador o
+reúne lo que el administrador define para todos: los usuarios (y su rol) y el canal de Telegram.
+Las estrategias se crean y editan en la misma página de Explorar → Estrategias: el administrador
+ve ahí los botones "Nueva estrategia" y "Editar"; el resto solo las consulta. En "Usuarios" se cambia el rol de cada persona (Usuario, Administrador o
 Inversor); nadie puede cambiar el suyo, para que la app nunca se quede sin administrador.
 
 También desde "Usuarios" se bloquea o desactiva una cuenta. Bloquear es una suspensión temporal

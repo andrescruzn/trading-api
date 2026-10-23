@@ -60,7 +60,7 @@ Paso 1 — Verificar datos base (ya vienen con los seeds)
   ---
   Paso 5 — Verificar Estrategias
 
-  Ve a /admin/strategies → ya tienes 6 estrategias de ejemplo del seed. Elige una según tu objetivo:
+  Ve a Explorar → Estrategias (/#/strategies) → ya tienes 6 estrategias de ejemplo del seed. Elige una según tu objetivo:
 
   ┌────────────────────────┬─────────────────┬──────────────────────┐
   │       Estrategia       │      Tipo       │    Cuándo aplica     │

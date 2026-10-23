@@ -29,6 +29,7 @@
 - **Con aprobación / Automático:** el scheduler genera una señal por **vela cerrada**. Si la IA aprueba una BUY/SELL, la señal queda **pendiente** hasta su vencimiento (`expires_at`): en Con aprobación se avisa por Telegram y se aprueba o descarta desde la app o Telegram; en Automático se ejecuta en el acto ([M8](M08-ORDERS-EXECUTION.md)).
 - Señales APROBADAS: BUY o SELL + entry, SL, TP, position_size, rr_ratio. RECHAZADAS: HOLD, `approved=False`; todas persisten.
 - El agente le pasa a la IA **su** riesgo (`risk_params.risk_pct`, acotado al 1 %), no el de la estrategia.
+- **Fondo común (2026-10-23, [M11](M11-FUND.md)):** si el agente está en el fondo, el 1 % se calcula sobre **su** capital (`FundCapitalPort`, `bots/domain/fund_capital_port.py`, inyectado en `GenerateSignalService` como `fund_capital`; `AnalyzeService.analyze(capital=…)`). Un agente sobre la billetera de la plataforma sin pool no genera señales (`AGENT_NO_FUND_CAPITAL`).
 - `features_hash`: SHA-256 del contexto de mercado, fingerprint para auditoría.
 - **Señales compartidas:** el dueño de un agente puede activar **Compartir señales**; cualquier otro usuario lo ve en Track record y lo sigue. Quien lo sigue recibe por Telegram sus BUY/SELL aprobadas (acción, símbolo, timeframe, entrada, SL, TP, R/R), sin datos de la cuenta ni del dueño y sin botones: no ejecuta nada.
 - Cada señal guarda qué servicio de IA respondió (`llm_provider`), con qué modelo (`llm_model`) y cuánto tardó (`llm_latency_ms`), y su **decisión de ejecución** (estado, canal, quién, cuándo y por qué falló).

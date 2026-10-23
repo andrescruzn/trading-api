@@ -85,6 +85,8 @@ Entregables:
 
 ## Decisiones de diseño
 
+> **Fondo común (2026-10-23, [M11](M11-FUND.md)):** el drawdown máximo del RiskGate de un agente del fondo se mide desde la equity de su última liquidación hasta su capital de ahora (`FundCapitalPort`). `FillRepository` suma `list_by_bot_after(bot_id, after_fill_id)` y `max_id_by_bot(bot_id)` (`BotFill` con `fee_asset`) para la contabilidad del fondo, y el armado del cliente ccxt del `LiveExecutor` vive en `accounts/infrastructure/exchange_client.py`.
+
 | Decisión | Motivo | Alternativa descartada |
 |---|---|---|
 | **Strategy Pattern** para la ejecución: `ExecutorInterface` → `PaperExecutor` / `LiveExecutor` | Mismo flujo para simular y operar con dinero real; añadir un broker no toca el servicio | `if mode == ...` repartido por el código |

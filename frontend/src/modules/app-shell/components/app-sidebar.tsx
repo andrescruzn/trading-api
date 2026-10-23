@@ -126,7 +126,6 @@ const navSections: NavSectionData[] = [
 				icon: IconSettings,
 				items: [
 					{ title: 'Usuarios', url: '/admin/users' },
-					{ title: 'Gestionar estrategias', url: '/admin/strategies' },
 					{ title: 'Telegram', url: '/admin/telegram', role: MANAGER_ROLES },
 					{ title: 'Auditoría', url: '/admin/audit' },
 				],

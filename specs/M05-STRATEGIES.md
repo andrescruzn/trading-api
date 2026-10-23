@@ -33,12 +33,11 @@
 Hash routing: la URL real es `/#/<ruta>`.
 
 **Páginas — Usuario (cualquier usuario autenticado):**
-- `/#/strategies` — Lista de estrategias con tipo, régimen, timeframe y cantidad de reglas. Click en la fila abre un panel lateral con el detalle completo.
+- `/#/strategies` — "Estrategias" (Explorar): lista con tipo, régimen, timeframe y cantidad de reglas. Click en la fila abre un panel lateral con el detalle completo. El super admin ve además "Nueva estrategia" y "Editar" (diálogo con editor de reglas JSON y validación de coherencia en vivo); el socio y el inversor la ven en solo lectura (`useCanManage()`).
 
 - `/#/backtest` — "Backtesting" (Explorar): estrategia, símbolo, timeframe, historia (500–3000 velas) y capital; resultado contra comprar y mantener, % de ganadoras, R/R real, profit factor, caída máxima y operaciones simuladas. Se abre también con "Probar en el pasado" en el detalle de una estrategia (`?strategy_id=`).
 
-**Páginas — Administrador (solo admin):**
-- `/#/admin/strategies` — "Gestionar estrategias" (Administración → Configuración): crear y editar estrategias (diálogo) con editor de reglas JSON y validación de coherencia en vivo
+**Páginas — Administrador:** ninguna propia; crear y editar se hace en `/#/strategies` (desde 2026-10-23).
 
 ## Entregables
 
@@ -48,7 +47,7 @@ Entregables:
 - ✅ CRUD estrategias con config JSON (reglas, régimen requerido, timeframe, risk_pct)
 - ✅ Tipos soportados: trend_following, mean_reversion
 - ✅ Validación coherencia tipo/régimen (hint en vivo en UI + validación backend)
-- ✅ Web UI: `/#/strategies` (viewer) + `/#/admin/strategies` (CRUD admin) — en React desde 2026-10-08
+- ✅ Web UI: `/#/strategies` (consulta para todos + crear/editar para el super admin) — en React desde 2026-10-08; una sola página desde 2026-10-23
 - ✅ API: GET/POST `/api/strategies`, GET/PUT `/api/strategies/{id}`
 - ✅ Seed: 9 estrategias de ejemplo (`database/seeds/strategies.py`)
 - ✅ (2026-10-20) Tests unitarios: estrategias (crear/editar/ver/listar, coherencia tipo↔régimen), datasets y evaluación de reglas
@@ -156,8 +155,7 @@ from app.modules.strategies.rest import strategies_router, datasets_router
 ### Frontend (`frontend/src/modules/strategies/`)
 | Ruta | Archivo de ruta | Página / componentes |
 |-----|----------|----|
-| `/#/strategies` | `routes/_app/strategies.lazy.tsx` | `pages/strategies.tsx` (`StrategiesPage`) + `components/strategies-table.tsx` + `components/strategy-detail-sheet.tsx` |
-| `/#/admin/strategies` | `routes/_app/admin/strategies.lazy.tsx` | `pages/admin-strategies.tsx` + `components/strategy-form-dialog.tsx` (reglas en `Textarea` JSON validado con zod; aviso de incoherencia tipo↔régimen en vivo) |
+| `/#/strategies` | `routes/_app/strategies.lazy.tsx` | `pages/strategies.tsx` (`StrategiesPage`) + `components/strategies-table.tsx` + `components/strategy-detail-sheet.tsx` + `components/strategy-form-dialog.tsx` (solo super admin; reglas en `Textarea` JSON validado con zod; aviso de incoherencia tipo↔régimen en vivo) |
 
 - API: `api/strategies.api.ts`; hooks `use-strategies-queries.ts` (`useStrategiesQuery`, también en dashboard, agent y bots) y `use-strategies-mutations.ts`; etiquetas `lib/strategies-labels.ts`; `components/strategy-regime-badge.tsx`.
 - `datasets` sigue sin UI.
@@ -225,3 +223,4 @@ Unitarios sin BD ni red (repositorios `MagicMock`). Correr: `uv run python -m py
 - **2026-10-20** — "Gestionar estrategias" pasa del grupo admin Supervisión a **Configuración**.
 - **2026-10-20** — Backtesting sin IA (motor puro, `POST /api/backtests`, página Backtesting, "Probar en el pasado") y evaluación de reglas compartida con la IA.
 - **2026-10-20** — Tests unitarios de estrategias, datasets y evaluación de reglas (81 nuevos en `tests/strategies/`). Destaparon un bug, corregido: crear una estrategia con espacios alrededor de un nombre+versión existente daba 500 (IntegrityError) en lugar de 409.
+- **2026-10-23** — Se fusionan las dos páginas: "Gestionar estrategias" (`/admin/strategies`, Configuración) desaparece y crear/editar pasa a "Estrategias" de Explorar, visible solo para el super admin.

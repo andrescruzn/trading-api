@@ -191,7 +191,7 @@ Hash routing: la URL real es `/#/<ruta>`. Cada ruta vive en `frontend/src/routes
 | Público | `/login` |
 | Todos los roles | `/my-fund` (Mi saldo), `/dashboard` (inicio = lista de agentes), `/agents/:id`, `/alerts`, `/strategies`, `/track-record`, `/backtest`, `/market/explorer` (`/agents`, `/bots`, `/agent`, `/orders`, `/features` y `/market/candles` redirigen a `/dashboard`; `/market/symbols` a `/market/explorer`) |
 | Solo super admin | `/agents/new`, `/portfolio` (`ManagerGuard`) y `/admin/telegram` en el menú |
-| Super admin y socio (`_app/admin/*`; el socio sin botones de escritura) | `/admin/fund`, `/admin/wallet`, `/admin/deposits`, `/admin/fund-agents`, `/admin/fund-agents/:poolId`, `/admin/withdrawals`, `/admin/commissions`, `/admin/participants`, `/admin/fund-settings`, `/admin/exchanges`, `/admin/symbols`, `/admin/timeframes`, `/admin/feature-sets`, `/admin/users`, `/admin/accounts`, `/admin/agents`, `/admin/orders`, `/admin/alerts`, `/admin/telegram` |
+| Super admin y socio (`_app/admin/*`; el socio sin botones de escritura) | `/admin/fund`, `/admin/wallet`, `/admin/deposits`, `/admin/fund-agents`, `/admin/fund-agents/:poolId`, `/admin/withdrawals`, `/admin/commissions`, `/admin/participants`, `/admin/fund-settings`, `/admin/exchanges`, `/admin/symbols`, `/admin/timeframes`, `/admin/feature-sets`, `/admin/users`, `/admin/audit`, `/admin/telegram` |
 
 Comprar/Vender vive en el [Módulo 8 — Orders & Execution](M08-ORDERS-EXECUTION.md).
 
@@ -208,6 +208,9 @@ Cambios del 2026-10-20 (Fase 3):
 - Menú de usuario: **Mi perfil** (cambiar el nombre) — [M1](M01-AUTH.md).
 - `/agents/:id` → Mercado: **gráfico de precio** con líneas de Entrada, SL y TP — [M7](M07-BOTS-SIGNALS.md).
 - `/alerts`: en PnL y drawdown el agente es obligatorio; textos de revisión automática — [M9](M09-ALERTS.md).
+
+Cambios del 2026-10-23 (menú):
+- Quitado el grupo **Supervisión** de Administración (`/admin/agents`, `/admin/accounts`, `/admin/orders`, `/admin/alerts` y la redirección `/admin/bots`): las señales, órdenes y alertas se ven dentro de cada agente; el staff llega a los agentes de otros desde **Agentes del fondo** — [M7](M07-BOTS-SIGNALS.md), [M4](M04-ACCOUNTS-PORTFOLIO.md), [M8](M08-ORDERS-EXECUTION.md), [M9](M09-ALERTS.md).
 
 Cambios del 2026-10-23 (fondo común, F6 — resumen, avisos y retiro de M10):
 - `/admin/fund` (**Resumen del fondo**, primera de Administración → Fondo): billetera, conciliación, capital por agente, saldos y ganancias de propietarios y socios — [M11](M11-FUND.md).
@@ -242,7 +245,7 @@ Cambios del 2026-10-20 (Fase 4, administración):
 - `/admin/audit` (**Auditoría**, Configuración): registro de peticiones a la API con filtros por persona, tipo de evento, fechas, ruta, consultas/cambios y errores; detalle en panel lateral — [M1](M01-AUTH.md).
 - Paginación en el servidor: Todas las órdenes (sin el tope de 500), Todos los agentes, Eventos de Todas las alertas, el historial de `/alerts` y las pestañas Señales y Órdenes del agente — [M7](M07-BOTS-SIGNALS.md), [M8](M08-ORDERS-EXECUTION.md), [M9](M09-ALERTS.md).
 
-En la UI los bots se llaman **agentes** y son el punto de entrada: el inicio es la lista de agentes (con filtro por estado) y el menú se organiza en **Operar** (Alertas, Mis cuentas) y **Explorar** (Explorar mercados, Estrategias). Todo lo que depende de un agente (órdenes, posiciones, velas, indicadores) vive dentro de su detalle, porque esos datos solo existen para agentes creados y activos. En Administración, el grupo **Supervisión** reúne las vistas de solo lectura de todos los usuarios con nombres que dicen su alcance (Todos los agentes, Todas las cuentas, Todas las órdenes, Todas las alertas), cada una con columna y filtro de **Dueño**; **Configuración** reúne lo que el admin define para el sistema (Usuarios —con el cambio de rol y de estado—, Telegram, Auditoría); las estrategias se crean y editan en Explorar → Estrategias (botones solo para el super admin). En código, tablas y API siguen siendo `bot`.
+En la UI los bots se llaman **agentes** y son el punto de entrada: el inicio es la lista de agentes (con filtro por estado) y el menú se organiza en **Operar** (Alertas, Mis cuentas) y **Explorar** (Explorar mercados, Estrategias). Todo lo que depende de un agente (órdenes, posiciones, velas, indicadores) vive dentro de su detalle, porque esos datos solo existen para agentes creados y activos. En Administración, **Fondo** reúne el fondo común (incluidos los **Agentes del fondo**, desde donde el staff abre el detalle de cualquier agente del fondo); **Datos de mercado**, los catálogos; y **Configuración** reúne lo que el admin define para el sistema (Usuarios —con el cambio de rol y de estado—, Telegram, Auditoría); las estrategias se crean y editan en Explorar → Estrategias (botones solo para el super admin). En código, tablas y API siguen siendo `bot`.
 
 ---
 

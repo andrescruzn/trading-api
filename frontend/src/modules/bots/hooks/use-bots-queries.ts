@@ -3,7 +3,6 @@ import {
 	type BotFilters,
 	getBot,
 	listBots,
-	listBotsPage,
 	listPendingSignals,
 	listSharedBots,
 	listSignals,
@@ -34,18 +33,6 @@ function useBotsQuery(
 		queryKey: [...BOTS_QUERY_KEY, filters],
 		queryFn: () => listBots(filters),
 		enabled: options.enabled ?? true,
-	});
-}
-
-/**
- * Una página de agentes (paginación en el servidor; "Todos los agentes").
- * Para nombres y catálogos sigue usándose `useBotsQuery` (lista completa).
- */
-function useBotsPageQuery(filters: BotFilters, page: PageParams) {
-	return useQuery({
-		queryKey: [...BOTS_QUERY_KEY, 'page', filters, page],
-		queryFn: () => listBotsPage(filters, page),
-		placeholderData: keepPreviousData,
 	});
 }
 
@@ -107,7 +94,6 @@ export {
 	SHARED_BOTS_QUERY_KEY,
 	SIGNALS_QUERY_KEY,
 	useBotQuery,
-	useBotsPageQuery,
 	useBotsQuery,
 	useMyBotsQuery,
 	usePendingSignalsQuery,

@@ -31,10 +31,6 @@ type OrdersTableProps = {
 	error: unknown;
 	empty: ReactNode;
 	onViewFills: (order: Order) => void;
-	/** Si se pasa, agrega la columna "Agente" con estos nombres (`id → nombre`). */
-	botNames?: Map<number, string>;
-	/** Si se pasa, agrega la columna "Dueño" (vistas de Supervisión). */
-	renderOwner?: (order: Order) => ReactNode;
 	/** Paginación en el servidor (`orders` es la página actual). */
 	pagination?: ServerPagination;
 	isFetching?: boolean;
@@ -46,8 +42,6 @@ export function OrdersTable({
 	error,
 	empty,
 	onViewFills,
-	botNames,
-	renderOwner,
 	pagination,
 	isFetching,
 }: OrdersTableProps) {
@@ -60,18 +54,6 @@ export function OrdersTable({
 			className: 'w-16 font-mono',
 			cell: (row) => `#${row.id}`,
 		},
-		...(botNames
-			? [
-					{
-						id: 'bot',
-						header: 'Agente',
-						cell: (row: Order) => botNames.get(row.bot_id) ?? `#${row.bot_id}`,
-					},
-				]
-			: []),
-		...(renderOwner
-			? [{ id: 'owner', header: 'Dueño', cell: renderOwner }]
-			: []),
 		{
 			id: 'side',
 			header: 'Lado',

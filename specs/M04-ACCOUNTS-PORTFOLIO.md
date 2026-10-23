@@ -37,7 +37,6 @@ Hash routing: la URL real es `/#/<ruta>`.
 
 **Páginas — Administración (super admin y socio):**
 - `/#/admin/wallet` — "Billetera" (Administración → Fondo): cuenta elegida (nombre, exchange, modo), tarjetas Saldo total / Saldo libre / En órdenes / Última lectura, aviso si la última sincronización falló (con el motivo) o si hay activos sin precio, tabla de activos (libre, en órdenes, total, precio, valor) e historial de lecturas. Solo el super admin ve **Sincronizar ahora** y **Elegir / Cambiar billetera** (diálogo con las cuentas activas con exchange y, si son live, con API key)
-- `/#/admin/accounts` — "Todas las cuentas" (Administración → Supervisión): vista global de todas las cuentas del sistema (con su panel de balances), columna **Dueño** (nombre y correo) y filtro por dueño
 
 ## Entregables
 
@@ -49,7 +48,7 @@ Entregables:
 - ✅ Equity curve vía time series de `account_balances`
 - ✅ Endpoints: GET/POST `/api/accounts`, GET/PUT `/api/accounts/{id}`, GET/POST `/api/accounts/{id}/balances`
 - ✅ Cifrado simétrico: `CredentialsCipher` (Fernet, `CREDENTIALS_SECRET_KEY`)
-- ✅ Web UI: `/#/portfolio` (panel usuario) + `/#/admin/accounts` (vista admin) — en React desde 2026-10-08
+- ✅ Web UI: `/#/portfolio` (panel usuario) — en React desde 2026-10-08 (la vista admin `/#/admin/accounts` se retiró el 2026-10-23)
 - ✅ 36 tests unitarios pasando (list/get/create/update accounts + list/record balances)
 - ✅ (2026-10-23) **Billetera única de la plataforma:** tablas `platform_wallet` (una fila) y `wallet_snapshots` (migración `e500b821b8ec`), `WalletGateway` + `CcxtWalletGateway`, `SyncWalletService` (en live graba también `account_balances`), paso del scheduler `sync_platform_wallet`, `GET/PUT /api/wallet`, `POST /api/wallet/sync`, `GET /api/wallet/snapshots` y página Billetera
 - Test unitarios
@@ -181,7 +180,6 @@ Settings: `WALLET_BASE_ASSET` (USDT), `WALLET_SYNC_INTERVAL_SECONDS` (300, míni
 | Ruta | Archivo de ruta | Página / componentes |
 |-----|----------|----|
 | `/#/portfolio` | `routes/_app/portfolio.lazy.tsx` | `pages/portfolio.tsx` (`PortfolioPage`) + `components/account-form-dialog.tsx` + `components/account-balances-sheet.tsx` + `components/record-balance-dialog.tsx` |
-| `/#/admin/accounts` | `routes/_app/admin/accounts.lazy.tsx` | `pages/admin-accounts.tsx` + `components/account-balances-sheet.tsx` |
 | `/#/admin/wallet` | `routes/_app/admin/wallet.lazy.tsx` | `pages/admin-wallet.tsx` + `components/wallet-account-dialog.tsx`; `api/wallet.api.ts`, `hooks/use-wallet-queries.ts` (relee cada 60 s), `hooks/use-wallet-mutations.ts`, `WALLET_SOURCE_LABELS` |
 
 - API: `api/accounts.api.ts`; hooks `use-accounts-queries.ts` (`useAccountsQuery`, reutilizado por dashboard, agent y bots) y `use-accounts-mutations.ts`; etiquetas `lib/accounts-labels.ts`; badges `components/account-badges.tsx`.
@@ -218,3 +216,4 @@ Settings: `WALLET_BASE_ASSET` (USDT), `WALLET_SYNC_INTERVAL_SECONDS` (300, míni
 - **2026-10-19** — Auditoría de seguridad: `api_key` ≤ 512 y `api_secret` ≤ 1024 en los schemas; `CredentialsCipher.from_settings()` con MultiFernet y `CREDENTIALS_PREVIOUS_KEYS` (rotación de clave sin perder las cuentas). Spec corregida: `portfolio_snapshots` sí tiene modelo ORM (`portfolio_snapshot_model.py`, registrado), aunque nadie la escribe.
 - **2026-10-20** — Todas las cuentas: columna **Dueño** (nombre y correo) y filtro por dueño (antes "Usuario #id").
 - **2026-10-23** — **Billetera única de la plataforma (fondo común, F2):** `platform_wallet` + `wallet_snapshots` (migración `e500b821b8ec`), `WalletGateway`/`CcxtWalletGateway` (Spot + Funding, precios por ticker), `SyncWalletService` (live graba `account_balances`; paper usa los manuales), paso del scheduler cada `WALLET_SYNC_INTERVAL_SECONDS`, `/api/wallet` (staff; elegir y sincronizar solo super admin), página Administración → Fondo → Billetera. `exchange_client.py` compartido con el `LiveExecutor`.
+- **2026-10-23** — Se retira el grupo **Supervisión** del menú: fuera la página "Todas las cuentas" (`/#/admin/accounts`, `pages/admin-accounts.tsx`). `GET /api/accounts` sigue igual.

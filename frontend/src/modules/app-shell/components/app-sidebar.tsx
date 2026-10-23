@@ -4,7 +4,6 @@ import {
 	IconCoins,
 	IconCompass,
 	IconDatabase,
-	IconEye,
 	IconFlask,
 	IconHome,
 	IconSettings,
@@ -105,19 +104,6 @@ const navSections: NavSectionData[] = [
 					{ title: 'Símbolos', url: '/admin/symbols' },
 					{ title: 'Timeframes', url: '/admin/timeframes' },
 					{ title: 'Conjuntos de indicadores', url: '/admin/feature-sets' },
-				],
-			},
-			{
-				// Lo de todos los usuarios (solo lectura): los nombres dicen el
-				// alcance para no confundirse con los agentes del inicio o "Mis
-				// cuentas" de Operar.
-				title: 'Supervisión',
-				icon: IconEye,
-				items: [
-					{ title: 'Todos los agentes', url: '/admin/agents' },
-					{ title: 'Todas las cuentas', url: '/admin/accounts' },
-					{ title: 'Todas las órdenes', url: '/admin/orders' },
-					{ title: 'Todas las alertas', url: '/admin/alerts' },
 				],
 			},
 			{

@@ -45,7 +45,7 @@ frontend/
 
 Un módulo del front por módulo de backend (M2 → `market`, M3 → `features`, M4 → `accounts`, M5 → `strategies`, M7 → `bots`, M8 → `orders`, M9 → `alerts`, M11 → `fund`; M10 se retiró). M6 no tiene módulo propio: se usa desde `bots` ("Analizar ahora").
 
-**Bots = agentes.** En pantalla un bot se llama siempre **agente** (rutas `/agents`, `/agents/new`, `/agents/$agentId`, `/admin/agents`); el código, los tipos y la API conservan `bot`. El LLM se nombra "la IA". Excepción: el bot de Telegram. En pantallas de usuario los agentes se piden con `useMyBotsQuery()` (`?mine=true`); `useBotsQuery()` sin filtros a un admin le devuelve los de todo el sistema. Un módulo puede importar `api`/`hooks`/`lib` de otro (p. ej. `bots` usa `useSymbolsQuery` de `market`); nunca sus `pages`.
+**Bots = agentes.** En pantalla un bot se llama siempre **agente** (rutas `/agents`, `/agents/new`, `/agents/$agentId`); el código, los tipos y la API conservan `bot`. El LLM se nombra "la IA". Excepción: el bot de Telegram. En pantallas de usuario los agentes se piden con `useMyBotsQuery()` (`?mine=true`); `useBotsQuery()` sin filtros a un admin le devuelve los de todo el sistema. Un módulo puede importar `api`/`hooks`/`lib` de otro (p. ej. `bots` usa `useSymbolsQuery` de `market`); nunca sus `pages`.
 
 ## Rutas
 
@@ -121,7 +121,7 @@ export function AdminExchangesPage() {
 
 - **Breadcrumb**: `usePageBreadcrumb([...])` en cada página.
 - **Encabezado**: `PageListHeader` (título, descripción, acciones que colapsan a menú "…" en móvil).
-- **Tablas**: `DataTable` (skeleton, error inline, vacío, paginación en el navegador por defecto; con la prop `pagination` + `useServerPagination(resetKey)` pagina en servidor: endpoints con `page`/`page_size` opt-in que devuelven `Paginated<T>` `{items, pagination}` — ver `orders/pages/admin-orders.tsx`). Columna de acciones = una columna más; con varias acciones usa `DropdownMenu` con `IconDots`. Si la fila es clicable (`onRowClick`), las celdas con botones hacen `event.stopPropagation()`. Muestra nombres, no IDs crudos (cruza con las queries de catálogos).
+- **Tablas**: `DataTable` (skeleton, error inline, vacío, paginación en el navegador por defecto; con la prop `pagination` + `useServerPagination(resetKey)` pagina en servidor: endpoints con `page`/`page_size` opt-in que devuelven `Paginated<T>` `{items, pagination}` — ver `fund/pages/admin-deposits.tsx`). Columna de acciones = una columna más; con varias acciones usa `DropdownMenu` con `IconDots`. Si la fila es clicable (`onRowClick`), las celdas con botones hacen `event.stopPropagation()`. Muestra nombres, no IDs crudos (cruza con las queries de catálogos).
 - **Filtros**: `OptionSelect` con opción `'all'` y `aria-label`; el filtro va en la query key.
 - **KPIs**: `StatCard`. Errores de carga fuera de tablas: `ErrorAlert`.
 - **Formato**: `formatNumber`, `formatPrice`, `formatPercent` (ratio 0–1), `formatPercentValue` (ya en %), `formatDateTime`, `formatDate` de `shared/lib/format.ts` (locale `es-CO`). No `toFixed` sueltos en la UI.

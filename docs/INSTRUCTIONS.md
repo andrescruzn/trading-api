@@ -41,7 +41,7 @@ Paso 1 — Verificar datos base (ya vienen con los seeds)
   ---
   Paso 4 — Crear una Cuenta de Trading
 
-  Ve a /admin/accounts → Crear cuenta:
+  Ve a /portfolio (Mis cuentas) → Nueva cuenta:
 
   ┌─────────────────┬───────────────────────────────────┐
   │      Campo      │  Valor recomendado para empezar   │

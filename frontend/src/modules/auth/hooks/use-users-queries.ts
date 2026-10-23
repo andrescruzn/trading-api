@@ -4,7 +4,7 @@ import type { SelectOption } from '@/modules/shared/components/option-select';
 
 const USERS_QUERY_KEY = ['users'] as const;
 
-// Catálogo que cambia poco: se reutiliza entre las vistas de Supervisión.
+// Catálogo que cambia poco: se reutiliza entre las vistas de Administración.
 const USERS_STALE_TIME = 5 * 60 * 1000;
 
 /** Solo admin: el backend responde 403 a cualquier otro rol. */

@@ -14,7 +14,7 @@
 | Lo usan | Todos los módulos (guardas `jwt_guard` / `role_guard`: `super_admin_required`, `staff_required`, `read_scope` / `write_scope`); el shell del frontend (`app-shell`) aloja todas las páginas; [M9](M09-ALERTS.md) usa el chat de Telegram vinculado |
 | Prefijo API | `/api/users` (incluye `/api/users/me/telegram`) |
 | Frontend | `frontend/src/modules/auth`, `app-shell`, `dashboard` |
-| Última revisión | 2026-10-22 |
+| Última revisión | 2026-10-23 |
 
 ## Descripción
 
@@ -56,7 +56,7 @@ Entregables:
 - ~~Cambiar contraseña~~ (eliminado el 2026-10-08: no hay contraseñas)
 - Logout con cookie HTTP-only
 - `GET /api/users/me` (perfil del usuario autenticado)
-- `GET /api/users` (solo admin): id, nombre, correo, rol, estado y último ingreso de cada usuario, para la columna Dueño de Supervisión y la página Usuarios (2026-10-20)
+- `GET /api/users` (solo admin): id, nombre, correo, rol, estado y último ingreso de cada usuario, para la columna Dueño de las vistas de Administración y la página Usuarios (2026-10-20)
 - `PUT /api/users/{id}/role` (solo admin): cambiar el rol de otro usuario (2026-10-20)
 - ✅ (2026-10-20) **Perfil propio:** `PUT /api/users/me` (`UpdateProfileService`, solo `full_name`) + diálogo **Mi perfil** en el menú de usuario (correo y rol de solo lectura)
 - ✅ (2026-10-20) **Una sesión y avisar:** el 401 `AUTH_SESSION_REVOKED` explica que se entró desde otro dispositivo y el diálogo de sesión muestra ese `msg`; el correo del código avisa si ya hay una sesión abierta (`has_open_session`); el front relee `/users/me` cada 5 min y al volver a la pestaña (cambios de rol o nombre sin recargar)
@@ -259,7 +259,7 @@ El router de Telegram (`app/modules/users/rest/telegram/routes.py`, `prefix="/us
 - **Sin agentes:** `AgentsEmptyState` (qué es un agente, cómo funciona en 3 pasos y botón "Crear agente" → `/#/agents/new`).
 - **Con agentes:** 3 `StatCard` (agentes activos, paper/live, mis cuentas), aviso si ninguno está activo, filtro por estado y todas las `AgentCard` con el precio de su mercado, su última señal y controles.
 - Sin sección de mercado propia (retirada el 2026-10-20): mostraba solo los dos primeros pares y, sin agentes, BTC/ETH en 1h casi siempre sin velas. El precio va en cada tarjeta y las velas en la pestaña Mercado del agente.
-- Sidebar: **General** (Inicio) · **Operar** (Alertas, Mis cuentas) · **Explorar** (Explorar mercados, Estrategias) · Mi inversión · Administración (Datos de mercado, Supervisión, Configuración, Inversores).
+- Sidebar: **General** (Inicio) · **Operar** (Alertas, Mis cuentas) · **Explorar** (Explorar mercados, Estrategias) · Mi inversión · Administración (Fondo, Datos de mercado, Configuración).
 
 ## Gotchas críticos
 
@@ -355,3 +355,4 @@ TELEGRAM_BOT_USERNAME=         # para el enlace de vinculación (M9)
 - **2026-10-20** — **Perfil propio** (`PUT /api/users/me`, `UpdateProfileService`, diálogo Mi perfil) y **una sesión con aviso**: mensaje `AUTH_SESSION_REVOKED` que nombra el otro dispositivo, mostrado en el diálogo de sesión; aviso en el correo del código si ya hay sesión abierta; refresco de `/users/me` cada 5 min y al volver a la pestaña. Tests `tests/users/test_update_profile_service.py`.
 - **2026-10-20** — **Bloquear / desactivar usuarios** (`PUT /api/users/{id}/status`, `UpdateUserStatusService`, menú de acciones + `UserStatusDialog` en Usuarios): revoca la sesión y el OTP pendiente; el guard responde **401** (antes 403 sin texto) a cuentas inactivas para que el front cierre la sesión con el motivo. Sus agentes `running` pasan a `paused` en el mismo commit (decisión del usuario). **Auditoría visible** (`GET /api/audit-logs`, paginado en el servidor, filtros por persona, tipo de evento, fechas, ruta, consultas/cambios y errores; página `/admin/audit` con detalle en `Sheet`), leyendo `http_audit_<año>` con `get_existing_table`. Tests `test_update_user_status_service.py` y `test_list_audit_events_service.py`.
 - **2026-10-22** — **Roles del fondo común (F1):** `admin` → `super_admin` (mismo ID), rol `partner` (socio, solo lectura, ID 4), usuarios `user` → `investor` y rol `user` inactivo (migración `87dc7203af68`). `super_admin_required` / `staff_required` / `read_scope` / `write_scope` reemplazan `admin_required` / `is_admin` / `owner_scope` en todas las rutas; escrituras de trading (cuentas, agentes, señales, órdenes, decisiones, análisis) solo super admin; bloqueo del socio en el guard JWT (`read_only_policy.py`, `AUTH_READ_ONLY_ROLE`); invitar/cambiar rol solo a socio o inversor y super admin protegido (`USER_SUPER_ADMIN_PROTECTED`). Front: `useCanManage()`, `ManagerGuard`, sidebar por rol. Tests de usuarios alineados.
+- **2026-10-23** — Se retira el grupo **Supervisión** del menú: quedan Fondo, Datos de mercado y Configuración. Sin agentes propios, el socio ve el botón "Ver los agentes del fondo" (`/#/admin/fund-agents`).

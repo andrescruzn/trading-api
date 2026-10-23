@@ -14,7 +14,7 @@
 | Lo usan | Es un consumidor: lo invocan [M7](M07-BOTS-SIGNALS.md) (alertas + aviso de señal pendiente + señales compartidas), [M8](M08-ORDERS-EXECUTION.md) y el scheduler (reglas de precio, PnL y drawdown en cada ciclo + polling de Telegram) |
 | Prefijo API | `/api/alert-rules`, `/api/alert-events`, `/api/alerts`, `/api/telegram/webhook`, `/api/notifications` |
 | Frontend | `frontend/src/modules/alerts` (el vínculo de Telegram vive en `app-shell`, ver [M1](M01-AUTH.md)) |
-| Última revisión | 2026-10-20 |
+| Última revisión | 2026-10-23 |
 
 ## Descripción
 
@@ -45,7 +45,6 @@ Hash routing: la URL real es `/#/<ruta>`.
 - Menú de usuario → **Conectar Telegram** (diálogo, [M1](M01-AUTH.md)): genera el enlace de vinculación con el bot
 
 **Páginas — Administrador (solo admin):**
-- `/#/admin/alerts` — "Todas las alertas" (Administración → Supervisión): todas las reglas y eventos del sistema, con columna **Dueño** (nombre y correo) y filtro por dueño (aplica a Reglas y a Eventos). La pestaña **Eventos** está paginada en el servidor (el filtro Dueño lo aplica el backend); Reglas sigue completa
 - `/#/admin/telegram` — "Telegram" (Administración → Configuración): ver la configuración y probar la conexión con Telegram Bot
 
 ## Entregables
@@ -60,7 +59,7 @@ Entregables:
 - ✅ Provider: AlertServiceFactory + get_alert_factory() + build_evaluate_alerts_service()
 - ✅ REST: GET/POST/PUT/DELETE /api/alert-rules, GET /api/alert-events, POST /api/alerts/evaluate, POST /api/alerts/test-telegram
 - ✅ Hooks fire-and-forget en M7 (GenerateSignalService) y M8 (CreateOrderService)
-- ✅ Web UI: `/#/alerts` (usuario), `/#/admin/alerts` (admin), `/#/admin/telegram` (config Telegram) — en React desde 2026-10-08
+- ✅ Web UI: `/#/alerts` (usuario), `/#/admin/telegram` (config Telegram) — en React desde 2026-10-08 (`/#/admin/alerts` se retiró el 2026-10-23)
 - ✅ Sidebar (`app-sidebar.tsx`) con links de Alertas y Telegram
 - ✅ ALERT_TEMPLATE agregado al catálogo de mail templates
 - httpx ya instalado (v0.28.1); plyer se instala opcionalmente para desktop notifications
@@ -136,7 +135,7 @@ Entregables:
 | Media | Cerrar el *DNS rebinding* del webhook: conectar a la IP ya validada o pasar por un proxy de salida que filtre IPs | M |
 | Baja | Persistir el `offset` del polling (hoy en memoria; tras reiniciar Telegram reenvía lo no confirmado ≤ 24 h) | S |
 | Baja | Plantillas por canal | M |
-| Baja | Botón en `/#/admin/alerts` para `POST /api/alerts/evaluate` (hoy solo por API; el front no lo llama) | S |
+| Baja | Botón en `/#/alerts` (super admin) para `POST /api/alerts/evaluate` (hoy solo por API; el front no lo llama) | S |
 
 ## Fuera de alcance y pendientes conocidos
 
@@ -229,7 +228,6 @@ Para volver a polling hay que borrar el webhook (`deleteWebhook`): `getUpdates` 
 | Ruta | Archivo de ruta | Página / componentes |
 |-----|----------|----|
 | `/#/alerts` | `routes/_app/alerts.lazy.tsx` | `pages/alerts.tsx` (`AlertsPage`) + `components/alert-rule-form-dialog.tsx` + `components/alert-events-table.tsx` |
-| `/#/admin/alerts` | `routes/_app/admin/alerts.lazy.tsx` | `pages/admin-alerts.tsx` + `components/alert-events-table.tsx` |
 | `/#/admin/telegram` | `routes/_app/admin/telegram.lazy.tsx` | `pages/admin-telegram.tsx` |
 
 - API: `api/alerts.api.ts` (`/alert-rules`, `listAlertEventsPage` → `Paginated<AlertEvent>`, `/alerts/test-telegram`); hooks `use-alerts-queries.ts` (`useAlertEventsPageQuery`, `keepPreviousData`) / `use-alerts-mutations.ts`; `AlertEventsTable` pide página a página en `/alerts` y en Todas las alertas; etiquetas `lib/alerts-labels.ts`; badges `components/alert-badges.tsx`.
@@ -330,3 +328,4 @@ ALERT_REPEAT_MINUTES=60            # antispam de precio/PnL/drawdown; 0 = avisa 
 - **2026-10-20** — **Alertas que funcionan solas**: las reglas `price`, `pnl` y `drawdown` se evalúan en cada ciclo del scheduler (`_evaluate_alert_rules` → `EvaluatePeriodicAlertsService`, `rule_conditions.py`, `alert_messages.py`); PnL y drawdown en % del capital invertido (mayor inversión de una operación), PnL `daily` desde las 00:00 de Bogotá, drawdown actual desde el pico; antispam `ALERT_REPEAT_MINUTES` (60) con el último evento de la regla; Telegram al chat del dueño (respaldo: chat del sistema) y correo al dueño; `pnl`/`drawdown` exigen agente (`ALERT_RULE_BOT_REQUIRED`); `POST /api/alerts/evaluate` reutiliza el servicio; front: agente obligatorio y textos de revisión automática. 44 tests en `tests/alerts/`. Sin cambios de esquema.
 - **2026-10-20** — **Paginación en el servidor** (Fase 4): `GET /api/alert-events` acepta `page`/`page_size` opt-in y el filtro `user_id` (dueño, solo admin). `AlertEventRepository.search/count` reemplaza a `list_all`; `ListAlertEventsService.list_page`. El historial de `/alerts` y la pestaña Eventos de Todas las alertas piden página a página (antes 100/200 eventos filtrados en el navegador). Tests: `tests/alerts/test_list_alert_events_service.py`.
 - **2026-10-20** — Reglas `signal`/`error` con "Cualquier agente" (`bot_id` NULL): ahora se disparan para todos los agentes de su dueño. Antes el hook filtraba por `bot_id` y no las encontraba nunca.
+- **2026-10-23** — Se retira el grupo **Supervisión** del menú: fuera "Todas las alertas" (`/#/admin/alerts`, `pages/admin-alerts.tsx`); `AlertEventsTable` queda sin la variante admin (sin props). "Volver" en Telegram lleva a `/#/alerts`. El filtro `user_id` de `GET /api/alert-events` sigue en el backend.

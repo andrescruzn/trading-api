@@ -471,10 +471,10 @@ export function AgentDetailPage() {
 	const [selectedSignal, setSelectedSignal] = useState<Signal | null>(null);
 	const bot = botQuery.data;
 
-	// El staff (super admin y socio) puede abrir agentes de otros desde
-	// "Todos los agentes" (Supervisión): la miga repite la ruta de esa vista
-	// (Administración › Todos los agentes) y lleva de vuelta a la lista en
-	// vez de al inicio. Los agentes propios siguen colgando de Inicio.
+	// El staff (super admin y socio) abre agentes de otros desde "Agentes del
+	// fondo": la miga repite la ruta de esa vista (Administración › Agentes del
+	// fondo) y lleva de vuelta a la lista en vez de al inicio. Los agentes
+	// propios siguen colgando de Inicio.
 	const isAdmin = useHasRole(STAFF_ROLES);
 	const myBotsQuery = useMyBotsQuery({ enabled: isAdmin });
 	const isOthersAgent =
@@ -487,7 +487,7 @@ export function AgentDetailPage() {
 		...(isOthersAgent
 			? [
 					{ label: 'Administración' },
-					{ label: 'Todos los agentes', href: '/admin/agents' },
+					{ label: 'Agentes del fondo', href: '/admin/fund-agents' },
 				]
 			: [{ label: 'Inicio', href: '/dashboard' }]),
 		{ label: bot ? describeBot(bot) : 'Agente' },

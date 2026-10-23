@@ -403,9 +403,9 @@ contador también se limpia en tus otros dispositivos.
 
 Todo se navega desde el menú lateral: Inicio, Operar (mis agentes, alertas, mis cuentas),
 Explorar (explorar mercados, estrategias, track record) y, según tu rol, "Mi inversión" (inversores)
-o "Administración" (administradores). En Administración, "Supervisión" muestra lo de todos los
-usuarios: "Todos los agentes" son los mismos agentes del inicio, pero de todo el sistema. Cada
-vista dice quién es el dueño (nombre y correo) y se puede filtrar por persona. "Configuración"
+o "Administración" (administradores). Las señales, órdenes y alertas de un agente se revisan
+dentro del propio agente, así que no hay listas aparte "de todo el sistema". Para abrir un agente
+que no es tuyo, entra a Administración → Fondo → "Agentes del fondo". "Configuración"
 reúne lo que el administrador define para todos: los usuarios (y su rol) y el canal de Telegram.
 Las estrategias se crean y editan en la misma página de Explorar → Estrategias: el administrador
 ve ahí los botones "Nueva estrategia" y "Editar"; el resto solo las consulta. En "Usuarios" se cambia el rol de cada persona (Usuario, Administrador o
@@ -423,9 +423,8 @@ ruta, si fue una consulta o un cambio y si falló. Sirve para responder pregunta
 cambió este rol?" o "¿quién intentó entrar con este correo?". Se filtra por persona, tipo de
 evento, fechas, ruta o solo errores; nunca muestra contraseñas, códigos ni claves.
 
-Las listas grandes de Supervisión (todas las órdenes, todos los agentes, los eventos de alertas)
-y las pestañas Señales y Órdenes de un agente se cargan por páginas: abren rápido aunque haya
-miles de registros.
+Las listas grandes (el historial de alertas y las pestañas Señales y Órdenes de un agente) se
+cargan por páginas: abren rápido aunque haya miles de registros.
 
 Todo lo que pertenece a un agente se ve dentro del agente: sus señales, sus órdenes, sus
 posiciones y los precios e indicadores de su mercado. No hay páginas sueltas de órdenes, velas o
@@ -919,7 +918,6 @@ Páginas de la UI:
                     símbolo, precio, estrategia y última señal
   /#/agents/new   → Asistente para crear un agente
   /#/agents/12    → Detalle del agente 12
-  /#/admin/agents → Vista admin: todos los agentes del sistema con filtros de estado y modo
 
 ---
 3.5 Módulo 8 — Orders & Execution (Órdenes y Ejecución)
@@ -999,7 +997,6 @@ Esto permite acumular 50-100+ operaciones y calcular métricas reales de la estr
 Páginas de la UI:
   /#/agents/12    → Pestañas Órdenes y Posiciones del agente 12; "Nueva orden" abre un formulario
                     para crear una orden manual (/#/orders ahora lleva al inicio)
-  /#/admin/orders → Vista admin: todas las órdenes del sistema con filtros de lado, estado y tipo
 
 ---
 3.6 Modos de ejecución: Manual, Con aprobación y Automático (Módulos 7 y 8)

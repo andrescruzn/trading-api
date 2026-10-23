@@ -113,6 +113,43 @@ def refresh_explorer() -> None:
 
 
 # ======================================================================
+# Billetera de la plataforma
+# ======================================================================
+
+def sync_platform_wallet() -> None:
+    """
+    Lee el saldo de la billetera de la plataforma y guarda su foto (M4).
+
+    Va aparte de run_cycle(): corre cada WALLET_SYNC_INTERVAL_SECONDS, haya
+    o no agentes activos. Sin billetera configurada no hace nada.
+    """
+    # Import diferido: accounts arma clientes ccxt al construir su factory
+    from app.modules.accounts.providers import AccountServiceFactory
+
+    session = SessionLocal()
+    try:
+        result = AccountServiceFactory(session).sync_wallet().sync()
+        if result.success:
+            snapshot = result.data
+            logger.info(
+                "[Scheduler] Billetera — total=%s %s libre=%s sin precio=%d",
+                snapshot.total_value, snapshot.base_asset, snapshot.free_value,
+                len(snapshot.missing_prices),
+            )
+        elif result.error and result.error.code == "WALLET_NOT_CONFIGURED":
+            logger.debug("[Scheduler] Billetera sin configurar. Sincronización omitida.")
+        else:
+            logger.warning(
+                "[Scheduler] Billetera FAIL — code=%s",
+                result.error.code if result.error else "UNKNOWN",
+            )
+    except Exception:
+        logger.exception("[Scheduler] Billetera ERROR")
+    finally:
+        session.close()
+
+
+# ======================================================================
 # Ciclo principal
 # ======================================================================
 

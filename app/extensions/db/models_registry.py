@@ -42,6 +42,10 @@ from app.modules.features.infrastructure.candle_feature_model import CandleFeatu
 # --------------------------------------------------------------
 from app.modules.accounts.infrastructure.account_model import AccountModel  # noqa: F401
 from app.modules.accounts.infrastructure.account_balance_model import AccountBalanceModel  # noqa: F401
+from app.modules.accounts.infrastructure.platform_wallet_model import (  # noqa: F401
+    PlatformWalletModel,
+    WalletSnapshotModel,
+)
 
 # --------------------------------------------------------------
 # Strategies module models

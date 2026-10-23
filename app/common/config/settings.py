@@ -474,3 +474,16 @@ class Settings:
             )
         except ValueError:
             self.SCHEDULER_RETENTION_CANDLES = 500
+
+        # --------------------------------------------------------------
+        # Billetera de la plataforma (fondo común, M4)
+        # --------------------------------------------------------------
+        # WALLET_BASE_ASSET: moneda en que se valora la billetera y se lleva
+        #   la contabilidad del fondo. Default USDT.
+        # WALLET_SYNC_INTERVAL_SECONDS: cada cuánto el scheduler lee el saldo
+        #   del exchange (mínimo 60). Default 300 = 5 min.
+        # --------------------------------------------------------------
+        self.WALLET_BASE_ASSET: str = (os.getenv("WALLET_BASE_ASSET", "USDT").strip() or "USDT").upper()
+        self.WALLET_SYNC_INTERVAL_SECONDS: int = max(
+            60, _env_int("WALLET_SYNC_INTERVAL_SECONDS", 300)
+        )

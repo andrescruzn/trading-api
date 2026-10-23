@@ -3,6 +3,7 @@ import type {
 	AccountMode,
 	AccountStatus,
 } from '@/modules/accounts/api/accounts.api';
+import type { WalletSnapshotSource } from '@/modules/accounts/api/wallet.api';
 import type { SelectOption } from '@/modules/shared/components/option-select';
 
 type BadgeVariant = 'default' | 'secondary' | 'outline' | 'destructive';
@@ -46,6 +47,12 @@ function accountOptions(accounts: Account[] | undefined): SelectOption[] {
 	}));
 }
 
+/** De dónde salió una foto de saldo de la billetera. */
+const WALLET_SOURCE_LABELS: Record<WalletSnapshotSource, string> = {
+	exchange: 'Leído del exchange',
+	manual: 'Registrado a mano',
+};
+
 export {
 	ACCOUNT_MODE_BADGE_VARIANT,
 	ACCOUNT_MODE_LABELS,
@@ -54,4 +61,5 @@ export {
 	ACCOUNT_STATUS_LABELS,
 	ACCOUNT_STATUS_OPTIONS,
 	accountOptions,
+	WALLET_SOURCE_LABELS,
 };

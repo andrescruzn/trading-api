@@ -1,0 +1,163 @@
+# -*- coding: utf-8 -*-
+
+# ======================================================================
+# app/modules/accounts/infrastructure/ccxt_wallet_gateway.py
+#
+# Implementación ccxt de WalletGateway (saldo y precios de la billetera).
+#
+# DECISIONES:
+# - El saldo de un exchange puede estar repartido en varias "cuentas"
+#   internas. En Binance el P2P y los depósitos suelen caer en Funding, no
+#   en Spot: si no se suman, la conciliación del fondo daría diferencias.
+#   `_EXTRA_BALANCE_TYPES` lista los tipos adicionales que se suman a
+#   `fetch_balance()` por exchange.
+# - Un tipo adicional que falle (p. ej. permiso de la API key) no tumba la
+#   sincronización: se registra en el log y se suma lo que sí se leyó.
+#   Si falla el saldo principal, sí es error.
+# - Precios: `fetch_tickers` del par `ACTIVO/quote` (último precio), con
+#   datos públicos; no hace falta API key.
+# ======================================================================
+
+from __future__ import annotations
+
+import logging
+from collections import defaultdict
+from decimal import Decimal, InvalidOperation
+from typing import Any
+
+import ccxt
+
+from app.common.security.credentials_cipher import CredentialsCipher
+from app.modules.accounts.domain.account_entity import Account
+from app.modules.accounts.domain.wallet_gateway import WalletGatewayError
+from app.modules.accounts.domain.wallet_snapshot_entity import AssetBalance
+from app.modules.accounts.infrastructure.exchange_client import (
+    ExchangeClientError,
+    build_authenticated_client,
+    build_public_client,
+)
+from app.modules.market.domain.exchange_repository import ExchangeRepository
+
+logger = logging.getLogger(__name__)
+
+# Tipos de cuenta que se suman al saldo principal (id ccxt → `type` de fetch_balance)
+_EXTRA_BALANCE_TYPES: dict[str, tuple[str, ...]] = {
+    "binance": ("funding",),
+    "bybit": ("funding",),
+}
+
+# Códigos de ExchangeClientError → código de la billetera
+_CLIENT_ERROR_CODES: dict[str, str] = {
+    "ACCOUNT_NO_EXCHANGE": "WALLET_ACCOUNT_NO_EXCHANGE",
+    "EXCHANGE_NOT_FOUND": "WALLET_ACCOUNT_NO_EXCHANGE",
+    "EXCHANGE_NOT_SUPPORTED": "WALLET_EXCHANGE_NOT_SUPPORTED",
+    "ACCOUNT_NO_CREDENTIALS": "WALLET_ACCOUNT_NO_CREDENTIALS",
+    "ACCOUNT_CREDENTIALS_INCOMPLETE": "WALLET_ACCOUNT_NO_CREDENTIALS",
+    "ACCOUNT_CREDENTIALS_UNREADABLE": "WALLET_CREDENTIALS_UNREADABLE",
+}
+
+
+def _to_decimal(value: Any) -> Decimal:
+    if value is None:
+        return Decimal("0")
+    try:
+        return Decimal(str(value))
+    except (InvalidOperation, ValueError):
+        return Decimal("0")
+
+
+def _translate_ccxt_error(exc: Exception) -> WalletGatewayError:
+    if isinstance(exc, (ccxt.AuthenticationError, ccxt.PermissionDenied)):
+        return WalletGatewayError("WALLET_EXCHANGE_AUTH_FAILED", str(exc))
+    if isinstance(exc, (ccxt.NetworkError, ccxt.ExchangeNotAvailable)):
+        return WalletGatewayError("WALLET_EXCHANGE_UNAVAILABLE", str(exc))
+    return WalletGatewayError("WALLET_SYNC_FAILED", str(exc))
+
+
+class CcxtWalletGateway:
+    """WalletGateway sobre ccxt para los exchanges de CCXT_EXCHANGE_MAP."""
+
+    def __init__(self, exchange_repo: ExchangeRepository, cipher: CredentialsCipher):
+        self._exchange_repo = exchange_repo
+        self._cipher = cipher
+
+    # ==================================================================
+    # Saldo
+    # ==================================================================
+
+    def fetch_balances(self, account: Account) -> list[AssetBalance]:
+        client = self._client(account, authenticated=True)
+        free: dict[str, Decimal] = defaultdict(Decimal)
+        locked: dict[str, Decimal] = defaultdict(Decimal)
+
+        try:
+            self._accumulate(client.fetch_balance(), free, locked)
+        except ccxt.BaseError as exc:
+            raise _translate_ccxt_error(exc) from exc
+
+        for balance_type in _EXTRA_BALANCE_TYPES.get(client.id, ()):
+            try:
+                self._accumulate(client.fetch_balance({"type": balance_type}), free, locked)
+            except ccxt.BaseError as exc:
+                logger.warning(
+                    "[Wallet] No se pudo leer el saldo '%s' de %s (cuenta %s): %s",
+                    balance_type, client.id, account.id, type(exc).__name__,
+                )
+
+        assets = set(free) | set(locked)
+        return [AssetBalance(a, free[a], locked[a]) for a in sorted(assets)]
+
+    @staticmethod
+    def _accumulate(
+        raw: dict[str, Any], free: dict[str, Decimal], locked: dict[str, Decimal]
+    ) -> None:
+        # ccxt: raw["free"] / raw["used"] = {activo: cantidad}
+        for asset, amount in (raw.get("free") or {}).items():
+            free[asset.upper()] += _to_decimal(amount)
+        for asset, amount in (raw.get("used") or {}).items():
+            locked[asset.upper()] += _to_decimal(amount)
+
+    # ==================================================================
+    # Precios
+    # ==================================================================
+
+    def fetch_prices(
+        self, account: Account, assets: list[str], quote: str
+    ) -> dict[str, Decimal]:
+        if not assets:
+            return {}
+        client = self._client(account, authenticated=False)
+        try:
+            markets = client.load_markets()
+        except ccxt.BaseError as exc:
+            raise _translate_ccxt_error(exc) from exc
+
+        pairs = {f"{asset}/{quote}": asset for asset in assets if f"{asset}/{quote}" in markets}
+        if not pairs:
+            return {}
+        try:
+            tickers = client.fetch_tickers(list(pairs))
+        except ccxt.BaseError as exc:
+            raise _translate_ccxt_error(exc) from exc
+
+        prices: dict[str, Decimal] = {}
+        for pair, asset in pairs.items():
+            ticker = tickers.get(pair) or {}
+            price = _to_decimal(ticker.get("last") or ticker.get("close"))
+            if price > 0:
+                prices[asset] = price
+        return prices
+
+    # ==================================================================
+    # Cliente
+    # ==================================================================
+
+    def _client(self, account: Account, *, authenticated: bool):
+        try:
+            if authenticated:
+                return build_authenticated_client(account, self._exchange_repo, self._cipher)
+            return build_public_client(account, self._exchange_repo)
+        except ExchangeClientError as exc:
+            raise WalletGatewayError(
+                _CLIENT_ERROR_CODES.get(exc.code, "WALLET_SYNC_FAILED"), str(exc)
+            ) from exc

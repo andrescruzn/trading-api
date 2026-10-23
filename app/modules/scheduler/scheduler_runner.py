@@ -4,8 +4,10 @@
 # app/modules/scheduler/scheduler_runner.py
 #
 # PROPÓSITO:
-# - Gestionar el hilo de fondo que ejecuta run_cycle() periódicamente y,
-#   una vez al día, refresh_explorer() (velas 1d del explorador).
+# - Gestionar el hilo de fondo que ejecuta run_cycle() periódicamente,
+#   una vez al día refresh_explorer() (velas 1d del explorador) y cada
+#   WALLET_SYNC_INTERVAL_SECONDS sync_platform_wallet() (saldo de la
+#   billetera de la plataforma).
 # - Expone start() / stop() para integrarse con el lifespan de FastAPI.
 #
 # DISEÑO:
@@ -45,7 +47,11 @@ def _run_loop() -> None:
     # Import diferido para evitar importaciones circulares al arrancar
     from app.modules.scheduler.execution_cycle import run_execution_cycle
     from app.modules.scheduler.scheduler_lock import SchedulerLock
-    from app.modules.scheduler.scheduler_service import refresh_explorer, run_cycle
+    from app.modules.scheduler.scheduler_service import (
+        refresh_explorer,
+        run_cycle,
+        sync_platform_wallet,
+    )
 
     lock = SchedulerLock()
 
@@ -58,6 +64,7 @@ def _run_loop() -> None:
     # monotonic: no le afectan los cambios de hora del sistema.
     # None = refrescar en la primera vuelta (al arrancar la API).
     last_explorer_refresh: float | None = None
+    last_wallet_sync: float | None = None
 
     while not _stop_event.is_set():
         # Solo el líder trabaja; el resto vuelve a intentarlo en el siguiente ciclo
@@ -72,6 +79,14 @@ def _run_loop() -> None:
         ):
             last_explorer_refresh = now
             refresh_explorer()
+
+        # Antes del ciclo de ejecución: el 1 % de los agentes usa este saldo
+        if (
+            last_wallet_sync is None
+            or now - last_wallet_sync >= settings.WALLET_SYNC_INTERVAL_SECONDS
+        ):
+            last_wallet_sync = now
+            sync_platform_wallet()
 
         try:
             run_cycle()

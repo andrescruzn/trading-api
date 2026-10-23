@@ -468,6 +468,34 @@ Importante: que un mercado haya tenido tendencia no garantiza que siga. El explo
 elegir dónde operar. Cada operación la sigue filtrando el agente con el régimen, la regla del 1 % y
 el riesgo/beneficio mínimo de 2:1.
 
+3.0.2 Módulo 4 — La billetera de la plataforma (fondo común)
+──────────────────────────────────────────────────────────────
+Toda la plataforma usa UNA sola cuenta de exchange (Binance, Bybit, OKX…) para guardar el dinero
+de todos: propietarios, socios e inversores. Esa cuenta es la "billetera".
+
+Dónde se ve: Administración → Fondo → Billetera (solo super admin y socios; un inversor nunca ve
+el saldo total).
+
+Qué muestra:
+  Saldo total  → todo lo que hay en la billetera, convertido a USDT.
+  Saldo libre  → lo que no está ocupado en órdenes abiertas.
+  En órdenes   → lo que el exchange tiene bloqueado en órdenes que aún no se ejecutan.
+  Activos      → cuánto hay de cada moneda (USDT, BTC…) y cuánto vale en USDT.
+  Historial    → las lecturas anteriores del saldo.
+
+Cómo se lee el saldo: la app le pregunta al exchange cada 5 minutos. Suma también la wallet
+Funding de Binance y Bybit, que es donde suelen caer el P2P y los depósitos. Si una moneda no
+tiene precio en USDT, se muestra pero no suma al total, y la página lo avisa.
+
+Para empezar (super admin):
+  1. En Mis cuentas, crea una cuenta live del exchange con una API key de SOLO LECTURA (sin
+     permiso de retiro: los retiros se hacen a mano desde el exchange).
+  2. En Billetera, pulsa "Elegir billetera" y elige esa cuenta.
+  3. Pulsa "Sincronizar ahora" para ver el saldo de inmediato.
+
+  Ejemplo: la billetera tiene 1.000 USDT libres, 200 USDT en una orden y 0,01 BTC a 60.000.
+  Saldo total = 1.000 + 200 + 600 = 1.800 USDT · Saldo libre = 1.600 · En órdenes = 200.
+
 3.1 Módulo 5 — Strategies (Estrategias)
 
 Una estrategia es el conjunto de reglas que define cuándo el sistema debe considerar una operación.

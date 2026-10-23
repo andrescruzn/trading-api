@@ -33,12 +33,12 @@ from typing import Any
 
 import ccxt
 
-from app.common.config import settings
 from app.common.security.credentials_cipher import CredentialsCipher
 from app.common.utils.datetime_utils import utc_now
 from app.modules.accounts.domain.account_repository import AccountRepository
+from app.modules.accounts.infrastructure.exchange_client import build_authenticated_client
 from app.modules.bots.domain.bot_entity import Bot
-from app.modules.market.domain.ccxt_exchanges import CCXT_EXCHANGE_MAP, ccxt_id_for, is_perpetual
+from app.modules.market.domain.ccxt_exchanges import is_perpetual
 from app.modules.market.domain.exchange_repository import ExchangeRepository
 from app.modules.orders.domain.fill_entity import Fill
 from app.modules.orders.domain.order_entity import Order
@@ -252,66 +252,9 @@ class LiveExecutor(ExecutorInterface):
                 f"Cuenta no encontrada: account_id={bot.account_id}."
             )
 
-        # 2. Validar credenciales cifradas
-        enc_creds = account.meta.get("enc_creds")
-        if not enc_creds:
-            raise RuntimeError(
-                "La cuenta no tiene credenciales API configuradas. "
-                "Agrega api_key y api_secret desde la página de cuentas."
-            )
-
-        # 3. Descifrar credenciales
-        try:
-            creds = self._cipher.decrypt(enc_creds)
-        except Exception:
-            raise RuntimeError(
-                "No se pudieron descifrar las credenciales API. "
-                "Reconfigura las credenciales de la cuenta."
-            )
-
-        api_key: str = creds.get("api_key", "")
-        api_secret: str = creds.get("api_secret", "")
-
-        if not api_key or not api_secret:
-            raise RuntimeError(
-                "Las credenciales API están incompletas (api_key o api_secret vacíos)."
-            )
-
-        # 4. Resolver exchange via account.exchange_id
-        if account.exchange_id is None:
-            raise RuntimeError(
-                "La cuenta no tiene un exchange asociado. "
-                "Configura el exchange desde la página de cuentas."
-            )
-
-        exchange_entity = self._exchange_repo.get_by_id(account.exchange_id)
-        if exchange_entity is None:
-            raise RuntimeError(
-                f"Exchange no encontrado: exchange_id={account.exchange_id}."
-            )
-
-        ccxt_id = ccxt_id_for(exchange_entity.name)
-        if ccxt_id is None:
-            raise RuntimeError(
-                f"El exchange '{exchange_entity.name}' no está soportado para live trading. "
-                f"Exchanges disponibles: {', '.join(CCXT_EXCHANGE_MAP.keys())}."
-            )
-
-        # 5. Inicializar cliente ccxt con credenciales reales
-        try:
-            exchange_cls = getattr(ccxt, ccxt_id)
-            client = exchange_cls({
-                "apiKey": api_key,
-                "secret": api_secret,
-                "enableRateLimit": True,
-            })
-            if settings.LIVE_USE_SANDBOX:
-                client.set_sandbox_mode(True)
-        except Exception as e:
-            raise RuntimeError(
-                f"No se pudo inicializar el cliente ccxt para '{ccxt_id}': {e}"
-            )
-        return client
+        # 2. Credenciales descifradas + cliente ccxt (helper compartido con la
+        #    billetera de la plataforma; respeta LIVE_USE_SANDBOX)
+        return build_authenticated_client(account, self._exchange_repo, self._cipher)
 
     @staticmethod
     def _order_symbol(order: Order) -> str:

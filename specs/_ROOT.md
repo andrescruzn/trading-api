@@ -16,9 +16,10 @@ Una explicación simple de los 10 módulos del sistema, sin tecnicismos. Cada m�
 | [M8 — Orders & Execution](M08-ORDERS-EXECUTION.md) | ✅ Completo | 100 % | 84 % | Órdenes paper/live (ccxt) con propiedad, RiskGate e idempotencia; señal → orden (aprobada o automática); SL nativo en el exchange en live + TP por ciclo del scheduler; protección SL/TP también en compras manuales y en compras que se ejecutan tarde; cancelar órdenes; reconciliación con el exchange; fills, posiciones; 350+ tests |
 | [M9 — Alerts](M09-ALERTS.md) | ✅ Completo | 100 % | 71 % | Reglas de alerta que se revisan solas (señal, error, precio, PnL, drawdown) con antispam; avisos por email/Telegram al dueño/webhook (con guarda SSRF)/desktop; campana de notificaciones en la app; bot de Telegram por usuario para aprobar señales |
 | [M10 — Billing & Managed Accounts](M10-BILLING.md) | ✅ Completo | 100 % | 75 % | Inversores, cuentas administradas, performance fee con HWM |
-| **Promedio** | | **100 %** | **80 %** | |
+| [M11 — Fondo común](M11-FUND.md) | 📌 En construcción | 50 % | 62 % | Libro mayor por persona (pendiente de asignar / disponible), depósitos USDT verificados contra el exchange, depósitos sin reclamar, ajustes del fondo. Fases F4–F6 pendientes |
+| **Promedio** | | **95 %** | **79 %** | |
 
-- **Alcance** = entregables del plan original hechos / planificados. Las dos filas por debajo del 100 % (M2 y M5) son por los tests de services que el plan original listaba y nunca se escribieron.
+- **Alcance** = entregables del plan original hechos / planificados (M11: fases del plan del fondo común hechas, 3 de 6). Las dos filas por debajo del 100 % (M2 y M5) son por los tests de services que el plan original listaba y nunca se escribieron.
 - **Madurez** = estimación de qué tan lista para producción está cada pieza (rúbrica abajo). Es una opinión fundamentada en el repo, no una medición.
 
 Más detalle:
@@ -109,6 +110,8 @@ Módulo 8 (Orders & Execution) ← necesita signals + accounts
 Módulo 9 (Alerts) ← puede ir en paralelo con 7 u 8
     ↓
 Módulo 10 (Billing) ← necesita historial de orders + fills de M8
+    ↓
+Módulo 11 (Fondo común) ← necesita M1 (roles) + M4 (billetera); en F4 usa M7/M8; en F6 reemplaza a M10
 ```
 
 ---
@@ -168,9 +171,9 @@ Hash routing: la URL real es `/#/<ruta>`. Cada ruta vive en `frontend/src/routes
 | Rol | Páginas |
 |---|---|
 | Público | `/login` |
-| Todos los roles | `/dashboard` (inicio = lista de agentes), `/agents/:id`, `/alerts`, `/strategies`, `/track-record`, `/backtest`, `/market/explorer` (`/agents`, `/bots`, `/agent`, `/orders`, `/features` y `/market/candles` redirigen a `/dashboard`; `/market/symbols` a `/market/explorer`) |
+| Todos los roles | `/my-fund` (Mi saldo), `/dashboard` (inicio = lista de agentes), `/agents/:id`, `/alerts`, `/strategies`, `/track-record`, `/backtest`, `/market/explorer` (`/agents`, `/bots`, `/agent`, `/orders`, `/features` y `/market/candles` redirigen a `/dashboard`; `/market/symbols` a `/market/explorer`) |
 | Solo super admin | `/agents/new`, `/portfolio` (`ManagerGuard`) y `/admin/telegram` en el menú |
-| Super admin y socio (`_app/admin/*`; el socio sin botones de escritura) | `/admin/wallet`, `/admin/exchanges`, `/admin/symbols`, `/admin/timeframes`, `/admin/feature-sets`, `/admin/users`, `/admin/accounts`, `/admin/strategies`, `/admin/agents`, `/admin/orders`, `/admin/alerts`, `/admin/telegram`, `/admin/investors`, `/admin/managed-accounts`, `/admin/billing` |
+| Super admin y socio (`_app/admin/*`; el socio sin botones de escritura) | `/admin/wallet`, `/admin/deposits`, `/admin/participants`, `/admin/fund-settings`, `/admin/exchanges`, `/admin/symbols`, `/admin/timeframes`, `/admin/feature-sets`, `/admin/users`, `/admin/accounts`, `/admin/strategies`, `/admin/agents`, `/admin/orders`, `/admin/alerts`, `/admin/telegram`, `/admin/investors`, `/admin/managed-accounts`, `/admin/billing` |
 | Inversor (`_app/investor/*`) | `/investor/dashboard` |
 
 Comprar/Vender vive en el [Módulo 8 — Orders & Execution](M08-ORDERS-EXECUTION.md).
@@ -188,6 +191,10 @@ Cambios del 2026-10-20 (Fase 3):
 - Menú de usuario: **Mi perfil** (cambiar el nombre) — [M1](M01-AUTH.md).
 - `/agents/:id` → Mercado: **gráfico de precio** con líneas de Entrada, SL y TP — [M7](M07-BOTS-SIGNALS.md).
 - `/alerts`: en PnL y drawdown el agente es obligatorio; textos de revisión automática — [M9](M09-ALERTS.md).
+
+Cambios del 2026-10-23 (fondo común, F3 — libro y depósitos):
+- `/my-fund` (**Mi saldo**, menú Mi inversión, todos los roles): saldos pendiente de asignar / disponible, cómo depositar, registrar depósito, mis depósitos y movimientos — [M11](M11-FUND.md).
+- `/admin/deposits`, `/admin/participants`, `/admin/fund-settings` (Administración → Fondo): resolver depósitos y los sin reclamar, saldos por persona con devolución, reglas y redes de depósito — [M11](M11-FUND.md).
 
 Cambios del 2026-10-23 (fondo común, F2 — billetera):
 - `/admin/wallet` (**Billetera**, Administración → Fondo): saldo total, libre y en órdenes de la billetera única, activos e historial; el super admin la elige y la sincroniza — [M4](M04-ACCOUNTS-PORTFOLIO.md).

@@ -3,7 +3,8 @@
 # ======================================================================
 # app/modules/accounts/infrastructure/ccxt_wallet_gateway.py
 #
-# Implementación ccxt de WalletGateway (saldo y precios de la billetera).
+# Implementación ccxt de WalletGateway: saldo y precios de la billetera, y
+# depósitos, redes y direcciones para verificar lo que entra al fondo.
 #
 # DECISIONES:
 # - El saldo de un exchange puede estar repartido en varias "cuentas"
@@ -22,6 +23,7 @@ from __future__ import annotations
 
 import logging
 from collections import defaultdict
+from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
@@ -29,7 +31,12 @@ import ccxt
 
 from app.common.security.credentials_cipher import CredentialsCipher
 from app.modules.accounts.domain.account_entity import Account
-from app.modules.accounts.domain.wallet_gateway import WalletGatewayError
+from app.modules.accounts.domain.wallet_gateway import (
+    DepositAddress,
+    DepositNetwork,
+    ExchangeDeposit,
+    WalletGatewayError,
+)
 from app.modules.accounts.domain.wallet_snapshot_entity import AssetBalance
 from app.modules.accounts.infrastructure.exchange_client import (
     ExchangeClientError,
@@ -147,6 +154,75 @@ class CcxtWalletGateway:
             if price > 0:
                 prices[asset] = price
         return prices
+
+    # ==================================================================
+    # Depósitos (verificación del fondo común)
+    # ==================================================================
+
+    def fetch_deposits(
+        self, account: Account, asset: str, since: datetime | None
+    ) -> list[ExchangeDeposit]:
+        client = self._client(account, authenticated=True)
+        since_ms = int(since.timestamp() * 1000) if since else None
+        try:
+            raw = client.fetch_deposits(asset, since_ms)
+        except ccxt.BaseError as exc:
+            raise _translate_ccxt_error(exc) from exc
+
+        deposits: list[ExchangeDeposit] = []
+        for item in raw or []:
+            txid = (item.get("txid") or "").strip()
+            if not txid:
+                # Sin txid no se puede emparejar con una solicitud
+                continue
+            ts_ms = item.get("timestamp")
+            deposits.append(
+                ExchangeDeposit(
+                    txid=txid,
+                    amount=_to_decimal(item.get("amount")),
+                    asset=(item.get("currency") or asset).upper(),
+                    network=item.get("network"),
+                    status=(item.get("status") or "pending").lower(),
+                    address_from=item.get("addressFrom"),
+                    exchange_id=str(item["id"]) if item.get("id") is not None else None,
+                    ts=datetime.fromtimestamp(ts_ms / 1000, tz=timezone.utc) if ts_ms else None,
+                )
+            )
+        return deposits
+
+    def fetch_deposit_networks(self, account: Account, asset: str) -> list[DepositNetwork]:
+        client = self._client(account, authenticated=True)
+        try:
+            # Las redes por moneda solo vienen con credenciales en varios exchanges
+            currencies = client.fetch_currencies() or {}
+        except ccxt.BaseError as exc:
+            raise _translate_ccxt_error(exc) from exc
+
+        networks = (currencies.get(asset.upper()) or {}).get("networks") or {}
+        return [
+            DepositNetwork(
+                code=str(code),
+                name=str(info.get("name") or info.get("network") or code),
+                deposit_enabled=info.get("deposit") is not False and info.get("active") is not False,
+            )
+            for code, info in sorted(networks.items())
+        ]
+
+    def fetch_deposit_address(
+        self, account: Account, asset: str, network: str
+    ) -> DepositAddress:
+        client = self._client(account, authenticated=True)
+        try:
+            raw = client.fetch_deposit_address(asset.upper(), {"network": network})
+        except ccxt.BaseError as exc:
+            raise _translate_ccxt_error(exc) from exc
+
+        address = (raw.get("address") or "").strip()
+        if not address:
+            raise WalletGatewayError("WALLET_NO_DEPOSIT_ADDRESS", f"{asset} {network}")
+        return DepositAddress(
+            network=network, address=address, tag=(raw.get("tag") or None)
+        )
 
     # ==================================================================
     # Cliente

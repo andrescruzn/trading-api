@@ -496,6 +496,41 @@ Para empezar (super admin):
   Ejemplo: la billetera tiene 1.000 USDT libres, 200 USDT en una orden y 0,01 BTC a 60.000.
   Saldo total = 1.000 + 200 + 600 = 1.800 USDT · Saldo libre = 1.600 · En órdenes = 200.
 
+3.0.3 Módulo 11 — El fondo común: tu saldo y los depósitos
+─────────────────────────────────────────────────────────────
+Cada persona (propietario, socio o inversor) tiene su cuenta dentro del fondo. Cada movimiento
+queda escrito en un "libro" que nunca se edita: si algo se corrige, se agrega otro movimiento.
+
+Tus saldos (Mi inversión → Mi saldo):
+  Pendiente de asignar → dinero que depositaste y ya se confirmó, pero aún no está en un agente.
+                         No se puede retirar: primero tiene que pasar por un agente.
+  Disponible           → dinero que ya pasó por un agente (o comisiones). Este sí se retira.
+
+Cómo depositar:
+  1. En Mi saldo verás la red (p. ej. TRC20) y la dirección de la billetera. Cópiala con el botón.
+  2. Envía USDT desde tu billetera POR ESA MISMA RED (y con el memo, si la red lo pide).
+  3. Copia el hash de la transacción (txid) y pulsa "Registrar depósito" con el monto enviado.
+  4. La app busca ese txid en el exchange cada pocos minutos. Si llegó el mismo monto y es de
+     hasta 1.000 USDT, se confirma solo. Si el monto no coincide, si es mayor o si el exchange lo
+     marcó fallido, queda "En revisión" y un super admin decide.
+  5. Si en 72 horas el txid no aparece, la solicitud vence.
+
+  Ejemplo: envías 500 USDT por TRC20 y registras el txid. A los pocos minutos el exchange lo
+  muestra con 500 USDT → se confirma solo y tu "Pendiente de asignar" sube a 500.
+
+  Se acredita lo que diga el exchange: si declaras 500 pero llegaron 480, queda en revisión.
+  Un mismo txid no se puede registrar dos veces.
+
+Para los super admin (Administración → Fondo):
+  Depósitos      → confirmar (con nota si el exchange no lo respalda) o rechazar (con motivo);
+                   pestaña "Sin reclamar": dinero que llegó sin que nadie lo registrara, para
+                   asignárselo a su dueño.
+  Participantes  → cuánto tiene cada persona, sus movimientos y "Devolver" (solo saldo pendiente,
+                   casos excepcionales; el dinero se envía por fuera).
+  Ajustes        → redes de depósito (en una billetera real la dirección se lee del exchange) y
+                   reglas: permanencia mínima, tope de confirmación automática y vencimiento.
+  Los socios ven todo esto sin poder cambiarlo, pero sí pueden depositar su propio dinero.
+
 3.1 Módulo 5 — Strategies (Estrategias)
 
 Una estrategia es el conjunto de reglas que define cuándo el sistema debe considerar una operación.

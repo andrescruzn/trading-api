@@ -31,7 +31,8 @@ Explicación conceptual en lenguaje simple: [`docs/MANUAL.md`](docs/MANUAL.md). 
 | M7 — Bots & Signals | [M07-BOTS-SIGNALS.md](specs/M07-BOTS-SIGNALS.md) | `app/modules/bots` |
 | M8 — Orders & Execution | [M08-ORDERS-EXECUTION.md](specs/M08-ORDERS-EXECUTION.md) | `app/modules/orders` |
 | M9 — Alerts | [M09-ALERTS.md](specs/M09-ALERTS.md) | `app/modules/alerts` |
-| M10 — Billing & Managed Accounts | [M10-BILLING.md](specs/M10-BILLING.md) | `app/modules/billing` |
+| M10 — Billing & Managed Accounts | [M10-BILLING.md](specs/M10-BILLING.md) | `app/modules/billing` (lo reemplaza M11 en la F6) |
+| M11 — Fondo común | [M11-FUND.md](specs/M11-FUND.md) | `app/modules/fund` · `app/modules/accounts` (billetera) |
 
 Inicio de sesión: el usuario dirá **"comenzamos Módulo X"** o **"continuamos donde quedamos"** → leer `_ROOT.md` + la spec correspondiente antes de proponer nada. Si hay algo nuevo en el entorno (p. ej. "instalé X"), lo dirá directamente.
 
@@ -135,7 +136,7 @@ frontend/
       shared/                 api-client, envelope, DataTable, OptionSelect, StatCard, format, layouts
       app-shell/              sidebar (navSections), nav-user, breadcrumb
       auth/ · dashboard/
-      market/ · features/ · accounts/ · strategies/ · bots/ · orders/ · alerts/ · billing/   (uno por módulo M2–M10; M6 se usa desde bots)
+      market/ · features/ · accounts/ · strategies/ · bots/ · orders/ · alerts/ · billing/ · fund/   (uno por módulo M2–M11; M6 se usa desde bots)
         api/<x>.api.ts · hooks/use-<x>-queries.ts · hooks/use-<x>-mutations.ts · lib/ · components/ · pages/
 ```
 

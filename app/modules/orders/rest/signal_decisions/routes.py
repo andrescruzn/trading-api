@@ -19,7 +19,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.common.http import build_error_response, build_success_response
-from app.common.security.jwt import owner_scope, token_required_actual
+from app.common.security.jwt import super_admin_required, write_scope
 from app.common.security.rate_limiter import check_user_rate_limit, order_rate_limiter
 from app.extensions.db import get_db
 from app.modules.orders.providers import OrderServiceFactory, get_order_factory
@@ -54,7 +54,7 @@ def _decision_to_dict(decision: SignalDecision) -> dict[str, Any]:
 @router.post("/{signal_id}/approve", status_code=200)
 def approve_signal(
     signal_id: int,
-    identity: dict = Depends(token_required_actual),
+    identity: dict = Depends(super_admin_required),
     factory: OrderServiceFactory = Depends(get_factory),
 ):
     """Aprueba una señal pendiente: revalida al precio actual y envía la orden."""
@@ -63,7 +63,7 @@ def approve_signal(
 
     result = factory.execute_signal().execute(
         signal_id,
-        owner_id=owner_scope(identity),
+        owner_id=write_scope(identity),
         decided_by_user_id=int(identity["user_id"]),
         channel="app",
     )
@@ -83,13 +83,13 @@ def approve_signal(
 @router.post("/{signal_id}/reject", status_code=200)
 def reject_signal(
     signal_id: int,
-    identity: dict = Depends(token_required_actual),
+    identity: dict = Depends(super_admin_required),
     factory: OrderServiceFactory = Depends(get_factory),
 ):
     """Rechaza una señal pendiente: no se abre ninguna orden."""
     result = factory.execute_signal().reject(
         signal_id,
-        owner_id=owner_scope(identity),
+        owner_id=write_scope(identity),
         decided_by_user_id=int(identity["user_id"]),
         channel="app",
     )

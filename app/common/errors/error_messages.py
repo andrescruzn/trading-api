@@ -55,6 +55,10 @@ COMMON_ERROR_MESSAGES: Dict[str, str] = {
     "AUTH_ROLE_NOT_FOUND": "Tu usuario no tiene un rol válido. Contacta al administrador.",
     "AUTH_ROLE_INACTIVE": "Tu rol está desactivado. Contacta al administrador.",
     "AUTH_FORBIDDEN_ROLE": "No tienes permiso para hacer esta acción.",
+    "AUTH_READ_ONLY_ROLE": (
+        "Como socio puedes revisar todo, pero no hacer cambios. "
+        "Pídele esta acción a un super admin."
+    ),
 
     # Autorización
     "FORBIDDEN": "No tienes permiso para hacer esta acción.",

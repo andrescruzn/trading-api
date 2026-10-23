@@ -16,7 +16,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.common.http import build_error_response, build_list_response
-from app.common.security.jwt import owner_scope, token_required_actual
+from app.common.security.jwt import read_scope, token_required_actual
 from app.extensions.db import get_db
 from app.modules.orders.domain.position_entity import Position
 from app.modules.orders.providers import OrderServiceFactory, get_order_factory
@@ -74,7 +74,7 @@ def list_positions(
     - Admin: puede ver todas las posiciones del sistema.
     - Usuario: debe proveer bot_id para ver solo las de su bot.
     """
-    result = factory.list_positions().list(bot_id=bot_id, owner_id=owner_scope(identity))
+    result = factory.list_positions().list(bot_id=bot_id, owner_id=read_scope(identity))
 
     if not result.success:
         return build_error_response(result, POSITION_ERROR_MESSAGES)

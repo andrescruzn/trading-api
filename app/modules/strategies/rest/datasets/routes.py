@@ -5,7 +5,7 @@
 #
 # ENDPOINTS:
 # - GET  /datasets         → listar todos (cualquier usuario)
-# - POST /datasets         → crear (admin)
+# - POST /datasets         → crear (super admin)
 # - GET  /datasets/{id}    → obtener por ID (cualquier usuario)
 # ======================================================================
 
@@ -16,7 +16,6 @@ from typing import Any
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from app.common.config import settings
 from app.common.http import (
     build_error_response,
     build_list_response,
@@ -24,7 +23,7 @@ from app.common.http import (
     build_success_response,
     send,
 )
-from app.common.security.jwt import token_required_actual
+from app.common.security.jwt import is_super_admin, token_required_actual
 from app.extensions.db import get_db
 from app.modules.strategies.domain.dataset_entity import Dataset
 from app.modules.strategies.providers import StrategyServiceFactory
@@ -90,8 +89,7 @@ def create_dataset(
     factory: StrategyServiceFactory = Depends(get_factory),
 ):
     """Crea un nuevo dataset de backtesting. Solo administradores."""
-    is_admin = int(identity.get("role_id", 0)) == int(settings.AUTH_ADMIN_ROLE_ID)
-    if not is_admin:
+    if not is_super_admin(identity):
         return send(msg="No tienes permisos para crear datasets.", status_code=403)
 
     result = factory.create_dataset().create(

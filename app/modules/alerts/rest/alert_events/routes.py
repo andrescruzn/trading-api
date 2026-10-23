@@ -16,11 +16,10 @@ from typing import Any
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
-from app.common.config import settings
 from app.common.contracts import PageRequest
 from app.common.contracts.pagination import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 from app.common.http import build_list_response, build_paginated_response
-from app.common.security.jwt import token_required_actual
+from app.common.security.jwt import is_staff, token_required_actual
 from app.extensions.db import get_db
 from app.modules.alerts.domain.alert_event_entity import AlertEvent
 from app.modules.alerts.providers import AlertServiceFactory, get_alert_factory
@@ -55,20 +54,20 @@ def _event_to_dict(e: AlertEvent) -> dict[str, Any]:
 def list_alert_events(
     limit: int = Query(default=50, ge=1, le=500),
     from_ts: datetime | None = Query(default=None),
-    user_id: int | None = Query(default=None, gt=0, description="Solo admin: eventos de ese usuario."),
+    user_id: int | None = Query(default=None, gt=0, description="Solo staff: eventos de ese usuario."),
     page: int | None = Query(default=None, ge=1, description="Activa la respuesta paginada."),
     page_size: int = Query(default=DEFAULT_PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE),
     identity: dict = Depends(token_required_actual),
     factory: AlertServiceFactory = Depends(get_factory),
 ):
     """
-    Admin: todos los eventos (o los de `user_id`). Usuario: los suyos.
+    Staff: todos los eventos (o los de `user_id`). El resto: los suyos.
     Sin `page`: `data` es la lista (hasta `limit`). Con `page`: `data` es
     `{items, pagination}` y `limit` se ignora.
     """
     scope = {
         "user_id":      identity.get("user_id"),
-        "is_admin":     int(identity.get("role_id", 0)) == int(settings.AUTH_ADMIN_ROLE_ID),
+        "is_admin":     is_staff(identity),
         "from_ts":      from_ts,
         "owner_filter": user_id,
     }

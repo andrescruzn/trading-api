@@ -30,7 +30,7 @@ from app.common.http import (
     build_paginated_response,
     build_success_response,
 )
-from app.common.security.jwt import owner_scope, token_required_actual
+from app.common.security.jwt import read_scope, super_admin_required, token_required_actual, write_scope
 from app.common.security.rate_limiter import check_user_rate_limit, order_rate_limiter
 from app.extensions.db import get_db
 from app.modules.orders.domain.order_entity import Order
@@ -93,7 +93,7 @@ def _order_to_dict(o: Order) -> dict[str, Any]:
 @router.post("", status_code=201)
 def create_order(
     payload: CreateOrderRequest,
-    identity: dict = Depends(token_required_actual),
+    identity: dict = Depends(super_admin_required),
     factory: OrderServiceFactory = Depends(get_factory),
 ):
     """
@@ -114,7 +114,7 @@ def create_order(
         stop_price=payload.stop_price,
         time_in_force=payload.time_in_force,
         signal_id=payload.signal_id,
-        owner_id=owner_scope(identity),
+        owner_id=write_scope(identity),
         stop_loss=payload.stop_loss,
         take_profit=payload.take_profit,
     )
@@ -154,7 +154,7 @@ def list_orders(
     """
     filters = {
         "bot_id":     bot_id,
-        "owner_id":   owner_scope(identity),
+        "owner_id":   read_scope(identity),
         "side":       side,
         "status":     status,
         "order_type": order_type,
@@ -194,7 +194,7 @@ def get_order(
     factory: OrderServiceFactory = Depends(get_factory),
 ):
     """Obtiene el detalle de una orden por su ID."""
-    result = factory.get_order().get(order_id=order_id, owner_id=owner_scope(identity))
+    result = factory.get_order().get(order_id=order_id, owner_id=read_scope(identity))
 
     if not result.success:
         return build_error_response(result, ORDER_ERROR_MESSAGES)
@@ -216,13 +216,13 @@ _ORDER_CANCEL_MESSAGES: dict[str, str] = {
 @router.post("/{order_id}/cancel", status_code=200)
 def cancel_order(
     order_id: int,
-    identity: dict = Depends(token_required_actual),
+    identity: dict = Depends(super_admin_required),
     factory: OrderServiceFactory = Depends(get_factory),
 ):
     """Cancela una orden live abierta (límite, stop o ejecutada en parte)."""
     check_user_rate_limit(order_rate_limiter, identity["user_id"])
 
-    result = factory.cancel_order().cancel(order_id=order_id, owner_id=owner_scope(identity))
+    result = factory.cancel_order().cancel(order_id=order_id, owner_id=write_scope(identity))
 
     if not result.success:
         return build_error_response(result, ORDER_ERROR_MESSAGES)

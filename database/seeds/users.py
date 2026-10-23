@@ -4,8 +4,9 @@
 # database/seeds/users.py
 #
 # PROPÓSITO:
-# - Usuarios base del equipo (rol admin), para no tener que registrarlos
-#   desde la web en cada BD nueva.
+# - Los propietarios de la plataforma (rol super_admin), para no tener que
+#   registrarlos en cada BD nueva. Super admin no se puede dar desde la app:
+#   solo existe por este seed.
 #
 # NOTAS:
 # - Requiere el seed `roles` (FK users.role_id).
@@ -38,7 +39,7 @@ def run(session: Session) -> SeedStats:
             lookup={"email": email},
             values={
                 "full_name": full_name,
-                "role_id": settings.AUTH_ADMIN_ROLE_ID,
+                "role_id": settings.AUTH_SUPER_ADMIN_ROLE_ID,
                 "status": "active",
             },
             stats=stats,

@@ -4,14 +4,15 @@
 # app/modules/users/services/users/update_user_status_service.py
 #
 # CASO DE USO:
-# - Un admin cambia el estado de la cuenta de otro usuario:
+# - Un super admin cambia el estado de la cuenta de otro usuario:
 #   active (puede entrar) · blocked (suspensión temporal, p. ej. actividad
 #   sospechosa) · disabled (la cuenta ya no se usa). Blocked y disabled
 #   impiden entrar por igual; la diferencia es solo de significado.
 #
 # REGLAS:
-# - Nadie cambia su propio estado (como con el rol): un admin no se deja
-#   fuera por error y el sistema nunca se queda sin admin activo.
+# - Nadie cambia su propio estado (como con el rol), y la cuenta de un
+#   super admin no se bloquea desde la app: el sistema nunca se queda sin
+#   propietarios activos.
 # - Si el estado no cambia, no se escribe nada.
 # - Al pasar a blocked/disabled se revoca la sesión (token_current_jti =
 #   None) y se borra el código de entrada pendiente: el efecto es inmediato
@@ -40,7 +41,10 @@ USER_STATUSES: tuple[str, ...] = ("active", "blocked", "disabled")
 
 
 class UpdateUserStatusService:
-    """Activa, bloquea o desactiva la cuenta de un usuario (solo admin)."""
+    """
+    Activa, bloquea o desactiva la cuenta de un usuario (solo super admin).
+    `protected_role_id` (super admin) marca las cuentas que no se tocan.
+    """
 
     def __init__(
         self,
@@ -48,10 +52,12 @@ class UpdateUserStatusService:
         repo: UserRepository,
         bot_repo: "BotRepository | None" = None,
         account_repo: "AccountRepository | None" = None,
+        protected_role_id: int | None = None,
     ):
         self._repo = repo
         self._bot_repo = bot_repo
         self._account_repo = account_repo
+        self._protected_role_id = protected_role_id
 
     def update(
         self,
@@ -69,6 +75,11 @@ class UpdateUserStatusService:
         user = self._repo.get_by_id(int(user_id))
         if user is None:
             return ServiceResult.fail(code="USER_NOT_FOUND", http_status=404)
+
+        if self._protected_role_id is not None and int(user.role_id) == int(
+            self._protected_role_id
+        ):
+            return ServiceResult.fail(code="USER_SUPER_ADMIN_PROTECTED", http_status=422)
 
         if user.status != new_status:
             user.status = new_status

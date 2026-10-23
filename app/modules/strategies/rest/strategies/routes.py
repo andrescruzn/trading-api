@@ -5,9 +5,9 @@
 #
 # ENDPOINTS:
 # - GET  /strategies              → listar todas (cualquier usuario)
-# - POST /strategies              → crear (admin)
+# - POST /strategies              → crear (super admin)
 # - GET  /strategies/{id}         → obtener por ID (cualquier usuario)
-# - PUT  /strategies/{id}         → actualizar (admin)
+# - PUT  /strategies/{id}         → actualizar (super admin)
 # ======================================================================
 
 from __future__ import annotations
@@ -17,14 +17,13 @@ from typing import Any
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from app.common.config import settings
 from app.common.http import (
     build_error_response,
     build_list_response,
     build_created_response,
     build_success_response,
 )
-from app.common.security.jwt import token_required_actual
+from app.common.security.jwt import is_super_admin, token_required_actual
 from app.extensions.db import get_db
 from app.modules.strategies.domain.strategy_entity import Strategy
 from app.modules.strategies.providers import StrategyServiceFactory
@@ -86,8 +85,7 @@ def create_strategy(
     factory: StrategyServiceFactory = Depends(get_factory),
 ):
     """Crea una nueva estrategia. Solo administradores."""
-    is_admin = int(identity.get("role_id", 0)) == int(settings.AUTH_ADMIN_ROLE_ID)
-    if not is_admin:
+    if not is_super_admin(identity):
         from app.common.http import send
         return send(msg="No tienes permisos para crear estrategias.", status_code=403)
 
@@ -141,8 +139,7 @@ def update_strategy(
     factory: StrategyServiceFactory = Depends(get_factory),
 ):
     """Actualiza una estrategia existente. Solo administradores."""
-    is_admin = int(identity.get("role_id", 0)) == int(settings.AUTH_ADMIN_ROLE_ID)
-    if not is_admin:
+    if not is_super_admin(identity):
         from app.common.http import send
         return send(msg="No tienes permisos para modificar estrategias.", status_code=403)
 

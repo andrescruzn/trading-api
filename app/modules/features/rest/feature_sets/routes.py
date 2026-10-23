@@ -5,7 +5,7 @@
 #
 # ENDPOINTS:
 # - GET  /feature-sets       → lista todos (autenticado)
-# - POST /feature-sets       → crea nuevo (solo admin)
+# - POST /feature-sets       → crea nuevo (solo super admin)
 # ======================================================================
 
 from __future__ import annotations
@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session
 
 from app.common.http import build_error_response, build_list_response, build_created_response
 from app.common.security.jwt import token_required_actual
-from app.common.security.jwt.role_guard import admin_required
+from app.common.security.jwt.role_guard import super_admin_required
 from app.extensions.db import get_db
 from app.modules.features.domain.indicator_catalog import focus_of, groups_for, outputs_for
 from app.modules.features.providers import FeatureServiceFactory
@@ -72,7 +72,7 @@ def list_feature_sets(
 @router.post("", status_code=201)
 def create_feature_set(
     payload: CreateFeatureSetRequest,
-    _identity: dict = Depends(admin_required),
+    _identity: dict = Depends(super_admin_required),
     factory: FeatureServiceFactory = Depends(get_factory),
 ):
     """Crea un nuevo feature set. Solo admins."""

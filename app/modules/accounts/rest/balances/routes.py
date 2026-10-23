@@ -5,7 +5,7 @@
 #
 # ENDPOINTS:
 # - GET  /accounts/{id}/balances  → listar balances de la cuenta
-# - POST /accounts/{id}/balances  → registrar snapshot de balance
+# - POST /accounts/{id}/balances  → registrar snapshot de balance (solo super admin)
 # ======================================================================
 
 from __future__ import annotations
@@ -20,8 +20,7 @@ from app.common.http import (
     build_list_response,
     build_created_response,
 )
-from app.common.config import settings
-from app.common.security.jwt import token_required_actual
+from app.common.security.jwt import is_staff, super_admin_required, token_required_actual
 from app.extensions.db import get_db
 from app.modules.accounts.domain.account_balance_entity import AccountBalance
 from app.modules.accounts.providers import AccountServiceFactory
@@ -70,12 +69,11 @@ def list_balances(
 ):
     """Lista los balances (snapshots) de una cuenta, ordenados del más reciente al más antiguo."""
     user_id = int(identity["user_id"])
-    is_admin = int(identity.get("role_id", 0)) == int(settings.AUTH_ADMIN_ROLE_ID)
 
     result = factory.list_balances().list(
         account_id=account_id,
         requester_user_id=user_id,
-        is_admin=is_admin,
+        is_admin=is_staff(identity),
         asset=asset,
         limit=limit,
     )
@@ -97,12 +95,11 @@ def list_balances(
 def record_balance(
     account_id: int,
     payload: RecordBalanceRequest,
-    identity: dict = Depends(token_required_actual),
+    identity: dict = Depends(super_admin_required),
     factory: AccountServiceFactory = Depends(get_factory),
 ):
     """Registra un snapshot de balance para un activo. Construye la curva de equity."""
     user_id = int(identity["user_id"])
-    is_admin = int(identity.get("role_id", 0)) == int(settings.AUTH_ADMIN_ROLE_ID)
 
     result = factory.record_balance().record(
         account_id=account_id,
@@ -110,7 +107,7 @@ def record_balance(
         asset=payload.asset,
         free=payload.free,
         locked=payload.locked,
-        is_admin=is_admin,
+        is_admin=True,
     )
 
     if not result.success:

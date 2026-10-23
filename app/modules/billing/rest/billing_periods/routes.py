@@ -19,10 +19,14 @@ from typing import Any
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
-from app.common.config import settings
 from app.common.http import build_created_response, build_error_response, build_list_response, send
 from app.common.security.jwt import token_required_actual
-from app.common.security.jwt.role_guard import admin_required
+from app.common.security.jwt.role_guard import (
+    is_investor,
+    is_staff,
+    is_super_admin,
+    super_admin_required,
+)
 from app.extensions.db import get_db
 from app.modules.billing.domain.billing_period_entity import BillingPeriod
 from app.modules.billing.domain.fee_transaction_entity import FeeTransaction
@@ -69,14 +73,6 @@ def _fee_tx_to_dict(tx: FeeTransaction) -> dict[str, Any]:
     }
 
 
-def _require_admin(identity: dict) -> bool:
-    return int(identity.get("role_id", 0)) == int(settings.AUTH_ADMIN_ROLE_ID)
-
-
-def _is_investor(identity: dict) -> bool:
-    return int(identity.get("role_id", 0)) == int(settings.AUTH_INVESTOR_ROLE_ID)
-
-
 # ======================================================================
 # GET /api/billing-periods?managed_account_id=X
 # ======================================================================
@@ -89,12 +85,12 @@ def list_billing_periods(
     factory: BillingServiceFactory = Depends(get_factory),
 ):
     investor_id: int | None = None
-    if _is_investor(identity):
+    if is_investor(identity):
         inv = factory._investor_repo.find_by_user_id(identity.get("user_id"))
         if not inv:
             return build_list_response(items=[], msg="OK")
         investor_id = inv.id
-    elif not _require_admin(identity):
+    elif not is_staff(identity):
         return send(msg="No tienes permiso para hacer esta acción.", status_code=403, data={})
 
     result = factory.list_billing_periods().execute(
@@ -121,7 +117,7 @@ def open_billing_period(
     identity: dict = Depends(token_required_actual),
     factory: BillingServiceFactory = Depends(get_factory),
 ):
-    if not _require_admin(identity):
+    if not is_super_admin(identity):
         return send(msg="No tienes permiso para hacer esta acción.", status_code=403, data={})
 
     result = factory.open_billing_period().execute(
@@ -145,7 +141,7 @@ def close_billing_period(
     identity: dict = Depends(token_required_actual),
     factory: BillingServiceFactory = Depends(get_factory),
 ):
-    if not _require_admin(identity):
+    if not is_super_admin(identity):
         return send(msg="No tienes permiso para hacer esta acción.", status_code=403, data={})
 
     result = factory.close_billing_period().execute(
@@ -170,12 +166,12 @@ def list_fee_transactions(
     factory: BillingServiceFactory = Depends(get_factory),
 ):
     investor_id: int | None = None
-    if _is_investor(identity):
+    if is_investor(identity):
         inv = factory._investor_repo.find_by_user_id(identity.get("user_id"))
         if not inv:
             return build_list_response(items=[], msg="OK")
         investor_id = inv.id
-    elif not _require_admin(identity):
+    elif not is_staff(identity):
         return send(msg="No tienes permiso para hacer esta acción.", status_code=403, data={})
 
     result = factory.list_fee_transactions().execute(
@@ -215,7 +211,7 @@ def _settle(fee_tx_id: int, action: str, payload: SettleFeeRequest, factory: Bil
 def charge_fee_transaction(
     fee_tx_id: int,
     payload: SettleFeeRequest,
-    _identity: dict = Depends(admin_required),
+    _identity: dict = Depends(super_admin_required),
     factory: BillingServiceFactory = Depends(get_factory),
 ):
     """Marca una comisión pendiente como cobrada."""
@@ -226,7 +222,7 @@ def charge_fee_transaction(
 def waive_fee_transaction(
     fee_tx_id: int,
     payload: SettleFeeRequest,
-    _identity: dict = Depends(admin_required),
+    _identity: dict = Depends(super_admin_required),
     factory: BillingServiceFactory = Depends(get_factory),
 ):
     """Condona una comisión pendiente (no se cobrará)."""

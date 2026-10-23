@@ -175,15 +175,20 @@ class Settings:
         # - Estos IDs son "infra" (DB), pero se usan como configuración
         #   para reglas simples (admin accede a todo).
         # --------------------------------------------------------------
-        # Defaults = IDs reales de la tabla `roles`: 1 user, 2 admin, 3 investor.
-        admin_role_raw = os.getenv("AUTH_ADMIN_ROLE_ID", "2").strip()
-        user_role_raw = os.getenv("AUTH_USER_ROLE_ID", "1").strip()
-
-        self.AUTH_ADMIN_ROLE_ID: int = int(admin_role_raw) if admin_role_raw.isdigit() else 2
-        self.AUTH_USER_ROLE_ID: int = int(user_role_raw) if user_role_raw.isdigit() else 1
+        # Defaults = IDs reales de la tabla `roles`: 2 super_admin (antes
+        # admin), 3 investor, 4 partner. El rol 1 (user) quedó desactivado
+        # con el fondo común (migración m01_roles_fondo).
+        # AUTH_ADMIN_ROLE_ID se acepta como respaldo para .env anteriores.
+        super_admin_raw = os.getenv(
+            "AUTH_SUPER_ADMIN_ROLE_ID", os.getenv("AUTH_ADMIN_ROLE_ID", "2")
+        ).strip()
+        self.AUTH_SUPER_ADMIN_ROLE_ID: int = int(super_admin_raw) if super_admin_raw.isdigit() else 2
 
         investor_role_raw = os.getenv("AUTH_INVESTOR_ROLE_ID", "3").strip()
         self.AUTH_INVESTOR_ROLE_ID: int = int(investor_role_raw) if investor_role_raw.isdigit() else 3
+
+        partner_role_raw = os.getenv("AUTH_PARTNER_ROLE_ID", "4").strip()
+        self.AUTH_PARTNER_ROLE_ID: int = int(partner_role_raw) if partner_role_raw.isdigit() else 4
 
         # --------------------------------------------------------------
         # AUTH / Cookie Settings

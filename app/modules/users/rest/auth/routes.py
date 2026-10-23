@@ -277,7 +277,7 @@ def get_me(
             "email": profile.email,
             "full_name": profile.full_name,
             "role_id": profile.role_id,
-            "role_code": profile.role_code,   # "user" | "admin"
+            "role_code": profile.role_code,   # "super_admin" | "partner" | "investor"
             "role_label": profile.role_name,  # "Usuario" | "Administrador" (desde BD)
             "status": profile.status,
             "last_login_at": profile.last_login_at.isoformat() if profile.last_login_at else None,

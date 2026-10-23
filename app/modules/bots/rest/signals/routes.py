@@ -27,7 +27,7 @@ from app.common.http import (
     build_paginated_response,
     send,
 )
-from app.common.security.jwt import owner_scope, token_required_actual
+from app.common.security.jwt import read_scope, super_admin_required, token_required_actual, write_scope
 from app.common.security.rate_limiter import agent_analysis_rate_limiter, check_user_rate_limit
 from app.extensions.db import get_db
 from app.modules.bots.domain.signal_entity import Signal
@@ -103,7 +103,7 @@ def list_pending_signals(
     factory: BotServiceFactory = Depends(get_factory),
 ):
     """Señales que esperan aprobación, con el agente al que pertenecen."""
-    owner_id = int(identity["user_id"]) if mine else owner_scope(identity)
+    owner_id = int(identity["user_id"]) if mine else read_scope(identity)
     result = factory.list_pending_signals().list(owner_id=owner_id, limit=limit)
 
     if not result.success:
@@ -150,7 +150,7 @@ def list_signals(
             action=action,
             from_ts=from_ts,
             to_ts=to_ts,
-            owner_id=owner_scope(identity),
+            owner_id=read_scope(identity),
         )
         if not page_result.success:
             return build_error_response(page_result, SIGNAL_ERROR_MESSAGES)
@@ -167,7 +167,7 @@ def list_signals(
         from_ts=from_ts,
         to_ts=to_ts,
         limit=limit,
-        owner_id=owner_scope(identity),
+        owner_id=read_scope(identity),
     )
 
     if not result.success:
@@ -186,7 +186,7 @@ def list_signals(
 @router.post("/generate", status_code=201)
 def generate_signal(
     payload: GenerateSignalRequest,
-    identity: dict = Depends(token_required_actual),
+    identity: dict = Depends(super_admin_required),
     factory: BotServiceFactory = Depends(get_factory),
 ):
     """
@@ -199,7 +199,7 @@ def generate_signal(
     check_user_rate_limit(agent_analysis_rate_limiter, identity["user_id"])
 
     result = factory.generate_signal().generate(
-        bot_id=payload.bot_id, owner_id=owner_scope(identity)
+        bot_id=payload.bot_id, owner_id=write_scope(identity)
     )
 
     if not result.success:

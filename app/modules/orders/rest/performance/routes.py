@@ -22,7 +22,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.common.http import build_error_response, build_list_response, build_success_response
-from app.common.security.jwt import owner_scope, token_required_actual
+from app.common.security.jwt import read_scope, token_required_actual
 from app.extensions.db import get_db
 from app.modules.orders.providers import OrderServiceFactory, get_order_factory
 from app.modules.orders.services.performance import BotPerformance, StrategyTrackRecord
@@ -111,7 +111,7 @@ def get_bot_performance(
     factory: OrderServiceFactory = Depends(get_factory),
 ):
     """Operaciones cerradas y métricas de un agente."""
-    result = factory.bot_performance().get(bot_id=bot_id, owner_id=owner_scope(identity))
+    result = factory.bot_performance().get(bot_id=bot_id, owner_id=read_scope(identity))
     if not result.success:
         return build_error_response(result, PERFORMANCE_ERROR_MESSAGES)
     return build_success_response(data=_bot_performance_to_dict(result.data), msg="OK")

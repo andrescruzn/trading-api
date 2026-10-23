@@ -168,11 +168,16 @@ class AuthServiceFactory:
         """Listado de usuarios para las vistas de administración."""
         return ListUsersService(repo=self._repo)
 
-    def _role_ids(self) -> dict[str, int]:
-        """Códigos de rol → IDs de la tabla `roles` (desde los settings)."""
+    def _assignable_role_ids(self) -> dict[str, int]:
+        """
+        Roles que un super admin puede dar al invitar o cambiar el rol
+        (código → ID de la tabla `roles`, desde los settings).
+
+        Super admin no está: los propietarios se definen por seed, nunca
+        desde la app.
+        """
         return {
-            "user": self._config.AUTH_USER_ROLE_ID,
-            "admin": self._config.AUTH_ADMIN_ROLE_ID,
+            "partner": self._config.AUTH_PARTNER_ROLE_ID,
             "investor": self._config.AUTH_INVESTOR_ROLE_ID,
         }
 
@@ -181,11 +186,15 @@ class AuthServiceFactory:
         return UpdateProfileService(repo=self._repo)
 
     def update_user_role(self) -> UpdateUserRoleService:
-        """Cambio de rol por un admin."""
-        return UpdateUserRoleService(repo=self._repo, role_ids=self._role_ids())
+        """Cambio de rol por un super admin."""
+        return UpdateUserRoleService(
+            repo=self._repo,
+            role_ids=self._assignable_role_ids(),
+            protected_role_id=self._config.AUTH_SUPER_ADMIN_ROLE_ID,
+        )
 
     def update_user_status(self) -> UpdateUserStatusService:
-        """Activar, bloquear o desactivar una cuenta (admin)."""
+        """Activar, bloquear o desactivar una cuenta (super admin)."""
         # Import diferido: accounts y bots importan piezas de users (guards)
         from app.modules.accounts.infrastructure import SqlAlchemyAccountRepository
         from app.modules.bots.infrastructure import SqlAlchemyBotRepository
@@ -195,14 +204,15 @@ class AuthServiceFactory:
             repo=self._repo,
             bot_repo=SqlAlchemyBotRepository(self._session),
             account_repo=SqlAlchemyAccountRepository(self._session),
+            protected_role_id=self._config.AUTH_SUPER_ADMIN_ROLE_ID,
         )
 
     def invite_user(self) -> InviteUserService:
-        """Alta de un usuario por un admin (registro solo por invitación)."""
+        """Alta de un usuario por un super admin (registro solo por invitación)."""
         return InviteUserService(
             repo=self._repo,
             mailer=build_mailer(self._config),
-            role_ids=self._role_ids(),
+            role_ids=self._assignable_role_ids(),
             login_url=f"{self._config.FRONTEND_URL}/#/login",
         )
 

@@ -5,7 +5,7 @@
 #
 # ENDPOINTS:
 # - GET  /timeframes        → lista todos (autenticado)
-# - POST /timeframes        → crear (solo admin)
+# - POST /timeframes        → crear (solo super admin)
 # ======================================================================
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ from app.common.http import (
     build_created_response,
 )
 from app.common.security.jwt import token_required_actual
-from app.common.security.jwt.role_guard import admin_required
+from app.common.security.jwt.role_guard import super_admin_required
 from app.extensions.db import get_db
 from app.modules.market.providers import MarketServiceFactory
 
@@ -67,7 +67,7 @@ def list_timeframes(
 @router.post("", status_code=201)
 def create_timeframe(
     payload: CreateTimeframeRequest,
-    _identity: dict = Depends(admin_required),
+    _identity: dict = Depends(super_admin_required),
     factory: MarketServiceFactory = Depends(get_factory),
 ):
     """Crea un timeframe. Solo admins."""

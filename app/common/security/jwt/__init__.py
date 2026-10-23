@@ -14,7 +14,16 @@ from .jwt_utils import (
 )
 
 from .jwt_guard import token_required_actual
-from .role_guard import admin_required, is_admin, owner_scope
+from .role_guard import (
+    is_investor,
+    is_partner,
+    is_staff,
+    is_super_admin,
+    read_scope,
+    staff_required,
+    super_admin_required,
+    write_scope,
+)
 from .auth_exceptions import AuthException
 
 __all__ = [
@@ -23,8 +32,13 @@ __all__ = [
     "decode_access_token",
     "generate_jti",
     "token_required_actual",
-    "admin_required",
-    "is_admin",
-    "owner_scope",
+    "super_admin_required",
+    "staff_required",
+    "is_super_admin",
+    "is_partner",
+    "is_investor",
+    "is_staff",
+    "read_scope",
+    "write_scope",
     "AuthException",
 ]

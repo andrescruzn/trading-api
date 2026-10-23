@@ -4,13 +4,14 @@
 # app/modules/users/services/users/update_user_role_service.py
 #
 # CASO DE USO:
-# - Un admin cambia el rol de otro usuario (user / admin / investor).
+# - Un super admin cambia el rol de otro usuario (partner / investor).
 #
 # REGLAS:
 # - El rol se recibe por código y se traduce al ID con los settings
-#   AUTH_*_ROLE_ID (nunca IDs fijos en el código).
-# - Nadie cambia su propio rol: así el sistema nunca se queda sin admin y
-#   nadie se quita el acceso por error.
+#   AUTH_*_ROLE_ID (nunca IDs fijos en el código). Solo se asignan los
+#   roles de `role_ids`: super admin no se da desde la app.
+# - Nadie cambia su propio rol, y el rol de un super admin no se toca:
+#   los propietarios se definen por seed.
 # - El cambio vale desde la siguiente petición del usuario: el guard JWT
 #   lee el rol de la BD en cada request.
 # ======================================================================
@@ -23,11 +24,21 @@ from app.modules.users.services.users.list_users_service import UserSummaryPaylo
 
 
 class UpdateUserRoleService:
-    """Cambia el rol de un usuario. `role_ids` mapea código → ID de rol."""
+    """
+    Cambia el rol de un usuario. `role_ids` mapea código → ID de los roles
+    asignables; `protected_role_id` es el rol (super admin) que no se toca.
+    """
 
-    def __init__(self, *, repo: UserRepository, role_ids: dict[str, int]):
+    def __init__(
+        self,
+        *,
+        repo: UserRepository,
+        role_ids: dict[str, int],
+        protected_role_id: int,
+    ):
         self._repo = repo
         self._role_ids = role_ids
+        self._protected_role_id = int(protected_role_id)
 
     def update(
         self,
@@ -45,6 +56,9 @@ class UpdateUserRoleService:
         user = self._repo.get_by_id(int(user_id))
         if user is None:
             return ServiceResult.fail(code="USER_NOT_FOUND", http_status=404)
+
+        if int(user.role_id) == self._protected_role_id:
+            return ServiceResult.fail(code="USER_SUPER_ADMIN_PROTECTED", http_status=422)
 
         role = self._repo.get_role_info(role_id)
         if role is None:

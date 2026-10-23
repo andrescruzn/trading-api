@@ -16,7 +16,7 @@ def _make(user):
     repo = MagicMock()
     repo.get_by_id.return_value = user
     repo.update.side_effect = lambda u: u
-    repo.get_role_info.return_value = {"code": "user", "name": "Usuario"}
+    repo.get_role_info.return_value = {"code": "investor", "name": "Inversor"}
     return UpdateUserStatusService(repo=repo), repo
 
 
@@ -109,8 +109,8 @@ class TestUpdateUserStatusService:
         data = svc.update(user_id=5, status="blocked", requester_user_id=1).data
 
         assert data.email == "ana@x.com"
-        assert data.role_code == "user"
-        assert data.role_name == "Usuario"
+        assert data.role_code == "investor"
+        assert data.role_name == "Inversor"
 
 
 # ----------------------------------------------------------------------

@@ -12,6 +12,7 @@
 #   5) DB: user.status == "active" (si no, 401 AUTH_USER_NOT_ALLOWED) y
 #      user.token_current_jti == jti
 #   6) Role del usuario existe y está activo (roles.is_active=1)
+#   7) Socio (partner) = solo lectura: sus escrituras → 403
 #
 # FUENTES DEL TOKEN (en orden de prioridad):
 # - Cookie HTTP-only (para React SPA)
@@ -33,6 +34,7 @@ from app.modules.users.infrastructure import SqlAlchemyUserRepository
 
 from .auth_exceptions import AuthException
 from .jwt_utils import decode_access_token, JwtCodecError
+from .read_only_policy import is_read_only_violation
 
 
 _bearer = HTTPBearer(auto_error=False)
@@ -163,7 +165,13 @@ def token_required_actual(
         raise AuthException(code="AUTH_ROLE_INACTIVE", http_status=403, meta={"role_id": int(user.role_id)})
 
     # --------------------------------------------------------------
-    # 6) Identidad mínima
+    # 6) Socio = solo lectura (ver read_only_policy.py)
+    # --------------------------------------------------------------
+    if is_read_only_violation(int(user.role_id), request.method, request.url.path):
+        raise AuthException(code="AUTH_READ_ONLY_ROLE", http_status=403)
+
+    # --------------------------------------------------------------
+    # 7) Identidad mínima
     # --------------------------------------------------------------
     return {
         "user_id": int(user_id),

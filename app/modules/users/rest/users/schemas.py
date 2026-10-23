@@ -14,12 +14,13 @@ from pydantic import BaseModel, Field
 class InviteUserRequest(BaseModel):
     email: str = Field(..., min_length=3, max_length=255)
     full_name: str | None = Field(default=None, max_length=255)
-    role_code: Literal["user", "admin", "investor"] = Field(default="user")
+    # Super admin no se invita: los propietarios se definen por seed.
+    role_code: Literal["partner", "investor"] = Field(default="investor")
 
 
 class UpdateUserRoleRequest(BaseModel):
-    role_code: Literal["user", "admin", "investor"] = Field(
-        ..., description="Rol nuevo: user, admin o investor."
+    role_code: Literal["partner", "investor"] = Field(
+        ..., description="Rol nuevo: partner (socio, solo lectura) o investor."
     )
 
 

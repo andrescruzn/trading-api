@@ -4,7 +4,7 @@
 # app/modules/users/rest/audit/routes.py
 #
 # ENDPOINTS:
-# - GET /audit-logs → auditoría HTTP paginada en el servidor (solo admin)
+# - GET /audit-logs → auditoría HTTP paginada en el servidor (super admin y socio)
 #
 # NOTAS:
 # - Lee las tablas `http_audit_<año>` que escribe AuditMiddleware.
@@ -23,7 +23,7 @@ from sqlalchemy.orm import Session
 
 from app.common.contracts.pagination import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 from app.common.http import build_error_response, build_paginated_response
-from app.common.security.jwt.role_guard import admin_required
+from app.common.security.jwt.role_guard import staff_required
 from app.extensions.db import get_db
 from app.modules.users.domain import AuditEvent
 from app.modules.users.providers.audit_provider import AuditServiceFactory
@@ -72,10 +72,10 @@ def list_audit_logs(
     path: str | None = Query(default=None, max_length=200, description="Texto dentro de la ruta."),
     kind: str | None = Query(default=None, description="read (consultas) | write (cambios)"),
     only_errors: bool = Query(default=False, description="Solo respuestas con status ≥ 400."),
-    _identity: dict = Depends(admin_required),
+    _identity: dict = Depends(staff_required),
     factory: AuditServiceFactory = Depends(get_factory),
 ):
-    """Eventos de auditoría, del más reciente al más antiguo (solo admin)."""
+    """Eventos de auditoría, del más reciente al más antiguo (super admin y socio)."""
     result = factory.list_audit_events().list(
         page=page,
         page_size=page_size,

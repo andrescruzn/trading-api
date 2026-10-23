@@ -17,12 +17,13 @@ El esquema lo definen los **modelos ORM** (`app/modules/*/infrastructure/*_model
 
 | Dominio | Tablas |
 |---|---|
-| Catálogos | `roles` (1 user, 2 admin, 3 investor), `exchanges`, `symbols`, `timeframes`, `feature_sets`, `strategies` |
+| Catálogos | `roles` (1 user inactivo, 2 super_admin, 3 investor, 4 partner), `exchanges`, `symbols`, `timeframes`, `feature_sets`, `strategies` |
 | Usuarios y cuentas | `users`, `accounts`, `account_balances` |
 | Market data / ML | `candles`, `candle_features`, `datasets`, `models`, `model_runs` |
 | Ejecución de bots | `bots`, `signals`, `orders`, `fills`, `positions`, `predictions`, `portfolio_snapshots` |
 | Alertas y auditoría | `alert_rules`, `alert_events`, `audit_logs`, `system_events` |
-| Billing (M10) | `investors`, `managed_accounts`, `billing_periods`, `fee_transactions` |
+| Billing (M10) | `investors`, `managed_accounts`, `billing_periods`, `fee_transactions`, `capital_movements` |
+| Fondo común (M4 + M11) | `platform_wallet` (una fila), `wallet_snapshots`, `fund_settings` (una fila), `ledger_entries` (append-only), `deposit_requests` |
 
 ## Valores permitidos (CHECK constraints)
 
@@ -49,6 +50,11 @@ system_events.component    : market_data | execution | scheduler | api
 managed_accounts.period_type: daily | weekly | monthly
 billing_periods.status     : open | closed
 fee_transactions.status    : pending | charged | waived
+wallet_snapshots.source    : exchange | manual
+ledger_entries.entry_type  : deposit | refund   (F4/F5 lo amplían)
+ledger_entries.bucket      : pending | available
+deposit_requests.status    : pending | review | confirmed | rejected | expired | canceled
+deposit_requests.review_reason: amount_mismatch | over_threshold | exchange_failed | wrong_asset
 ```
 
 Otras restricciones que suelen morder:
@@ -79,7 +85,7 @@ Todo cambio de esquema es una **revisión de Alembic** en `database/migrations/v
 
 1. Crear o modificar el modelo en `infrastructure/<x>_model.py` (y registrarlo en `models_registry.py` si es nuevo), siguiendo "Modelos y Alembic".
 2. El usuario genera la revisión: `uv run alembic revision --autogenerate -m "m11 crear tabla x"`. El mensaje empieza por el módulo (`mNN`).
-3. **Revisar y editar el archivo generado siempre.** En tablas **nuevas** autogenerate incluye CHECKs, comentarios y defaults del modelo. En tablas **existentes** no detecta CHECKs añadidos/quitados ni cambios de `server_default`: añadirlos a mano (`op.create_check_constraint(...)`, `op.alter_column(..., server_default=...)`). Completar `MOTIVO:` en el docstring y revisar que `downgrade()` sea correcto.
+3. **Revisar y editar el archivo generado siempre.** En `downgrade()` autogenerate pone `drop_index` antes de `drop_table`: si el índice lo usa una FK (p. ej. `(user_id, created_at)` con FK en `user_id`), MySQL falla con 1553; quitar esos `drop_index` y borrar solo la tabla. En tablas **nuevas** autogenerate incluye CHECKs, comentarios y defaults del modelo. En tablas **existentes** no detecta CHECKs añadidos/quitados ni cambios de `server_default`: añadirlos a mano (`op.create_check_constraint(...)`, `op.alter_column(..., server_default=...)`). Completar `MOTIVO:` en el docstring y revisar que `downgrade()` sea correcto.
 4. El usuario aplica: `uv run alembic upgrade head`, y luego `uv run alembic check` debe responder `No new upgrade operations detected`.
 
 ### Comandos (los ejecuta el usuario: escriben o leen su BD)
@@ -156,6 +162,7 @@ Ejemplo de referencia: `app/modules/agent/infrastructure/prediction_model.py`.
 
 - Fechas: `from sqlalchemy.dialects.mysql import TIMESTAMP` → `TIMESTAMP(fsp=6)`. **Nunca** `sqlalchemy.TIMESTAMP(6)`: ahí el primer argumento es `timezone`, sale `TIMESTAMP` sin precisión y MySQL rechaza el `DEFAULT CURRENT_TIMESTAMP(6)` (error 1067).
 - `updated_at`: `server_default=text("CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6)")`.
+- PyMySQL devuelve `TIMESTAMP` **sin zona**: al mapear a entidad usar `ensure_aware_utc()` (`app.common.utils`) para compararlas con `utc_now()` y serializarlas con `+00:00` (si no, el navegador las lee como hora local).
 - Defaults de BD con `server_default=text("'1'")`, `text("'0.000000000000'")`… (el `default=` de Python no llega al DDL).
 - Nada de `index=True` / `unique=True` en `Column` (generan nombres `ix_*`). Todo con nombre en `__table_args__`: `Index("idx_<tabla>_<cols>", ...)`, `UniqueConstraint(..., name="uq_...")`, `CheckConstraint("`col` IN ('a', 'b')", name="chk_...")`. FKs con `ForeignKey("t.id", name="fk_...", ondelete=...)`.
 - No declarar un índice solo para una FK: MySQL lo crea con el nombre de la FK.

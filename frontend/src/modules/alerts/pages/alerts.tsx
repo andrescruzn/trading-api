@@ -19,6 +19,8 @@ import { useUpdateAlertRuleMutation } from '@/modules/alerts/hooks/use-alerts-mu
 import { useAlertRulesQuery } from '@/modules/alerts/hooks/use-alerts-queries';
 import { botLabel } from '@/modules/alerts/lib/alerts-labels';
 import { usePageBreadcrumb } from '@/modules/app-shell/hooks/use-page-breadcrumb';
+import { useHasRole } from '@/modules/auth/hooks/use-has-role';
+import { ROLES } from '@/modules/auth/lib/roles';
 import { useMyBotsQuery } from '@/modules/bots/hooks/use-bots-queries';
 import { useSymbolsQuery } from '@/modules/market/hooks/use-market-queries';
 import {
@@ -55,6 +57,8 @@ import { toast } from '@/modules/ui/components/toast';
 
 export function AlertsPage() {
 	usePageBreadcrumb([{ label: 'Alertas' }]);
+	// El socio no crea ni edita reglas (solo lectura); el inversor sí tiene las suyas.
+	const readOnly = useHasRole(ROLES.PARTNER);
 	const rulesQuery = useAlertRulesQuery();
 	const botsQuery = useMyBotsQuery();
 	const symbolsQuery = useSymbolsQuery();
@@ -175,6 +179,7 @@ export function AlertsPage() {
 						label: 'Nueva regla',
 						icon: <IconPlus />,
 						onClick: () => setEditing(null),
+						hidden: readOnly,
 					},
 				]}
 			/>
@@ -185,7 +190,11 @@ export function AlertsPage() {
 				</TabsList>
 				<TabsContent value="rules" className="pt-2">
 					<DataTable
-						columns={columns}
+						columns={
+							readOnly
+								? columns.filter((column) => column.id !== 'actions')
+								: columns
+						}
 						rows={rulesQuery.data}
 						getRowId={(row) => row.id}
 						isLoading={rulesQuery.isLoading}

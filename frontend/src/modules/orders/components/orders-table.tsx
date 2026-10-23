@@ -1,5 +1,6 @@
 import { IconReceipt, IconX } from '@tabler/icons-react';
 import { type ReactNode, useState } from 'react';
+import { useCanManage } from '@/modules/auth/hooks/use-can-manage';
 import type { Order } from '@/modules/orders/api/orders.api';
 import { CancelOrderDialog } from '@/modules/orders/components/cancel-order-dialog';
 import {
@@ -50,6 +51,7 @@ export function OrdersTable({
 	pagination,
 	isFetching,
 }: OrdersTableProps) {
+	const canManage = useCanManage();
 	const [canceling, setCanceling] = useState<Order | null>(null);
 	const columns: DataTableColumn<Order>[] = [
 		{
@@ -121,7 +123,7 @@ export function OrdersTable({
 			className: 'text-right',
 			cell: (row) => (
 				<div className="flex justify-end gap-1">
-					{isCancelable(row) && (
+					{canManage && isCancelable(row) && (
 						<Button
 							variant="ghost"
 							size="sm"

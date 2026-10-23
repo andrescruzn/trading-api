@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { usePageBreadcrumb } from '@/modules/app-shell/hooks/use-page-breadcrumb';
+import { useCanManage } from '@/modules/auth/hooks/use-can-manage';
 import type { Timeframe } from '@/modules/market/api/market.api';
 import { useCreateTimeframeMutation } from '@/modules/market/hooks/use-market-mutations';
 import { useTimeframesQuery } from '@/modules/market/hooks/use-market-queries';
@@ -196,6 +197,7 @@ function CreateTimeframeDialog({
 }
 
 export function AdminTimeframesPage() {
+	const canManage = useCanManage();
 	usePageBreadcrumb([{ label: 'Administración' }, { label: 'Timeframes' }]);
 	const timeframesQuery = useTimeframesQuery();
 	const [creating, setCreating] = useState(false);
@@ -210,6 +212,7 @@ export function AdminTimeframesPage() {
 						label: 'Nuevo timeframe',
 						icon: <IconPlus />,
 						onClick: () => setCreating(true),
+						hidden: !canManage,
 					},
 				]}
 			/>

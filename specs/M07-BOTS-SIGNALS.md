@@ -118,7 +118,7 @@ Entregables:
 | Suscribirse y dejar de seguir son **idempotentes** (200 con `{bot_id, is_subscribed, subscribers_count}`) | Un doble clic o una pestaña vieja no es un error para la persona | 409 `SUBSCRIPTION_EXISTS` |
 | Al **apagar** Compartir señales las suscripciones **se conservan**: el hook no envía nada (mira `share_signals`) y el agente sale del listado; si se vuelve a compartir, siguen recibiendo. Dejar de seguir funciona aunque ya no se comparta | Un apagado por error no hace perder a quienes lo seguían | Borrar las suscripciones al apagar |
 | Hook `notify_subscribers` post-commit en `GenerateSignalService`, en `try/except`, solo si `share_signals` y la señal `is_actionable()` (manual, Con aprobación o Automático por igual) | Igual que las alertas: un fallo de Telegram no frena la señal | Enviar dentro de la transacción |
-| `owner_scope(identity)` vive en `app/common/security/jwt/role_guard.py` (antes en `rest/bots/routes.py`) | Lo usan bots, signals, orders, agent y alerts | Copiarlo en cada router |
+| `read_scope(identity)` / `write_scope(identity)` (antes `owner_scope`) viven en `app/common/security/jwt/role_guard.py` (antes en `rest/bots/routes.py`); desde 2026-10-22 crear, editar, iniciar/pausar/detener, "Actualizar datos" y "Analizar ahora" exigen super admin | Lo usan bots, signals, orders, agent y alerts | Copiarlo en cada router |
 
 ## Avance
 
@@ -257,7 +257,7 @@ AGENT_MAX_AUTO_ANALYSES_PER_DAY=96       # análisis automáticos por usuario y 
 
 `_bot_to_dict` incluye `share_signals`. `_signal_to_dict` añade `decision_status`, `expires_at`, `decided_at`, `decision_channel`, `decision_reason`, `decision_reason_message` y `candle_ts`.
 
-`owner_scope(identity)` viene de `app.common.security.jwt` (devuelve el `user_id` o `None` para admin).
+`read_scope(identity)` (lecturas: `None` para super admin y socio) y `write_scope(identity)` (escrituras: `None` solo para super admin) vienen de `app.common.security.jwt`.
 
 Routers registrados en `app/app_factory.py` (dentro de `api_routers`, con `prefix=settings.API_PREFIX`). `signals_router` va antes de `signal_decisions_router` para que `GET /signals/pending` no choque con rutas `/signals/{id}`.
 

@@ -1,6 +1,7 @@
 import { IconPencil, IconPlus } from '@tabler/icons-react';
 import { useState } from 'react';
 import { usePageBreadcrumb } from '@/modules/app-shell/hooks/use-page-breadcrumb';
+import { useCanManage } from '@/modules/auth/hooks/use-can-manage';
 import type { AssetClass, MarketSymbol } from '@/modules/market/api/market.api';
 import { SymbolFormDialog } from '@/modules/market/components/symbol-form-dialog';
 import {
@@ -29,6 +30,7 @@ const STATUS_OPTIONS = [
 ];
 
 export function AdminSymbolsPage() {
+	const canManage = useCanManage();
 	usePageBreadcrumb([{ label: 'Administración' }, { label: 'Símbolos' }]);
 	const [exchangeId, setExchangeId] = useState(ALL);
 	const [assetClass, setAssetClass] = useState(ALL);
@@ -105,6 +107,7 @@ export function AdminSymbolsPage() {
 						label: 'Nuevo símbolo',
 						icon: <IconPlus />,
 						onClick: () => setEditing(null),
+						hidden: !canManage,
 					},
 				]}
 			/>
@@ -141,7 +144,11 @@ export function AdminSymbolsPage() {
 				/>
 			</div>
 			<DataTable
-				columns={columns}
+				columns={
+					canManage
+						? columns
+						: columns.filter((column) => column.id !== 'actions')
+				}
 				rows={symbolsQuery.data}
 				getRowId={(row) => row.id}
 				isLoading={symbolsQuery.isLoading}

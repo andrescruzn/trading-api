@@ -35,7 +35,7 @@ class UserProfilePayload:
     email: str
     full_name: Optional[str]
     role_id: int
-    role_code: str        # ej: "user", "admin"
+    role_code: str        # "super_admin", "partner" o "investor"
     role_name: str        # ej: "Usuario", "Administrador"
     status: str
     last_login_at: Optional[datetime]

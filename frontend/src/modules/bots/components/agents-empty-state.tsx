@@ -6,6 +6,9 @@ import {
 	IconSparkles,
 } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
+import { useCanManage } from '@/modules/auth/hooks/use-can-manage';
+import { useHasRole } from '@/modules/auth/hooks/use-has-role';
+import { STAFF_ROLES } from '@/modules/auth/lib/roles';
 import { Button } from '@/modules/ui/components/button';
 
 const HOW_IT_WORKS = [
@@ -26,8 +29,36 @@ const HOW_IT_WORKS = [
 	},
 ];
 
-/** Bienvenida cuando la persona aún no tiene agentes: qué son y cómo crear el primero. */
+/**
+ * Bienvenida cuando la persona aún no tiene agentes: qué son y cómo crear el
+ * primero. Solo un super admin crea agentes; al socio y al inversor se les
+ * dice dónde verlos.
+ */
 export function AgentsEmptyState() {
+	const canManage = useCanManage();
+	const isStaff = useHasRole(STAFF_ROLES);
+
+	if (!canManage) {
+		return (
+			<div className="flex flex-col items-start gap-3 rounded-2xl border bg-card p-6">
+				<h2 className="text-lg font-semibold tracking-tight">
+					Los agentes los crean los super admin
+				</h2>
+				<p className="text-sm text-muted-foreground">
+					{isStaff
+						? 'Como socio puedes revisar todos los agentes, sus señales y sus órdenes, sin hacer cambios.'
+						: 'Aquí verás el estado de los agentes en los que participa tu dinero.'}
+				</p>
+				{isStaff && (
+					<Button variant="outline" render={<Link to="/admin/agents" />}>
+						<IconRobot />
+						Ver todos los agentes
+					</Button>
+				)}
+			</div>
+		);
+	}
+
 	return (
 		<div className="relative overflow-hidden rounded-2xl border bg-card p-6 sm:p-10">
 			<div

@@ -1,6 +1,7 @@
 import { IconCircleCheck, IconLock, IconPlayerPlay } from '@tabler/icons-react';
 import { useState } from 'react';
 import { usePageBreadcrumb } from '@/modules/app-shell/hooks/use-page-breadcrumb';
+import { useCanManage } from '@/modules/auth/hooks/use-can-manage';
 import type { BillingPeriod } from '@/modules/billing/api/billing.api';
 import {
 	ClosePeriodDialog,
@@ -43,6 +44,7 @@ import {
 } from '@/modules/ui/components/tabs';
 
 export function AdminBillingPage() {
+	const canManage = useCanManage();
 	usePageBreadcrumb([{ label: 'Administración' }, { label: 'Facturación' }]);
 	const managedAccountsQuery = useManagedAccountsQuery();
 	const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -74,6 +76,7 @@ export function AdminBillingPage() {
 						label: 'Abrir período',
 						icon: <IconPlayerPlay />,
 						onClick: () => setIsOpening(true),
+						hidden: !canManage,
 						disabled: !account || hasOpenPeriod,
 					},
 				]}
@@ -160,7 +163,7 @@ export function AdminBillingPage() {
 							error={periodsQuery.error}
 							empty="Esta cuenta aún no tiene períodos. Abre el primero para empezar a facturar."
 							renderActions={(period) =>
-								period.status === 'open' ? (
+								period.status === 'open' && canManage ? (
 									<Button
 										variant="outline"
 										size="sm"

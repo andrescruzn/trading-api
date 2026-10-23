@@ -5,7 +5,7 @@
 #
 # ENDPOINTS:
 # - GET  /candle-features            → consulta features (autenticado)
-# - POST /candle-features/calculate  → calcula y persiste (solo admin)
+# - POST /candle-features/calculate  → calcula y persiste (solo super admin)
 # ======================================================================
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 
 from app.common.http import build_error_response, build_list_response, build_success_response
 from app.common.security.jwt import token_required_actual
-from app.common.security.jwt.role_guard import admin_required
+from app.common.security.jwt.role_guard import super_admin_required
 from app.extensions.db import get_db
 from app.modules.features.providers import FeatureServiceFactory
 
@@ -83,7 +83,7 @@ def list_candle_features(
 @router.post("/calculate", status_code=200)
 def calculate_features(
     payload: CalculateFeaturesRequest,
-    _identity: dict = Depends(admin_required),
+    _identity: dict = Depends(super_admin_required),
     factory: FeatureServiceFactory = Depends(get_factory),
 ):
     """

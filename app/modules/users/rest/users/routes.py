@@ -4,10 +4,10 @@
 # app/modules/users/rest/users/routes.py
 #
 # ENDPOINTS:
-# - GET /users            → listar usuarios (solo admin)
-# - POST /users           → invitar (crear) un usuario (solo admin)
-# - PUT /users/{id}/role  → cambiar el rol de un usuario (solo admin)
-# - PUT /users/{id}/status → activar, bloquear o desactivar (solo admin)
+# - GET /users            → listar usuarios (super admin y socio)
+# - POST /users           → invitar (crear) un usuario (solo super admin)
+# - PUT /users/{id}/role  → cambiar el rol de un usuario (solo super admin)
+# - PUT /users/{id}/status → activar, bloquear o desactivar (solo super admin)
 #
 # NOTAS:
 # - Lo usan las vistas de Supervisión para mostrar el dueño de agentes,
@@ -28,7 +28,7 @@ from app.common.http import (
     build_list_response,
     build_success_response,
 )
-from app.common.security.jwt.role_guard import admin_required
+from app.common.security.jwt.role_guard import staff_required, super_admin_required
 from app.extensions.db import get_db
 from app.modules.users.providers.auth_provider import AuthServiceFactory
 from app.modules.users.services.users import UserSummaryPayload
@@ -61,10 +61,10 @@ def _user_to_dict(u: UserSummaryPayload) -> dict[str, Any]:
 
 @router.get("", status_code=200)
 def list_users(
-    _identity: dict = Depends(admin_required),
+    _identity: dict = Depends(staff_required),
     factory: AuthServiceFactory = Depends(get_factory),
 ):
-    """Lista los usuarios del sistema con su rol (solo admin)."""
+    """Lista los usuarios del sistema con su rol (super admin y socio)."""
     result = factory.list_users().list()
 
     return build_list_response(items=[_user_to_dict(u) for u in (result.data or [])])
@@ -77,10 +77,10 @@ def list_users(
 @router.post("", status_code=201)
 def invite_user(
     payload: InviteUserRequest,
-    _identity: dict = Depends(admin_required),
+    _identity: dict = Depends(super_admin_required),
     factory: AuthServiceFactory = Depends(get_factory),
 ):
-    """Da de alta a una persona y le envía la bienvenida (solo admin)."""
+    """Da de alta a una persona y le envía la bienvenida (solo super admin)."""
     result = factory.invite_user().invite(
         email=payload.email,
         role_code=payload.role_code,
@@ -102,10 +102,10 @@ def invite_user(
 def update_user_role(
     user_id: int,
     payload: UpdateUserRoleRequest,
-    identity: dict = Depends(admin_required),
+    identity: dict = Depends(super_admin_required),
     factory: AuthServiceFactory = Depends(get_factory),
 ):
-    """Cambia el rol de un usuario (solo admin; nunca el propio)."""
+    """Cambia el rol de un usuario (solo super admin; nunca el propio)."""
     result = factory.update_user_role().update(
         user_id=user_id,
         role_code=payload.role_code,
@@ -134,10 +134,10 @@ _STATUS_SUCCESS_MESSAGES: dict[str, str] = {
 def update_user_status(
     user_id: int,
     payload: UpdateUserStatusRequest,
-    identity: dict = Depends(admin_required),
+    identity: dict = Depends(super_admin_required),
     factory: AuthServiceFactory = Depends(get_factory),
 ):
-    """Activa, bloquea o desactiva la cuenta de un usuario (solo admin; nunca la propia)."""
+    """Activa, bloquea o desactiva la cuenta de un usuario (solo super admin; nunca la propia)."""
     result = factory.update_user_status().update(
         user_id=user_id,
         status=payload.status,

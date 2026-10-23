@@ -22,7 +22,7 @@ app/
     contracts/service_result.py   # ServiceResult[T], ServiceError
     http/                    # send() + build_*_response()
     errors/                  # register_error_handlers, mensajes globales
-    security/                # jwt/ (token_required_actual, admin_required), otp/, rate_limiter,
+    security/                # jwt/ (token_required_actual, super_admin_required, staff_required, read/write_scope), otp/, rate_limiter,
                              # credentials_cipher, sanitization/, security_headers
     audit/                   # audit middleware + repositorio (audit_logs)
     logging/                 # configure_logging(), LoggingMiddleware

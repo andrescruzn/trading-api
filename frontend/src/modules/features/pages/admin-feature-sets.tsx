@@ -1,6 +1,7 @@
 import { IconPlus } from '@tabler/icons-react';
 import { useState } from 'react';
 import { usePageBreadcrumb } from '@/modules/app-shell/hooks/use-page-breadcrumb';
+import { useCanManage } from '@/modules/auth/hooks/use-can-manage';
 import type { FeatureSet } from '@/modules/features/api/features.api';
 import { FeatureSetFormDialog } from '@/modules/features/components/feature-set-form-dialog';
 import { useFeatureSetsQuery } from '@/modules/features/hooks/use-features-queries';
@@ -83,6 +84,7 @@ const columns: DataTableColumn<FeatureSet>[] = [
 ];
 
 export function AdminFeatureSetsPage() {
+	const canManage = useCanManage();
 	usePageBreadcrumb([
 		{ label: 'Administración' },
 		{ label: 'Conjuntos de indicadores' },
@@ -100,6 +102,7 @@ export function AdminFeatureSetsPage() {
 						label: 'Nuevo conjunto',
 						icon: <IconPlus />,
 						onClick: () => setCreating(true),
+						hidden: !canManage,
 					},
 				]}
 			/>

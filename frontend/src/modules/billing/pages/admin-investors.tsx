@@ -2,6 +2,7 @@ import { IconPencil, IconPlus } from '@tabler/icons-react';
 import { useState } from 'react';
 import { usePageBreadcrumb } from '@/modules/app-shell/hooks/use-page-breadcrumb';
 import { OwnerCell } from '@/modules/auth/components/owner-cell';
+import { useCanManage } from '@/modules/auth/hooks/use-can-manage';
 import { useOwners } from '@/modules/auth/hooks/use-users-queries';
 import type { Investor } from '@/modules/billing/api/billing.api';
 import { InvestorFormDialog } from '@/modules/billing/components/investor-form-dialog';
@@ -16,6 +17,7 @@ import { Badge } from '@/modules/ui/components/badge';
 import { Button } from '@/modules/ui/components/button';
 
 export function AdminInvestorsPage() {
+	const canManage = useCanManage();
 	usePageBreadcrumb([{ label: 'Administración' }, { label: 'Inversores' }]);
 	const investorsQuery = useInvestorsQuery();
 	const owners = useOwners('all');
@@ -79,11 +81,16 @@ export function AdminInvestorsPage() {
 						label: 'Nuevo inversor',
 						icon: <IconPlus />,
 						onClick: () => setEditing(null),
+						hidden: !canManage,
 					},
 				]}
 			/>
 			<DataTable
-				columns={columns}
+				columns={
+					canManage
+						? columns
+						: columns.filter((column) => column.id !== 'actions')
+				}
 				rows={investorsQuery.data}
 				getRowId={(row) => row.id}
 				isLoading={investorsQuery.isLoading}

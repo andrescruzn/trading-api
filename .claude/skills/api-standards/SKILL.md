@@ -46,7 +46,7 @@ STRATEGY_ERROR_MESSAGES: dict[str, str] = {
 @router.post("", status_code=201)
 def create_strategy(
     payload: CreateStrategyRequest,
-    identity: dict = Depends(admin_required),
+    identity: dict = Depends(super_admin_required),
     factory: StrategyServiceFactory = Depends(get_factory),
 ):
     result = factory.create_strategy().create(name=payload.name, ...)
@@ -63,7 +63,9 @@ Reglas:
 ## Autenticación y roles en rutas
 
 - Usuario autenticado: `identity: dict = Depends(token_required_actual)` → `identity["user_id"]`, `identity["role_id"]`.
-- Solo admin: `Depends(admin_required)` (de `app.common.security.jwt`). Preferirlo a comparar `role_id` a mano dentro de la ruta.
+- Escrituras de sistema (crear, editar, pausar, aprobar): `Depends(super_admin_required)`. Vistas de supervisión de solo lectura: `Depends(staff_required)` (super admin + socio). Ambos de `app.common.security.jwt`; nunca comparar `role_id` a mano.
+- Propiedad: lecturas con `owner_id=read_scope(identity)` (None para el staff) y escrituras con `owner_id=write_scope(identity)` (None solo para super admin). Helpers sueltos: `is_super_admin`, `is_staff`, `is_partner`, `is_investor`.
+- El socio (`partner`) es solo lectura: `token_required_actual` rechaza sus POST/PUT/PATCH/DELETE (403 `AUTH_READ_ONLY_ROLE`) salvo la lista de `app/common/security/jwt/read_only_policy.py`. Una escritura nueva que el socio sí deba hacer (sobre sí mismo) va en esa lista.
 - Recursos de usuario: filtrar siempre por `identity["user_id"]` (ownership) en el servicio.
 - Endpoints de auth: `Depends(check_auth_rate_limit)`.
 

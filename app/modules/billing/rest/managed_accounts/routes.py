@@ -4,10 +4,10 @@
 # app/modules/billing/rest/managed_accounts/routes.py
 #
 # ENDPOINTS:
-# - GET  /api/managed-accounts           → listar (admin: todas; investor: las suyas)
-# - POST /api/managed-accounts           → crear (admin)
-# - GET  /api/managed-accounts/{id}      → detalle (admin o investor dueño)
-# - PUT  /api/managed-accounts/{id}      → actualizar (admin)
+# - GET  /api/managed-accounts           → listar (staff: todas; investor: las suyas)
+# - POST /api/managed-accounts           → crear (super admin)
+# - GET  /api/managed-accounts/{id}      → detalle (staff o investor dueño)
+# - PUT  /api/managed-accounts/{id}      → actualizar (super admin)
 # ======================================================================
 
 from __future__ import annotations
@@ -17,10 +17,15 @@ from typing import Any
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from app.common.config import settings
 from app.common.http import build_created_response, build_error_response, build_list_response, send
 from app.common.security.jwt import token_required_actual
-from app.common.security.jwt.role_guard import admin_required
+from app.common.security.jwt.role_guard import (
+    is_investor,
+    is_staff,
+    is_super_admin,
+    staff_required,
+    super_admin_required,
+)
 from app.extensions.db import get_db
 from app.modules.billing.domain.managed_account_entity import ManagedAccount
 from app.modules.billing.domain.capital_movement_entity import CapitalMovement
@@ -63,18 +68,16 @@ def list_managed_accounts(
     identity: dict = Depends(token_required_actual),
     factory: BillingServiceFactory = Depends(get_factory),
 ):
-    role_id = int(identity.get("role_id", 0))
-    is_admin = role_id == int(settings.AUTH_ADMIN_ROLE_ID)
-    is_investor = role_id == int(settings.AUTH_INVESTOR_ROLE_ID)
+    sees_all = is_staff(identity)
 
     investor_id: int | None = None
-    if is_investor:
+    if is_investor(identity):
         # El inversor solo ve sus propias cuentas
         inv = factory._investor_repo.find_by_user_id(identity.get("user_id"))
         if not inv:
             return build_list_response(items=[], msg="OK")
         investor_id = inv.id
-    elif not is_admin:
+    elif not sees_all:
         return send(msg="No tienes permiso para hacer esta acción.", status_code=403, data={})
 
     result = factory.list_managed_accounts().execute(
@@ -97,7 +100,7 @@ def create_managed_account(
     identity: dict = Depends(token_required_actual),
     factory: BillingServiceFactory = Depends(get_factory),
 ):
-    if int(identity.get("role_id", 0)) != int(settings.AUTH_ADMIN_ROLE_ID):
+    if not is_super_admin(identity):
         return send(msg="No tienes permiso para hacer esta acción.", status_code=403, data={})
 
     result = factory.create_managed_account().execute(
@@ -127,16 +130,14 @@ def get_managed_account(
     identity: dict = Depends(token_required_actual),
     factory: BillingServiceFactory = Depends(get_factory),
 ):
-    role_id = int(identity.get("role_id", 0))
-    is_admin = role_id == int(settings.AUTH_ADMIN_ROLE_ID)
-    is_investor = role_id == int(settings.AUTH_INVESTOR_ROLE_ID)
+    sees_all = is_staff(identity)
 
-    # Sin rol admin ni investor no hay cuentas gestionadas que ver
-    if not is_admin and not is_investor:
+    # Sin rol staff ni investor no hay cuentas gestionadas que ver
+    if not sees_all and not is_investor(identity):
         return send(msg="No tienes permiso para hacer esta acción.", status_code=403, data={})
 
     investor_id: int | None = None
-    if is_investor:
+    if is_investor(identity):
         inv = factory._investor_repo.find_by_user_id(identity.get("user_id"))
         if not inv:
             return send(msg="No tienes permiso para hacer esta acción.", status_code=403, data={})
@@ -144,7 +145,7 @@ def get_managed_account(
 
     result = factory.get_managed_account().execute(
         managed_account_id=managed_account_id,
-        investor_id=investor_id if not is_admin else None,
+        investor_id=investor_id if not sees_all else None,
     )
     if not result.success:
         return build_error_response(result, MANAGED_ACCOUNT_ERROR_MESSAGES)
@@ -163,7 +164,7 @@ def update_managed_account(
     identity: dict = Depends(token_required_actual),
     factory: BillingServiceFactory = Depends(get_factory),
 ):
-    if int(identity.get("role_id", 0)) != int(settings.AUTH_ADMIN_ROLE_ID):
+    if not is_super_admin(identity):
         return send(msg="No tienes permiso para hacer esta acción.", status_code=403, data={})
 
     result = factory.update_managed_account().execute(
@@ -204,7 +205,7 @@ def _estimate_to_dict(e: EquityEstimate) -> dict[str, Any]:
 @router.get("/{managed_account_id}/equity-estimate", status_code=200)
 def estimate_equity(
     managed_account_id: int,
-    _identity: dict = Depends(admin_required),
+    _identity: dict = Depends(staff_required),
     factory: BillingServiceFactory = Depends(get_factory),
 ):
     """Equity sugerido desde los últimos balances (para abrir o cerrar un período)."""
@@ -244,14 +245,14 @@ def list_capital_movements(
     identity: dict = Depends(token_required_actual),
     factory: BillingServiceFactory = Depends(get_factory),
 ):
-    """Aportes y retiros de la cuenta (admin, o el inversor dueño)."""
+    """Aportes y retiros de la cuenta (staff, o el inversor dueño)."""
     investor_id: int | None = None
-    if int(identity.get("role_id", 0)) == int(settings.AUTH_INVESTOR_ROLE_ID):
+    if is_investor(identity):
         inv = factory._investor_repo.find_by_user_id(identity.get("user_id"))
         if not inv:
             return send(msg="No tienes acceso a esta cuenta gestionada.", status_code=403, data={})
         investor_id = inv.id
-    elif int(identity.get("role_id", 0)) != int(settings.AUTH_ADMIN_ROLE_ID):
+    elif not is_staff(identity):
         return send(msg="No tienes permiso para hacer esta acción.", status_code=403, data={})
 
     result = factory.list_capital_movements().execute(
@@ -272,10 +273,10 @@ _MOVEMENT_MESSAGES: dict[str, str] = {
 def record_capital_movement(
     managed_account_id: int,
     payload: CapitalMovementRequest,
-    identity: dict = Depends(admin_required),
+    identity: dict = Depends(super_admin_required),
     factory: BillingServiceFactory = Depends(get_factory),
 ):
-    """Registra un aporte o retiro y ajusta la marca de agua (solo admin)."""
+    """Registra un aporte o retiro y ajusta la marca de agua (solo super admin)."""
     result = factory.record_capital_movement().execute(
         managed_account_id=managed_account_id,
         kind=payload.kind,

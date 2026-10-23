@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useAccountsQuery } from '@/modules/accounts/hooks/use-accounts-queries';
 import { botLabel } from '@/modules/alerts/lib/alerts-labels';
 import { usePageBreadcrumb } from '@/modules/app-shell/hooks/use-page-breadcrumb';
+import { useCanManage } from '@/modules/auth/hooks/use-can-manage';
 import { useOwners } from '@/modules/auth/hooks/use-users-queries';
 import type { ManagedAccount } from '@/modules/billing/api/billing.api';
 import { CapitalMovementsSheet } from '@/modules/billing/components/capital-movements-sheet';
@@ -29,6 +30,7 @@ import { Button } from '@/modules/ui/components/button';
 const MONEY = 'text-right font-mono tabular-nums';
 
 export function AdminManagedAccountsPage() {
+	const canManage = useCanManage();
 	usePageBreadcrumb([
 		{ label: 'Administración' },
 		{ label: 'Cuentas gestionadas' },
@@ -126,10 +128,12 @@ export function AdminManagedAccountsPage() {
 						<IconArrowsExchange />
 						Aportes y retiros
 					</Button>
-					<Button variant="ghost" size="sm" onClick={() => setEditing(row)}>
-						<IconPencil />
-						Editar
-					</Button>
+					{canManage && (
+						<Button variant="ghost" size="sm" onClick={() => setEditing(row)}>
+							<IconPencil />
+							Editar
+						</Button>
+					)}
 				</div>
 			),
 		},
@@ -145,6 +149,7 @@ export function AdminManagedAccountsPage() {
 						label: 'Nueva cuenta gestionada',
 						icon: <IconPlus />,
 						onClick: () => setEditing(null),
+						hidden: !canManage,
 					},
 				]}
 			/>

@@ -5,9 +5,9 @@
 #
 # ENDPOINTS para modelos ML:
 # - GET  /api/models           → listar modelos (filtro: status)
-# - POST /api/models           → crear modelo (admin)
+# - POST /api/models           → crear modelo (super admin)
 # - GET  /api/models/{id}      → obtener por ID
-# - PUT  /api/models/{id}      → actualizar (admin)
+# - PUT  /api/models/{id}      → actualizar (super admin)
 # ======================================================================
 
 from __future__ import annotations
@@ -17,7 +17,6 @@ from typing import Any, Optional
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
-from app.common.config import settings
 from app.common.http import (
     build_created_response,
     build_error_response,
@@ -25,7 +24,7 @@ from app.common.http import (
     build_success_response,
     send,
 )
-from app.common.security.jwt import token_required_actual
+from app.common.security.jwt import is_super_admin, token_required_actual
 from app.extensions.db import get_db
 from app.modules.agent.domain.ml_model_entity import MLModel
 from app.modules.agent.providers import AgentServiceFactory
@@ -73,7 +72,7 @@ def create_model(
     identity: dict = Depends(token_required_actual),
     factory: AgentServiceFactory = Depends(get_factory),
 ):
-    if int(identity.get("role_id", 0)) != int(settings.AUTH_ADMIN_ROLE_ID):
+    if not is_super_admin(identity):
         return send(msg="No tienes permisos para crear modelos.", status_code=403)
 
     result = factory.create_model().create(
@@ -108,7 +107,7 @@ def update_model(
     identity: dict = Depends(token_required_actual),
     factory: AgentServiceFactory = Depends(get_factory),
 ):
-    if int(identity.get("role_id", 0)) != int(settings.AUTH_ADMIN_ROLE_ID):
+    if not is_super_admin(identity):
         return send(msg="No tienes permisos para modificar modelos.", status_code=403)
 
     result = factory.update_model().update(

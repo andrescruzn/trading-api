@@ -21,7 +21,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.common.http import build_error_response, build_success_response
-from app.common.security.jwt import owner_scope, token_required_actual
+from app.common.security.jwt import super_admin_required, write_scope
 from app.common.security.rate_limiter import agent_analysis_rate_limiter, check_user_rate_limit
 from app.extensions.db import get_db
 from app.modules.agent.domain.analysis_result import AnalysisResult
@@ -56,7 +56,7 @@ def _result_to_dict(result: AnalysisResult) -> dict[str, Any]:
 @router.post("/analyze", status_code=200)
 def analyze(
     payload: AnalyzeRequest,
-    identity: dict = Depends(token_required_actual),
+    identity: dict = Depends(super_admin_required),
     factory: AgentServiceFactory = Depends(get_factory),
 ):
     """
@@ -82,7 +82,7 @@ def analyze(
         strategy_id=payload.strategy_id,
         account_id=payload.account_id,
         feature_set_id=payload.feature_set_id,
-        owner_id=owner_scope(identity),
+        owner_id=write_scope(identity),
     )
 
     if not result.success:

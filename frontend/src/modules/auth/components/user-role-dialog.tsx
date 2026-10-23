@@ -4,8 +4,8 @@ import type { UserSummary } from '@/modules/auth/api/users.api';
 import { useUpdateUserRoleMutation } from '@/modules/auth/hooks/use-users-mutations';
 import { userDisplayName } from '@/modules/auth/hooks/use-users-queries';
 import {
+	ASSIGNABLE_ROLE_OPTIONS,
 	ROLE_LABELS,
-	ROLE_OPTIONS,
 	ROLES,
 	type RoleCode,
 } from '@/modules/auth/lib/roles';
@@ -41,17 +41,11 @@ type UserRoleDialogProps = {
 
 /** Qué cambia para la persona: lo que gana o pierde con el rol nuevo. */
 function roleChangeWarning(from: RoleCode | null, to: RoleCode) {
-	if (to === ROLES.ADMIN) {
-		return 'Tendrá acceso a toda la Administración: los agentes, cuentas, órdenes y alertas de todos, y la facturación de los inversores.';
+	if (to === ROLES.PARTNER) {
+		return 'Verá toda la Administración en solo lectura: agentes, cuentas, órdenes, alertas e inversores de todos. No podrá crear, editar, pausar ni aprobar nada.';
 	}
-	if (from === ROLES.ADMIN) {
-		return 'Dejará de ver la Administración.';
-	}
-	if (from === ROLES.INVESTOR) {
-		return 'Dejará de ver Mi inversión. Su perfil de inversor y sus cuentas administradas no se borran.';
-	}
-	if (to === ROLES.INVESTOR) {
-		return 'Verá Mi inversión. Después créale su perfil en Inversores para cobrarle la comisión.';
+	if (from === ROLES.PARTNER) {
+		return 'Dejará de ver la Administración. Solo verá lo suyo como inversor.';
 	}
 	return null;
 }
@@ -110,7 +104,7 @@ export function UserRoleDialog({ user, onOpenChange }: UserRoleDialogProps) {
 								id="user-role"
 								value={roleCode}
 								onChange={(value) => setRoleCode(value as RoleCode | null)}
-								options={ROLE_OPTIONS}
+								options={ASSIGNABLE_ROLE_OPTIONS}
 							/>
 							<FieldDescription>
 								El rol decide qué ve en el menú y qué puede hacer.

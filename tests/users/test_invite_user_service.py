@@ -9,11 +9,13 @@ from unittest.mock import MagicMock
 from tests.conftest import make_user
 from app.modules.users.services.users import InviteUserService
 
-ROLE_IDS = {"user": 1, "admin": 2, "investor": 3}
+# Roles asignables desde la app (super admin no se asigna)
+ROLE_IDS = {"partner": 4, "investor": 3}
+SUPER_ADMIN_ROLE_ID = 2
 ROLES = {
-    1: {"code": "user", "name": "Usuario"},
-    2: {"code": "admin", "name": "Administrador"},
+    2: {"code": "super_admin", "name": "Super admin"},
     3: {"code": "investor", "name": "Inversor"},
+    4: {"code": "partner", "name": "Socio"},
 }
 
 
@@ -53,7 +55,7 @@ class TestInviteUserService:
     def test_email_already_taken(self):
         svc, repo, mailer = _make_service(existing=make_user(email="ana@ejemplo.com"))
 
-        result = svc.invite(email="ana@ejemplo.com", role_code="user")
+        result = svc.invite(email="ana@ejemplo.com", role_code="investor")
 
         assert result.error.code == "USER_EMAIL_TAKEN"
         assert result.error.http_status == 409
@@ -63,7 +65,7 @@ class TestInviteUserService:
     def test_invalid_email(self):
         svc, repo, _ = _make_service()
 
-        result = svc.invite(email="no-es-correo", role_code="user")
+        result = svc.invite(email="no-es-correo", role_code="investor")
 
         assert result.error.code == "USER_INVALID_EMAIL"
         repo.create.assert_not_called()
@@ -79,7 +81,7 @@ class TestInviteUserService:
     def test_name_is_optional(self):
         svc, repo, _ = _make_service()
 
-        result = svc.invite(email="ana@ejemplo.com", role_code="user", full_name="   ")
+        result = svc.invite(email="ana@ejemplo.com", role_code="investor", full_name="   ")
 
         assert result.success is True
         assert repo.create.call_args.args[0].full_name is None

@@ -5,8 +5,8 @@
 #
 # ENDPOINTS para ejecuciones de entrenamiento:
 # - GET  /api/model-runs?model_id=X → listar runs de un modelo
-# - POST /api/model-runs             → iniciar run (admin)
-# - POST /api/model-runs/{id}/finish → finalizar run (admin)
+# - POST /api/model-runs             → iniciar run (super admin)
+# - POST /api/model-runs/{id}/finish → finalizar run (super admin)
 # ======================================================================
 
 from __future__ import annotations
@@ -16,7 +16,6 @@ from typing import Any
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
-from app.common.config import settings
 from app.common.http import (
     build_created_response,
     build_error_response,
@@ -24,7 +23,7 @@ from app.common.http import (
     build_success_response,
     send,
 )
-from app.common.security.jwt import token_required_actual
+from app.common.security.jwt import is_super_admin, token_required_actual
 from app.extensions.db import get_db
 from app.modules.agent.domain.model_run_entity import ModelRun
 from app.modules.agent.providers import AgentServiceFactory
@@ -72,7 +71,7 @@ def create_model_run(
     identity: dict = Depends(token_required_actual),
     factory: AgentServiceFactory = Depends(get_factory),
 ):
-    if int(identity.get("role_id", 0)) != int(settings.AUTH_ADMIN_ROLE_ID):
+    if not is_super_admin(identity):
         return send(msg="No tienes permisos para iniciar entrenamientos.", status_code=403)
 
     result = factory.create_model_run().create(
@@ -93,7 +92,7 @@ def finish_model_run(
     identity: dict = Depends(token_required_actual),
     factory: AgentServiceFactory = Depends(get_factory),
 ):
-    if int(identity.get("role_id", 0)) != int(settings.AUTH_ADMIN_ROLE_ID):
+    if not is_super_admin(identity):
         return send(msg="No tienes permisos para finalizar entrenamientos.", status_code=403)
 
     result = factory.finish_model_run().finish(

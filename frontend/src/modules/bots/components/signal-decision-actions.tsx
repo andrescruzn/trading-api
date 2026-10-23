@@ -1,5 +1,6 @@
 import { IconCheck, IconLoader2, IconX } from '@tabler/icons-react';
 import { useEffect, useState } from 'react';
+import { useCanManage } from '@/modules/auth/hooks/use-can-manage';
 import type { BotMode, Signal } from '@/modules/bots/api/bots.api';
 import {
 	useApproveSignalMutation,
@@ -61,10 +62,14 @@ export function SignalDecisionActions({
 	size = 'sm',
 	onDecided,
 }: SignalDecisionActionsProps) {
+	const canManage = useCanManage();
 	const approve = useApproveSignalMutation();
 	const reject = useRejectSignalMutation();
 	const [confirmLive, setConfirmLive] = useState(false);
 	const now = useNow();
+
+	// Solo un super admin cambia cosas: el socio ve el agente en solo lectura.
+	if (!canManage) return null;
 
 	if (signal.decision_status !== 'pending') return null;
 

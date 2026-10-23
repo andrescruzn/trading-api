@@ -6,7 +6,7 @@ Una explicación simple de los 10 módulos del sistema, sin tecnicismos. Cada m�
 
 | Módulo | Estado | Alcance | Madurez | Descripción |
 |--------|--------|--------:|--------:|-------------|
-| [M1 — Auth & Frontend](M01-AUTH.md) | ✅ Completo | 100 % | 84 % | Login solo por código OTP (con intentos máximos), una sesión por persona con aviso, perfil propio, roles, bloquear/desactivar cuentas (pausa sus agentes), auditoría visible, defensa CSRF por Origin, auditoría sin secretos, vínculo de Telegram, frontend React (shell, dashboard) |
+| [M1 — Auth & Frontend](M01-AUTH.md) | ✅ Completo | 100 % | 84 % | Login solo por código OTP (con intentos máximos), una sesión por persona con aviso, perfil propio, roles del fondo común (super admin, socio de solo lectura, inversor), bloquear/desactivar cuentas (pausa sus agentes), auditoría visible, defensa CSRF por Origin, auditoría sin secretos, vínculo de Telegram, frontend React (shell, dashboard) |
 | [M2 — Market Data](M02-MARKET-DATA.md) | ✅ Completo | 100 % | 86 % | Exchanges, símbolos (cripto + perpetuos TradFi: metales, materias primas, ETFs, acciones), velas OHLCV via ccxt, scheduler de ingesta (un solo líder por lock de MySQL) y explorador de tendencia |
 | [M3 — Feature Engineering](M03-FEATURE-ENGINEERING.md) | ✅ Completo | 100 % | 82 % | RSI, ATR, EMA, MACD, Bollinger Bands, régimen; conjuntos por enfoque (Completo/Tendencia/Rango) |
 | [M4 — Accounts & Portfolio](M04-ACCOUNTS-PORTFOLIO.md) | ✅ Completo | 100 % | 79 % | Cuentas de exchange (credenciales cifradas), balances, equity curve |
@@ -168,8 +168,9 @@ Hash routing: la URL real es `/#/<ruta>`. Cada ruta vive en `frontend/src/routes
 | Rol | Páginas |
 |---|---|
 | Público | `/login` |
-| Usuario (y demás roles) | `/dashboard` (inicio = lista de agentes), `/agents/new`, `/agents/:id`, `/alerts`, `/portfolio`, `/strategies`, `/track-record`, `/backtest`, `/market/explorer` (`/agents`, `/bots`, `/agent`, `/orders`, `/features` y `/market/candles` redirigen a `/dashboard`; `/market/symbols` a `/market/explorer`) |
-| Admin (`_app/admin/*`) | `/admin/exchanges`, `/admin/symbols`, `/admin/timeframes`, `/admin/feature-sets`, `/admin/users`, `/admin/accounts`, `/admin/strategies`, `/admin/agents`, `/admin/orders`, `/admin/alerts`, `/admin/telegram`, `/admin/investors`, `/admin/managed-accounts`, `/admin/billing` |
+| Todos los roles | `/dashboard` (inicio = lista de agentes), `/agents/:id`, `/alerts`, `/strategies`, `/track-record`, `/backtest`, `/market/explorer` (`/agents`, `/bots`, `/agent`, `/orders`, `/features` y `/market/candles` redirigen a `/dashboard`; `/market/symbols` a `/market/explorer`) |
+| Solo super admin | `/agents/new`, `/portfolio` (`ManagerGuard`) y `/admin/telegram` en el menú |
+| Super admin y socio (`_app/admin/*`; el socio sin botones de escritura) | `/admin/exchanges`, `/admin/symbols`, `/admin/timeframes`, `/admin/feature-sets`, `/admin/users`, `/admin/accounts`, `/admin/strategies`, `/admin/agents`, `/admin/orders`, `/admin/alerts`, `/admin/telegram`, `/admin/investors`, `/admin/managed-accounts`, `/admin/billing` |
 | Inversor (`_app/investor/*`) | `/investor/dashboard` |
 
 Comprar/Vender vive en el [Módulo 8 — Orders & Execution](M08-ORDERS-EXECUTION.md).
@@ -187,6 +188,10 @@ Cambios del 2026-10-20 (Fase 3):
 - Menú de usuario: **Mi perfil** (cambiar el nombre) — [M1](M01-AUTH.md).
 - `/agents/:id` → Mercado: **gráfico de precio** con líneas de Entrada, SL y TP — [M7](M07-BOTS-SIGNALS.md).
 - `/alerts`: en PnL y drawdown el agente es obligatorio; textos de revisión automática — [M9](M09-ALERTS.md).
+
+Cambios del 2026-10-22 (fondo común, F1 — roles):
+- Roles **Super admin** (los propietarios), **Socio** (ve todo, no cambia nada) e **Inversor**; el rol Usuario desaparece. Todas las páginas de Administración las ve el socio, sin "Nuevo…", "Editar", Iniciar/Pausar/Detener, Analizar ahora, Nueva orden, Cancelar, Aprobar/Descartar ni cambios de modo — [M1](M01-AUTH.md).
+- `/admin/users`: invitar y cambiar rol solo a Socio o Inversor; los super admin no tienen menú — [M1](M01-AUTH.md).
 
 Cambios del 2026-10-20 (Fase 4, administración):
 - `/admin/users`: menú de acciones con **Cambiar rol** y **Activar / Bloquear / Desactivar cuenta** (bloquear o desactivar cierra su sesión y pausa sus agentes) — [M1](M01-AUTH.md).

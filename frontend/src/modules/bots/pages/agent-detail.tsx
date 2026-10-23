@@ -10,8 +10,9 @@ import {
 import { getRouteApi, Link } from '@tanstack/react-router';
 import { type ReactNode, useState } from 'react';
 import { usePageBreadcrumb } from '@/modules/app-shell/hooks/use-page-breadcrumb';
+import { useCanManage } from '@/modules/auth/hooks/use-can-manage';
 import { useHasRole } from '@/modules/auth/hooks/use-has-role';
-import { ROLES } from '@/modules/auth/lib/roles';
+import { STAFF_ROLES } from '@/modules/auth/lib/roles';
 import type { Bot, Signal } from '@/modules/bots/api/bots.api';
 import { AgentControls } from '@/modules/bots/components/agent-controls';
 import { AgentMarketTab } from '@/modules/bots/components/agent-market-tab';
@@ -101,6 +102,7 @@ const PREPARING_REFETCH_MS = 30_000;
 // ======================================================================
 
 function AgentName({ bot }: { bot: Bot }) {
+	const canManage = useCanManage();
 	const updateMutation = useUpdateBotMutation();
 	const [editing, setEditing] = useState(false);
 	const [draft, setDraft] = useState(bot.name);
@@ -172,11 +174,18 @@ function AgentName({ bot }: { bot: Bot }) {
 		);
 	}
 
+	const title = (
+		<h1 className="truncate text-2xl font-semibold tracking-tight">
+			{describeBot(bot)}
+		</h1>
+	);
+
+	// El socio ve el nombre, no lo cambia.
+	if (!canManage) return title;
+
 	return (
 		<div className="group flex min-w-0 items-center gap-2">
-			<h1 className="truncate text-2xl font-semibold tracking-tight">
-				{describeBot(bot)}
-			</h1>
+			{title}
 			<Button
 				variant="ghost"
 				size="icon-xs"
@@ -258,15 +267,18 @@ function OrdersTab({ bot, botLabel }: { bot: Bot; botLabel: string }) {
 	const ordersQuery = useOrdersPageQuery({ bot_id: bot.id }, params);
 	const [fillsOrder, setFillsOrder] = useState<Order | null>(null);
 	const [creating, setCreating] = useState(false);
+	const canManage = useCanManage();
 
 	return (
 		<div className="flex flex-col gap-3">
-			<div className="flex justify-end">
-				<Button size="sm" variant="outline" onClick={() => setCreating(true)}>
-					<IconPlus />
-					Nueva orden
-				</Button>
-			</div>
+			{canManage && (
+				<div className="flex justify-end">
+					<Button size="sm" variant="outline" onClick={() => setCreating(true)}>
+						<IconPlus />
+						Nueva orden
+					</Button>
+				</div>
+			)}
 			<OrdersTable
 				orders={ordersQuery.data?.items}
 				isLoading={ordersQuery.isLoading}
@@ -459,11 +471,11 @@ export function AgentDetailPage() {
 	const [selectedSignal, setSelectedSignal] = useState<Signal | null>(null);
 	const bot = botQuery.data;
 
-	// Un admin puede abrir agentes de otros usuarios desde "Todos los
-	// agentes" (Supervisión): la miga repite la ruta de esa vista
+	// El staff (super admin y socio) puede abrir agentes de otros desde
+	// "Todos los agentes" (Supervisión): la miga repite la ruta de esa vista
 	// (Administración › Todos los agentes) y lleva de vuelta a la lista en
 	// vez de al inicio. Los agentes propios siguen colgando de Inicio.
-	const isAdmin = useHasRole(ROLES.ADMIN);
+	const isAdmin = useHasRole(STAFF_ROLES);
 	const myBotsQuery = useMyBotsQuery({ enabled: isAdmin });
 	const isOthersAgent =
 		isAdmin &&

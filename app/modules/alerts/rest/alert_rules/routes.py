@@ -4,7 +4,7 @@
 # app/modules/alerts/rest/alert_rules/routes.py
 #
 # ENDPOINTS:
-# - GET    /api/alert-rules           → listar reglas (user ve las suyas, admin ve todas)
+# - GET    /api/alert-rules           → listar reglas (cada quien las suyas, staff ve todas)
 # - POST   /api/alert-rules           → crear nueva regla
 # - GET    /api/alert-rules/{id}      → detalle de regla
 # - PUT    /api/alert-rules/{id}      → actualizar regla
@@ -19,14 +19,13 @@ from typing import Any
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from app.common.config import settings
 from app.common.http import (
     build_created_response,
     build_error_response,
     build_list_response,
     send,
 )
-from app.common.security.jwt import owner_scope, token_required_actual
+from app.common.security.jwt import is_staff, is_super_admin, token_required_actual, write_scope
 from app.extensions.db import get_db
 from app.modules.alerts.domain.alert_rule_entity import AlertRule
 from app.modules.alerts.providers import AlertServiceFactory, get_alert_factory
@@ -64,10 +63,9 @@ def list_alert_rules(
     identity: dict = Depends(token_required_actual),
     factory: AlertServiceFactory = Depends(get_factory),
 ):
-    is_admin = int(identity.get("role_id", 0)) == int(settings.AUTH_ADMIN_ROLE_ID)
     user_id = identity.get("user_id")
 
-    result = factory.list_alert_rules().list(user_id=user_id, is_admin=is_admin)
+    result = factory.list_alert_rules().list(user_id=user_id, is_admin=is_staff(identity))
     return build_list_response(
         items=[_rule_to_dict(r) for r in (result.data or [])],
         msg="OK",
@@ -93,7 +91,7 @@ def create_alert_rule(
         channels=payload.channels,
         user_id=user_id,
         bot_id=payload.bot_id,
-        owner_id=owner_scope(identity),
+        owner_id=write_scope(identity),
     )
 
     if not result.success:
@@ -121,9 +119,8 @@ def get_alert_rule(
     if rule is None:
         return send(msg="Regla de alerta no encontrada.", status_code=404, data={})
 
-    # Ownership check (non-admin can only see their own)
-    is_admin = int(identity.get("role_id", 0)) == int(settings.AUTH_ADMIN_ROLE_ID)
-    if not is_admin and rule.user_id != identity.get("user_id"):
+    # Propiedad: fuera del staff, cada quien ve solo las suyas
+    if not is_staff(identity) and rule.user_id != identity.get("user_id"):
         return send(msg="Regla de alerta no encontrada.", status_code=404, data={})
 
     return send(msg="OK", status_code=200, data=_rule_to_dict(rule))
@@ -146,8 +143,7 @@ def update_alert_rule(
     if rule is None:
         return send(msg="Regla de alerta no encontrada.", status_code=404, data={})
 
-    is_admin = int(identity.get("role_id", 0)) == int(settings.AUTH_ADMIN_ROLE_ID)
-    if not is_admin and rule.user_id != identity.get("user_id"):
+    if not is_super_admin(identity) and rule.user_id != identity.get("user_id"):
         return send(msg="Regla de alerta no encontrada.", status_code=404, data={})
 
     result = factory.update_alert_rule().update(
@@ -179,8 +175,7 @@ def delete_alert_rule(
     if rule is None:
         return send(msg="Regla de alerta no encontrada.", status_code=404, data={})
 
-    is_admin = int(identity.get("role_id", 0)) == int(settings.AUTH_ADMIN_ROLE_ID)
-    if not is_admin and rule.user_id != identity.get("user_id"):
+    if not is_super_admin(identity) and rule.user_id != identity.get("user_id"):
         return send(msg="Regla de alerta no encontrada.", status_code=404, data={})
 
     result = factory.update_alert_rule().update(rule_id=rule_id, is_active=False)

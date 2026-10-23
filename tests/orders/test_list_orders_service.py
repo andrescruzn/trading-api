@@ -256,7 +256,7 @@ def _call_list_orders_route(factory: MagicMock, page: int | None, role_id: int) 
 
 class TestListOrdersRouteContract:
     def _admin_role(self) -> int:
-        return int(settings.AUTH_ADMIN_ROLE_ID)
+        return int(settings.AUTH_SUPER_ADMIN_ROLE_ID)
 
     def test_without_page_returns_plain_list(self):
         factory = MagicMock()

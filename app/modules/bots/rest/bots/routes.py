@@ -41,7 +41,7 @@ from app.common.http import (
     build_paginated_response,
     build_success_response,
 )
-from app.common.security.jwt import owner_scope, token_required_actual
+from app.common.security.jwt import read_scope, super_admin_required, token_required_actual, write_scope
 from app.common.security.rate_limiter import check_user_rate_limit, market_sync_rate_limiter
 from app.extensions.db import get_db
 from app.modules.bots.domain.bot_entity import Bot
@@ -136,7 +136,7 @@ def list_bots(
     """
     filters = {
         "account_id": account_id,
-        "owner_id":   int(identity["user_id"]) if mine else owner_scope(identity),
+        "owner_id":   int(identity["user_id"]) if mine else read_scope(identity),
         "status":     status,
         "mode":       mode,
         "user_id":    user_id,
@@ -190,7 +190,7 @@ def list_shared_bots(
 @router.post("", status_code=201)
 def create_bot(
     payload: CreateBotRequest,
-    identity: dict = Depends(token_required_actual),
+    identity: dict = Depends(super_admin_required),
     factory: BotServiceFactory = Depends(get_factory),
 ):
     """Crea un nuevo bot. Disponible para todos los usuarios autenticados."""
@@ -203,7 +203,7 @@ def create_bot(
         feature_set_id=payload.feature_set_id,
         mode=payload.mode,
         risk_params=payload.risk_params,
-        owner_id=owner_scope(identity),
+        owner_id=write_scope(identity),
         execution_mode=payload.execution_mode,
         approval_ttl_minutes=payload.approval_ttl_minutes,
     )
@@ -228,7 +228,7 @@ def get_bot(
     factory: BotServiceFactory = Depends(get_factory),
 ):
     """Obtiene el detalle de un bot por ID."""
-    result = factory.get_bot().get(bot_id=bot_id, owner_id=owner_scope(identity))
+    result = factory.get_bot().get(bot_id=bot_id, owner_id=read_scope(identity))
 
     if not result.success:
         return build_error_response(result, BOT_ERROR_MESSAGES)
@@ -244,7 +244,7 @@ def get_bot(
 def update_bot(
     bot_id: int,
     payload: UpdateBotRequest,
-    identity: dict = Depends(token_required_actual),
+    identity: dict = Depends(super_admin_required),
     factory: BotServiceFactory = Depends(get_factory),
 ):
     """
@@ -256,7 +256,7 @@ def update_bot(
         name=payload.name,
         mode=payload.mode,
         risk_params=payload.risk_params,
-        owner_id=owner_scope(identity),
+        owner_id=write_scope(identity),
         execution_mode=payload.execution_mode,
         approval_ttl_minutes=payload.approval_ttl_minutes,
         clear_approval_ttl="approval_ttl_minutes" in payload.model_fields_set
@@ -280,12 +280,12 @@ def update_bot(
 @router.post("/{bot_id}/start", status_code=200)
 def start_bot(
     bot_id: int,
-    identity: dict = Depends(token_required_actual),
+    identity: dict = Depends(super_admin_required),
     factory: BotServiceFactory = Depends(get_factory),
 ):
     """Inicia un bot (stopped → running)."""
     result = factory.update_bot_status().transition(
-        bot_id=bot_id, new_status="running", owner_id=owner_scope(identity)
+        bot_id=bot_id, new_status="running", owner_id=write_scope(identity)
     )
 
     if not result.success:
@@ -301,12 +301,12 @@ def start_bot(
 @router.post("/{bot_id}/stop", status_code=200)
 def stop_bot(
     bot_id: int,
-    identity: dict = Depends(token_required_actual),
+    identity: dict = Depends(super_admin_required),
     factory: BotServiceFactory = Depends(get_factory),
 ):
     """Detiene un bot (running/paused → stopped)."""
     result = factory.update_bot_status().transition(
-        bot_id=bot_id, new_status="stopped", owner_id=owner_scope(identity)
+        bot_id=bot_id, new_status="stopped", owner_id=write_scope(identity)
     )
 
     if not result.success:
@@ -322,12 +322,12 @@ def stop_bot(
 @router.post("/{bot_id}/pause", status_code=200)
 def pause_bot(
     bot_id: int,
-    identity: dict = Depends(token_required_actual),
+    identity: dict = Depends(super_admin_required),
     factory: BotServiceFactory = Depends(get_factory),
 ):
     """Pausa un bot (running → paused)."""
     result = factory.update_bot_status().transition(
-        bot_id=bot_id, new_status="paused", owner_id=owner_scope(identity)
+        bot_id=bot_id, new_status="paused", owner_id=write_scope(identity)
     )
 
     if not result.success:
@@ -343,7 +343,7 @@ def pause_bot(
 @router.post("/{bot_id}/market/sync", status_code=200)
 def sync_bot_market_data(
     bot_id: int,
-    identity: dict = Depends(token_required_actual),
+    identity: dict = Depends(super_admin_required),
     factory: BotServiceFactory = Depends(get_factory),
 ):
     """Descarga las velas del agente y recalcula sus indicadores."""
@@ -351,7 +351,7 @@ def sync_bot_market_data(
     check_user_rate_limit(market_sync_rate_limiter, identity["user_id"])
 
     result = factory.sync_bot_market_data().sync(
-        bot_id=bot_id, owner_id=owner_scope(identity)
+        bot_id=bot_id, owner_id=write_scope(identity)
     )
 
     if not result.success:

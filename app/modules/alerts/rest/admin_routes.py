@@ -20,7 +20,7 @@ from sqlalchemy.orm import Session
 
 from app.common.config import settings
 from app.common.http import send
-from app.common.security.jwt.role_guard import admin_required
+from app.common.security.jwt.role_guard import super_admin_required
 from app.extensions.db import get_db
 from app.modules.alerts.channels.telegram_channel import TelegramChannel
 from app.modules.alerts.providers import AlertServiceFactory, get_alert_factory
@@ -44,7 +44,7 @@ class EvaluatePriceRequest(BaseModel):
 @router.post("/evaluate", status_code=200)
 def evaluate_price_alerts(
     payload: EvaluatePriceRequest,
-    identity: dict = Depends(admin_required),
+    identity: dict = Depends(super_admin_required),
     factory: AlertServiceFactory = Depends(get_factory),
 ):
     """Evalúa manualmente las reglas tipo 'price' de un símbolo con el precio indicado."""
@@ -66,7 +66,7 @@ def evaluate_price_alerts(
 
 @router.post("/test-telegram", status_code=200)
 def test_telegram(
-    identity: dict = Depends(admin_required),
+    identity: dict = Depends(super_admin_required),
 ):
     """Envía un mensaje de prueba al chat Telegram configurado."""
     channel = TelegramChannel(settings=settings)

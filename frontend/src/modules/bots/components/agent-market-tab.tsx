@@ -1,5 +1,6 @@
 import { IconLoader2, IconRefresh } from '@tabler/icons-react';
 import { useState } from 'react';
+import { useCanManage } from '@/modules/auth/hooks/use-can-manage';
 import type { Bot } from '@/modules/bots/api/bots.api';
 import { useSyncBotMarketMutation } from '@/modules/bots/hooks/use-bots-mutations';
 import { CandleFeaturesTable } from '@/modules/features/components/candle-features-table';
@@ -113,7 +114,11 @@ function IndicatorsPanel({ bot, limit }: { bot: Bot; limit: number }) {
 }
 
 function SyncMarketButton({ bot }: { bot: Bot }) {
+	const canManage = useCanManage();
 	const syncMutation = useSyncBotMarketMutation();
+
+	// Descargar y recalcular es una escritura: el socio no la ve.
+	if (!canManage) return null;
 
 	function sync() {
 		syncMutation.mutate(bot.id, {

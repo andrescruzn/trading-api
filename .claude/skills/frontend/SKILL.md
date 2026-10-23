@@ -90,8 +90,8 @@ Un módulo del front por módulo de backend (M2 → `market`, M3 → `features`,
 ## Auth y roles
 
 - `useAuth()` → `{status, user, refreshUser, clear}`. `user` es `GET /users/me` (`role_code`, `role_label`, `full_name`, `email`…).
-- Roles por **`role_code`** (`ROLES.USER | ADMIN | INVESTOR` en `auth/lib/roles.ts`), nunca por `role_id` ni `role_label`.
-- Mostrar/ocultar UI: `<HasRole role={ROLES.ADMIN}>…</HasRole>` o `useHasRole(...)`.
+- Roles por **`role_code`** (`ROLES.SUPER_ADMIN | PARTNER | INVESTOR` en `auth/lib/roles.ts`; grupos `STAFF_ROLES` y `MANAGER_ROLES`), nunca por `role_id` ni `role_label`.
+- Mostrar/ocultar UI: `<HasRole role={STAFF_ROLES}>…</HasRole>` o `useHasRole(...)`. **Toda acción de escritura** (crear, editar, pausar, aprobar, cancelar) se oculta con `useCanManage()`: el socio ve lo mismo que el super admin, en solo lectura. Páginas sueltas solo de super admin: `ManagerGuard` en la ruta.
 - Login solo por código: `POST /users/login` con el correo envía el OTP → `POST /users/login/otp/verify` pone la cookie; después se llama `refreshUser()`. No hay contraseñas ni página de perfil.
 
 ## Páginas

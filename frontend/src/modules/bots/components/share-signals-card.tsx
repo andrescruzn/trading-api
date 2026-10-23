@@ -1,3 +1,4 @@
+import { useCanManage } from '@/modules/auth/hooks/use-can-manage';
 import type { Bot } from '@/modules/bots/api/bots.api';
 import { useUpdateBotMutation } from '@/modules/bots/hooks/use-bots-mutations';
 import { useSharedBotsQuery } from '@/modules/bots/hooks/use-bots-queries';
@@ -30,6 +31,8 @@ function subscribersText(count: number) {
  * envía nada hasta que se vuelva a compartir.
  */
 export function ShareSignalsCard({ bot }: { bot: Bot }) {
+	// El socio ve si se comparte pero no lo cambia.
+	const canManage = useCanManage();
 	const mutation = useUpdateBotMutation();
 	// El conteo sale del listado público, que incluye los agentes propios
 	const sharedQuery = useSharedBotsQuery({ enabled: bot.share_signals });
@@ -72,7 +75,7 @@ export function ShareSignalsCard({ bot }: { bot: Bot }) {
 					<Checkbox
 						id={`agent-share-signals-${bot.id}`}
 						checked={bot.share_signals}
-						disabled={mutation.isPending}
+						disabled={mutation.isPending || !canManage}
 						onCheckedChange={(checked) => handleChange(checked)}
 					/>
 					<div className="flex flex-col gap-0.5">

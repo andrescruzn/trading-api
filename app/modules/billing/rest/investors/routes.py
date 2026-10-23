@@ -17,9 +17,13 @@ from typing import Any
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from app.common.config import settings
 from app.common.http import build_created_response, build_error_response, build_list_response, send
-from app.common.security.jwt import token_required_actual
+from app.common.security.jwt import (
+    is_investor,
+    is_staff,
+    is_super_admin,
+    token_required_actual,
+)
 from app.extensions.db import get_db
 from app.modules.billing.domain.investor_entity import Investor
 from app.modules.billing.providers.billing_provider import BillingServiceFactory, get_billing_factory
@@ -45,10 +49,6 @@ def _investor_to_dict(inv: Investor) -> dict[str, Any]:
     }
 
 
-def _require_admin(identity: dict) -> bool:
-    return int(identity.get("role_id", 0)) == int(settings.AUTH_ADMIN_ROLE_ID)
-
-
 # ======================================================================
 # GET /api/investors
 # ======================================================================
@@ -59,17 +59,13 @@ def list_investors(
     identity: dict = Depends(token_required_actual),
     factory: BillingServiceFactory = Depends(get_factory),
 ):
-    role_id = int(identity.get("role_id", 0))
-    is_admin    = role_id == int(settings.AUTH_ADMIN_ROLE_ID)
-    is_investor = role_id == int(settings.AUTH_INVESTOR_ROLE_ID)
-
     # Un inversor puede consultar su propio perfil (para el dashboard)
-    if is_investor:
+    if is_investor(identity):
         inv = factory._investor_repo.find_by_user_id(identity.get("user_id"))
         items = [_investor_to_dict(inv)] if inv else []
         return build_list_response(items=items, msg="OK")
 
-    if not is_admin:
+    if not is_staff(identity):
         return send(msg="No tienes permiso para hacer esta acción.", status_code=403, data={})
 
     result = factory.list_investors().execute(only_active=only_active)
@@ -89,7 +85,7 @@ def create_investor(
     identity: dict = Depends(token_required_actual),
     factory: BillingServiceFactory = Depends(get_factory),
 ):
-    if not _require_admin(identity):
+    if not is_super_admin(identity):
         return send(msg="No tienes permiso para hacer esta acción.", status_code=403, data={})
 
     result = factory.create_investor().execute(
@@ -112,7 +108,7 @@ def get_investor(
     identity: dict = Depends(token_required_actual),
     factory: BillingServiceFactory = Depends(get_factory),
 ):
-    if not _require_admin(identity):
+    if not is_staff(identity):
         return send(msg="No tienes permiso para hacer esta acción.", status_code=403, data={})
 
     investor = factory._investor_repo.find_by_id(investor_id)
@@ -133,7 +129,7 @@ def update_investor(
     identity: dict = Depends(token_required_actual),
     factory: BillingServiceFactory = Depends(get_factory),
 ):
-    if not _require_admin(identity):
+    if not is_super_admin(identity):
         return send(msg="No tienes permiso para hacer esta acción.", status_code=403, data={})
 
     result = factory.update_investor().execute(

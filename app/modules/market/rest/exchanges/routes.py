@@ -5,8 +5,8 @@
 #
 # ENDPOINTS:
 # - GET  /exchanges         → lista todos (autenticado)
-# - POST /exchanges         → crear (solo admin)
-# - PUT  /exchanges/{id}    → actualizar (solo admin)
+# - POST /exchanges         → crear (solo super admin)
+# - PUT  /exchanges/{id}    → actualizar (solo super admin)
 # ======================================================================
 
 from __future__ import annotations
@@ -23,7 +23,7 @@ from app.common.http import (
     build_success_response,
 )
 from app.common.security.jwt import token_required_actual
-from app.common.security.jwt.role_guard import admin_required
+from app.common.security.jwt.role_guard import super_admin_required
 from app.extensions.db import get_db
 from app.modules.market.providers import MarketServiceFactory
 
@@ -84,7 +84,7 @@ def list_exchanges(
 @router.post("", status_code=201)
 def create_exchange(
     payload: CreateExchangeRequest,
-    _identity: dict = Depends(admin_required),
+    _identity: dict = Depends(super_admin_required),
     factory: MarketServiceFactory = Depends(get_factory),
 ):
     """Crea un exchange. Solo admins."""
@@ -110,7 +110,7 @@ def create_exchange(
 def update_exchange(
     exchange_id: int,
     payload: UpdateExchangeRequest,
-    _identity: dict = Depends(admin_required),
+    _identity: dict = Depends(super_admin_required),
     factory: MarketServiceFactory = Depends(get_factory),
 ):
     """Actualiza nombre, tipo o estado de un exchange. Solo admins."""

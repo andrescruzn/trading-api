@@ -109,7 +109,7 @@ Entregables:
 | `telegram_provider.py` no se exporta en `providers/__init__.py` y hace imports diferidos de los providers de orders y users | `orders → alerts` (hooks) importa este paquete: un import a nivel de módulo crearía un ciclo | Reorganizar los paquetes |
 | El email usa `ALERT_TEMPLATE` del catálogo del mailer (`alert.html`) | Reutiliza el servicio SMTP existente | Plantilla embebida |
 | Notificaciones de escritorio (`plyer`) **opcionales** (`DESKTOP_NOTIFICATIONS_ENABLED=false`) | Solo tiene sentido en desarrollo local | Dependencia obligatoria |
-| `admin_required` importado de `role_guard` (no `role_guard(settings.AUTH_ADMIN_ROLE_ID)`) | Convención del proyecto | — |
+| `super_admin_required` importado de `role_guard` (antes `admin_required`) | Convención del proyecto | — |
 
 ## Avance
 
@@ -285,7 +285,7 @@ ALERT_REPEAT_MINUTES=60            # antispam de precio/PnL/drawdown; 0 = avisa 
 
 ## Gotchas críticos
 
-- `admin_required` se importa de `app.common.security.jwt.role_guard` (NO usar `role_guard(settings.AUTH_ADMIN_ROLE_ID)`)
+- `super_admin_required` se importa de `app.common.security.jwt.role_guard`; el socio no crea ni edita reglas (403 en el guard JWT)
 - `build_evaluate_alerts_service(session)` evita imports circulares entre M7/M8 y M9; **no** exportar `telegram_provider` en `providers/__init__.py` (crea el ciclo orders → alerts → orders)
 - `TYPE_CHECKING` guard en `generate_signal_service.py` y `create_order_service.py` para evitar import circular en runtime
 - Los hooks siempre en `try/except` — las alertas nunca abortan el flujo de trading

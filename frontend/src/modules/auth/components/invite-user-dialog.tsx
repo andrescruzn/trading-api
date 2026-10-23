@@ -4,7 +4,10 @@ import { useEffect } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { useInviteUserMutation } from '@/modules/auth/hooks/use-users-mutations';
-import { ROLE_OPTIONS, type RoleCode } from '@/modules/auth/lib/roles';
+import {
+	ASSIGNABLE_ROLE_OPTIONS,
+	type RoleCode,
+} from '@/modules/auth/lib/roles';
 import { OptionSelect } from '@/modules/shared/components/option-select';
 import { getErrorMessage } from '@/modules/shared/lib/get-error-message';
 import { requiredSelectField } from '@/modules/shared/lib/required-select-field';
@@ -37,14 +40,14 @@ const inviteSchema = z.object({
 type InviteInput = z.input<typeof inviteSchema>;
 type InviteOutput = z.output<typeof inviteSchema>;
 
-const EMPTY: InviteInput = { email: '', full_name: '', role_code: 'user' };
+const EMPTY: InviteInput = { email: '', full_name: '', role_code: 'investor' };
 
 type InviteUserDialogProps = {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 };
 
-/** Registro solo por invitación: el admin crea la cuenta y la persona entra con su código. */
+/** Registro solo por invitación: un super admin crea la cuenta y la persona entra con su código. */
 export function InviteUserDialog({
 	open,
 	onOpenChange,
@@ -159,7 +162,7 @@ export function InviteUserDialog({
 											id="invite-role"
 											value={field.value}
 											onChange={field.onChange}
-											options={ROLE_OPTIONS}
+											options={ASSIGNABLE_ROLE_OPTIONS}
 											aria-invalid={fieldState.invalid}
 										/>
 										{fieldState.invalid && (

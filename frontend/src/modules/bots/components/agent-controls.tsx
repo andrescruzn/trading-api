@@ -5,6 +5,7 @@ import {
 	IconPlayerStop,
 } from '@tabler/icons-react';
 import { useState } from 'react';
+import { useCanManage } from '@/modules/auth/hooks/use-can-manage';
 import type { Bot, BotTransition } from '@/modules/bots/api/bots.api';
 import { StopBotDialog } from '@/modules/bots/components/stop-bot-dialog';
 import { useBotTransition } from '@/modules/bots/hooks/use-bot-transition';
@@ -33,8 +34,12 @@ export function AgentControls({
 	size = 'sm',
 	hideStop = false,
 }: AgentControlsProps) {
+	const canManage = useCanManage();
 	const { run, isPending, pendingTransition } = useBotTransition(bot);
 	const [confirmStop, setConfirmStop] = useState(false);
+
+	// Solo un super admin cambia cosas: el socio ve el agente en solo lectura.
+	if (!canManage) return null;
 
 	function renderIcon(transition: BotTransition) {
 		if (pendingTransition === transition) {

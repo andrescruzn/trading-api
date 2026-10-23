@@ -5,7 +5,7 @@
 #
 # ENDPOINTS:
 # - GET  /candles                → consulta (autenticado, filtros)
-# - POST /candles/ingest         → ingestión masiva (solo admin)
+# - POST /candles/ingest         → ingestión masiva (solo super admin)
 # ======================================================================
 
 from __future__ import annotations
@@ -22,7 +22,7 @@ from app.common.http import (
     build_success_response,
 )
 from app.common.security.jwt import token_required_actual
-from app.common.security.jwt.role_guard import admin_required
+from app.common.security.jwt.role_guard import super_admin_required
 from app.extensions.db import get_db
 from app.modules.market.providers import MarketServiceFactory
 
@@ -92,7 +92,7 @@ def list_candles(
 @router.post("/ingest", status_code=200)
 def ingest_candles(
     payload: IngestCandlesRequest,
-    _identity: dict = Depends(admin_required),
+    _identity: dict = Depends(super_admin_required),
     factory: MarketServiceFactory = Depends(get_factory),
 ):
     """
@@ -139,7 +139,7 @@ def ingest_candles(
 @router.post("/fetch", status_code=200)
 def fetch_candles_from_exchange(
     payload: FetchCandlesRequest,
-    _identity: dict = Depends(admin_required),
+    _identity: dict = Depends(super_admin_required),
     factory: MarketServiceFactory = Depends(get_factory),
 ):
     """

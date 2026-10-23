@@ -5,7 +5,7 @@
 #
 # ENDPOINTS:
 # - GET  /explorer          → ranking de mercados por tendencia (autenticado)
-# - POST /explorer/refresh  → descarga las velas diarias (solo admin)
+# - POST /explorer/refresh  → descarga las velas diarias (solo super admin)
 #
 # NOTAS:
 # - El GET solo lee la BD. Las velas 1d las trae el refresh (botón del
@@ -21,7 +21,7 @@ from sqlalchemy.orm import Session
 
 from app.common.http import build_error_response, build_list_response, build_success_response
 from app.common.security.jwt import token_required_actual
-from app.common.security.jwt.role_guard import admin_required
+from app.common.security.jwt.role_guard import super_admin_required
 from app.extensions.db import get_db
 from app.modules.market.providers import MarketServiceFactory
 from app.modules.market.services.explorer import TrendRow
@@ -81,7 +81,7 @@ def list_explorer(
 
 @router.post("/refresh", status_code=200)
 def refresh_explorer(
-    _identity: dict = Depends(admin_required),
+    _identity: dict = Depends(super_admin_required),
     factory: MarketServiceFactory = Depends(get_factory),
 ):
     """Descarga las velas 1d de todos los símbolos (incluida la del día en curso). Solo admin."""

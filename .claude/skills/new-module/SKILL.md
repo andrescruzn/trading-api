@@ -47,7 +47,7 @@ Trabajo para: **$ARGUMENTS**
 ## 6. REST — `app/modules/<modulo>/rest/<recurso>/`
 
 - [ ] `schemas.py` (Pydantic v2), `error_messages.py` (todos los códigos del servicio), `routes.py` (`APIRouter(prefix="/<recurso>")`; el `/api` lo añade `app_factory.py`).
-- [ ] Auth: `token_required_actual` / `admin_required`.
+- [ ] Auth: `token_required_actual` / `super_admin_required` (escrituras) / `staff_required` (supervisión); propiedad con `read_scope` / `write_scope`. Si el socio debe poder escribir algo suyo, añadirlo a `read_only_policy.py`.
 - [ ] Registrar el router en `app/app_factory.py`.
 
 ## 7. Frontend (si el módulo tiene pantallas)

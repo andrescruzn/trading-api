@@ -139,7 +139,7 @@ frontend/
         api/<x>.api.ts · hooks/use-<x>-queries.ts · hooks/use-<x>-mutations.ts · lib/ · components/ · pages/
 ```
 
-Sesión: cookie HttpOnly (`credentials: 'include'`), sin tokens en JS. Roles por `role_code` (`user` | `admin` | `investor`). Detalle y checklist de página nueva en el skill `frontend`.
+Sesión: cookie HttpOnly (`credentials: 'include'`), sin tokens en JS. Roles por `role_code` (`super_admin` | `partner` | `investor`): el socio (`partner`) ve todo en solo lectura; las acciones de escritura se ocultan con `useCanManage()`. Detalle y checklist de página nueva en el skill `frontend`.
 
 ## Reglas no negociables
 
@@ -148,7 +148,7 @@ Sesión: cookie HttpOnly (`credentials: 'include'`), sin tokens en JS. Roles por
 3. Las rutas responden siempre con los helpers de `app.common.http` (`send`, `build_*_response`). En éxito `errorCode` = 200/201, nunca 0; los errores se detectan con `errorCode >= 400`.
 4. `session.commit()` **solo en la capa repositorio** (base `SqlAlchemyRepository`). Los servicios no reciben `Session`: al final del caso de uso llaman `self._repo.commit()`, y si algo falla a mitad, `self._repo.rollback()`. Todos los repos de un request comparten sesión, así que un commit confirma todo de forma atómica.
 5. Todo modelo ORM nuevo se registra en `app/extensions/db/models_registry.py`; todo router nuevo en `app/app_factory.py`.
-6. No hardcodear IDs de rol: `settings.AUTH_USER_ROLE_ID`, `AUTH_ADMIN_ROLE_ID`, `AUTH_INVESTOR_ROLE_ID`.
+6. No hardcodear IDs de rol: `settings.AUTH_SUPER_ADMIN_ROLE_ID`, `AUTH_PARTNER_ROLE_ID`, `AUTH_INVESTOR_ROLE_ID`. Escrituras con `super_admin_required` / `write_scope`; lecturas de supervisión con `staff_required` / `read_scope` (`app.common.security.jwt`).
 7. Fechas con `utc_now()` de `app.common.utils`, nunca `datetime.now(...)` directo.
 8. Precios, cantidades y balances: `DECIMAL(30,12)` en MySQL, `TIMESTAMP(6)` para fechas, `BIGINT` para IDs.
 9. FastAPI no renderiza vistas: ni Jinja2 para páginas, ni `StaticFiles`, ni redirects a páginas. Toda UI va en `frontend/` (skill `frontend`).

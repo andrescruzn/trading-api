@@ -31,13 +31,16 @@ description: Seguridad de Trading App. Usar antes de tocar autenticación, roles
 
 | Rol | ID (en BD) | Setting |
 |---|---|---|
-| user | 1 | `settings.AUTH_USER_ROLE_ID` |
-| admin | 2 | `settings.AUTH_ADMIN_ROLE_ID` |
+| super_admin (propietarios) | 2 | `settings.AUTH_SUPER_ADMIN_ROLE_ID` |
 | investor | 3 | `settings.AUTH_INVESTOR_ROLE_ID` |
+| partner (socio, solo lectura) | 4 | `settings.AUTH_PARTNER_ROLE_ID` |
 
-- Los *defaults* de `settings.py` coinciden con la BD (1 user, 2 admin, 3 investor). Si alguien cambia los IDs en la tabla `roles`, debe cambiarlos también en `.env`.
+- El rol 1 (`user`) quedó inactivo con el fondo común (migración `m01_roles_fondo`); `admin` pasó a llamarse `super_admin` con el mismo ID.
+- Los *defaults* de `settings.py` coinciden con la BD. Si alguien cambia los IDs en la tabla `roles`, debe cambiarlos también en `.env`.
 - Nunca hardcodear IDs; usar siempre los settings.
-- Rutas solo admin: `Depends(admin_required)`. Recursos de usuario: verificar ownership (`user_id` del token) en el servicio.
+- Escrituras de sistema: `Depends(super_admin_required)`; supervisión de solo lectura: `Depends(staff_required)`. Propiedad: `read_scope` / `write_scope`.
+- **Socio = solo lectura** en el guard JWT (`read_only_policy.py`): toda escritura suya da 403 salvo su sesión, su perfil, su Telegram, la campana, backtests y seguir señales.
+- Super admin no se invita ni se asigna desde la app (solo seed `users`), y su rol y su estado no se cambian por API (`USER_SUPER_ADMIN_PROTECTED`).
 
 ## Credenciales de exchange
 

@@ -1265,11 +1265,19 @@ El Módulo 10 automatiza todo esto:
     Ejemplo: marca de agua 10.000. El inversor aporta 2.000 → la marca pasa a 12.000. Si la
     cuenta cierra el mes en 12.500, la comisión se cobra solo sobre 500 de ganancia.
 
-5.4 Roles del sistema (con M10)
-─────────────────────────────────
-  role_id=1 → Usuario      (trader, accede a sus cuentas y bots)
-  role_id=2 → Administrador (gestiona todo: inversores, fees, estrategias)
-  role_id=3 → Inversor      (además ve "Mi inversión": su propio dashboard de rendimiento en /#/investor/dashboard)
+5.4 Roles del sistema (fondo común)
+─────────────────────────────────────
+  Super admin → los propietarios de la plataforma (Andrés y Dayron). Crean y operan los
+                agentes, invitan personas y configuran todo. No se puede dar este rol
+                desde la app.
+  Socio       → ve todo lo que ve un super admin (agentes, cuentas, órdenes, inversores,
+                auditoría), pero no puede crear, editar, pausar ni aprobar nada. Se invita
+                desde Configuración → Usuarios.
+  Inversor    → ve lo suyo: "Mi inversión", con su rendimiento y sus comisiones.
+
+  Ejemplo: un socio abre un agente y ve sus señales y órdenes, pero no aparecen los botones
+  Iniciar, Pausar, Analizar ahora ni Nueva orden. Si intentara la acción por otro medio, la
+  API le responde "Como socio puedes revisar todo, pero no hacer cambios".
 
 5.5 ¿Qué necesitas para lanzar esto?
 ──────────────────────────────────────

@@ -201,7 +201,7 @@ Registrados en: `app/extensions/db/models_registry.py`
 3. **Fase 3 — LLM:** genera entry/SL/TP. Python valida que sean números finitos y > 0 (`AGENT_LLM_MISSING_PRICES` 502 si no), que sean coherentes (`INCONSISTENT_LEVELS`) y que la entrada esté a ≤ `AGENT_MAX_ENTRY_ATR_DISTANCE` × ATR(14) del último cierre, o a ≤ 2 % sin ATR (`ENTRY_TOO_FAR`); después calcula en `Decimal` `position_size = (capital × risk_pct) / |entry − SL|`, con `risk_pct` acotado al 1 %.
 4. **Fase 4 — R/R:** `(TP − entry) / (entry − SL) >= AGENT_MIN_RR_RATIO` (default 2.0). Si no → RECHAZADA.
 
-Firma: `analyze(symbol_id, timeframe_id, strategy_id, account_id, feature_set_id, owner_id=None, risk_pct=None, as_of=None)`. `owner_id` lo pasa la ruta (`owner_scope`); `risk_pct` y `as_of` los pasa [M7](M07-BOTS-SIGNALS.md).
+Firma: `analyze(symbol_id, timeframe_id, strategy_id, account_id, feature_set_id, owner_id=None, risk_pct=None, as_of=None)`. `owner_id` lo pasa la ruta (`write_scope`; la ruta exige super admin); `risk_pct` y `as_of` los pasa [M7](M07-BOTS-SIGNALS.md).
 
 Los resultados posteriores a la fase 3 (`LLM_REJECTED`, `INCONSISTENT_LEVELS`, `ENTRY_TOO_FAR`, `RR_RATIO_TOO_LOW`, `APPROVED`) llevan `llm_provider`, `llm_model`, `llm_latency_ms` y `llm_failed_providers`; `to_dict()` los expone en `"llm"` (`null` si no se llamó al LLM). Los errores `AGENT_LLM_PARSE_ERROR` y `AGENT_LLM_MISSING_PRICES` los incluyen en `meta`.
 

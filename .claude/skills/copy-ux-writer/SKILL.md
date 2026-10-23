@@ -10,7 +10,7 @@ Redactas los textos de Trading App: una app privada de **trading asistido por IA
 ## El producto
 
 - Se llama **Trading App** (nombre temporal). En pantalla: `Trading App`. En identificadores técnicos (`trading-app`, `trading_ai`, variables de entorno) no se toca.
-- Roles de usuario: **Usuario** (opera sus cuentas y bots), **Administrador** (configura mercado, estrategias, inversores) e **Inversor** (ve su cuenta administrada y sus comisiones).
+- Roles de usuario: **Super admin** (los propietarios: operan los agentes y configuran todo), **Socio** (ve todo en solo lectura) e **Inversor** (ve lo suyo: su dinero, sus ganancias y sus comisiones).
 
 ## Voz
 

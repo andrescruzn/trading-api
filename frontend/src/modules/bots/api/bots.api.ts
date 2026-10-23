@@ -104,10 +104,6 @@ type BotFilters = {
 	account_id?: number;
 	/** Solo los bots de mis cuentas (para admin, que sin filtro ve todos). */
 	mine?: boolean;
-	status?: BotStatus;
-	mode?: BotMode;
-	/** Solo admin: bots de las cuentas de ese usuario (filtro Dueño). */
-	user_id?: number;
 };
 
 type SignalAction = 'buy' | 'sell' | 'hold';
@@ -229,10 +225,6 @@ function listBots(filters: BotFilters = {}) {
 }
 
 /** Igual que `listBots`, página a página (el más reciente primero). */
-function listBotsPage(filters: BotFilters, page: PageParams) {
-	return api.get<Paginated<Bot>>('/bots', { ...filters, ...page });
-}
-
 function getBot(id: number) {
 	return api.get<Bot>(`/bots/${id}`);
 }
@@ -344,7 +336,6 @@ export {
 	generateSignal,
 	getBot,
 	listBots,
-	listBotsPage,
 	listPendingSignals,
 	listSharedBots,
 	listSignals,

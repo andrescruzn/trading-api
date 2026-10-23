@@ -4,29 +4,12 @@ import {
 	SeverityBadge,
 } from '@/modules/alerts/components/alert-badges';
 import { useAlertEventsPageQuery } from '@/modules/alerts/hooks/use-alerts-queries';
-import { botLabel } from '@/modules/alerts/lib/alerts-labels';
-import type { UserSummary } from '@/modules/auth/api/users.api';
-import { OwnerCell } from '@/modules/auth/components/owner-cell';
-import {
-	useBotsQuery,
-	useMyBotsQuery,
-} from '@/modules/bots/hooks/use-bots-queries';
-import { useSymbolsQuery } from '@/modules/market/hooks/use-market-queries';
 import {
 	DataTable,
 	type DataTableColumn,
 } from '@/modules/shared/components/data-table';
 import { useServerPagination } from '@/modules/shared/hooks/use-server-pagination';
 import { formatDateTime } from '@/modules/shared/lib/format';
-
-type AlertEventsTableProps = {
-	/** `admin` muestra dueño y bot; `user` muestra el mensaje. */
-	variant: 'user' | 'admin';
-	/** Solo admin: usuarios para la columna Dueño. */
-	users?: Map<number, UserSummary>;
-	/** Solo admin: muestra solo los eventos de ese usuario (filtra el backend). */
-	ownerId?: number;
-};
 
 const EMPTY_CELL = <span className="text-muted-foreground">—</span>;
 
@@ -36,24 +19,11 @@ const EMPTY_CELL = <span className="text-muted-foreground">—</span>;
  * consulta solo corre cuando la pestaña se abre (Base UI no monta los paneles
  * ocultos).
  */
-export function AlertEventsTable({
-	variant,
-	users = new Map(),
-	ownerId,
-}: AlertEventsTableProps) {
-	const isAdmin = variant === 'admin';
-	const filters = { user_id: isAdmin ? ownerId : undefined };
-	const { params, tablePagination } = useServerPagination(
-		JSON.stringify(filters),
-	);
-	const eventsQuery = useAlertEventsPageQuery(filters, params);
-	// Admin ve los bots de todos; un usuario solo puede listar los suyos.
-	const allBotsQuery = useBotsQuery({}, { enabled: isAdmin });
-	const myBotsQuery = useMyBotsQuery({ enabled: !isAdmin });
-	const botsQuery = isAdmin ? allBotsQuery : myBotsQuery;
-	const symbolsQuery = useSymbolsQuery();
+export function AlertEventsTable() {
+	const { params, tablePagination } = useServerPagination('');
+	const eventsQuery = useAlertEventsPageQuery({}, params);
 
-	const baseColumns: DataTableColumn<AlertEvent>[] = [
+	const columns: DataTableColumn<AlertEvent>[] = [
 		{
 			id: 'ts',
 			header: 'Fecha',
@@ -77,43 +47,24 @@ export function AlertEventsTable({
 			header: 'Entrega',
 			cell: (row) => <DeliveryBadge status={row.delivery_status} />,
 		},
+		{
+			id: 'message',
+			header: 'Mensaje',
+			cell: (row) =>
+				row.message ? (
+					<span className="line-clamp-2 max-w-md whitespace-normal text-muted-foreground">
+						{row.message}
+					</span>
+				) : (
+					EMPTY_CELL
+				),
+			skeletonClassName: 'w-48',
+		},
 	];
-
-	const extraColumns: DataTableColumn<AlertEvent>[] = isAdmin
-		? [
-				{
-					id: 'owner',
-					header: 'Dueño',
-					cell: (row) => <OwnerCell userId={row.user_id} users={users} />,
-				},
-				{
-					id: 'bot',
-					header: 'Agente',
-					cell: (row) =>
-						row.bot_id
-							? botLabel(row.bot_id, botsQuery.data, symbolsQuery.data)
-							: EMPTY_CELL,
-				},
-			]
-		: [
-				{
-					id: 'message',
-					header: 'Mensaje',
-					cell: (row) =>
-						row.message ? (
-							<span className="line-clamp-2 max-w-md whitespace-normal text-muted-foreground">
-								{row.message}
-							</span>
-						) : (
-							EMPTY_CELL
-						),
-					skeletonClassName: 'w-48',
-				},
-			];
 
 	return (
 		<DataTable
-			columns={[...baseColumns, ...extraColumns]}
+			columns={columns}
 			rows={eventsQuery.data?.items}
 			getRowId={(row) => row.id}
 			isLoading={eventsQuery.isLoading}
@@ -121,13 +72,7 @@ export function AlertEventsTable({
 			pagination={tablePagination(eventsQuery.data)}
 			error={eventsQuery.error}
 			errorTitle="No pudimos cargar los eventos de alerta"
-			empty={
-				isAdmin
-					? ownerId === undefined
-						? 'Aún no se ha disparado ninguna alerta.'
-						: 'Este usuario aún no tiene eventos de alerta.'
-					: 'Aún no recibes alertas. Aparecerán aquí cuando se cumpla alguna de tus reglas.'
-			}
+			empty="Aún no recibes alertas. Aparecerán aquí cuando se cumpla alguna de tus reglas."
 		/>
 	);
 }

@@ -46,13 +46,13 @@ export function AgentsEmptyState() {
 				</h2>
 				<p className="text-sm text-muted-foreground">
 					{isStaff
-						? 'Como socio puedes revisar todos los agentes, sus señales y sus órdenes, sin hacer cambios.'
+						? 'Como socio puedes revisar los agentes del fondo, sus señales y sus órdenes, sin hacer cambios.'
 						: 'Aquí verás el estado de los agentes en los que participa tu dinero.'}
 				</p>
 				{isStaff && (
-					<Button variant="outline" render={<Link to="/admin/agents" />}>
+					<Button variant="outline" render={<Link to="/admin/fund-agents" />}>
 						<IconRobot />
-						Ver todos los agentes
+						Ver los agentes del fondo
 					</Button>
 				)}
 			</div>

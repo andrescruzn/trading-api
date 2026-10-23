@@ -38,10 +38,10 @@ export function AdminTelegramPage() {
 				description="Comprueba que el servidor puede enviar alertas al chat de Telegram configurado."
 				actions={[
 					{
-						label: 'Volver a todas las alertas',
+						label: 'Volver a alertas',
 						icon: <IconArrowLeft />,
 						variant: 'outline',
-						render: <Link to="/admin/alerts" />,
+						render: <Link to="/alerts" />,
 					},
 				]}
 			/>

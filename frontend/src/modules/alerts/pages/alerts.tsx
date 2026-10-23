@@ -204,7 +204,7 @@ export function AlertsPage() {
 					/>
 				</TabsContent>
 				<TabsContent value="events" className="pt-2">
-					<AlertEventsTable variant="user" />
+					<AlertEventsTable />
 				</TabsContent>
 			</Tabs>
 

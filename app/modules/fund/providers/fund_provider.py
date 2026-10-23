@@ -19,8 +19,13 @@ from app.modules.accounts.infrastructure import (
     SqlAlchemyPlatformWalletRepository,
 )
 from app.modules.accounts.infrastructure.ccxt_wallet_gateway import CcxtWalletGateway
+from app.modules.bots.infrastructure import SqlAlchemyBotRepository
 from app.modules.fund.infrastructure import (
+    SqlAlchemyAgentPoolRepository,
+    SqlAlchemyAgentSettlementRepository,
+    SqlAlchemyAllocationOrderRepository,
     SqlAlchemyDepositRequestRepository,
+    SqlAlchemyUnitLotRepository,
     SqlAlchemyFundSettingsRepository,
     SqlAlchemyLedgerRepository,
 )
@@ -31,9 +36,25 @@ from app.modules.fund.services.deposits import (
     VerifyDepositsService,
 )
 from app.modules.fund.services.ledger import FundLedgerService
+from app.modules.fund.services.pools import (
+    AgentCapitalService,
+    AgentInfoReader,
+    AgentPoolsService,
+    AllocationService,
+    ParticipationsService,
+    SettleAgentService,
+)
 from app.modules.fund.services.settings import DepositNetworksService, FundSettingsService
 from app.modules.fund.services.wallet_context import WalletContextResolver
-from app.modules.market.infrastructure import SqlAlchemyExchangeRepository
+from app.modules.market.infrastructure import (
+    SqlAlchemyExchangeRepository,
+    SqlAlchemySymbolRepository,
+)
+from app.modules.orders.infrastructure import (
+    SqlAlchemyFillRepository,
+    SqlAlchemyOrderRepository,
+    SqlAlchemyPositionRepository,
+)
 from app.modules.users.infrastructure import SqlAlchemyUserRepository
 
 
@@ -46,10 +67,19 @@ class FundServiceFactory:
         self._ledger_repo = SqlAlchemyLedgerRepository(session)
         self._deposit_repo = SqlAlchemyDepositRequestRepository(session)
         self._user_repo = SqlAlchemyUserRepository(session)
+        self._wallet_repo = SqlAlchemyPlatformWalletRepository(session)
         self._wallet_resolver = WalletContextResolver(
-            wallet_repo=SqlAlchemyPlatformWalletRepository(session),
+            wallet_repo=self._wallet_repo,
             account_repo=SqlAlchemyAccountRepository(session),
         )
+        # F4: capital de los agentes
+        self._pool_repo = SqlAlchemyAgentPoolRepository(session)
+        self._settlement_repo = SqlAlchemyAgentSettlementRepository(session)
+        self._lot_repo = SqlAlchemyUnitLotRepository(session)
+        self._allocation_repo = SqlAlchemyAllocationOrderRepository(session)
+        self._bot_repo = SqlAlchemyBotRepository(session)
+        self._symbol_repo = SqlAlchemySymbolRepository(session)
+        self._fill_repo = SqlAlchemyFillRepository(session)
 
     def _gateway(self) -> CcxtWalletGateway:
         # Solo se arma cuando el caso de uso habla con el exchange
@@ -118,3 +148,66 @@ class FundServiceFactory:
             user_repo=self._user_repo,
             asset=settings.WALLET_BASE_ASSET,
         )
+
+    # ------------------------------------------------------------------
+    # Capital de los agentes (F4)
+    # ------------------------------------------------------------------
+
+    def agent_capital(self) -> AgentCapitalService:
+        return AgentCapitalService(
+            pool_repo=self._pool_repo,
+            wallet_repo=self._wallet_repo,
+            fill_repo=self._fill_repo,
+            position_repo=SqlAlchemyPositionRepository(self._session),
+            symbol_repo=self._symbol_repo,
+        )
+
+    def agent_pools(self) -> AgentPoolsService:
+        return AgentPoolsService(
+            pool_repo=self._pool_repo,
+            lot_repo=self._lot_repo,
+            allocation_repo=self._allocation_repo,
+            settlement_repo=self._settlement_repo,
+            wallet_repo=self._wallet_repo,
+            bot_repo=self._bot_repo,
+            symbol_repo=self._symbol_repo,
+            fill_repo=self._fill_repo,
+            capital=self.agent_capital(),
+        )
+
+    def allocations(self) -> AllocationService:
+        return AllocationService(
+            allocation_repo=self._allocation_repo,
+            pool_repo=self._pool_repo,
+            ledger_repo=self._ledger_repo,
+            user_repo=self._user_repo,
+        )
+
+    def settle_agent(self) -> SettleAgentService:
+        return SettleAgentService(
+            pool_repo=self._pool_repo,
+            settlement_repo=self._settlement_repo,
+            lot_repo=self._lot_repo,
+            allocation_repo=self._allocation_repo,
+            ledger_repo=self._ledger_repo,
+            bot_repo=self._bot_repo,
+            order_repo=SqlAlchemyOrderRepository(self._session),
+            capital=self.agent_capital(),
+        )
+
+    def participations(self) -> ParticipationsService:
+        return ParticipationsService(
+            lot_repo=self._lot_repo,
+            pool_repo=self._pool_repo,
+            settlement_repo=self._settlement_repo,
+            agents=AgentInfoReader(self._bot_repo, self._symbol_repo),
+        )
+
+
+def build_fund_capital(session: Session) -> AgentCapitalService:
+    """
+    Capital de los agentes del fondo para bots y orders (FundCapitalPort).
+    Función aparte para que esos módulos no construyan la factory completa.
+    """
+    return FundServiceFactory(session).agent_capital()
+

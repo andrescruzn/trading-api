@@ -13,6 +13,12 @@ from abc import ABC, abstractmethod
 from decimal import Decimal
 
 from app.common.contracts import Page, PageRequest, TransactionalRepository
+from app.modules.fund.domain.agent_pool_entity import (
+    AgentPool,
+    AgentSettlement,
+    AllocationOrder,
+    UnitLot,
+)
 from app.modules.fund.domain.deposit_request_entity import DepositRequest
 from app.modules.fund.domain.fund_settings_entity import FundSettings
 from app.modules.fund.domain.ledger_entry_entity import FundBalances, LedgerEntry
@@ -49,6 +55,11 @@ class LedgerRepository(TransactionalRepository, ABC):
     @abstractmethod
     def list_page(self, user_id: int, page: PageRequest) -> Page[LedgerEntry]:
         """Asientos de una persona, del más reciente al más antiguo."""
+        ...
+
+    @abstractmethod
+    def bucket_balance(self, user_id: int, bucket: str) -> Decimal:
+        """Saldo de una persona en un bucket."""
         ...
 
     @abstractmethod
@@ -97,3 +108,83 @@ class DepositRequestRepository(TransactionalRepository, ABC):
         antes: el llamador no debe acreditar nada.
         """
         ...
+
+
+# ======================================================================
+# Capital de los agentes (F4)
+# ======================================================================
+
+class AgentPoolRepository(TransactionalRepository, ABC):
+
+    @abstractmethod
+    def get_by_id(self, pool_id: int) -> AgentPool | None: ...
+
+    @abstractmethod
+    def get_by_bot(self, bot_id: int) -> AgentPool | None: ...
+
+    @abstractmethod
+    def list_all(self) -> list[AgentPool]: ...
+
+    @abstractmethod
+    def create(self, pool: AgentPool) -> AgentPool: ...
+
+    @abstractmethod
+    def update_settled(self, pool: AgentPool, expected_last_fill_id: int) -> bool:
+        """
+        Guarda equity, unidades y último fill de una liquidación solo si nadie
+        liquidó el pool entre medio (su `last_fill_id` sigue siendo el
+        esperado). False = otra liquidación ganó: no aplicar nada.
+        """
+        ...
+
+
+class UnitLotRepository(TransactionalRepository, ABC):
+
+    @abstractmethod
+    def create(self, lot: UnitLot) -> UnitLot: ...
+
+    @abstractmethod
+    def list_by_pool(self, pool_id: int) -> list[UnitLot]:
+        """Lotes con unidades vivas, del más viejo al más nuevo."""
+        ...
+
+    @abstractmethod
+    def list_by_user(self, user_id: int) -> list[UnitLot]:
+        """Lotes con unidades vivas de una persona, en todos los agentes."""
+        ...
+
+
+class AllocationOrderRepository(TransactionalRepository, ABC):
+
+    @abstractmethod
+    def create(self, order: AllocationOrder) -> AllocationOrder: ...
+
+    @abstractmethod
+    def get_by_id(self, order_id: int) -> AllocationOrder | None: ...
+
+    @abstractmethod
+    def list_queued(self, pool_id: int | None = None) -> list[AllocationOrder]:
+        """En cola (de un agente o de todos), del más viejo al más nuevo."""
+        ...
+
+    @abstractmethod
+    def queued_total(self, user_id: int, bucket: str) -> Decimal:
+        """Lo que una persona ya tiene en cola desde ese bucket."""
+        ...
+
+    @abstractmethod
+    def update_if_status(self, order: AllocationOrder, expected: list[str]) -> bool:
+        """UPDATE condicional por estado (como en los depósitos)."""
+        ...
+
+
+class AgentSettlementRepository(TransactionalRepository, ABC):
+
+    @abstractmethod
+    def create(self, settlement: AgentSettlement) -> AgentSettlement: ...
+
+    @abstractmethod
+    def list_by_pool(self, pool_id: int, limit: int = 50) -> list[AgentSettlement]:
+        """De la más reciente a la más antigua."""
+        ...
+

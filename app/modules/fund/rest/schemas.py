@@ -58,6 +58,20 @@ class AssignUnclaimedRequest(BaseModel):
     note: str = Field(..., min_length=1, max_length=500)
 
 
+class OpenPoolRequest(BaseModel):
+    bot_id: int = Field(..., gt=0)
+
+
+class QueueAllocationRequest(BaseModel):
+    user_id: int = Field(..., gt=0)
+    amount: Decimal = Field(..., gt=0, max_digits=30, decimal_places=12)
+    source_bucket: str = Field(default="pending", pattern="^(pending|available)$")
+
+
+class SettleRequest(BaseModel):
+    note: str | None = Field(default=None, max_length=500)
+
+
 class RefundRequest(BaseModel):
     amount: Decimal = Field(..., gt=0, max_digits=30, decimal_places=12)
     reason: str = Field(..., min_length=5, max_length=500)

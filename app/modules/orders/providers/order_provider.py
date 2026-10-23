@@ -140,11 +140,16 @@ class OrderServiceFactory:
         )
 
     def risk_gate(self) -> RiskGateService:
+        # Import diferido: el fondo (M11) importa repositorios de orders
+        from app.modules.fund.providers import build_fund_capital
+
         return RiskGateService(
             bot_repo=self._bot_repo,
             account_repo=self._account_repo,
             balance_repo=self._balance_repo,
             position_repo=self._position_repo,
+            # Fondo común: drawdown desde la última liquidación del agente
+            fund_capital=build_fund_capital(self._session),
         )
 
     def create_order(self) -> CreateOrderService:

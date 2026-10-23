@@ -30,6 +30,7 @@ from app.modules.accounts.domain.account_balance_repository import AccountBalanc
 from app.modules.accounts.domain.account_repository import AccountRepository
 from app.modules.bots.domain.bot_entity import Bot
 from app.modules.bots.domain.bot_repository import BotRepository
+from app.modules.bots.domain.fund_capital_port import FundCapitalPort
 from app.modules.orders.domain.position_repository import PositionRepository
 
 
@@ -42,11 +43,13 @@ class RiskGateService:
         account_repo: AccountRepository,
         balance_repo: AccountBalanceRepository,
         position_repo: PositionRepository,
+        fund_capital: FundCapitalPort | None = None,
     ):
         self._bot_repo = bot_repo
         self._account_repo = account_repo
         self._balance_repo = balance_repo
         self._position_repo = position_repo
+        self._fund_capital = fund_capital
 
     def check(
         self,
@@ -106,7 +109,18 @@ class RiskGateService:
 
         Capital = saldo libre actual en la moneda base de la cuenta + la
         pérdida ya realizada (aproxima el capital con el que empezó).
+
+        Agente del fondo común: la caída se mide desde la equity de su última
+        liquidación hasta su capital de ahora (la billetera es de todos y su
+        saldo no dice nada de este agente).
         """
+        fund = self._fund_capital.capital_for(bot) if self._fund_capital else None
+        if fund is not None:
+            if fund.settled_equity <= Decimal("0"):
+                return False
+            loss = fund.settled_equity - fund.capital
+            return loss > 0 and loss / fund.settled_equity >= Decimal(str(bot.max_drawdown_pct))
+
         realized = sum(
             (p.realized_pnl for p in self._position_repo.list_by_bot(bot_id=bot.id)),
             Decimal("0"),

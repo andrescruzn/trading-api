@@ -10,9 +10,10 @@ from __future__ import annotations
 
 from decimal import Decimal
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.modules.orders.domain.fill_entity import Fill
+from app.modules.orders.domain.fill_entity import BotFill, Fill
 from app.modules.orders.domain.fill_repository import FillRepository
 from app.modules.orders.domain.performance import TradeFill
 from app.modules.orders.infrastructure.fill_model import FillModel
@@ -105,6 +106,36 @@ class SqlAlchemyFillRepository(SqlAlchemyRepository, FillRepository):
                 )
             )
         return result
+
+    def list_by_bot_after(self, bot_id: int, after_fill_id: int) -> list[BotFill]:
+        rows = (
+            self._session.query(FillModel, OrderModel.side)
+            .join(OrderModel, FillModel.order_id == OrderModel.id)
+            .filter(OrderModel.bot_id == bot_id, FillModel.id > after_fill_id)
+            .order_by(FillModel.id.asc())
+            .all()
+        )
+        return [
+            BotFill(
+                id=model.id,
+                side=side,
+                qty=Decimal(str(model.qty)),
+                price=Decimal(str(model.price)),
+                fee=Decimal(str(model.fee or 0)),
+                fee_asset=model.fee_asset,
+                ts=model.ts,
+            )
+            for model, side in rows
+        ]
+
+    def max_id_by_bot(self, bot_id: int) -> int:
+        value = (
+            self._session.query(func.max(FillModel.id))
+            .join(OrderModel, FillModel.order_id == OrderModel.id)
+            .filter(OrderModel.bot_id == bot_id)
+            .scalar()
+        )
+        return int(value or 0)
 
     def create(self, fill: Fill) -> Fill:
         model = FillModel()

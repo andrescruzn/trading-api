@@ -387,4 +387,6 @@ class TestSignalFields:
             feature_set_id=7,
             risk_pct=bot.effective_risk_pct,
             as_of=None,
+            # Sin fondo común: el agente usa el saldo de su cuenta
+            capital=None,
         )

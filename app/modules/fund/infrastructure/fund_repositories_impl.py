@@ -194,6 +194,14 @@ class SqlAlchemyLedgerRepository(SqlAlchemyRepository, LedgerRepository):
             page_size=page.page_size,
         )
 
+    def bucket_balance(self, user_id: int, bucket: str) -> Decimal:
+        value = (
+            self._session.query(func.coalesce(func.sum(LedgerEntryModel.amount), 0))
+            .filter(LedgerEntryModel.user_id == user_id, LedgerEntryModel.bucket == bucket)
+            .scalar()
+        )
+        return _decimal(value)
+
     def total_by_bucket(self) -> dict[str, Decimal]:
         totals: dict[str, Decimal] = defaultdict(lambda: _ZERO)
         rows = (

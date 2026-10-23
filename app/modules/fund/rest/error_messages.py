@@ -60,6 +60,40 @@ FUND_ERROR_MESSAGES: dict[str, str] = {
     # Libro mayor
     "FUND_REFUND_REASON_REQUIRED": "Escribe el motivo de la devolución (entre 5 y 500 caracteres).",
     "FUND_REFUND_INVALID_AMOUNT": "Escribe un monto mayor que 0.",
+    # Agentes del fondo (F4)
+    "FUND_BOT_NOT_FOUND": "No encontramos ese agente.",
+    "FUND_BOT_NOT_ON_WALLET": (
+        "Ese agente no opera sobre la billetera de la plataforma. Solo esos agentes pueden recibir dinero del fondo."
+    ),
+    "FUND_BOT_WRONG_QUOTE": (
+        "El mercado del agente no cotiza en la moneda del fondo (USDT). Elige un agente con un par en USDT."
+    ),
+    "FUND_POOL_EXISTS": "Ese agente ya está abierto al fondo.",
+    "FUND_POOL_NOT_FOUND": "No encontramos ese agente del fondo.",
+    "FUND_ALLOCATION_INVALID_SOURCE": "Elige de qué saldo sale el dinero: pendiente de asignar o disponible.",
+    "FUND_ALLOCATION_INVALID_AMOUNT": "Escribe un monto mayor que 0.",
+    "FUND_ALLOCATION_EXCEEDS_BALANCE": (
+        "La persona no tiene ese saldo libre (ya descontado lo que tiene en cola)."
+    ),
+    "FUND_ALLOCATION_NOT_FOUND": "No encontramos esa asignación.",
+    "FUND_ALLOCATION_NOT_QUEUED": "Esa asignación ya no está en cola.",
+    "FUND_SETTLE_BOT_RUNNING": "Pausa o detén el agente antes de liquidarlo.",
+    "FUND_SETTLE_OPEN_POSITIONS": (
+        "El agente tiene posiciones abiertas. Espera a que se cierren (o ciérralas) antes de liquidar."
+    ),
+    "FUND_SETTLE_OPEN_ORDERS": (
+        "El agente tiene órdenes sin terminar en el exchange. Espera a que se ejecuten o cancélalas antes de liquidar."
+    ),
+    "FUND_SETTLE_ORPHAN_EQUITY": (
+        "El agente ganó o perdió dinero sin tener participantes. Revisa sus órdenes: así no se puede repartir."
+    ),
+    "FUND_SETTLE_NEGATIVE_EQUITY": (
+        "El resultado deja al agente con saldo negativo. Revisa sus órdenes antes de liquidar."
+    ),
+    "FUND_SETTLE_CONFLICT": (
+        "Alguien liquidó o cambió este agente al mismo tiempo. Recarga y vuelve a intentarlo."
+    ),
+
     "FUND_REFUND_EXCEEDS_PENDING": (
         "Solo se puede devolver saldo pendiente de asignar, y esta persona tiene menos que ese monto."
     ),

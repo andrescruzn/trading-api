@@ -23,10 +23,6 @@ function AdminGuardLayout() {
 	return <RoleGuard role={STAFF_ROLES} />;
 }
 
-function InvestorGuardLayout() {
-	return <RoleGuard role={ROLES.INVESTOR} />;
-}
-
 /**
  * Página suelta que solo usa quien cambia cosas (p. ej. crear un agente).
  * Para el socio y el inversor, vuelve al inicio.
@@ -36,4 +32,4 @@ function ManagerGuard({ children }: { children: ReactNode }) {
 	return allowed ? children : <Navigate to="/dashboard" />;
 }
 
-export { AdminGuardLayout, InvestorGuardLayout, ManagerGuard };
+export { AdminGuardLayout, ManagerGuard };

@@ -100,15 +100,6 @@ from app.modules.alerts.infrastructure.alert_rule_model import AlertRuleModel  #
 from app.modules.alerts.infrastructure.alert_event_model import AlertEventModel  # noqa: F401
 
 # --------------------------------------------------------------
-# Billing module models
-# --------------------------------------------------------------
-from app.modules.billing.infrastructure.investor_model import InvestorModel  # noqa: F401
-from app.modules.billing.infrastructure.managed_account_model import ManagedAccountModel  # noqa: F401
-from app.modules.billing.infrastructure.billing_period_model import BillingPeriodModel  # noqa: F401
-from app.modules.billing.infrastructure.fee_transaction_model import FeeTransactionModel  # noqa: F401
-from app.modules.billing.infrastructure.capital_movement_model import CapitalMovementModel  # noqa: F401
-
-# --------------------------------------------------------------
 # Tablas sin servicios todavía (el esquema las incluye; Alembic las gestiona)
 # --------------------------------------------------------------
 from app.modules.agent.infrastructure.prediction_model import PredictionModel  # noqa: F401

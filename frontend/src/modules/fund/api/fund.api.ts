@@ -22,7 +22,14 @@ type DepositReviewReason =
 	| 'wrong_asset';
 
 type LedgerBucket = 'pending' | 'available';
-type LedgerEntryType = 'deposit' | 'refund' | 'allocation';
+type LedgerEntryType =
+	| 'deposit'
+	| 'refund'
+	| 'allocation'
+	| 'redemption'
+	| 'fee'
+	| 'commission'
+	| 'withdrawal';
 type AllocationStatus = 'queued' | 'applied' | 'canceled';
 
 type DepositNetworkConfig = {
@@ -216,6 +223,10 @@ type AgentSettlement = {
 	note: string | null;
 	created_by_user_id: number | null;
 	settled_at: string | null;
+	/** F5: lo que salió del agente en esta liquidación. */
+	redeemed_amount: string;
+	units_redeemed: string;
+	fees_total: string;
 };
 
 type PoolParticipant = {
@@ -232,6 +243,45 @@ type FundPoolDetail = FundPool & {
 	participants_detail: PoolParticipant[];
 	queued: AllocationOrder[];
 	settlements: AgentSettlement[];
+	queued_redemptions: RedemptionRequest[];
+};
+
+type RedemptionStatus = 'queued' | 'applied' | 'canceled';
+
+type RedemptionRequest = {
+	id: number;
+	pool_id: number;
+	user_id: number;
+	/** `null` = todo lo que cumpla la permanencia. */
+	amount: string | null;
+	status: RedemptionStatus;
+	note: string | null;
+	settlement_id: number | null;
+	created_at: string | null;
+	resolved_at: string | null;
+};
+
+/** Lo que cobró un tramo de la comisión (porcentajes en %). */
+type TierCharge = {
+	from_return_pct: string;
+	to_return_pct: string | null;
+	rate_pct: string;
+	base: string;
+	fee: string;
+};
+
+type PlannedRedemption = RedemptionRequest & {
+	units: string;
+	value: string;
+	cost: string;
+	gain: string;
+	/** En % (200 = +200 %). */
+	return_pct: string;
+	fee: string;
+	net: string;
+	pending_amount: string | null;
+	breakdown: TierCharge[];
+	commissions: { user_id: number; amount: string }[];
 };
 
 type SettlementPreview = {
@@ -255,6 +305,13 @@ type SettlementPreview = {
 	units_issued: string;
 	equity_after: string;
 	units_after: string;
+	redemptions: PlannedRedemption[];
+	waiting_redemptions: RedemptionRequest[];
+	redeemed_amount: string;
+	fees_total: string;
+	hold_cutoff: string | null;
+	fee_schedule_id: number | null;
+	commission_version_id: number | null;
 };
 
 type Participation = {
@@ -440,8 +497,12 @@ export type {
 	LedgerEntryType,
 	NetworkChoice,
 	Participation,
+	PlannedRedemption,
 	PoolParticipant,
+	RedemptionRequest,
+	RedemptionStatus,
 	SettlementPreview,
+	TierCharge,
 	VerifySummary,
 };
 export {

@@ -35,6 +35,7 @@ from app.modules.fund.domain.agent_pool_entity import (
     AgentPool,
     AgentSettlement,
     AllocationOrder,
+    RedemptionRequest,
 )
 from app.modules.fund.domain.fund_repositories import (
     AgentPoolRepository,
@@ -42,6 +43,7 @@ from app.modules.fund.domain.fund_repositories import (
     AllocationOrderRepository,
     UnitLotRepository,
 )
+from app.modules.fund.domain.payout_repositories import RedemptionRequestRepository
 from app.modules.fund.services.pools.agent_capital_service import AgentCapitalService
 from app.modules.fund.services.pools.agent_info import AgentInfo, AgentInfoReader
 from app.modules.market.domain.symbol_repository import SymbolRepository
@@ -77,6 +79,7 @@ class PoolDetail:
     participants: list[ParticipantPosition] = field(default_factory=list)
     queued: list[AllocationOrder] = field(default_factory=list)
     settlements: list[AgentSettlement] = field(default_factory=list)
+    queued_redemptions: list[RedemptionRequest] = field(default_factory=list)
 
 
 class AgentPoolsService:
@@ -93,6 +96,7 @@ class AgentPoolsService:
         symbol_repo: SymbolRepository,
         fill_repo: FillRepository,
         capital: AgentCapitalService,
+        redemption_repo: RedemptionRequestRepository | None = None,
     ):
         self._pool_repo = pool_repo
         self._lot_repo = lot_repo
@@ -103,6 +107,7 @@ class AgentPoolsService:
         self._symbol_repo = symbol_repo
         self._fill_repo = fill_repo
         self._capital = capital
+        self._redemption_repo = redemption_repo
         self._agents = AgentInfoReader(bot_repo, symbol_repo)
 
     # ------------------------------------------------------------------
@@ -175,6 +180,9 @@ class AgentPoolsService:
                 participants=self._participants(pool),
                 queued=queued,
                 settlements=self._settlement_repo.list_by_pool(pool.id),
+                queued_redemptions=(
+                    self._redemption_repo.list_queued(pool.id) if self._redemption_repo else []
+                ),
             )
         )
 

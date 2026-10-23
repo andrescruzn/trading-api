@@ -11,7 +11,8 @@
 # REGLAS:
 # - Sale del saldo pendiente de asignar o del disponible de la persona.
 # - No se puede encolar más de lo que la persona tiene en ese saldo menos
-#   lo que ya tiene en cola desde él. Al liquidar se vuelve a comprobar
+#   lo que ya tiene en cola desde él (y, del disponible, menos los retiros
+#   pedidos sin pagar). Al liquidar se vuelve a comprobar
 #   (pudo haber una devolución entre medio).
 # ======================================================================
 
@@ -27,6 +28,7 @@ from app.modules.fund.domain.fund_repositories import (
     AllocationOrderRepository,
     LedgerRepository,
 )
+from app.modules.fund.domain.payout_repositories import WithdrawalRequestRepository
 from app.modules.users.domain import UserRepository
 
 MAX_ALLOCATION = Decimal("1000000000")
@@ -41,11 +43,13 @@ class AllocationService:
         pool_repo: AgentPoolRepository,
         ledger_repo: LedgerRepository,
         user_repo: UserRepository,
+        withdrawal_repo: WithdrawalRequestRepository | None = None,
     ):
         self._allocation_repo = allocation_repo
         self._pool_repo = pool_repo
         self._ledger_repo = ledger_repo
         self._user_repo = user_repo
+        self._withdrawal_repo = withdrawal_repo
 
     def queue(
         self,
@@ -67,6 +71,9 @@ class AllocationService:
 
         free = self._ledger_repo.bucket_balance(int(user_id), source_bucket)
         already = self._allocation_repo.queued_total(int(user_id), source_bucket)
+        # Del disponible también se descuenta lo pedido para retirar (F5)
+        if source_bucket == "available" and self._withdrawal_repo is not None:
+            already += self._withdrawal_repo.open_total(int(user_id))
         if amount > free - already:
             return ServiceResult.fail(
                 code="FUND_ALLOCATION_EXCEEDS_BALANCE",

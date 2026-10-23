@@ -13,6 +13,9 @@
 # - GET  /fund/agents/{pool_id}/settlement-preview → liquidación calculada, sin escribir (staff)
 # - POST /fund/agents/{pool_id}/settle         → liquidar (super admin)
 # - GET  /fund/me/participations               → en qué agentes está mi dinero (con sesión)
+# - POST /fund/redemptions                     → pedir salida de un agente (la persona o un super admin)
+# - POST /fund/redemptions/{id}/cancel         → anular una salida en cola
+# - GET  /fund/me/redemptions                  → mis salidas: en cola, historial y lo que salió
 # ======================================================================
 
 from __future__ import annotations
@@ -26,18 +29,30 @@ from app.common.http import (
     build_list_response,
     build_success_response,
 )
-from app.common.security.jwt import staff_required, super_admin_required, token_required_actual
+from app.common.security.jwt import (
+    is_super_admin,
+    staff_required,
+    super_admin_required,
+    token_required_actual,
+)
 from app.extensions.db import get_db
 from app.modules.fund.providers import FundServiceFactory
 from app.modules.fund.rest.error_messages import FUND_ERROR_MESSAGES
-from app.modules.fund.rest.schemas import OpenPoolRequest, QueueAllocationRequest, SettleRequest
+from app.modules.fund.rest.schemas import (
+    OpenPoolRequest,
+    QueueAllocationRequest,
+    RedemptionCreateRequest,
+    SettleRequest,
+)
 from app.modules.fund.rest.serializers import (
     agent_info_to_dict,
     allocation_to_dict,
     participation_to_dict,
     pool_detail_to_dict,
     pool_overview_to_dict,
+    redemption_request_to_dict,
     settlement_preview_to_dict,
+    settlement_redemption_to_dict,
     settlement_to_dict,
 )
 
@@ -193,3 +208,68 @@ def my_participations(
     """En qué agentes está mi dinero y cuánto vale a la última liquidación."""
     result = factory.participations().mine(int(identity["user_id"]))
     return build_list_response(items=[participation_to_dict(p) for p in result.data])
+
+
+# ======================================================================
+# Salidas de los agentes (F5)
+# ======================================================================
+
+@router.post("/redemptions", status_code=201)
+def request_redemption(
+    payload: RedemptionCreateRequest,
+    identity: dict = Depends(token_required_actual),
+    factory: FundServiceFactory = Depends(get_factory),
+):
+    """
+    Pide sacar dinero de un agente: se aplica en su próxima liquidación.
+    Un super admin puede pedirla por otra persona (`user_id`).
+    """
+    requester = int(identity["user_id"])
+    user_id = payload.user_id if payload.user_id and is_super_admin(identity) else requester
+    result = factory.redemptions().request(
+        pool_id=payload.pool_id,
+        user_id=user_id,
+        amount=payload.amount,
+        requester_user_id=requester,
+    )
+    if not result.success:
+        return build_error_response(result, FUND_ERROR_MESSAGES)
+    return build_created_response(
+        data=redemption_request_to_dict(result.data),
+        msg="Salida en cola. Se aplica en la próxima liquidación del agente.",
+    )
+
+
+@router.post("/redemptions/{request_id}/cancel", status_code=200)
+def cancel_redemption(
+    request_id: int,
+    identity: dict = Depends(token_required_actual),
+    factory: FundServiceFactory = Depends(get_factory),
+):
+    """Anula una salida en cola (la propia; un super admin, cualquiera)."""
+    result = factory.redemptions().cancel(
+        request_id,
+        requester_user_id=int(identity["user_id"]),
+        is_manager=is_super_admin(identity),
+    )
+    if not result.success:
+        return build_error_response(result, FUND_ERROR_MESSAGES)
+    return build_success_response(data=redemption_request_to_dict(result.data), msg="Salida anulada.")
+
+
+@router.get("/me/redemptions", status_code=200)
+def my_redemptions(
+    identity: dict = Depends(token_required_actual),
+    factory: FundServiceFactory = Depends(get_factory),
+):
+    """Mis salidas: en cola, historial y lo que salió con su comisión tramo por tramo."""
+    data = factory.redemptions().mine(int(identity["user_id"])).data
+    return build_success_response(
+        data={
+            "queued":  [redemption_request_to_dict(r) for r in data.queued],
+            "history": [redemption_request_to_dict(r) for r in data.history],
+            "lines":   [settlement_redemption_to_dict(line) for line in data.lines],
+            "agents":  {str(k): agent_info_to_dict(v) for k, v in data.agents.items()},
+        }
+    )
+

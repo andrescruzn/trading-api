@@ -3,10 +3,15 @@ import { useEffect, useState } from 'react';
 import { OwnerCell } from '@/modules/auth/components/owner-cell';
 import { useOwners } from '@/modules/auth/hooks/use-users-queries';
 import type { FundPool } from '@/modules/fund/api/fund.api';
+import { FeeBreakdown } from '@/modules/fund/components/fee-tables';
 import { useSettleAgentMutation } from '@/modules/fund/hooks/use-fund-pools-mutations';
 import { useSettlementPreviewQuery } from '@/modules/fund/hooks/use-fund-pools-queries';
 import { ErrorAlert } from '@/modules/shared/components/error-alert';
-import { formatNumber, formatSignedPrice } from '@/modules/shared/lib/format';
+import {
+	formatDateTime,
+	formatNumber,
+	formatSignedPrice,
+} from '@/modules/shared/lib/format';
 import { getErrorMessage } from '@/modules/shared/lib/get-error-message';
 import {
 	Alert,
@@ -92,8 +97,9 @@ export function SettleAgentDialog({ pool, onClose }: SettleAgentDialogProps) {
 					<DialogTitle>Liquidar «{pool?.agent?.name ?? 'agente'}»</DialogTitle>
 					<DialogDescription>
 						Calcula el saldo exacto del agente con todo lo que operó desde la
-						última liquidación y aplica las asignaciones en cola. Se hace con el
-						agente pausado y sin posiciones abiertas.
+						última liquidación, paga las salidas pedidas (con su comisión) y
+						aplica las asignaciones en cola. Se hace con el agente pausado y sin
+						posiciones abiertas.
 					</DialogDescription>
 				</DialogHeader>
 				<DialogBody>
@@ -188,6 +194,59 @@ export function SettleAgentDialog({ pool, onClose }: SettleAgentDialogProps) {
 										{preview.canceled.length === 1
 											? '1 asignación se cancelará: la persona ya no tiene ese saldo.'
 											: `${preview.canceled.length} asignaciones se cancelarán: esas personas ya no tienen ese saldo.`}
+									</span>
+								)}
+							</div>
+							<div className="flex flex-col gap-2">
+								<span className="text-sm font-medium">
+									Salen {formatNumber(preview.redeemed_amount, 2)} USDT ·
+									comisión {formatNumber(preview.fees_total, 2)} USDT
+								</span>
+								{preview.redemptions.length === 0 ? (
+									<span className="text-sm text-muted-foreground">
+										No hay salidas que se puedan aplicar.
+									</span>
+								) : (
+									<ul className="flex flex-col gap-3">
+										{preview.redemptions.map((redemption) => (
+											<li
+												key={redemption.id}
+												className="flex flex-col gap-1 rounded-md border p-2 text-sm"
+											>
+												<div className="flex items-center justify-between gap-4">
+													<OwnerCell
+														userId={redemption.user_id}
+														users={owners.byId}
+													/>
+													<span className="tabular-nums">
+														{formatNumber(redemption.value, 2)} USDT − comisión{' '}
+														{formatNumber(redemption.fee, 2)} ={' '}
+														<span className="font-medium">
+															{formatNumber(redemption.net, 2)}
+														</span>
+													</span>
+												</div>
+												<FeeBreakdown breakdown={redemption.breakdown} />
+												{redemption.pending_amount &&
+													Number(redemption.pending_amount) > 0 && (
+														<span className="text-xs text-muted-foreground">
+															{formatNumber(redemption.pending_amount, 2)} USDT
+															aún no cumplen la permanencia: siguen en el
+															agente.
+														</span>
+													)}
+											</li>
+										))}
+									</ul>
+								)}
+								{preview.waiting_redemptions.length > 0 && (
+									<span className="text-sm text-muted-foreground">
+										{preview.waiting_redemptions.length === 1
+											? '1 salida espera: su dinero aún no cumple la permanencia mínima'
+											: `${preview.waiting_redemptions.length} salidas esperan: su dinero aún no cumple la permanencia mínima`}
+										{preview.hold_cutoff
+											? ` (entró después del ${formatDateTime(preview.hold_cutoff)}).`
+											: '.'}
 									</span>
 								)}
 							</div>

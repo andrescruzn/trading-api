@@ -16,6 +16,13 @@
 # - AgentSettlement → la liquidación: el momento exacto (agente pausado y sin
 #                     posiciones) en que se calcula la equity y entran o
 #                     salen participantes.
+# - RedemptionRequest  → (F5) "saca X USDT (o todo) de este agente": espera a
+#                        la próxima liquidación; sale solo lo que cumple la
+#                        permanencia mínima.
+# - SettlementRedemption → (F5) lo que salió en una liquidación, con la
+#                        comisión tramo por tramo (lo ve la persona).
+# - CommissionCredit   → (F5) la parte de una comisión que recibió un
+#                        propietario.
 # ======================================================================
 
 from __future__ import annotations
@@ -25,6 +32,7 @@ from datetime import datetime
 from decimal import Decimal
 
 ALLOCATION_STATUSES = ("queued", "applied", "canceled")
+REDEMPTION_STATUSES = ("queued", "applied", "canceled")
 ALLOCATION_SOURCES = ("pending", "available")
 
 # Unidades y NAV con la precisión de las columnas DECIMAL(30,12)
@@ -122,3 +130,56 @@ class AgentSettlement:
     note: str | None = None
     created_by_user_id: int | None = None
     settled_at: datetime | None = None
+    # F5: lo que salió del agente en esta liquidación
+    redeemed_amount: Decimal = Decimal("0")
+    units_redeemed: Decimal = Decimal("0")
+    fees_total: Decimal = Decimal("0")
+
+
+@dataclass
+class RedemptionRequest:
+    id: int
+    pool_id: int
+    user_id: int
+    # None = todo lo que cumpla la permanencia
+    amount: Decimal | None
+    status: str = "queued"
+    note: str | None = None
+    settlement_id: int | None = None
+    created_by_user_id: int | None = None
+    created_at: datetime | None = None
+    resolved_at: datetime | None = None
+
+    def belongs_to(self, user_id: int) -> bool:
+        return self.user_id == int(user_id)
+
+
+@dataclass
+class SettlementRedemption:
+    id: int
+    settlement_id: int
+    redemption_request_id: int
+    pool_id: int
+    user_id: int
+    units: Decimal
+    value: Decimal
+    cost: Decimal
+    gain: Decimal
+    return_pct: Decimal
+    fee: Decimal
+    net: Decimal
+    # Lo pedido que no salió (no cumplía la permanencia); None = salió todo
+    pending_amount: Decimal | None
+    fee_schedule_id: int | None
+    commission_version_id: int | None
+    breakdown: list[dict[str, str | None]] = field(default_factory=list)
+    created_at: datetime | None = None
+
+
+@dataclass
+class CommissionCredit:
+    id: int
+    settlement_redemption_id: int
+    user_id: int
+    amount: Decimal
+    created_at: datetime | None = None

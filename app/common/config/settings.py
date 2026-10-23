@@ -487,3 +487,10 @@ class Settings:
         self.WALLET_SYNC_INTERVAL_SECONDS: int = max(
             60, _env_int("WALLET_SYNC_INTERVAL_SECONDS", 300)
         )
+
+        # PAYOUT_METHOD_COOLDOWN_HOURS: horas que un medio de pago nuevo (banco
+        #   / Nequi) espera antes de poder recibir un retiro. Si alguien toma
+        #   una cuenta, no puede desviar un retiro al instante. Default 48.
+        self.PAYOUT_METHOD_COOLDOWN_HOURS: int = max(
+            0, _env_int("PAYOUT_METHOD_COOLDOWN_HOURS", 48)
+        )

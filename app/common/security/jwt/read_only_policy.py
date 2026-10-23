@@ -27,7 +27,9 @@ _UNSAFE_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
 
 # Escrituras que un socio sí puede hacer: su sesión, su perfil, su
 # Telegram, la campana, simular estrategias, seguir señales compartidas y
-# depositar dinero propio en el fondo (o anular su solicitud).
+# depositar dinero propio en el fondo (o anular su solicitud) y, desde la
+# F5, sacar su dinero de un agente, registrar sus medios de pago y pedir
+# o anular sus retiros.
 _PARTNER_WRITE_ALLOWLIST: tuple[re.Pattern[str], ...] = tuple(
     re.compile(pattern)
     for pattern in (
@@ -40,6 +42,12 @@ _PARTNER_WRITE_ALLOWLIST: tuple[re.Pattern[str], ...] = tuple(
         r"^/bots/\d+/subscription$",
         r"^/fund/deposits$",
         r"^/fund/deposits/\d+/cancel$",
+        r"^/fund/redemptions$",
+        r"^/fund/redemptions/\d+/cancel$",
+        r"^/fund/me/payout-methods$",
+        r"^/fund/me/payout-methods/\d+/deactivate$",
+        r"^/fund/withdrawals$",
+        r"^/fund/withdrawals/\d+/cancel$",
     )
 )
 

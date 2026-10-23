@@ -119,6 +119,21 @@ class AgentSettlementModel(Base):
     units_after = Column(DECIMAL(30, 12), nullable=False)
     last_fill_id = Column(BigInteger, nullable=False, comment="Último fill contabilizado")
     fills_count = Column(Integer, nullable=False, server_default=text("'0'"))
+    redeemed_amount = Column(
+        DECIMAL(30, 12),
+        nullable=False,
+        server_default=text("'0.000000000000'"),
+        comment="Dinero que salió (F5)",
+    )
+    units_redeemed = Column(
+        DECIMAL(30, 12), nullable=False, server_default=text("'0.000000000000'")
+    )
+    fees_total = Column(
+        DECIMAL(30, 12),
+        nullable=False,
+        server_default=text("'0.000000000000'"),
+        comment="Comisiones cobradas en las salidas",
+    )
     unvalued_fees = Column(
         JSON, nullable=False, comment="Comisiones en otra moneda, sin valorar: {asset: monto}"
     )

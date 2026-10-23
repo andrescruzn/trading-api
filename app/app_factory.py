@@ -36,7 +36,9 @@ from app.modules.features.rest import feature_sets_router, candle_features_route
 from app.modules.accounts.rest import accounts_router, balances_router, wallet_router
 from app.modules.fund.rest import (
     fund_deposits_router,
+    fund_fees_router,
     fund_ledger_router,
+    fund_payouts_router,
     fund_pools_router,
     fund_settings_router,
 )
@@ -148,6 +150,7 @@ def create_app() -> FastAPI:
         # Accounts & Portfolio
         accounts_router, balances_router, wallet_router,
         fund_settings_router, fund_deposits_router, fund_ledger_router, fund_pools_router,
+        fund_fees_router, fund_payouts_router,
         # Strategies
         strategies_router, datasets_router, backtests_router,
         # Agent (AI Agent + ML Models + Model Runs)

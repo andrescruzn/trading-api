@@ -99,7 +99,8 @@ class LedgerEntryModel(Base):
         # La misma referencia (p. ej. una solicitud de depósito) no se asienta dos veces
         UniqueConstraint("entry_type", "ref_type", "ref_id", name="uq_ledger_entries_ref"),
         CheckConstraint(
-            "`entry_type` IN ('deposit', 'refund', 'allocation')",
+            "`entry_type` IN ('deposit', 'refund', 'allocation', 'redemption', 'fee', "
+            "'commission', 'withdrawal')",
             name="chk_ledger_entries_entry_type",
         ),
         CheckConstraint(
@@ -117,7 +118,7 @@ class LedgerEntryModel(Base):
         comment="Dueño del saldo (propietario, socio o inversor)",
     )
     entry_type = Column(
-        String(32), nullable=False, comment="deposit | refund | allocation (más tipos en F5)"
+        String(32), nullable=False, comment="deposit | refund | allocation | redemption | fee | commission | withdrawal"
     )
     bucket = Column(
         String(16),

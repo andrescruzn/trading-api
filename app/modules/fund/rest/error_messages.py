@@ -94,6 +94,46 @@ FUND_ERROR_MESSAGES: dict[str, str] = {
         "Alguien liquidó o cambió este agente al mismo tiempo. Recarga y vuelve a intentarlo."
     ),
 
+    # Salidas, comisiones y retiros (F5)
+    "FUND_SETTLE_NO_FEE_SCHEDULE": (
+        "Hay salidas en cola y aún no hay tabla de comisión. Configúrala en Administración → Fondo → Comisiones."
+    ),
+    "FUND_SETTLE_NO_COMMISSION_SHARES": (
+        "Hay comisiones por cobrar y aún no hay reparto entre propietarios. Configúralo en Administración → Fondo → Comisiones."
+    ),
+    "FUND_FEE_INVALID_TIERS": (
+        "Revisa los tramos: el primero empieza en 0 %, cada uno arranca en un retorno mayor que el anterior "
+        "y cada comisión va de 0 % a 100 % (máximo 10 tramos)."
+    ),
+    "FUND_SHARES_INVALID": "Los porcentajes deben ser mayores que 0, sin repetir personas, y sumar exactamente 100 %.",
+    "FUND_SHARES_NOT_OWNER": "Solo los super admin y los socios pueden recibir comisión.",
+    "FUND_REDEMPTION_INVALID_AMOUNT": "Escribe un monto mayor que 0, o elige sacar todo.",
+    "FUND_REDEMPTION_NO_UNITS": "No tienes dinero en ese agente.",
+    "FUND_REDEMPTION_ALREADY_QUEUED": (
+        "Ya tienes una salida en cola para ese agente. Anúlala si quieres cambiar el monto."
+    ),
+    "FUND_REDEMPTION_NOT_FOUND": "No encontramos esa salida.",
+    "FUND_REDEMPTION_NOT_QUEUED": "Esa salida ya no está en cola: se aplicó o se anuló.",
+    "FUND_PAYOUT_INVALID_KIND": "Elige banco o Nequi.",
+    "FUND_PAYOUT_INVALID_DETAILS": "Completa todos los datos del medio de pago (máximo 120 caracteres cada uno).",
+    "FUND_PAYOUT_TOO_MANY": "Ya tienes 5 medios de pago activos. Desactiva uno antes de agregar otro.",
+    "FUND_PAYOUT_NOT_FOUND": "No encontramos ese medio de pago.",
+    "FUND_PAYOUT_UNREADABLE": "No pudimos leer los datos de ese medio de pago. Pídele a la persona que lo registre de nuevo.",
+    "FUND_PAYOUT_COOLING_DOWN": (
+        "Por seguridad, un medio de pago nuevo se puede usar 48 horas después de registrarlo."
+    ),
+    "FUND_WITHDRAWAL_INVALID_AMOUNT": "Escribe un monto mayor que 0.",
+    "FUND_WITHDRAWAL_EXCEEDS_AVAILABLE": (
+        "No tienes ese saldo disponible. Solo se retira lo que ya pasó por un agente, "
+        "descontando otros retiros pedidos y lo que está en cola para reinvertir."
+    ),
+    "FUND_WITHDRAWAL_TOO_MANY_OPEN": "Tienes 5 retiros sin pagar. Espera a que se paguen antes de pedir otro.",
+    "FUND_WITHDRAWAL_NOT_FOUND": "No encontramos ese retiro.",
+    "FUND_WITHDRAWAL_NOT_OPEN": "Ese retiro ya se pagó, se rechazó o se anuló. Recarga la página.",
+    "FUND_WITHDRAWAL_INVALID_PAYMENT": "Escribe el monto en pesos, la tasa y la referencia del pago.",
+    "FUND_WITHDRAWAL_NOTE_REQUIRED": "Escribe el motivo: la persona lo ve en su historial.",
+    "FUND_WITHDRAWAL_INVALID_STATUS": "Ese estado no existe.",
+
     "FUND_REFUND_EXCEEDS_PENDING": (
         "Solo se puede devolver saldo pendiente de asignar, y esta persona tiene menos que ese monto."
     ),

@@ -153,6 +153,9 @@ class SqlAlchemyAgentSettlementRepository(SqlAlchemyRepository, AgentSettlementR
             note=m.note,
             created_by_user_id=m.created_by_user_id,
             settled_at=ensure_aware_utc(m.settled_at),
+            redeemed_amount=_decimal(m.redeemed_amount),
+            units_redeemed=_decimal(m.units_redeemed),
+            fees_total=_decimal(m.fees_total),
         )
 
     def create(self, s: AgentSettlement) -> AgentSettlement:
@@ -173,6 +176,9 @@ class SqlAlchemyAgentSettlementRepository(SqlAlchemyRepository, AgentSettlementR
             unvalued_fees=dict(s.unvalued_fees),
             note=s.note,
             created_by_user_id=s.created_by_user_id,
+            redeemed_amount=s.redeemed_amount,
+            units_redeemed=s.units_redeemed,
+            fees_total=s.fees_total,
         )
         self._session.add(m)
         self._session.flush()
@@ -250,6 +256,18 @@ class SqlAlchemyUnitLotRepository(SqlAlchemyRepository, UnitLotRepository):
             .all()
         )
         return [self._to_domain(m) for m in models]
+
+    def consume(self, lot_id: int, units: Decimal) -> bool:
+        updated = (
+            self._session.query(UnitLotModel)
+            .filter(UnitLotModel.id == lot_id, UnitLotModel.units_remaining >= units)
+            .update(
+                {"units_remaining": UnitLotModel.units_remaining - units},
+                synchronize_session=False,
+            )
+        )
+        self._session.flush()
+        return updated == 1
 
 
 # ======================================================================

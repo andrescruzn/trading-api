@@ -19,9 +19,12 @@ import type {
 	AgentSettlement,
 	AllocationOrder,
 	PoolParticipant,
+	RedemptionRequest,
 } from '@/modules/fund/api/fund.api';
 import { QueueAllocationDialog } from '@/modules/fund/components/queue-allocation-dialog';
+import { RedemptionRequestsTable } from '@/modules/fund/components/redemptions-tables';
 import { SettleAgentDialog } from '@/modules/fund/components/settle-agent-dialog';
+import { useCancelRedemptionMutation } from '@/modules/fund/hooks/use-fund-payouts-mutations';
 import { useCancelAllocationMutation } from '@/modules/fund/hooks/use-fund-pools-mutations';
 import { usePoolQuery } from '@/modules/fund/hooks/use-fund-pools-queries';
 import { LEDGER_BUCKET_LABELS } from '@/modules/fund/lib/fund-labels';
@@ -85,6 +88,18 @@ const SETTLEMENT_COLUMNS: DataTableColumn<AgentSettlement>[] = [
 		cell: (row) => formatNumber(row.allocated_amount, 2),
 	},
 	{
+		id: 'out',
+		header: 'Salió',
+		className: 'text-right tabular-nums',
+		cell: (row) => formatNumber(row.redeemed_amount, 2),
+	},
+	{
+		id: 'fees',
+		header: 'Comisión',
+		className: 'text-right tabular-nums',
+		cell: (row) => formatNumber(row.fees_total, 2),
+	},
+	{
 		id: 'after',
 		header: 'Saldo después',
 		className: 'text-right tabular-nums font-medium',
@@ -105,6 +120,7 @@ export function AdminFundAgentDetailPage() {
 	const canManage = useCanManage();
 	const owners = useOwners(ALL);
 	const cancelMutation = useCancelAllocationMutation();
+	const cancelRedemptionMutation = useCancelRedemptionMutation();
 	const [allocating, setAllocating] = useState(false);
 	const [settling, setSettling] = useState(false);
 	const pool = poolQuery.data;
@@ -122,6 +138,18 @@ export function AdminFundAgentDetailPage() {
 			onError: (error) =>
 				toast.add({
 					title: 'No pudimos cancelar la asignación',
+					description: getErrorMessage(error),
+					type: 'error',
+				}),
+		});
+	}
+
+	function cancelRedemption(request: RedemptionRequest) {
+		cancelRedemptionMutation.mutate(request.id, {
+			onSuccess: () => toast.add({ title: 'Salida anulada', type: 'success' }),
+			onError: (error) =>
+				toast.add({
+					title: 'No pudimos anular la salida',
 					description: getErrorMessage(error),
 					type: 'error',
 				}),
@@ -313,6 +341,9 @@ export function AdminFundAgentDetailPage() {
 					<TabsTrigger value="queue">
 						En cola ({pool.queued.length})
 					</TabsTrigger>
+					<TabsTrigger value="redemptions">
+						Salidas en cola ({pool.queued_redemptions.length})
+					</TabsTrigger>
 					<TabsTrigger value="settlements">Liquidaciones</TabsTrigger>
 				</TabsList>
 				<TabsContent value="participants" className="pt-2">
@@ -331,6 +362,16 @@ export function AdminFundAgentDetailPage() {
 						getRowId={(row) => row.id}
 						isLoading={false}
 						empty="No hay asignaciones en cola."
+					/>
+				</TabsContent>
+				<TabsContent value="redemptions" className="pt-2">
+					<RedemptionRequestsTable
+						rows={pool.queued_redemptions}
+						isLoading={false}
+						users={owners.byId}
+						empty="Nadie pidió sacar dinero de este agente."
+						onCancel={canManage ? cancelRedemption : undefined}
+						isCanceling={cancelRedemptionMutation.isPending}
 					/>
 				</TabsContent>
 				<TabsContent value="settlements" className="pt-2">

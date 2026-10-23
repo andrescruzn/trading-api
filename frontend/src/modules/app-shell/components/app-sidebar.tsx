@@ -99,7 +99,9 @@ const navSections: NavSectionData[] = [
 				items: [
 					{ title: 'Billetera', url: '/admin/wallet' },
 					{ title: 'Depósitos', url: '/admin/deposits' },
+					{ title: 'Retiros', url: '/admin/withdrawals' },
 					{ title: 'Agentes del fondo', url: '/admin/fund-agents' },
+					{ title: 'Comisiones', url: '/admin/commissions' },
 					{ title: 'Participantes', url: '/admin/participants' },
 					{ title: 'Ajustes del fondo', url: '/admin/fund-settings' },
 				],

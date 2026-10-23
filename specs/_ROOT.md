@@ -16,10 +16,10 @@ Una explicación simple de los 10 módulos del sistema, sin tecnicismos. Cada m�
 | [M8 — Orders & Execution](M08-ORDERS-EXECUTION.md) | ✅ Completo | 100 % | 84 % | Órdenes paper/live (ccxt) con propiedad, RiskGate e idempotencia; señal → orden (aprobada o automática); SL nativo en el exchange en live + TP por ciclo del scheduler; protección SL/TP también en compras manuales y en compras que se ejecutan tarde; cancelar órdenes; reconciliación con el exchange; fills, posiciones; 350+ tests |
 | [M9 — Alerts](M09-ALERTS.md) | ✅ Completo | 100 % | 71 % | Reglas de alerta que se revisan solas (señal, error, precio, PnL, drawdown) con antispam; avisos por email/Telegram al dueño/webhook (con guarda SSRF)/desktop; campana de notificaciones en la app; bot de Telegram por usuario para aprobar señales |
 | [M10 — Billing & Managed Accounts](M10-BILLING.md) | ✅ Completo | 100 % | 75 % | Inversores, cuentas administradas, performance fee con HWM |
-| [M11 — Fondo común](M11-FUND.md) | 📌 En construcción | 67 % | 65 % | Libro mayor por persona, depósitos USDT verificados contra el exchange, agentes del fondo con NAV y unidades, cola de asignaciones y liquidación; el 1 % sobre el capital del agente. Fases F5–F6 pendientes |
-| **Promedio** | | **97 %** | **79 %** | |
+| [M11 — Fondo común](M11-FUND.md) | 📌 En construcción | 83 % | 70 % | Libro mayor por persona, depósitos USDT verificados contra el exchange, agentes del fondo con NAV y unidades, liquidación con entradas y salidas, comisión escalonada repartida entre propietarios, retiros a banco/Nequi; el 1 % sobre el capital del agente. Falta F6 (portales, conciliación, quitar M10) |
+| **Promedio** | | **98 %** | **79 %** | |
 
-- **Alcance** = entregables del plan original hechos / planificados (M11: fases del plan del fondo común hechas, 4 de 6). Las dos filas por debajo del 100 % (M2 y M5) son por los tests de services que el plan original listaba y nunca se escribieron.
+- **Alcance** = entregables del plan original hechos / planificados (M11: fases del plan del fondo común hechas, 5 de 6). Las dos filas por debajo del 100 % (M2 y M5) son por los tests de services que el plan original listaba y nunca se escribieron.
 - **Madurez** = estimación de qué tan lista para producción está cada pieza (rúbrica abajo). Es una opinión fundamentada en el repo, no una medición.
 
 Más detalle:
@@ -173,7 +173,7 @@ Hash routing: la URL real es `/#/<ruta>`. Cada ruta vive en `frontend/src/routes
 | Público | `/login` |
 | Todos los roles | `/my-fund` (Mi saldo), `/dashboard` (inicio = lista de agentes), `/agents/:id`, `/alerts`, `/strategies`, `/track-record`, `/backtest`, `/market/explorer` (`/agents`, `/bots`, `/agent`, `/orders`, `/features` y `/market/candles` redirigen a `/dashboard`; `/market/symbols` a `/market/explorer`) |
 | Solo super admin | `/agents/new`, `/portfolio` (`ManagerGuard`) y `/admin/telegram` en el menú |
-| Super admin y socio (`_app/admin/*`; el socio sin botones de escritura) | `/admin/wallet`, `/admin/deposits`, `/admin/fund-agents`, `/admin/fund-agents/:poolId`, `/admin/participants`, `/admin/fund-settings`, `/admin/exchanges`, `/admin/symbols`, `/admin/timeframes`, `/admin/feature-sets`, `/admin/users`, `/admin/accounts`, `/admin/strategies`, `/admin/agents`, `/admin/orders`, `/admin/alerts`, `/admin/telegram`, `/admin/investors`, `/admin/managed-accounts`, `/admin/billing` |
+| Super admin y socio (`_app/admin/*`; el socio sin botones de escritura) | `/admin/wallet`, `/admin/deposits`, `/admin/fund-agents`, `/admin/fund-agents/:poolId`, `/admin/withdrawals`, `/admin/commissions`, `/admin/participants`, `/admin/fund-settings`, `/admin/exchanges`, `/admin/symbols`, `/admin/timeframes`, `/admin/feature-sets`, `/admin/users`, `/admin/accounts`, `/admin/strategies`, `/admin/agents`, `/admin/orders`, `/admin/alerts`, `/admin/telegram`, `/admin/investors`, `/admin/managed-accounts`, `/admin/billing` |
 | Inversor (`_app/investor/*`) | `/investor/dashboard` |
 
 Comprar/Vender vive en el [Módulo 8 — Orders & Execution](M08-ORDERS-EXECUTION.md).
@@ -191,6 +191,11 @@ Cambios del 2026-10-20 (Fase 3):
 - Menú de usuario: **Mi perfil** (cambiar el nombre) — [M1](M01-AUTH.md).
 - `/agents/:id` → Mercado: **gráfico de precio** con líneas de Entrada, SL y TP — [M7](M07-BOTS-SIGNALS.md).
 - `/alerts`: en PnL y drawdown el agente es obligatorio; textos de revisión automática — [M9](M09-ALERTS.md).
+
+Cambios del 2026-10-23 (fondo común, F5 — salidas, comisión y retiros):
+- `/my-fund`: botón **Retirar**, **Sacar dinero** en cada agente, salidas en cola y lo que salió con su comisión, pestañas **Retiros** (retiros y medios de pago) y **Comisión** (tabla vigente) — [M11](M11-FUND.md).
+- `/admin/withdrawals` (**Retiros**) y `/admin/commissions` (**Comisiones**), Administración → Fondo — [M11](M11-FUND.md).
+- `/admin/fund-agents/:poolId`: pestaña **Salidas en cola**; la vista previa de la liquidación muestra quién sale y la comisión — [M11](M11-FUND.md).
 
 Cambios del 2026-10-23 (fondo común, F4 — agentes del fondo):
 - `/admin/fund-agents` y `/admin/fund-agents/:poolId` (**Agentes del fondo**): abrir un agente al fondo, asignar dinero en cola y liquidar con vista previa — [M11](M11-FUND.md).

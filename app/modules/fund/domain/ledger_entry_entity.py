@@ -27,9 +27,19 @@ from decimal import Decimal
 LEDGER_BUCKETS = ("pending", "available")
 
 # Tipos de asiento. F3: depósito y devolución. F4: asignación a un agente
-# (sale del saldo pendiente o disponible y se convierte en unidades). La F5
-# añade redenciones, comisiones y retiros pagados.
-LEDGER_ENTRY_TYPES = ("deposit", "refund", "allocation")
+# (sale del saldo pendiente o disponible y se convierte en unidades). F5:
+# redemption (sale de un agente, entra al disponible), fee (la comisión que
+# paga quien sale), commission (la parte de un propietario) y withdrawal
+# (retiro pagado a banco / Nequi).
+LEDGER_ENTRY_TYPES = (
+    "deposit",
+    "refund",
+    "allocation",
+    "redemption",
+    "fee",
+    "commission",
+    "withdrawal",
+)
 
 
 @dataclass(frozen=True)

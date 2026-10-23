@@ -1,3 +1,4 @@
+import { IconArrowUpFromArc } from '@tabler/icons-react';
 import { BotStatusBadge } from '@/modules/bots/components/bot-badges';
 import type { Participation } from '@/modules/fund/api/fund.api';
 import {
@@ -10,6 +11,7 @@ import {
 	formatPercent,
 	formatSignedPrice,
 } from '@/modules/shared/lib/format';
+import { Button } from '@/modules/ui/components/button';
 import { cn } from '@/modules/ui/lib/utils';
 
 const COLUMNS: DataTableColumn<Participation>[] = [
@@ -70,6 +72,8 @@ type ParticipationsTableProps = {
 	rows: Participation[] | undefined;
 	isLoading: boolean;
 	error: unknown;
+	/** Pedir sacar dinero de ese agente (en su próxima liquidación). */
+	onRedeem?: (participation: Participation) => void;
 };
 
 /**
@@ -81,10 +85,27 @@ export function ParticipationsTable({
 	rows,
 	isLoading,
 	error,
+	onRedeem,
 }: ParticipationsTableProps) {
+	const columns: DataTableColumn<Participation>[] = onRedeem
+		? [
+				...COLUMNS,
+				{
+					id: 'actions',
+					header: <span className="sr-only">Acciones</span>,
+					className: 'text-right',
+					cell: (row) => (
+						<Button variant="ghost" size="sm" onClick={() => onRedeem(row)}>
+							<IconArrowUpFromArc />
+							Sacar dinero
+						</Button>
+					),
+				},
+			]
+		: COLUMNS;
 	return (
 		<DataTable
-			columns={COLUMNS}
+			columns={columns}
 			rows={rows}
 			getRowId={(row) => row.pool_id}
 			isLoading={isLoading}

@@ -21,6 +21,13 @@ from app.modules.accounts.infrastructure import (
 from app.modules.accounts.infrastructure.ccxt_wallet_gateway import CcxtWalletGateway
 from app.modules.bots.infrastructure import SqlAlchemyBotRepository
 from app.modules.fund.infrastructure import (
+    SqlAlchemyCommissionCreditRepository,
+    SqlAlchemyCommissionShareRepository,
+    SqlAlchemyFeeScheduleRepository,
+    SqlAlchemyPayoutMethodRepository,
+    SqlAlchemyRedemptionRequestRepository,
+    SqlAlchemySettlementRedemptionRepository,
+    SqlAlchemyWithdrawalRequestRepository,
     SqlAlchemyAgentPoolRepository,
     SqlAlchemyAgentSettlementRepository,
     SqlAlchemyAllocationOrderRepository,
@@ -35,13 +42,16 @@ from app.modules.fund.services.deposits import (
     UnclaimedDepositsService,
     VerifyDepositsService,
 )
+from app.modules.fund.services.fees import CommissionSharesService, FeeScheduleService
 from app.modules.fund.services.ledger import FundLedgerService
+from app.modules.fund.services.payouts import PayoutMethodsService, WithdrawalService
 from app.modules.fund.services.pools import (
     AgentCapitalService,
     AgentInfoReader,
     AgentPoolsService,
     AllocationService,
     ParticipationsService,
+    RedemptionService,
     SettleAgentService,
 )
 from app.modules.fund.services.settings import DepositNetworksService, FundSettingsService
@@ -80,6 +90,14 @@ class FundServiceFactory:
         self._bot_repo = SqlAlchemyBotRepository(session)
         self._symbol_repo = SqlAlchemySymbolRepository(session)
         self._fill_repo = SqlAlchemyFillRepository(session)
+        # F5: salidas, comisiones y retiros
+        self._redemption_repo = SqlAlchemyRedemptionRequestRepository(session)
+        self._line_repo = SqlAlchemySettlementRedemptionRepository(session)
+        self._credit_repo = SqlAlchemyCommissionCreditRepository(session)
+        self._fee_repo = SqlAlchemyFeeScheduleRepository(session)
+        self._shares_repo = SqlAlchemyCommissionShareRepository(session)
+        self._payout_repo = SqlAlchemyPayoutMethodRepository(session)
+        self._withdrawal_repo = SqlAlchemyWithdrawalRequestRepository(session)
 
     def _gateway(self) -> CcxtWalletGateway:
         # Solo se arma cuando el caso de uso habla con el exchange
@@ -173,6 +191,7 @@ class FundServiceFactory:
             symbol_repo=self._symbol_repo,
             fill_repo=self._fill_repo,
             capital=self.agent_capital(),
+            redemption_repo=self._redemption_repo,
         )
 
     def allocations(self) -> AllocationService:
@@ -181,6 +200,7 @@ class FundServiceFactory:
             pool_repo=self._pool_repo,
             ledger_repo=self._ledger_repo,
             user_repo=self._user_repo,
+            withdrawal_repo=self._withdrawal_repo,
         )
 
     def settle_agent(self) -> SettleAgentService:
@@ -193,6 +213,12 @@ class FundServiceFactory:
             bot_repo=self._bot_repo,
             order_repo=SqlAlchemyOrderRepository(self._session),
             capital=self.agent_capital(),
+            settings_repo=self._settings_repo,
+            redemption_repo=self._redemption_repo,
+            line_repo=self._line_repo,
+            credit_repo=self._credit_repo,
+            fee_repo=self._fee_repo,
+            shares_repo=self._shares_repo,
         )
 
     def participations(self) -> ParticipationsService:
@@ -201,6 +227,50 @@ class FundServiceFactory:
             pool_repo=self._pool_repo,
             settlement_repo=self._settlement_repo,
             agents=AgentInfoReader(self._bot_repo, self._symbol_repo),
+        )
+
+
+    # ------------------------------------------------------------------
+    # Salidas, comisiones y retiros (F5)
+    # ------------------------------------------------------------------
+
+    def redemptions(self) -> RedemptionService:
+        return RedemptionService(
+            repo=self._redemption_repo,
+            line_repo=self._line_repo,
+            pool_repo=self._pool_repo,
+            lot_repo=self._lot_repo,
+            agents=AgentInfoReader(self._bot_repo, self._symbol_repo),
+        )
+
+    def fee_schedule(self) -> FeeScheduleService:
+        return FeeScheduleService(repo=self._fee_repo)
+
+    def commission_shares(self) -> CommissionSharesService:
+        return CommissionSharesService(
+            repo=self._shares_repo,
+            credit_repo=self._credit_repo,
+            user_repo=self._user_repo,
+            # Reciben comisión los propietarios: super admin y socios
+            owner_role_ids=frozenset(
+                {settings.AUTH_SUPER_ADMIN_ROLE_ID, settings.AUTH_PARTNER_ROLE_ID}
+            ),
+        )
+
+    def payout_methods(self) -> PayoutMethodsService:
+        return PayoutMethodsService(
+            repo=self._payout_repo,
+            cipher=CredentialsCipher.from_settings(),
+            cooldown_hours=settings.PAYOUT_METHOD_COOLDOWN_HOURS,
+        )
+
+    def withdrawals(self) -> WithdrawalService:
+        return WithdrawalService(
+            repo=self._withdrawal_repo,
+            payout_repo=self._payout_repo,
+            ledger_repo=self._ledger_repo,
+            allocation_repo=self._allocation_repo,
+            asset=settings.WALLET_BASE_ASSET,
         )
 
 

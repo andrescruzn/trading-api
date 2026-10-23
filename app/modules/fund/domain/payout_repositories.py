@@ -19,7 +19,11 @@ from app.modules.fund.domain.agent_pool_entity import (
     SettlementRedemption,
 )
 from app.modules.fund.domain.commission import CommissionShareVersion, FeeSchedule
-from app.modules.fund.domain.withdrawal_entity import PayoutMethod, WithdrawalRequest
+from app.modules.fund.domain.withdrawal_entity import (
+    PayoutMethod,
+    WithdrawalReceipt,
+    WithdrawalRequest,
+)
 
 
 class FeeScheduleRepository(TransactionalRepository, ABC):
@@ -77,6 +81,11 @@ class SettlementRedemptionRepository(TransactionalRepository, ABC):
     @abstractmethod
     def list_by_user(self, user_id: int, limit: int = 100) -> list[SettlementRedemption]: ...
 
+    @abstractmethod
+    def totals_by_user(self) -> dict[int, tuple[Decimal, Decimal]]:
+        """`user_id → (ganancia realizada, comisión pagada)` de todas sus salidas."""
+        ...
+
 
 class CommissionCreditRepository(TransactionalRepository, ABC):
 
@@ -124,6 +133,11 @@ class WithdrawalRequestRepository(TransactionalRepository, ABC):
         ...
 
     @abstractmethod
+    def open_summary(self) -> tuple[int, Decimal]:
+        """Retiros por pagar de todo el fondo: (cantidad, total)."""
+        ...
+
+    @abstractmethod
     def list_page(
         self,
         page: PageRequest,
@@ -133,3 +147,18 @@ class WithdrawalRequestRepository(TransactionalRepository, ABC):
 
     @abstractmethod
     def update_if_status(self, request: WithdrawalRequest, expected: list[str]) -> bool: ...
+
+
+class WithdrawalReceiptRepository(TransactionalRepository, ABC):
+    """Un comprobante por retiro; subir otro lo reemplaza."""
+
+    @abstractmethod
+    def save(self, receipt: WithdrawalReceipt) -> WithdrawalReceipt: ...
+
+    @abstractmethod
+    def get(self, withdrawal_id: int) -> WithdrawalReceipt | None: ...
+
+    @abstractmethod
+    def names_for(self, withdrawal_ids: list[int]) -> dict[int, str]:
+        """`withdrawal_id → nombre del archivo` sin leer los archivos."""
+        ...

@@ -133,6 +133,10 @@ FUND_ERROR_MESSAGES: dict[str, str] = {
     "FUND_WITHDRAWAL_INVALID_PAYMENT": "Escribe el monto en pesos, la tasa y la referencia del pago.",
     "FUND_WITHDRAWAL_NOTE_REQUIRED": "Escribe el motivo: la persona lo ve en su historial.",
     "FUND_WITHDRAWAL_INVALID_STATUS": "Ese estado no existe.",
+    "FUND_RECEIPT_INVALID": "El comprobante debe ser un PDF, PNG o JPG.",
+    "FUND_RECEIPT_TOO_LARGE": "El comprobante pesa más de 5 MB. Sube uno más liviano.",
+    "FUND_RECEIPT_NOT_PAID": "Solo se adjunta el comprobante a un retiro pagado.",
+    "FUND_RECEIPT_NOT_FOUND": "Ese retiro no tiene comprobante.",
 
     "FUND_REFUND_EXCEEDS_PENDING": (
         "Solo se puede devolver saldo pendiente de asignar, y esta persona tiene menos que ese monto."

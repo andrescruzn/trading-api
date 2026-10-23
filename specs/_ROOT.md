@@ -15,11 +15,11 @@ Una explicación simple de los 10 módulos del sistema, sin tecnicismos. Cada m�
 | [M7 — Bots & Signals](M07-BOTS-SIGNALS.md) | ✅ Completo | 100 % | 81 % | **Agentes** (bots en la UI): punto de entrada, asistente, señales BUY/SELL/HOLD con entry/SL/TP y **modo de ejecución** Manual / Con aprobación / Automático (señales automáticas por vela cerrada) |
 | [M8 — Orders & Execution](M08-ORDERS-EXECUTION.md) | ✅ Completo | 100 % | 84 % | Órdenes paper/live (ccxt) con propiedad, RiskGate e idempotencia; señal → orden (aprobada o automática); SL nativo en el exchange en live + TP por ciclo del scheduler; protección SL/TP también en compras manuales y en compras que se ejecutan tarde; cancelar órdenes; reconciliación con el exchange; fills, posiciones; 350+ tests |
 | [M9 — Alerts](M09-ALERTS.md) | ✅ Completo | 100 % | 71 % | Reglas de alerta que se revisan solas (señal, error, precio, PnL, drawdown) con antispam; avisos por email/Telegram al dueño/webhook (con guarda SSRF)/desktop; campana de notificaciones en la app; bot de Telegram por usuario para aprobar señales |
-| [M10 — Billing & Managed Accounts](M10-BILLING.md) | ✅ Completo | 100 % | 75 % | Inversores, cuentas administradas, performance fee con HWM |
-| [M11 — Fondo común](M11-FUND.md) | 📌 En construcción | 83 % | 70 % | Libro mayor por persona, depósitos USDT verificados contra el exchange, agentes del fondo con NAV y unidades, liquidación con entradas y salidas, comisión escalonada repartida entre propietarios, retiros a banco/Nequi; el 1 % sobre el capital del agente. Falta F6 (portales, conciliación, quitar M10) |
-| **Promedio** | | **98 %** | **79 %** | |
+| [M10 — Billing & Managed Accounts](M10-BILLING.md) | 🗄️ Retirado | — | — | Reemplazado por M11 el 2026-10-23 (no cuenta en el promedio) |
+| [M11 — Fondo común](M11-FUND.md) | ✅ Completo | 100 % | 75 % | Una billetera para todos: libro mayor por persona, depósitos USDT verificados contra el exchange, agentes del fondo con NAV y unidades, liquidación con entradas y salidas, comisión escalonada repartida entre propietarios y socios, retiros a banco/Nequi con comprobante, resumen con conciliación y avisos; el 1 % sobre el capital del agente |
+| **Promedio** | | **100 %** | **80 %** | |
 
-- **Alcance** = entregables del plan original hechos / planificados (M11: fases del plan del fondo común hechas, 5 de 6). Las dos filas por debajo del 100 % (M2 y M5) son por los tests de services que el plan original listaba y nunca se escribieron.
+- **Alcance** = entregables del plan original hechos / planificados (M11: fases del plan del fondo común hechas, 6 de 6; M10 retirado, fuera del promedio). Las dos filas por debajo del 100 % (M2 y M5) son por los tests de services que el plan original listaba y nunca se escribieron.
 - **Madurez** = estimación de qué tan lista para producción está cada pieza (rúbrica abajo). Es una opinión fundamentada en el repo, no una medición.
 
 Más detalle:
@@ -69,7 +69,7 @@ Más detalle:
 ```
 
 El [Módulo 1 (Auth)](M01-AUTH.md) protege el acceso a todo el sistema. Sin estar autenticado, no se puede usar ningún módulo.
-El [Módulo 10 (Billing)](M10-BILLING.md) se apoya en el historial de órdenes y ejecuciones del [Módulo 8](M08-ORDERS-EXECUTION.md) para calcular el fee de performance.
+El [Módulo 11 (Fondo común)](M11-FUND.md) lleva la cuenta de cada persona: sus agentes operan sobre la billetera única con el capital del pool, y en cada liquidación se cobra la comisión sobre la ganancia que sale (reemplazó al Módulo 10, retirado).
 
 ### Estado real del flujo (verificado en el código el 2026-10-19)
 
@@ -109,9 +109,9 @@ Módulo 8 (Orders & Execution) ← necesita signals + accounts
     ↓
 Módulo 9 (Alerts) ← puede ir en paralelo con 7 u 8
     ↓
-Módulo 10 (Billing) ← necesita historial de orders + fills de M8
+Módulo 10 (Billing) — retirado el 2026-10-23, lo reemplaza M11
     ↓
-Módulo 11 (Fondo común) ← necesita M1 (roles) + M4 (billetera); en F4 usa M7/M8; en F6 reemplaza a M10
+Módulo 11 (Fondo común) ← necesita M1 (roles) + M4 (billetera); usa M7/M8 (capital de los agentes) y M9 (avisos); reemplazó a M10
 ```
 
 ---
@@ -173,8 +173,7 @@ Hash routing: la URL real es `/#/<ruta>`. Cada ruta vive en `frontend/src/routes
 | Público | `/login` |
 | Todos los roles | `/my-fund` (Mi saldo), `/dashboard` (inicio = lista de agentes), `/agents/:id`, `/alerts`, `/strategies`, `/track-record`, `/backtest`, `/market/explorer` (`/agents`, `/bots`, `/agent`, `/orders`, `/features` y `/market/candles` redirigen a `/dashboard`; `/market/symbols` a `/market/explorer`) |
 | Solo super admin | `/agents/new`, `/portfolio` (`ManagerGuard`) y `/admin/telegram` en el menú |
-| Super admin y socio (`_app/admin/*`; el socio sin botones de escritura) | `/admin/wallet`, `/admin/deposits`, `/admin/fund-agents`, `/admin/fund-agents/:poolId`, `/admin/withdrawals`, `/admin/commissions`, `/admin/participants`, `/admin/fund-settings`, `/admin/exchanges`, `/admin/symbols`, `/admin/timeframes`, `/admin/feature-sets`, `/admin/users`, `/admin/accounts`, `/admin/strategies`, `/admin/agents`, `/admin/orders`, `/admin/alerts`, `/admin/telegram`, `/admin/investors`, `/admin/managed-accounts`, `/admin/billing` |
-| Inversor (`_app/investor/*`) | `/investor/dashboard` |
+| Super admin y socio (`_app/admin/*`; el socio sin botones de escritura) | `/admin/fund`, `/admin/wallet`, `/admin/deposits`, `/admin/fund-agents`, `/admin/fund-agents/:poolId`, `/admin/withdrawals`, `/admin/commissions`, `/admin/participants`, `/admin/fund-settings`, `/admin/exchanges`, `/admin/symbols`, `/admin/timeframes`, `/admin/feature-sets`, `/admin/users`, `/admin/accounts`, `/admin/strategies`, `/admin/agents`, `/admin/orders`, `/admin/alerts`, `/admin/telegram` |
 
 Comprar/Vender vive en el [Módulo 8 — Orders & Execution](M08-ORDERS-EXECUTION.md).
 
@@ -191,6 +190,13 @@ Cambios del 2026-10-20 (Fase 3):
 - Menú de usuario: **Mi perfil** (cambiar el nombre) — [M1](M01-AUTH.md).
 - `/agents/:id` → Mercado: **gráfico de precio** con líneas de Entrada, SL y TP — [M7](M07-BOTS-SIGNALS.md).
 - `/alerts`: en PnL y drawdown el agente es obligatorio; textos de revisión automática — [M9](M09-ALERTS.md).
+
+Cambios del 2026-10-23 (fondo común, F6 — resumen, avisos y retiro de M10):
+- `/admin/fund` (**Resumen del fondo**, primera de Administración → Fondo): billetera, conciliación, capital por agente, saldos y ganancias de propietarios y socios — [M11](M11-FUND.md).
+- `/my-fund`: tarjeta **Lo que has ganado**, **Descargar extracto (CSV)** y descarga del comprobante de cada retiro pagado — [M11](M11-FUND.md).
+- `/admin/withdrawals`: comprobante al pagar (opcional) y **Adjuntar / Cambiar comprobante** — [M11](M11-FUND.md).
+- Campana, correo y Telegram: avisos de depósitos, liquidaciones y retiros — [M11](M11-FUND.md), [M9](M09-ALERTS.md).
+- Quitados `/admin/investors`, `/admin/managed-accounts`, `/admin/billing`, `/investor/dashboard` y el grupo «Inversores» del menú ([M10](M10-BILLING.md) retirado).
 
 Cambios del 2026-10-23 (fondo común, F5 — salidas, comisión y retiros):
 - `/my-fund`: botón **Retirar**, **Sacar dinero** en cada agente, salidas en cola y lo que salió con su comisión, pestañas **Retiros** (retiros y medios de pago) y **Comisión** (tabla vigente) — [M11](M11-FUND.md).

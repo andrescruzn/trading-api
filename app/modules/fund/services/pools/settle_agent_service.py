@@ -35,6 +35,13 @@ from decimal import Decimal
 
 from app.common.contracts import ServiceResult
 from app.common.utils import utc_now
+from app.modules.fund.domain.fund_notifier import (
+    FUND_ALLOCATION_APPLIED,
+    FUND_REDEMPTION_APPLIED,
+    FundEvent,
+    FundNotifier,
+    NullFundNotifier,
+)
 from app.modules.bots.domain.bot_repository import BotRepository
 from app.modules.fund.domain.agent_pool_entity import (
     AgentPool,
@@ -113,7 +120,9 @@ class SettleAgentService:
         credit_repo: CommissionCreditRepository,
         fee_repo: FeeScheduleRepository,
         shares_repo: CommissionShareRepository,
+        notifier: FundNotifier | None = None,
     ):
+        self._notifier = notifier or NullFundNotifier()
         self._pool_repo = pool_repo
         self._settlement_repo = settlement_repo
         self._lot_repo = lot_repo
@@ -295,6 +304,7 @@ class SettleAgentService:
         except Exception:
             self._pool_repo.rollback()
             raise
+        self._notifier.notify(_settlement_events(plan, agent_name, pool.asset))
         return ServiceResult.ok(settlement)
 
     def _apply_redemption(
@@ -411,3 +421,37 @@ class SettleAgentService:
             self._order_repo.count(OrderCriteria(bot_ids=[bot_id], status=status)) > 0
             for status in _OPEN_ORDER_STATUSES
         )
+
+
+def _settlement_events(plan: SettlementPlan, agent_name: str, asset: str) -> list[FundEvent]:
+    """Un aviso por cada persona que salió o entró en esta liquidación."""
+    events = [
+        FundEvent(
+            code=FUND_REDEMPTION_APPLIED,
+            user_id=r.order.user_id,
+            data={
+                "agent": agent_name,
+                "asset": asset,
+                "value": str(r.value),
+                "fee": str(r.fee),
+                "net": str(r.net),
+                "pending": str(r.pending_amount or 0),
+            },
+        )
+        for r in plan.redemptions
+    ]
+    events += [
+        FundEvent(
+            code=FUND_ALLOCATION_APPLIED,
+            user_id=a.order.user_id,
+            data={
+                "agent": agent_name,
+                "asset": asset,
+                "amount": str(a.order.amount),
+                "units": str(a.units),
+                "nav": str(plan.nav),
+            },
+        )
+        for a in plan.allocations
+    ]
+    return events

@@ -1,7 +1,6 @@
 import {
 	IconBell,
 	IconBook,
-	IconBriefcase,
 	IconCoins,
 	IconCompass,
 	IconDatabase,
@@ -9,7 +8,6 @@ import {
 	IconFlask,
 	IconHome,
 	IconSettings,
-	IconTrendingUp,
 	IconTrophy,
 	IconWallet,
 } from '@tabler/icons-react';
@@ -21,7 +19,7 @@ import { NavSection } from '@/modules/app-shell/components/nav-section';
 import type { NavSectionData } from '@/modules/app-shell/components/nav-section.types';
 import { isPathActive } from '@/modules/app-shell/components/nav-section.utils';
 import { NavUser } from '@/modules/app-shell/components/nav-user';
-import { MANAGER_ROLES, ROLES, STAFF_ROLES } from '@/modules/auth/lib/roles';
+import { MANAGER_ROLES, STAFF_ROLES } from '@/modules/auth/lib/roles';
 import {
 	Sidebar,
 	SidebarContent,
@@ -75,28 +73,21 @@ const navSections: NavSectionData[] = [
 	},
 	{
 		// Todos son participantes del fondo común: propietarios, socios e
-		// inversores tienen su saldo. El dashboard viejo (M10) es solo del inversor.
+		// inversores tienen su saldo.
 		label: 'Mi inversión',
-		items: [
-			{ title: 'Mi saldo', icon: IconCoins, url: '/my-fund' },
-			{
-				title: 'Mi dashboard',
-				icon: IconTrendingUp,
-				url: '/investor/dashboard',
-				role: ROLES.INVESTOR,
-			},
-		],
+		items: [{ title: 'Mi saldo', icon: IconCoins, url: '/my-fund' }],
 	},
 	{
 		label: 'Administración',
 		role: STAFF_ROLES,
 		items: [
 			{
-				// El fondo común: la billetera única y, después, depósitos,
-				// retiros y comisiones. El socio lo ve en solo lectura.
+				// El fondo común: resumen y conciliación, la billetera única,
+				// depósitos, retiros y comisiones. El socio lo ve en solo lectura.
 				title: 'Fondo',
 				icon: IconCoins,
 				items: [
+					{ title: 'Resumen del fondo', url: '/admin/fund' },
 					{ title: 'Billetera', url: '/admin/wallet' },
 					{ title: 'Depósitos', url: '/admin/deposits' },
 					{ title: 'Retiros', url: '/admin/withdrawals' },
@@ -138,15 +129,6 @@ const navSections: NavSectionData[] = [
 					{ title: 'Gestionar estrategias', url: '/admin/strategies' },
 					{ title: 'Telegram', url: '/admin/telegram', role: MANAGER_ROLES },
 					{ title: 'Auditoría', url: '/admin/audit' },
-				],
-			},
-			{
-				title: 'Inversores',
-				icon: IconBriefcase,
-				items: [
-					{ title: 'Inversores', url: '/admin/investors' },
-					{ title: 'Cuentas gestionadas', url: '/admin/managed-accounts' },
-					{ title: 'Facturación', url: '/admin/billing' },
 				],
 			},
 		],

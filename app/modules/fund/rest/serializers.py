@@ -9,6 +9,7 @@
 
 from __future__ import annotations
 
+import base64
 from datetime import datetime
 from decimal import Decimal
 from typing import Any
@@ -29,8 +30,13 @@ from app.modules.fund.domain.agent_pool_entity import (
     SettlementRedemption,
 )
 from app.modules.fund.domain.commission import CommissionShareVersion, FeeSchedule, TierCharge
-from app.modules.fund.domain.withdrawal_entity import PayoutMethod, WithdrawalRequest
+from app.modules.fund.domain.withdrawal_entity import (
+    PayoutMethod,
+    WithdrawalReceipt,
+    WithdrawalRequest,
+)
 from app.modules.fund.services.fees import OwnerEarning
+from app.modules.fund.services.overview import FundOverview, ParticipantSummary
 from app.modules.fund.services.pools import (
     AgentInfo,
     ParticipantPosition,
@@ -420,5 +426,63 @@ def withdrawal_to_dict(w: WithdrawalRequest) -> dict[str, Any]:
         "resolved_by_user_id": w.resolved_by_user_id,
         "resolved_at":         _iso(w.resolved_at),
         "created_at":          _iso(w.created_at),
+        "receipt_name":        w.receipt_name,
     }
 
+
+def receipt_to_dict(r: WithdrawalReceipt) -> dict[str, Any]:
+    return {
+        "withdrawal_id": r.withdrawal_id,
+        "filename":      r.filename,
+        "content_type":  r.content_type,
+        "size_bytes":    r.size_bytes,
+        "data_base64":   base64.b64encode(r.content).decode("ascii"),
+        "created_at":    _iso(r.created_at),
+    }
+
+
+# ======================================================================
+# Resumen y conciliación (F6)
+# ======================================================================
+
+def participant_summary_to_dict(s: ParticipantSummary) -> dict[str, Any]:
+    return {
+        "user_id":         s.user_id,
+        "commissions":     _money(s.commissions),
+        "realized_gain":   _money(s.realized_gain),
+        "fees_paid":       _money(s.fees_paid),
+        "in_agents_cost":  _money(s.in_agents_cost),
+        "in_agents_value": _money(s.in_agents_value),
+        "unrealized_gain": _money(s.unrealized_gain),
+        "pending":         _money(s.pending),
+        "available":       _money(s.available),
+        "total_earned":    _money(s.total_earned),
+    }
+
+
+def fund_overview_to_dict(o: FundOverview) -> dict[str, Any]:
+    snap = o.snapshot
+    return {
+        "asset": o.asset,
+        "wallet": None if snap is None else {
+            "total_value":    _money(snap.total_value),
+            "free_value":     _money(snap.free_value),
+            "locked_value":   _money(snap.locked_value),
+            "missing_prices": snap.missing_prices,
+            "ts":             _iso(snap.ts),
+        },
+        "last_synced_at":         _iso(o.last_synced_at),
+        "last_sync_error":        o.last_sync_error,
+        "agents":                 [pool_overview_to_dict(a) for a in o.agents],
+        "agents_capital":         _money(o.agents_capital),
+        "pending_total":          _money(o.pending_total),
+        "available_total":        _money(o.available_total),
+        "accounted":              _money(o.accounted),
+        "difference":             _money(o.difference),
+        "queued_allocations":     _money(o.queued_allocations),
+        "open_withdrawals_count": o.open_withdrawals_count,
+        "open_withdrawals_total": _money(o.open_withdrawals_total),
+        "deposits_waiting_count": o.deposits_waiting_count,
+        "deposits_waiting_total": _money(o.deposits_waiting_total),
+        "owners":                 [participant_summary_to_dict(s) for s in o.owners],
+    }

@@ -21,6 +21,8 @@ from decimal import Decimal
 
 from app.common.contracts import Page, PageRequest, ServiceResult
 from app.common.utils import utc_now
+from app.modules.fund.domain.fund_notifier import FundNotifier, NullFundNotifier
+from app.modules.fund.services.deposits.deposit_events import confirmed_event, rejected_event
 from app.modules.fund.domain.deposit_request_entity import (
     DEPOSIT_STATUSES,
     OPEN_DEPOSIT_STATUSES,
@@ -39,7 +41,14 @@ def _clean_note(note: str | None) -> str | None:
 
 class ResolveDepositRequestService:
 
-    def __init__(self, *, deposit_repo: DepositRequestRepository, ledger_repo: LedgerRepository):
+    def __init__(
+        self,
+        *,
+        deposit_repo: DepositRequestRepository,
+        ledger_repo: LedgerRepository,
+        notifier: FundNotifier | None = None,
+    ):
+        self._notifier = notifier or NullFundNotifier()
         self._deposit_repo = deposit_repo
         self._creditor = DepositCreditor(deposit_repo, ledger_repo)
 
@@ -131,6 +140,7 @@ class ResolveDepositRequestService:
         except Exception:
             self._deposit_repo.rollback()
             raise
+        self._notifier.notify([confirmed_event(request)])
         return ServiceResult.ok(request)
 
     def reject(
@@ -157,4 +167,5 @@ class ResolveDepositRequestService:
         except Exception:
             self._deposit_repo.rollback()
             raise
+        self._notifier.notify([rejected_event(request)])
         return ServiceResult.ok(request)

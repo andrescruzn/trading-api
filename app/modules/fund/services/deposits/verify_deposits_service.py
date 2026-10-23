@@ -28,6 +28,8 @@ from decimal import Decimal
 
 from app.common.contracts import ServiceResult
 from app.common.utils import utc_now
+from app.modules.fund.domain.fund_notifier import FundEvent, FundNotifier, NullFundNotifier
+from app.modules.fund.services.deposits.deposit_events import confirmed_event, review_event
 from app.modules.accounts.domain.wallet_gateway import (
     ExchangeDeposit,
     WalletGateway,
@@ -72,7 +74,9 @@ class VerifyDepositsService:
         settings_repo: FundSettingsRepository,
         wallet_resolver: WalletContextResolver,
         gateway: WalletGateway,
+        notifier: FundNotifier | None = None,
     ):
+        self._notifier = notifier or NullFundNotifier()
         self._deposit_repo = deposit_repo
         self._settings_repo = settings_repo
         self._wallet_resolver = wallet_resolver
@@ -101,6 +105,7 @@ class VerifyDepositsService:
             found = {normalize_txid(d.txid): d for d in deposits}
 
         settings = self._settings_repo.get()
+        events: list[FundEvent] = []
         try:
             for request in pending:
                 deposit = found.get(request.txid)
@@ -114,12 +119,14 @@ class VerifyDepositsService:
                         summary.waiting += 1
                     continue
                 self._apply(
-                    request, deposit, context.asset, settings.deposit_auto_confirm_max, now, summary
+                    request, deposit, context.asset, settings.deposit_auto_confirm_max, now, summary,
+                    events,
                 )
             self._deposit_repo.commit()
         except Exception:
             self._deposit_repo.rollback()
             raise
+        self._notifier.notify(events)
         return ServiceResult.ok(summary)
 
     def _apply(
@@ -130,6 +137,7 @@ class VerifyDepositsService:
         auto_max: Decimal,
         now: datetime,
         summary: VerifySummary,
+        events: list[FundEvent],
     ) -> None:
         request.exchange_status = deposit.status
         request.exchange_deposit_id = deposit.exchange_id
@@ -157,6 +165,7 @@ class VerifyDepositsService:
             request.review_reason = reason
             if self._deposit_repo.update_if_status(request, ["pending"]):
                 summary.review += 1
+                events.append(review_event(request))
             return
 
         if self._creditor.confirm(
@@ -168,3 +177,4 @@ class VerifyDepositsService:
             note=None,
         ):
             summary.confirmed += 1
+            events.append(confirmed_event(request))

@@ -238,7 +238,7 @@ El router de Telegram (`app/modules/users/rest/telegram/routes.py`, `prefix="/us
 - `role_id=1` → Usuario (`user`) — **inactivo** desde 2026-10-22 (sus usuarios pasaron a inversor)
 - `role_id=2` → Super admin (`super_admin`, antes `admin`) — los propietarios; `settings.AUTH_SUPER_ADMIN_ROLE_ID` (acepta `AUTH_ADMIN_ROLE_ID` como respaldo)
 - `role_id=4` → Socio (`partner`, solo lectura) — `settings.AUTH_PARTNER_ROLE_ID`
-- `role_id=3` → Inversor (`investor`, lo introduce [M10](M10-BILLING.md)) — además ve `/#/investor/dashboard`; `settings.AUTH_INVESTOR_ROLE_ID = 3`
+- `role_id=3` → Inversor (`investor`) — participante del fondo común ([M11](M11-FUND.md)): ve lo suyo en `/#/my-fund`; `settings.AUTH_INVESTOR_ROLE_ID = 3`
 - No hardcodear IDs: usar `settings.AUTH_SUPER_ADMIN_ROLE_ID` / `settings.AUTH_PARTNER_ROLE_ID` / `settings.AUTH_INVESTOR_ROLE_ID`.
 
 ### Auditoría HTTP (`app/common/audit/`)
@@ -337,7 +337,7 @@ TELEGRAM_BOT_USERNAME=         # para el enlace de vinculación (M9)
 
 - **2026-01** — Esquema inicial `users` / `roles` (roles `user`=1, `admin`=2).
 - **2026-03** — Se añade `role_id` al `subject` del JWT (bug detectado en M2: las páginas admin redirigían al dashboard).
-- **Posterior** — Rol `investor` (id=3) introducido por [M10](M10-BILLING.md).
+- **Posterior** — Rol `investor` (id=3) introducido por M10 (retirado); hoy es el participante del fondo común de [M11](M11-FUND.md).
 - **2026-10-07** — Defaults de `AUTH_USER_ROLE_ID`/`AUTH_ADMIN_ROLE_ID` en `settings.py` corregidos (1/2, antes invertidos). `GetMeService` lee el rol con `UserRepository.get_role_info()`. Servicios de auth sin `Session`: confirman con `repo.commit()`.
 - **2026-10-08** — API headless (/api), páginas migradas a React (frontend/).
 - **2026-10-08** — Login solo por OTP: se eliminan login con contraseña, `PATCH /users/me/password`, la página `/#/profile` y `SEED_USERS_PASSWORD`; se elimina la columna `users.password_hash` (migración `c4497f5a0188`).

@@ -1,5 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import type { ReceiptFile } from '@/modules/fund/api/fund-overview.api';
 import {
+	attachWithdrawalReceipt,
 	cancelRedemption,
 	cancelWithdrawal,
 	createFeeSchedule,
@@ -11,6 +13,10 @@ import {
 	requestRedemption,
 	setCommissionShares,
 } from '@/modules/fund/api/fund-payouts.api';
+import {
+	FUND_OVERVIEW_QUERY_KEY,
+	MY_SUMMARY_QUERY_KEY,
+} from '@/modules/fund/hooks/use-fund-overview-queries';
 import {
 	COMMISSION_SHARES_QUERY_KEY,
 	FEE_SCHEDULE_QUERY_KEY,
@@ -47,6 +53,8 @@ const MONEY_KEYS = [
 	MY_BALANCES_QUERY_KEY,
 	LEDGER_QUERY_KEY,
 	PARTICIPANTS_QUERY_KEY,
+	FUND_OVERVIEW_QUERY_KEY,
+	MY_SUMMARY_QUERY_KEY,
 ] as const;
 
 const REDEMPTION_KEYS = [
@@ -130,7 +138,17 @@ function usePayWithdrawalMutation() {
 			cop_rate: string;
 			payment_reference: string;
 			note: string | null;
+			receipt: ReceiptFile | null;
 		}) => payWithdrawal(id, input),
+		onSuccess: invalidate,
+	});
+}
+
+function useAttachReceiptMutation() {
+	const invalidate = useInvalidate([WITHDRAWALS_QUERY_KEY]);
+	return useMutation({
+		mutationFn: ({ id, receipt }: { id: number; receipt: ReceiptFile }) =>
+			attachWithdrawalReceipt(id, receipt),
 		onSuccess: invalidate,
 	});
 }
@@ -145,6 +163,7 @@ function useRejectWithdrawalMutation() {
 }
 
 export {
+	useAttachReceiptMutation,
 	useCancelRedemptionMutation,
 	useCancelWithdrawalMutation,
 	useCreateFeeScheduleMutation,

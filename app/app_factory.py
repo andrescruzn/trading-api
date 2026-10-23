@@ -38,6 +38,7 @@ from app.modules.fund.rest import (
     fund_deposits_router,
     fund_fees_router,
     fund_ledger_router,
+    fund_overview_router,
     fund_payouts_router,
     fund_pools_router,
     fund_settings_router,
@@ -59,7 +60,6 @@ from app.modules.alerts.rest import (
     telegram_webhook_router,
     notifications_router,
 )
-from app.modules.billing.rest import investors_router, managed_accounts_router, billing_periods_router
 from app.modules.users.rest import audit_router, auth_router, telegram_link_router, users_router
 
 logger = get_logger(__name__)
@@ -150,7 +150,7 @@ def create_app() -> FastAPI:
         # Accounts & Portfolio
         accounts_router, balances_router, wallet_router,
         fund_settings_router, fund_deposits_router, fund_ledger_router, fund_pools_router,
-        fund_fees_router, fund_payouts_router,
+        fund_fees_router, fund_payouts_router, fund_overview_router,
         # Strategies
         strategies_router, datasets_router, backtests_router,
         # Agent (AI Agent + ML Models + Model Runs)
@@ -162,8 +162,6 @@ def create_app() -> FastAPI:
         # Alerts (+ webhook de Telegram)
         alert_rules_router, alert_events_router, alerts_admin_router, telegram_webhook_router,
         notifications_router,
-        # Billing & Managed Accounts
-        investors_router, managed_accounts_router, billing_periods_router,
     )
     for router in api_routers:
         app.include_router(router, prefix=settings.API_PREFIX)

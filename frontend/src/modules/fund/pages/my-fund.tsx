@@ -3,10 +3,13 @@ import {
 	IconArrowUpFromArc,
 	IconClockHour4,
 	IconCoins,
+	IconFileSpreadsheet,
+	IconLoader2,
 	IconPlus,
 	IconRobot,
 	IconWallet,
 } from '@tabler/icons-react';
+import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
 import { usePageBreadcrumb } from '@/modules/app-shell/hooks/use-page-breadcrumb';
 import type {
@@ -14,6 +17,7 @@ import type {
 	Participation,
 	RedemptionRequest,
 } from '@/modules/fund/api/fund.api';
+import { listAllMyLedger } from '@/modules/fund/api/fund-overview.api';
 import type { Withdrawal } from '@/modules/fund/api/fund-payouts.api';
 import { CancelDepositDialog } from '@/modules/fund/components/deposit-decision-dialogs';
 import { DepositFormDialog } from '@/modules/fund/components/deposit-form-dialog';
@@ -32,10 +36,10 @@ import {
 import { CancelWithdrawalDialog } from '@/modules/fund/components/withdrawal-decision-dialogs';
 import { WithdrawalDialog } from '@/modules/fund/components/withdrawal-dialog';
 import { WithdrawalsTable } from '@/modules/fund/components/withdrawals-table';
+import { useMySummaryQuery } from '@/modules/fund/hooks/use-fund-overview-queries';
 import { useCancelRedemptionMutation } from '@/modules/fund/hooks/use-fund-payouts-mutations';
 import {
 	useFeeScheduleQuery,
-	useMyCommissionsQuery,
 	useMyPayoutMethodsQuery,
 	useMyRedemptionsQuery,
 	useMyWithdrawableQuery,
@@ -48,11 +52,12 @@ import {
 	useLedgerQuery,
 	useMyBalancesQuery,
 } from '@/modules/fund/hooks/use-fund-queries';
+import { downloadLedgerCsv } from '@/modules/fund/lib/fund-files';
 import { ErrorAlert } from '@/modules/shared/components/error-alert';
 import { PageListHeader } from '@/modules/shared/components/page-list-header';
 import { StatCard } from '@/modules/shared/components/stat-card';
 import { useServerPagination } from '@/modules/shared/hooks/use-server-pagination';
-import { formatNumber } from '@/modules/shared/lib/format';
+import { formatNumber, formatSignedPrice } from '@/modules/shared/lib/format';
 import { getErrorMessage } from '@/modules/shared/lib/get-error-message';
 import {
 	Alert,
@@ -75,8 +80,37 @@ import {
 	TabsTrigger,
 } from '@/modules/ui/components/tabs';
 import { toast } from '@/modules/ui/components/toast';
+import { cn } from '@/modules/ui/lib/utils';
 
 const NO_FILTERS = {};
+
+function Earning({
+	label,
+	value,
+	hint,
+	strong,
+}: {
+	label: string;
+	value: number;
+	hint?: string;
+	strong?: boolean;
+}) {
+	return (
+		<div className="flex flex-col gap-1">
+			<span className="text-sm text-muted-foreground">{label}</span>
+			<span
+				className={cn(
+					'tabular-nums',
+					strong ? 'text-2xl font-semibold' : 'text-lg font-medium',
+					value >= 0 ? 'text-chart-1' : 'text-destructive',
+				)}
+			>
+				{formatSignedPrice(value)} USDT
+			</span>
+			{hint && <span className="text-xs text-muted-foreground">{hint}</span>}
+		</div>
+	);
+}
 
 function Section({
 	title,
@@ -118,8 +152,9 @@ export function MyFundPage() {
 	const withdrawableQuery = useMyWithdrawableQuery();
 	const methodsQuery = useMyPayoutMethodsQuery();
 	const feeQuery = useFeeScheduleQuery();
-	const commissionsQuery = useMyCommissionsQuery();
+	const summaryQuery = useMySummaryQuery();
 	const cancelRedemptionMutation = useCancelRedemptionMutation();
+	const exportMutation = useMutation({ mutationFn: listAllMyLedger });
 
 	const [registering, setRegistering] = useState(false);
 	const [canceling, setCanceling] = useState<DepositRequest | null>(null);
@@ -146,11 +181,23 @@ export function MyFundPage() {
 		(method) => method.is_active,
 	);
 	const redemptions = redemptionsQuery.data;
-	const commissions = commissionsQuery.data ?? [];
-	const commissionsTotal = commissions.reduce(
-		(total, credit) => total + Number(credit.amount),
-		0,
-	);
+	const summary = summaryQuery.data;
+
+	function exportLedger() {
+		exportMutation.mutate(undefined, {
+			onSuccess: (entries) =>
+				downloadLedgerCsv(
+					entries,
+					`extracto-fondo-${new Date().toISOString().slice(0, 10)}.csv`,
+				),
+			onError: (error) =>
+				toast.add({
+					title: 'No pudimos armar el extracto',
+					description: getErrorMessage(error),
+					type: 'error',
+				}),
+		});
+	}
 
 	function cancelRedemption(request: RedemptionRequest) {
 		cancelRedemptionMutation.mutate(request.id, {
@@ -235,6 +282,42 @@ export function MyFundPage() {
 					isLoading={balancesQuery.isLoading || participationsQuery.isLoading}
 				/>
 			</div>
+
+			{summary && (
+				<Card>
+					<CardHeader>
+						<CardTitle>Lo que has ganado</CardTitle>
+						<CardDescription>
+							Lo de los agentes vale lo de su última liquidación; entre
+							liquidaciones el agente puede ir ganando o perdiendo.
+						</CardDescription>
+					</CardHeader>
+					<CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+						<Earning
+							label="Ya salió de los agentes"
+							value={Number(summary.realized_gain) - Number(summary.fees_paid)}
+							hint={`Después de ${formatNumber(summary.fees_paid, 2)} ${asset} de comisión`}
+						/>
+						<Earning
+							label="En los agentes (aún no sale)"
+							value={Number(summary.unrealized_gain)}
+							hint={`Aportaste ${formatNumber(summary.in_agents_cost, 2)} · vale ${formatNumber(summary.in_agents_value, 2)}`}
+						/>
+						{Number(summary.commissions) > 0 && (
+							<Earning
+								label="Comisiones recibidas"
+								value={Number(summary.commissions)}
+								hint="Tu parte de las comisiones del fondo"
+							/>
+						)}
+						<Earning
+							label="Total"
+							value={Number(summary.total_earned)}
+							strong
+						/>
+					</CardContent>
+				</Card>
+			)}
 
 			{info && !info.enabled && (
 				<Alert>
@@ -338,14 +421,6 @@ export function MyFundPage() {
 							)}
 						</CardContent>
 					</Card>
-					{commissions.length > 0 && (
-						<StatCard
-							label="Comisiones recibidas"
-							value={`${formatNumber(commissionsTotal, 2)} ${asset}`}
-							hint={`En ${commissions.length} salidas de participantes; ya están en tu disponible`}
-							icon={<IconCoins className="size-4" />}
-						/>
-					)}
 				</TabsContent>
 
 				<TabsContent value="deposits" className="pt-2">
@@ -359,7 +434,20 @@ export function MyFundPage() {
 						onCancel={setCanceling}
 					/>
 				</TabsContent>
-				<TabsContent value="ledger" className="pt-2">
+				<TabsContent value="ledger" className="flex flex-col gap-3 pt-2">
+					<Button
+						variant="outline"
+						className="self-end"
+						onClick={exportLedger}
+						disabled={exportMutation.isPending}
+					>
+						{exportMutation.isPending ? (
+							<IconLoader2 className="animate-spin" />
+						) : (
+							<IconFileSpreadsheet />
+						)}
+						Descargar extracto (CSV)
+					</Button>
 					<LedgerTable
 						rows={ledgerQuery.data?.items}
 						isLoading={ledgerQuery.isLoading}

@@ -28,14 +28,13 @@ frontend/
       _app.tsx                AppShellLayout (sidebar + breadcrumb); sin sesión → /login
       _app/<pagina>.lazy.tsx
       _app/admin.tsx          AdminGuardLayout (rol admin) → _app/admin/*.lazy.tsx
-      _app/investor.tsx       InvestorGuardLayout (rol investor) → _app/investor/*.lazy.tsx
     modules/
       ui/                     primitivas shadcn (Base UI). Se añaden con el CLI de shadcn; no meter lógica de negocio
       shared/                 api-client, types/api.ts, lib/format.ts, DataTable, OptionSelect, StatCard,
                               ErrorAlert, PageListHeader, TablePagination, layouts, páginas de error
       app-shell/              sidebar (app-sidebar.tsx), nav-user, breadcrumb, layout autenticado
       auth/                   login (solo código OTP), AuthProvider/useAuth, roles, guards
-      <dominio>/              market · features · accounts · strategies · bots · orders · alerts · billing · dashboard
+      <dominio>/              market · features · accounts · strategies · bots · orders · alerts · fund · dashboard
         api/<dominio>.api.ts          funciones + tipos del JSON del backend
         hooks/use-<dominio>-queries.ts    query keys + useQuery
         hooks/use-<dominio>-mutations.ts  useMutation + invalidación
@@ -44,7 +43,7 @@ frontend/
         pages/<pagina>.tsx            una página por ruta (`<Nombre>Page`)
 ```
 
-Un módulo del front por módulo de backend (M2 → `market`, M3 → `features`, M4 → `accounts`, M5 → `strategies`, M7 → `bots`, M8 → `orders`, M9 → `alerts`, M10 → `billing`). M6 no tiene módulo propio: se usa desde `bots` ("Analizar ahora").
+Un módulo del front por módulo de backend (M2 → `market`, M3 → `features`, M4 → `accounts`, M5 → `strategies`, M7 → `bots`, M8 → `orders`, M9 → `alerts`, M11 → `fund`; M10 se retiró). M6 no tiene módulo propio: se usa desde `bots` ("Analizar ahora").
 
 **Bots = agentes.** En pantalla un bot se llama siempre **agente** (rutas `/agents`, `/agents/new`, `/agents/$agentId`, `/admin/agents`); el código, los tipos y la API conservan `bot`. El LLM se nombra "la IA". Excepción: el bot de Telegram. En pantallas de usuario los agentes se piden con `useMyBotsQuery()` (`?mine=true`); `useBotsQuery()` sin filtros a un admin le devuelve los de todo el sistema. Un módulo puede importar `api`/`hooks`/`lib` de otro (p. ej. `bots` usa `useSymbolsQuery` de `market`); nunca sus `pages`.
 
@@ -59,7 +58,7 @@ Un módulo del front por módulo de backend (M2 → `market`, M3 → `features`,
 - **Hash history**: las URLs son `/#/agents`. Los `<Link to="/agents">` no llevan `#`.
 - **Parámetros de ruta**: `routes/_app/agents/$agentId.lazy.tsx`; la página los lee con `getRouteApi('/_app/agents/$agentId').useParams()`.
 - **Redirección de una URL vieja**: archivo no lazy con `beforeLoad: () => { throw redirect({ to: '/nueva', replace: true }); }` (ver `routes/_app/bots.tsx`).
-- Páginas de admin bajo `_app/admin/`, de inversor bajo `_app/investor/`: el guard ya está en el layout. Igual el backend valida el rol en cada endpoint; el guard es solo UX.
+- Páginas de admin (super admin y socio) bajo `_app/admin/`: el guard ya está en el layout. Lo de cada participante (inversor incluido) va en rutas normales de `_app/` (p. ej. `/my-fund`). Igual el backend valida el rol en cada endpoint; el guard es solo UX.
 - Tras crear/renombrar rutas, `pnpm check-types` regenera `routeTree.gen.ts`.
 
 ## Datos: api → queries → mutations
@@ -175,7 +174,7 @@ pnpm dlx shadcn@latest add <componente>   # componentes nuevos → modules/ui/co
 2. Tipos + funciones en `modules/<x>/api/<x>.api.ts`.
 3. Queries/mutations en `hooks/`.
 4. Página en `pages/<pagina>.tsx` con `usePageBreadcrumb` + `PageListHeader`.
-5. Ruta fina en `routes/_app/...` (o `_app/admin/...` / `_app/investor/...`).
+5. Ruta fina en `routes/_app/...` (o `_app/admin/...`).
 6. Item en `navSections` de `modules/app-shell/components/app-sidebar.tsx` (con `role` si aplica).
 7. `pnpm check-types` y `pnpm lint` sin errores.
 8. Actualizar la spec del módulo (skill `update-specs`).

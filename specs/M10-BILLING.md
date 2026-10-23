@@ -1,12 +1,14 @@
-# Módulo 10 — Billing & Managed Accounts (Facturación y Cuentas Administradas) ✅ COMPLETO
+# Módulo 10 — Billing & Managed Accounts (Facturación y Cuentas Administradas) 🗄️ RETIRADO
 
 ← [Índice de módulos](_ROOT.md)
+
+> **Retirado el 2026-10-23** (fase F6 del fondo común). Lo reemplaza [M11 — Fondo común](M11-FUND.md): una sola billetera, libro mayor por persona, comisión escalonada en la liquidación de cada agente y retiros. El código (`app/modules/billing`, `frontend/src/modules/billing`, `tests/billing`) y las tablas `investors`, `managed_accounts`, `billing_periods`, `fee_transactions` y `capital_movements` se borraron sin migrar datos (migración `ff5577d3faef`). Esta spec queda solo como historia.
 
 ## Ficha
 
 | Campo | Valor |
 |---|---|
-| Estado | ✅ Completo |
+| Estado | 🗄️ Retirado (2026-10-23), reemplazado por [M11](M11-FUND.md) |
 | Avance (alcance original) | 100 % — 16/16 entregables |
 | Madurez (estimada) | 75 % — ver [Avance](#avance) |
 | Tablas | `investors`, `managed_accounts`, `billing_periods`, `fee_transactions` (R/W); `users`, `bots` (R) |

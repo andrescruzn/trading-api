@@ -1,4 +1,4 @@
-# Módulo 11 — Fondo común (Fund) 📌 EN CONSTRUCCIÓN
+# Módulo 11 — Fondo común (Fund) ✅ COMPLETO
 
 ← [Índice de módulos](_ROOT.md)
 
@@ -6,13 +6,13 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | 📌 En construcción (F5 de 6 del plan del fondo común) |
-| Avance | F1 roles ✅ · F2 billetera ✅ · F3 libro y depósitos ✅ · F4 agentes y liquidación ✅ · **F5 salidas, comisión y retiros ✅** · F6 portales y retiro de M10 |
-| Madurez (estimada) | 70 % — ver [Avance](#avance) |
-| Tablas | `fund_settings`, `ledger_entries`, `deposit_requests`, `agent_pools`, `agent_settlements`, `unit_lots`, `allocation_orders`, `fee_schedules`, `commission_share_versions`, `redemption_requests`, `settlement_redemptions`, `commission_credits`, `payout_methods`, `withdrawal_requests` (R/W); `platform_wallet`, `accounts` (R, [M4](M04-ACCOUNTS-PORTFOLIO.md)); `bots` ([M7](M07-BOTS-SIGNALS.md)), `fills`, `orders`, `positions` ([M8](M08-ORDERS-EXECUTION.md)), `symbols`, `users` (R) |
+| Estado | ✅ Completo (6 de 6 fases del plan del fondo común) |
+| Avance | F1 roles ✅ · F2 billetera ✅ · F3 libro y depósitos ✅ · F4 agentes y liquidación ✅ · F5 salidas, comisión y retiros ✅ · **F6 resumen, conciliación, avisos, comprobantes y retiro de M10 ✅** |
+| Madurez (estimada) | 75 % — ver [Avance](#avance) |
+| Tablas | `fund_settings`, `ledger_entries`, `deposit_requests`, `agent_pools`, `agent_settlements`, `unit_lots`, `allocation_orders`, `fee_schedules`, `commission_share_versions`, `redemption_requests`, `settlement_redemptions`, `commission_credits`, `payout_methods`, `withdrawal_requests`, `withdrawal_receipts` (R/W); `alert_events` (W, avisos de [M9](M09-ALERTS.md)); `platform_wallet`, `accounts` (R, [M4](M04-ACCOUNTS-PORTFOLIO.md)); `bots` ([M7](M07-BOTS-SIGNALS.md)), `fills`, `orders`, `positions` ([M8](M08-ORDERS-EXECUTION.md)), `symbols`, `users` (R) |
 | Depende de | [M1](M01-AUTH.md) (roles super admin / socio / inversor), [M4](M04-ACCOUNTS-PORTFOLIO.md) (billetera de la plataforma y `WalletGateway`) |
-| Lo usan | [M7](M07-BOTS-SIGNALS.md) (regla del 1 % sobre el capital del agente) y [M8](M08-ORDERS-EXECUTION.md) (drawdown del RiskGate) vía `FundCapitalPort`; F6 (reemplaza a [M10](M10-BILLING.md)) |
-| Prefijo API | `/api/fund/settings`, `/api/fund/deposits`, `/api/fund/me`, `/api/fund/participants`, `/api/fund/agents`, `/api/fund/allocations`, `/api/fund/redemptions`, `/api/fund/fees`, `/api/fund/commission-shares`, `/api/fund/commissions`, `/api/fund/withdrawals` |
+| Lo usan | [M7](M07-BOTS-SIGNALS.md) (regla del 1 % sobre el capital del agente) y [M8](M08-ORDERS-EXECUTION.md) (drawdown del RiskGate) vía `FundCapitalPort`. Reemplazó a [M10](M10-BILLING.md) (retirado en la F6) |
+| Prefijo API | `/api/fund/settings`, `/api/fund/deposits`, `/api/fund/me`, `/api/fund/participants`, `/api/fund/agents`, `/api/fund/allocations`, `/api/fund/redemptions`, `/api/fund/fees`, `/api/fund/commission-shares`, `/api/fund/commissions`, `/api/fund/withdrawals`, `/api/fund/overview` |
 | Frontend | `frontend/src/modules/fund` |
 | Última revisión | 2026-10-23 |
 
@@ -39,17 +39,25 @@
 - **Reparto de la comisión** entre super admin y socios según % versionados que suman 100 %; el residuo del redondeo va al de menor id. Cada parte entra al **disponible** de quien la recibe.
 - **Retiros:** del disponible libre (disponible − retiros por pagar − asignaciones en cola desde el disponible), a un **medio de pago** propio (banco o Nequi, datos cifrados) que se puede usar **48 h** después de registrarlo. Un super admin paga por fuera y registra COP, tasa y referencia; el asiento `withdrawal` descuenta el saldo al pagar. También puede rechazar con motivo; la persona anula mientras está por pagar.
 
+**Qué hace (F6):**
+- **Resumen del fondo** para propietarios y socios: billetera (total, libre, en órdenes), capital por agente, saldos de las personas, retiros por pagar, depósitos por resolver, lo que ganó cada propietario o socio y la **conciliación**: billetera − capital de los agentes − pendiente − disponible = diferencia, con la causa probable cuando no es ≈ 0.
+- **Mis ganancias** en Mi saldo (realizada neta de comisión, no realizada en los agentes, comisiones recibidas) y **extracto CSV** del libro.
+- **Comprobante del pago** de un retiro (PDF / PNG / JPG, máx. 5 MB) guardado en la BD; lo sube un super admin al pagar o después y lo descargan la persona y el staff.
+- **Avisos** en la campana y, si están configurados, por correo y Telegram al chat de la persona: depósito confirmado / rechazado, entrada y salida aplicadas al liquidar, retiro pagado / rechazado; a los super admin, depósito en revisión y retiro nuevo.
+- **M10 retirado** (inversores, cuentas administradas, períodos, comisiones con HWM y aportes): el fondo común lo reemplaza.
+
 ## Páginas
 
 Hash routing: la URL real es `/#/<ruta>`.
 
 **Todos los roles (super admin, socio, inversor):**
-- `/#/my-fund` — **Mi saldo** (menú Mi inversión): tarjetas Pendiente de asignar / Disponible / Total, instrucciones para depositar (red, dirección con botón de copiar, memo si aplica, aviso de usar la misma red), "Registrar depósito" (red, monto, txid), pestañas **Mis agentes** (F4: agente, estado, aportaste, vale hoy, resultado y fecha de la liquidación; F5: **Sacar dinero**, salidas en cola con Anular y "Lo que salió de tus agentes" con la comisión tramo por tramo), **Retiros** (F5: mis retiros con Anular y mis medios de pago con Agregar / Quitar), **Comisión** (F5: tabla vigente y, si la persona recibe comisión, el total recibido), **Mis depósitos** (estado, motivo de revisión o de rechazo, Anular si está pendiente) y **Movimientos** (libro). Desde la F4 también la tarjeta **En agentes** y el total con lo invertido. F5: botón **Retirar** (habilitado si hay saldo retirable) y la tarjeta Disponible muestra lo reservado en retiros por pagar.
+- `/#/my-fund` — **Mi saldo** (menú Mi inversión): tarjetas Pendiente de asignar / Disponible / Total, instrucciones para depositar (red, dirección con botón de copiar, memo si aplica, aviso de usar la misma red), "Registrar depósito" (red, monto, txid), pestañas **Mis agentes** (F4: agente, estado, aportaste, vale hoy, resultado y fecha de la liquidación; F5: **Sacar dinero**, salidas en cola con Anular y "Lo que salió de tus agentes" con la comisión tramo por tramo), **Retiros** (F5: mis retiros con Anular y mis medios de pago con Agregar / Quitar), **Comisión** (F5: tabla vigente y, si la persona recibe comisión, el total recibido), **Mis depósitos** (estado, motivo de revisión o de rechazo, Anular si está pendiente) y **Movimientos** (libro). Desde la F4 también la tarjeta **En agentes** y el total con lo invertido. F6: tarjeta **Lo que has ganado** y **Descargar extracto (CSV)** en Movimientos; en Retiros, **Comprobante** para descargar. F5: botón **Retirar** (habilitado si hay saldo retirable) y la tarjeta Disponible muestra lo reservado en retiros por pagar.
 
 **Staff (super admin y socio; el socio sin acciones):**
+- `/#/admin/fund` — **Resumen del fondo** (F6, primera de Administración → Fondo): tarjetas Billetera / En agentes / Retiros por pagar / Depósitos por resolver, **Conciliación** (con "Todo cuadra" o la causa probable), saldos de las personas, capital por agente y ganancias de propietarios y socios. El inversor no la ve.
 - `/#/admin/fund-agents` — **Agentes del fondo** (Administración → Fondo): agente, estado, valor de unidad, saldo liquidado, capital hoy, participantes, en cola y última liquidación; **Abrir agente al fondo**.
 - `/#/admin/fund-agents/:poolId` — detalle: tarjetas (capital hoy, saldo liquidado, valor de unidad, participantes), pestañas Participantes (unidades, participación, aportó, vale), En cola (Cancelar), **Salidas en cola** (F5, Anular) y Liquidaciones (F5: salió y comisión); **Asignar dinero** y **Liquidar** (vista previa: saldo anterior, resultado, NAV, quién sale con valor, comisión, neto y desglose, salidas que esperan la permanencia, quién entra, comisiones en otra moneda y lo que impide liquidar).
-- `/#/admin/withdrawals` — **Retiros** (F5, Administración → Fondo): filtros por estado (por defecto "Por pagar") y persona; **Pagar** (datos completos del medio de pago con copiar, tasa, pesos con sugerencia, referencia, nota) y **Rechazar** (motivo).
+- `/#/admin/withdrawals` — **Retiros** (F5, Administración → Fondo): filtros por estado (por defecto "Por pagar") y persona; **Pagar** (datos completos del medio de pago con copiar, tasa, pesos con sugerencia, referencia, nota y comprobante opcional) y **Rechazar** (motivo); en los pagados, **Adjuntar / Cambiar comprobante** y descargarlo.
 - `/#/admin/commissions` — **Comisiones** (F5): tabla de comisión (Publicar / Cambiar, hasta 10 tramos), reparto entre super admin y socios (Definir / Cambiar, suma 100 %) y comisiones recibidas por persona.
 - `/#/admin/deposits` — **Depósitos** (Administración → Fondo): pestaña Solicitudes con filtros por estado (por defecto "En revisión") y persona, Confirmar (monto + nota) y Rechazar (motivo); pestaña **Sin reclamar** con Asignar; "Verificar ahora".
 - `/#/admin/participants` — **Participantes**: cada persona con cuenta y sus saldos, totales del fondo, panel lateral de movimientos y "Devolver" (solo si tiene saldo pendiente).
@@ -70,8 +78,11 @@ Hash routing: la URL real es `/#/<ruta>`.
 - ✅ Dominio puro `commission.py` (`tiered_fee`, `split_commission`, `valid_tiers`, `valid_shares`) y salidas en `plan_settlement` (FIFO + permanencia)
 - ✅ Salidas en cola aplicadas en la liquidación, comisión escalonada versionada, reparto versionado, medios de pago cifrados con espera de 48 h, retiros con pago manual (COP, tasa, referencia)
 - ✅ Páginas Retiros y Comisiones; Mi saldo con Retirar, Sacar dinero, Retiros y Comisión
-- ⏳ Comprobante del pago como archivo (hoy referencia + nota; decisión del usuario: F6)
-- ⏳ F6: portales y conciliación; reemplazar M10
+- ✅ (F6, 2026-10-23) Tabla `withdrawal_receipts` y borrado de las tablas de M10 (migración `ff5577d3faef`)
+- ✅ Resumen del fondo con conciliación y ganancias por propietario o socio; mis ganancias y extracto CSV
+- ✅ Comprobante del pago en la BD (validado por contenido)
+- ✅ Avisos del fondo (`FundNotifier` → `FundNoticeService` en M9): campana, correo y Telegram
+- ✅ M10 retirado (backend, frontend, tests y tablas)
 
 ## Decisiones de diseño
 
@@ -106,35 +117,43 @@ Hash routing: la URL real es `/#/<ruta>`.
 | Retiro: **el dinero se reserva al pedir** (disponible libre) y **sale del libro al pagar** (asiento `withdrawal`) | Un rechazo o una anulación no necesitan asiento de vuelta; no se puede pedir dos veces lo mismo | Asiento al pedir y contra-asiento al rechazar |
 | Medios de pago **cifrados** (`CredentialsCipher.encrypt_dict`) y **48 h de espera** (`PAYOUT_METHOD_COOLDOWN_HOURS`); solo un super admin ve los datos completos y solo al pagar | Si alguien toma una sesión, no puede desviar un retiro a su cuenta de inmediato | Datos en claro · sin espera |
 | Sin doble aprobación de retiros por ahora (decisión del usuario) | Son dos propietarios; se puede añadir con un umbral | Doble firma desde el inicio |
-| Comprobante = **referencia + nota** (decisión del usuario); archivo en F6 | Sin almacenamiento de archivos todavía | Subir el comprobante ya |
+| Comprobante = **referencia + nota** en F5; el **archivo** llegó en F6 | Primero el flujo de dinero, después los adjuntos | Subir el comprobante desde la F5 |
+| Comprobante **en la BD** (`MEDIUMBLOB`, máx. 5 MB) y en JSON como base64 (decisión del usuario, 2026-10-23) | Entra en los respaldos de MySQL, sirve con varios servidores y no suma dependencias (`python-multipart`) | Carpeta en disco con subida multipart |
+| El tipo del comprobante se valida por los **primeros bytes** (PDF / PNG / JPG), no por el nombre; el nombre se guarda sin rutas | Nadie sube un HTML o un ejecutable renombrado | Confiar en la extensión |
+| Avisos: el fondo emite **eventos con código y datos** (`FundEvent`) y M9 arma los textos y los envía (`FundNoticeService`) | Los servicios no definen textos de UI (regla del repo); un solo sitio para los mensajes | Textos en los servicios del fondo |
+| Avisos **después del commit**; un error al avisar se registra y no rompe el caso de uso | Nunca se avisa de algo que no quedó guardado | Avisar dentro de la transacción |
+| Telegram solo al **chat de la persona**; sin chat vinculado, no hay Telegram | Los avisos traen montos de una persona: nunca al chat general (`TELEGRAM_DEFAULT_CHAT_ID`) | Usar `TelegramChannel`, que cae al chat general |
+| Conciliación con el capital de los agentes **a costo** y la billetera **a mercado** | Es exacta cuando los agentes están liquidados y sin posiciones; la diferencia restante explica lo abierto | Marcar a mercado las posiciones de cada agente |
+| M10 se borra **sin migrar datos** (decisión del usuario: BD de desarrollo) | El fondo común cubre inversores, comisiones y aportes | Migrar a asientos de apertura |
 | El socio puede pedir salidas y retiros **suyos** y gestionar sus medios de pago (`read_only_policy.py`) | Solo lectura sobre el sistema, pero también es participante | Socio sin dinero propio |
 
 ## Avance
 
 | Métrica | Valor | Evidencia |
 |---|---|---|
-| Alcance del plan | **F5 de 6** | Libro mayor, depósitos verificados, agentes del fondo, liquidación, salidas, comisión escalonada y retiros |
-| Madurez | **≈ 70 %** | Funcionalidad 85 · Tests 30 · Seguridad 85 · Operación 70 |
+| Alcance del plan | **6 de 6** | Libro mayor, depósitos verificados, agentes del fondo, liquidación, salidas, comisión escalonada, retiros, resumen con conciliación, avisos y comprobantes |
+| Madurez | **≈ 75 %** | Funcionalidad 95 · Tests 30 · Seguridad 85 · Operación 80 |
 
-- **Funcionalidad (85):** el ciclo completo del dinero funciona: depósito → asignación → liquidación → salida con comisión → retiro pagado. Falta la F6: portal de propietarios, conciliación, comprobante como archivo, avisos y quitar M10.
-- **Tests (30):** la lógica de dinero (verificación, carrera de confirmación, validaciones, devolución; F4: flujo de caja, plan de liquidación, capital del agente, bloqueos y conflicto; F5: tramos, pérdida, límites, reparto con residuo, FIFO con permanencia, retiros y espera del medio de pago) se verificó con dobles de prueba en scripts, sin archivo de test en `tests/`.
+- **Funcionalidad (95):** el ciclo completo del dinero funciona (depósito → asignación → liquidación → salida con comisión → retiro pagado con comprobante), con resumen y conciliación para los propietarios y avisos. Falta probarlo de punta a punta en paper y en testnet.
+- **Tests (30):** la lógica de dinero (verificación, carrera de confirmación, validaciones, devolución; F4: flujo de caja, plan de liquidación, capital del agente, bloqueos y conflicto; F5: tramos, pérdida, límites, reparto con residuo, FIFO con permanencia, retiros y espera del medio de pago; F6: conciliación, ganancias por persona, comprobantes y avisos) se verificó con dobles de prueba en scripts, sin archivo de test en `tests/`.
 - **Seguridad (85):** UPDATE condicional + índice único contra doble acreditación, txid único, dirección leída del exchange, roles (staff ve, super admin decide, inversor solo lo suyo), sin saldo total de la billetera para el inversor.
-- **Operación (70):** verificación automática en el scheduler; las salidas y los retiros esperan a que un super admin liquide o pague (sin avisos M9 todavía).
+- **Operación (80):** verificación automática en el scheduler, avisos a cada persona y a los super admin, conciliación a la vista; las salidas y los retiros siguen esperando a que un super admin liquide o pague.
 
 ## Posibles mejoras
 
 | Prioridad | Mejora | Esfuerzo |
 |---|---|---|
 | Alta | Tests unitarios de `tiered_fee`, `split_commission`, `plan_settlement` con salidas, `WithdrawalService`, `VerifyDepositsService`, `DepositCreditor`, `normalize_txid` | M |
-| Media | Avisos por Telegram/correo ([M9](M09-ALERTS.md)): depósito confirmado / en revisión / rechazado, liquidación hecha, retiro pedido (a los super admin) y retiro pagado o rechazado (F6) | M |
 | Media | Doble aprobación de retiros sobre un umbral (los dos super admin) | M |
 | Baja | Calendario de liquidaciones (p. ej. el día 1 de cada mes) visible para los inversores | S |
-| Media | Exportar el libro (CSV) por persona | S |
+| Media | Prueba de punta a punta en paper y luego en testnet (plan: invitar, depositar, asignar, operar, liquidar con salida, pagar, conciliar ≈ 0, revisar socio e inversor) | M |
+| Media | Conciliación con las posiciones abiertas a precio de mercado (hoy a costo) | M |
+| Baja | Preferencias de avisos por persona (canal y tipos) | S |
 | Baja | Registrar direcciones de origen por persona para detectar envíos de terceros | M |
 
 ## Fuera de alcance y pendientes conocidos
 
-- Conciliación billetera ↔ libro, portal de propietarios, comprobante como archivo y retiro de M10 (F6).
+- eToro u otros brokers sin ccxt (necesitan un adaptador propio de `WalletGateway`).
 - Depósitos en fiat (solo USDT por blockchain).
 
 ## Detalle técnico
@@ -156,16 +175,17 @@ Hash routing: la URL real es `/#/<ruta>`.
 | `commission_credits` | `settlement_redemption_id`, `user_id`, `amount` (> 0): la parte de cada propietario |
 | `payout_methods` | `user_id`, `kind` (`bank`\|`nequi`), `label`, `masked`, `enc_details` (Fernet), `usable_from` (creación + 48 h), `is_active`; máx. 5 activos |
 | `withdrawal_requests` | `user_id`, `amount` (> 0), `payout_method_id`, `status` (`requested`\|`paid`\|`rejected`\|`canceled`), `paid_cop_amount`, `cop_rate`, `payment_reference`, `resolution_note`, `resolved_by_user_id`, `resolved_at`; máx. 5 abiertos por persona |
+| `withdrawal_receipts` (F6) | `withdrawal_request_id` (UNIQUE), `filename`, `content_type` (CHECK pdf/png/jpeg), `size_bytes` (CHECK 1–5 MB), `content` `MEDIUMBLOB`, `uploaded_by_user_id`, `created_at` |
 | `deposit_requests` | `user_id`, `asset`, `network`, `txid` (UNIQUE), `declared_amount` (> 0), `credited_amount`, `address_from`, `exchange_deposit_id`, `exchange_status`, `status` (`pending`\|`review`\|`confirmed`\|`rejected`\|`expired`\|`canceled`), `review_reason` (`amount_mismatch`\|`over_threshold`\|`exchange_failed`\|`wrong_asset`), `resolved_by_user_id` (NULL en confirmación automática), `resolved_at`, `resolution_note`, `expires_at`; índices `(status, created_at)` y `(user_id, created_at)` |
 
 ### Código (`app/modules/fund/`)
 | Capa | Archivos |
 |---|---|
-| domain | `fund_settings_entity.py`, `ledger_entry_entity.py`, `deposit_request_entity.py`, `agent_pool_entity.py` (F4), `settlement.py` (F4: `cash_flow`, `plan_settlement`, puros; F5: `waiting_redemptions`, salidas FIFO), `commission.py` (F5: `tiered_fee`, `split_commission`), `withdrawal_entity.py` (F5: `PayoutMethod`, `WithdrawalRequest`, `mask_payout`), `fund_repositories.py`, `payout_repositories.py` (contratos) |
+| domain | `fund_settings_entity.py`, `ledger_entry_entity.py`, `deposit_request_entity.py`, `agent_pool_entity.py` (F4), `settlement.py` (F4: `cash_flow`, `plan_settlement`, puros; F5: `waiting_redemptions`, salidas FIFO), `commission.py` (F5: `tiered_fee`, `split_commission`), `withdrawal_entity.py` (F5: `PayoutMethod`, `WithdrawalRequest`, `mask_payout`; F6: `WithdrawalReceipt`, `detect_receipt_type`, `decode_receipt`, `clean_receipt_name`), `fund_notifier.py` (F6: `FundEvent`, `FundNotifier`, `NullFundNotifier` y los códigos), `fund_repositories.py`, `payout_repositories.py` (contratos) |
 | infrastructure | `fund_models.py`, `fund_repositories_impl.py`, `agent_pool_models.py`, `agent_pool_repositories_impl.py`, `payout_models.py`, `payout_repositories_impl.py` (F5; `UnitLotRepository.consume` condicional) (fechas con `ensure_aware_utc`; `update_if_status` y `update_settled` condicionales) |
-| services | `wallet_context.py` (billetera de M4) · `settings/` (`FundSettingsService`, `DepositNetworksService`) · `deposits/` (`CreateDepositRequestService`, `ResolveDepositRequestService`, `VerifyDepositsService`, `UnclaimedDepositsService`, `deposit_crediting.DepositCreditor`) · `ledger/` (`FundLedgerService`) · `pools/` (`AgentCapitalService` = `FundCapitalPort`, `AgentPoolsService`, `AllocationService`, `SettleAgentService`, `ParticipationsService`, `AgentInfoReader`, F5: `RedemptionService`) · `fees/` (F5: `FeeScheduleService`, `CommissionSharesService`) · `payouts/` (F5: `PayoutMethodsService`, `WithdrawalService`) |
+| services | `wallet_context.py` (billetera de M4) · `settings/` (`FundSettingsService`, `DepositNetworksService`) · `deposits/` (`CreateDepositRequestService`, `ResolveDepositRequestService`, `VerifyDepositsService`, `UnclaimedDepositsService`, `deposit_crediting.DepositCreditor`) · `ledger/` (`FundLedgerService`) · `pools/` (`AgentCapitalService` = `FundCapitalPort`, `AgentPoolsService`, `AllocationService`, `SettleAgentService`, `ParticipationsService`, `AgentInfoReader`, F5: `RedemptionService`) · `fees/` (F5: `FeeScheduleService`, `CommissionSharesService`) · `payouts/` (F5: `PayoutMethodsService`, `WithdrawalService`; F6: comprobantes) · `overview/` (F6: `FundOverviewService` con `ParticipantSummary`) · `deposits/deposit_events.py` (F6) |
 | providers | `fund_provider.py` → `FundServiceFactory` (usa repos de M1, M4, M7, M8 y `CcxtWalletGateway`) y `build_fund_capital(session)` para bots/orders |
-| rest | `error_messages.py` (incluye los `WALLET_*` de M4), `schemas.py`, `serializers.py`, `settings/routes.py`, `deposits/routes.py`, `ledger/routes.py`, `pools/routes.py`, `fees/routes.py` (F5), `payouts/routes.py` (F5) |
+| rest | `error_messages.py` (incluye los `WALLET_*` de M4), `schemas.py`, `serializers.py`, `settings/routes.py`, `deposits/routes.py`, `ledger/routes.py`, `pools/routes.py`, `fees/routes.py` (F5), `payouts/routes.py` (F5), `overview/routes.py` (F6) |
 
 Gateway ([M4](M04-ACCOUNTS-PORTFOLIO.md)): `WalletGateway.fetch_deposits`, `fetch_deposit_networks` (`fetch_currencies`), `fetch_deposit_address`. Scheduler: `verify_fund_deposits()` corre justo después de `sync_platform_wallet()` cada `WALLET_SYNC_INTERVAL_SECONDS`.
 
@@ -216,6 +236,10 @@ Gateway ([M4](M04-ACCOUNTS-PORTFOLIO.md)): `WalletGateway.fetch_deposits`, `fetc
 | GET | `/api/fund/withdrawals/{id}/payout-details` | super admin | Datos descifrados del medio de pago |
 | POST | `/api/fund/withdrawals/{id}/pay` | super admin | `{paid_cop_amount, cop_rate, payment_reference, note?}` → asiento `withdrawal` |
 | POST | `/api/fund/withdrawals/{id}/reject` | super admin | `{note}` |
+| PUT | `/api/fund/withdrawals/{id}/receipt` | super admin | `{filename, data_base64}` (solo pagados); 422 `FUND_RECEIPT_INVALID` / `_TOO_LARGE`, 409 `FUND_RECEIPT_NOT_PAID`. `pay` acepta también `receipt` |
+| GET | `/api/fund/withdrawals/{id}/receipt` | dueño o staff | `{filename, content_type, size_bytes, data_base64}`; 404 `FUND_RECEIPT_NOT_FOUND` |
+| GET | `/api/fund/overview` | staff | Billetera, agentes, saldos, retiros y depósitos por resolver, `accounted`, `difference`, `owners` |
+| GET | `/api/fund/me/summary` | sesión | Mis ganancias (`realized_gain`, `fees_paid`, `unrealized_gain`, `commissions`, `total_earned`) |
 
 ### Frontend (`frontend/src/modules/fund/`)
 - `api/fund.api.ts`; `hooks/use-fund-queries.ts` (relee cada 60 s), `hooks/use-fund-mutations.ts`; `lib/fund-labels.ts`, `lib/fund-forms.ts`.
@@ -223,6 +247,12 @@ Gateway ([M4](M04-ACCOUNTS-PORTFOLIO.md)): `WalletGateway.fetch_deposits`, `fetc
 - Páginas: `my-fund.tsx`, `admin-deposits.tsx`, `admin-participants.tsx`, `admin-fund-settings.tsx`, `admin-fund-agents.tsx`, `admin-fund-agent-detail.tsx`; rutas `routes/_app/my-fund.lazy.tsx`, `routes/_app/admin/{deposits,participants,fund-settings}.lazy.tsx` y `routes/_app/admin/fund-agents/{index,$poolId}.lazy.tsx`.
 - F4: `hooks/use-fund-pools-queries.ts`, `hooks/use-fund-pools-mutations.ts`; componentes `open-pool-dialog`, `queue-allocation-dialog`, `settle-agent-dialog`, `participations-table`.
 - F5: `api/fund-payouts.api.ts`, `hooks/use-fund-payouts-queries.ts` (los datos del medio de pago con `gcTime: 0`), `hooks/use-fund-payouts-mutations.ts`, `lib/fund-payouts-labels.ts`; componentes `redemption-dialog`, `redemptions-tables`, `fee-tables`, `fee-schedule-dialog`, `commission-shares-dialog`, `payout-method-dialog`, `payout-methods-table`, `withdrawal-dialog`, `withdrawals-table`, `withdrawal-decision-dialogs` (pagar, rechazar, anular); páginas `admin-withdrawals.tsx`, `admin-commissions.tsx` (rutas `routes/_app/admin/{withdrawals,commissions}.lazy.tsx`).
+- F6: `api/fund-overview.api.ts` (resumen, mis ganancias, comprobante, libro completo para el CSV), `hooks/use-fund-overview-queries.ts`, `lib/fund-files.ts` (archivo → base64, descarga del comprobante, CSV con `;` y BOM), componente `receipt-controls` (campo, descarga, adjuntar); página `admin-fund-overview.tsx` (ruta `routes/_app/admin/fund.lazy.tsx`).
+
+### Avisos (M9)
+- `app/modules/alerts/channels/fund_messages.py`: textos por código (`fund_notice`).
+- `app/modules/alerts/services/notifications/fund_notice_service.py`: guarda en `alert_events` (sin regla, con `user_id`), un commit propio; correo con la plantilla `fund_notice.html` (`FUND_NOTICE_TEMPLATE`) en segundo plano y Telegram con `telegram_api` al `telegram_chat_id` de la persona.
+- `app/modules/alerts/providers/fund_notice_provider.py` → `build_fund_notifier(session)`, que `FundServiceFactory._notifier()` importa en diferido.
 
 ## Gotchas críticos
 
@@ -235,11 +265,14 @@ Gateway ([M4](M04-ACCOUNTS-PORTFOLIO.md)): `WalletGateway.fetch_deposits`, `fetc
 - **Porcentajes en la API:** la BD guarda fracciones (0,5 = 50 %); la API los manda en % con `_pct`, que usa `format(..., "f")` porque `Decimal.normalize()` deja exponentes (`2E+2`) que la UI no entiende.
 - **Liquidar con salidas en cola sin tabla de comisión o sin reparto** queda bloqueado: primero publicar ambos en Comisiones.
 - **Medio de pago nuevo:** 48 h sin poder usarlo; conviene registrarlo antes de pedir la salida.
+- **Las tablas sin modelo ORM no salen en autogenerate** (`env.py` las ignora): por eso los DROP de M10 se escribieron a mano en `ff5577d3faef`.
+- **Comprobantes en base64:** un archivo de 5 MB viaja como ~7 MB de JSON; el middleware de auditoría no guarda cuerpos de más de 10 KB, así que no queda en `audit_logs`.
 - **Migraciones y FK:** en `downgrade()` no borrar con `drop_index` un índice que use una FK (MySQL 1553); borrar la tabla directamente.
 
 ## Tests
 
 - Ajustado `tests/bots/test_generate_signal_service.py` (`analyze` recibe `capital`).
+- Quitado `tests/billing/` (M10).
 - Sin archivos en `tests/fund/`. Verificación manual con dobles de prueba (script fuera del repo): normalización de txid, confirmación automática, revisión por monto y por tope, vencimiento, carrera de confirmación, validaciones al crear, nota obligatoria y límite de la devolución.
 
 ## Riesgos
@@ -252,5 +285,6 @@ Gateway ([M4](M04-ACCOUNTS-PORTFOLIO.md)): `WalletGateway.fetch_deposits`, `fetc
 - **2026-10-22** — Plan del fondo común aprobado (6 fases). F1: roles super admin / socio / inversor ([M1](M01-AUTH.md)).
 - **2026-10-23** — F2: billetera única de la plataforma ([M4](M04-ACCOUNTS-PORTFOLIO.md)).
 - **2026-10-23** — **F3: módulo `fund`**: ajustes del fondo, libro mayor append-only, depósitos verificados contra el exchange (automático hasta 1.000 USDT, vencimiento 72 h), depósitos sin reclamar, devolución excepcional; páginas Mi saldo, Depósitos, Participantes y Ajustes del fondo (migración `00abfeaac3b4`).
+- **2026-10-23** — **F6: resumen y cierre**: resumen del fondo con conciliación y ganancias por propietario o socio, mis ganancias y extracto CSV, comprobante del pago en la BD, avisos por campana / correo / Telegram y retiro de M10 (migración `ff5577d3faef`). Módulo completo.
 - **2026-10-23** — **F5: salidas, comisión y retiros**: salidas en cola aplicadas en la liquidación (FIFO + permanencia, lo demás se queda), comisión escalonada marginal versionada, reparto versionado entre super admin y socios (residuo al de menor id), medios de pago cifrados con 48 h de espera, retiros pagados por fuera (COP, tasa, referencia); páginas Retiros y Comisiones y Mi saldo con Retirar / Sacar dinero (migración `a159e69da372`).
 - **2026-10-23** — **F4: agentes del fondo**: pools por agente con NAV y unidades, cola de asignaciones, liquidación con vista previa (agente pausado y sin posiciones, equity por flujo de caja, lotes, UPDATE condicional), `FundCapitalPort` para el 1 % y el drawdown (agente de la billetera sin pool = sin capital); páginas Agentes del fondo y Mis agentes (migración `521b4d0aac1b`).

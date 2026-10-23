@@ -13,6 +13,7 @@ from .payout_repositories_impl import (
     SqlAlchemyPayoutMethodRepository,
     SqlAlchemyRedemptionRequestRepository,
     SqlAlchemySettlementRedemptionRepository,
+    SqlAlchemyWithdrawalReceiptRepository,
     SqlAlchemyWithdrawalRequestRepository,
 )
 from .fund_repositories_impl import (
@@ -28,6 +29,7 @@ __all__ = [
     "SqlAlchemyPayoutMethodRepository",
     "SqlAlchemyRedemptionRequestRepository",
     "SqlAlchemySettlementRedemptionRepository",
+    "SqlAlchemyWithdrawalReceiptRepository",
     "SqlAlchemyWithdrawalRequestRepository",
     "SqlAlchemyAgentPoolRepository",
     "SqlAlchemyAgentSettlementRepository",

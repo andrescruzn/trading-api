@@ -7,6 +7,10 @@ import {
 	settleAgent,
 } from '@/modules/fund/api/fund.api';
 import {
+	FUND_OVERVIEW_QUERY_KEY,
+	MY_SUMMARY_QUERY_KEY,
+} from '@/modules/fund/hooks/use-fund-overview-queries';
+import {
 	ELIGIBLE_AGENTS_QUERY_KEY,
 	PARTICIPATIONS_QUERY_KEY,
 	POOLS_QUERY_KEY,
@@ -31,6 +35,8 @@ function useInvalidatePools() {
 				LEDGER_QUERY_KEY,
 				MY_BALANCES_QUERY_KEY,
 				PARTICIPANTS_QUERY_KEY,
+				FUND_OVERVIEW_QUERY_KEY,
+				MY_SUMMARY_QUERY_KEY,
 			].map((queryKey) => queryClient.invalidateQueries({ queryKey })),
 		);
 }

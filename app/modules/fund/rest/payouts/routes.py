@@ -40,11 +40,16 @@ from app.modules.fund.providers import FundServiceFactory
 from app.modules.fund.rest.error_messages import FUND_ERROR_MESSAGES
 from app.modules.fund.rest.schemas import (
     PayoutMethodCreateRequest,
+    ReceiptFileRequest,
     WithdrawalCreateRequest,
     WithdrawalPayRequest,
     WithdrawalRejectRequest,
 )
-from app.modules.fund.rest.serializers import payout_method_to_dict, withdrawal_to_dict
+from app.modules.fund.rest.serializers import (
+    payout_method_to_dict,
+    receipt_to_dict,
+    withdrawal_to_dict,
+)
 
 router = APIRouter(prefix="/fund", tags=["Fund — Withdrawals"])
 
@@ -202,10 +207,46 @@ def pay_withdrawal(
         cop_rate=payload.cop_rate,
         payment_reference=payload.payment_reference,
         note=payload.note,
+        receipt_filename=payload.receipt.filename if payload.receipt else None,
+        receipt_base64=payload.receipt.data_base64 if payload.receipt else None,
     )
     if not result.success:
         return build_error_response(result, FUND_ERROR_MESSAGES)
     return build_success_response(data=withdrawal_to_dict(result.data), msg="Retiro marcado como pagado.")
+
+
+@router.put("/withdrawals/{request_id}/receipt", status_code=200)
+def attach_withdrawal_receipt(
+    request_id: int,
+    payload: ReceiptFileRequest,
+    identity: dict = Depends(super_admin_required),
+    factory: FundServiceFactory = Depends(get_factory),
+):
+    """Sube o cambia el comprobante de un retiro pagado (PDF, PNG o JPG, máx. 5 MB)."""
+    result = factory.withdrawals().attach_receipt(
+        request_id,
+        requester_user_id=int(identity["user_id"]),
+        filename=payload.filename,
+        data_base64=payload.data_base64,
+    )
+    if not result.success:
+        return build_error_response(result, FUND_ERROR_MESSAGES)
+    return build_success_response(data=withdrawal_to_dict(result.data), msg="Comprobante guardado.")
+
+
+@router.get("/withdrawals/{request_id}/receipt", status_code=200)
+def get_withdrawal_receipt(
+    request_id: int,
+    identity: dict = Depends(token_required_actual),
+    factory: FundServiceFactory = Depends(get_factory),
+):
+    """El comprobante en base64: la persona del retiro o el staff."""
+    result = factory.withdrawals().get_receipt(
+        request_id, user_id=int(identity["user_id"]), is_staff=is_staff(identity)
+    )
+    if not result.success:
+        return build_error_response(result, FUND_ERROR_MESSAGES)
+    return build_success_response(data=receipt_to_dict(result.data))
 
 
 @router.post("/withdrawals/{request_id}/reject", status_code=200)

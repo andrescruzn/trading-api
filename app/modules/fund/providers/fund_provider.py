@@ -17,6 +17,7 @@ from app.common.security.credentials_cipher import CredentialsCipher
 from app.modules.accounts.infrastructure import (
     SqlAlchemyAccountRepository,
     SqlAlchemyPlatformWalletRepository,
+    SqlAlchemyWalletSnapshotRepository,
 )
 from app.modules.accounts.infrastructure.ccxt_wallet_gateway import CcxtWalletGateway
 from app.modules.bots.infrastructure import SqlAlchemyBotRepository
@@ -27,6 +28,7 @@ from app.modules.fund.infrastructure import (
     SqlAlchemyPayoutMethodRepository,
     SqlAlchemyRedemptionRequestRepository,
     SqlAlchemySettlementRedemptionRepository,
+    SqlAlchemyWithdrawalReceiptRepository,
     SqlAlchemyWithdrawalRequestRepository,
     SqlAlchemyAgentPoolRepository,
     SqlAlchemyAgentSettlementRepository,
@@ -43,6 +45,7 @@ from app.modules.fund.services.deposits import (
     VerifyDepositsService,
 )
 from app.modules.fund.services.fees import CommissionSharesService, FeeScheduleService
+from app.modules.fund.services.overview import FundOverviewService
 from app.modules.fund.services.ledger import FundLedgerService
 from app.modules.fund.services.payouts import PayoutMethodsService, WithdrawalService
 from app.modules.fund.services.pools import (
@@ -98,6 +101,15 @@ class FundServiceFactory:
         self._shares_repo = SqlAlchemyCommissionShareRepository(session)
         self._payout_repo = SqlAlchemyPayoutMethodRepository(session)
         self._withdrawal_repo = SqlAlchemyWithdrawalRequestRepository(session)
+        # F6: comprobantes de pago
+        self._receipt_repo = SqlAlchemyWithdrawalReceiptRepository(session)
+
+    def _notifier(self):
+        # Import diferido: alerts no depende del fondo más que de su dominio,
+        # pero así el fondo no arrastra alerts al importarse
+        from app.modules.alerts.providers.fund_notice_provider import build_fund_notifier
+
+        return build_fund_notifier(self._session)
 
     def _gateway(self) -> CcxtWalletGateway:
         # Solo se arma cuando el caso de uso habla con el exchange
@@ -135,7 +147,9 @@ class FundServiceFactory:
 
     def resolve_deposit_request(self) -> ResolveDepositRequestService:
         return ResolveDepositRequestService(
-            deposit_repo=self._deposit_repo, ledger_repo=self._ledger_repo
+            deposit_repo=self._deposit_repo,
+            ledger_repo=self._ledger_repo,
+            notifier=self._notifier(),
         )
 
     def verify_deposits(self) -> VerifyDepositsService:
@@ -145,6 +159,7 @@ class FundServiceFactory:
             settings_repo=self._settings_repo,
             wallet_resolver=self._wallet_resolver,
             gateway=self._gateway(),
+            notifier=self._notifier(),
         )
 
     def unclaimed_deposits(self) -> UnclaimedDepositsService:
@@ -154,6 +169,7 @@ class FundServiceFactory:
             user_repo=self._user_repo,
             wallet_resolver=self._wallet_resolver,
             gateway=self._gateway(),
+            notifier=self._notifier(),
         )
 
     # ------------------------------------------------------------------
@@ -219,6 +235,24 @@ class FundServiceFactory:
             credit_repo=self._credit_repo,
             fee_repo=self._fee_repo,
             shares_repo=self._shares_repo,
+            notifier=self._notifier(),
+        )
+
+    def overview(self) -> FundOverviewService:
+        return FundOverviewService(
+            wallet_repo=self._wallet_repo,
+            snapshot_repo=SqlAlchemyWalletSnapshotRepository(self._session),
+            pools=self.agent_pools(),
+            participations=self.participations(),
+            ledger_repo=self._ledger_repo,
+            allocation_repo=self._allocation_repo,
+            deposit_repo=self._deposit_repo,
+            withdrawal_repo=self._withdrawal_repo,
+            line_repo=self._line_repo,
+            credit_repo=self._credit_repo,
+            user_repo=self._user_repo,
+            staff_role_ids=(settings.AUTH_SUPER_ADMIN_ROLE_ID, settings.AUTH_PARTNER_ROLE_ID),
+            asset=settings.WALLET_BASE_ASSET,
         )
 
     def participations(self) -> ParticipationsService:
@@ -270,7 +304,9 @@ class FundServiceFactory:
             payout_repo=self._payout_repo,
             ledger_repo=self._ledger_repo,
             allocation_repo=self._allocation_repo,
+            receipt_repo=self._receipt_repo,
             asset=settings.WALLET_BASE_ASSET,
+            notifier=self._notifier(),
         )
 
 

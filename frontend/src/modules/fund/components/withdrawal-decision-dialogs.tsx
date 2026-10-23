@@ -1,16 +1,18 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { IconLoader2 } from '@tabler/icons-react';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
 import type { Withdrawal } from '@/modules/fund/api/fund-payouts.api';
 import { CopyText } from '@/modules/fund/components/copy-text';
+import { ReceiptField } from '@/modules/fund/components/receipt-controls';
 import {
 	useCancelWithdrawalMutation,
 	usePayWithdrawalMutation,
 	useRejectWithdrawalMutation,
 } from '@/modules/fund/hooks/use-fund-payouts-mutations';
 import { usePayoutDetailsQuery } from '@/modules/fund/hooks/use-fund-payouts-queries';
+import { fileToReceipt, receiptFileError } from '@/modules/fund/lib/fund-files';
 import {
 	positiveAmountField,
 	requiredText,
@@ -97,9 +99,12 @@ export function PayWithdrawalDialog({
 		defaultValues: EMPTY_PAY,
 	});
 	const rate = useWatch({ control: form.control, name: 'cop_rate' });
+	const [receiptFile, setReceiptFile] = useState<File | null>(null);
 
 	useEffect(() => {
-		if (withdrawal) form.reset(EMPTY_PAY);
+		if (!withdrawal) return;
+		form.reset(EMPTY_PAY);
+		setReceiptFile(null);
 	}, [withdrawal, form]);
 
 	const rateNumber = Number(rate.trim().replace(',', '.'));
@@ -109,8 +114,9 @@ export function PayWithdrawalDialog({
 			: null;
 	const method = detailsQuery.data;
 
-	function handleSubmit(values: PayOutput) {
-		if (!withdrawal) return;
+	async function handleSubmit(values: PayOutput) {
+		if (!withdrawal || receiptFileError(receiptFile)) return;
+		const receipt = receiptFile ? await fileToReceipt(receiptFile) : null;
 		mutation.mutate(
 			{
 				id: withdrawal.id,
@@ -118,6 +124,7 @@ export function PayWithdrawalDialog({
 				paid_cop_amount: values.paid_cop_amount,
 				payment_reference: values.payment_reference,
 				note: values.note || null,
+				receipt,
 			},
 			{
 				onSuccess: () => {
@@ -271,6 +278,11 @@ export function PayWithdrawalDialog({
 									</Field>
 								)}
 							/>
+							<ReceiptField
+								id="pay-receipt"
+								file={receiptFile}
+								onChange={setReceiptFile}
+							/>
 						</FieldGroup>
 					</DialogBody>
 				</form>
@@ -281,7 +293,7 @@ export function PayWithdrawalDialog({
 					<Button
 						type="submit"
 						form="pay-withdrawal-form"
-						disabled={mutation.isPending}
+						disabled={mutation.isPending || !!receiptFileError(receiptFile)}
 					>
 						{mutation.isPending && <IconLoader2 className="animate-spin" />}
 						Registrar pago

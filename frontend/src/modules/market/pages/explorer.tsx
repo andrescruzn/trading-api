@@ -2,8 +2,7 @@ import { IconInfoCircle, IconRefresh, IconRobot } from '@tabler/icons-react';
 import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
 import { usePageBreadcrumb } from '@/modules/app-shell/hooks/use-page-breadcrumb';
-import { useHasRole } from '@/modules/auth/hooks/use-has-role';
-import { ROLES } from '@/modules/auth/lib/roles';
+import { useCanManage } from '@/modules/auth/hooks/use-can-manage';
 import type {
 	AssetClass,
 	TrendDirection,
@@ -185,7 +184,8 @@ const columns: DataTableColumn<TrendExplorerRow>[] = [
 
 export function ExplorerPage() {
 	usePageBreadcrumb([{ label: 'Explorar' }, { label: 'Explorar mercados' }]);
-	const isAdmin = useHasRole(ROLES.ADMIN);
+	// Descargar velas y crear agentes son acciones del super admin.
+	const isAdmin = useCanManage();
 	const [assetClass, setAssetClass] = useState<string>(ALL);
 
 	const explorerQuery = useTrendExplorerQuery({
@@ -282,7 +282,11 @@ export function ExplorerPage() {
 			)}
 
 			<DataTable
-				columns={columns}
+				columns={
+					isAdmin
+						? columns
+						: columns.filter((column) => column.id !== 'actions')
+				}
 				rows={rows}
 				getRowId={(row) => row.symbol_id}
 				isLoading={explorerQuery.isLoading}

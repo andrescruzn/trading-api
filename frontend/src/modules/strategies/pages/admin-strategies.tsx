@@ -1,6 +1,7 @@
 import { IconDots, IconEye, IconPencil, IconPlus } from '@tabler/icons-react';
 import { useState } from 'react';
 import { usePageBreadcrumb } from '@/modules/app-shell/hooks/use-page-breadcrumb';
+import { useCanManage } from '@/modules/auth/hooks/use-can-manage';
 import { PageListHeader } from '@/modules/shared/components/page-list-header';
 import type { Strategy } from '@/modules/strategies/api/strategies.api';
 import { StrategiesTable } from '@/modules/strategies/components/strategies-table';
@@ -16,6 +17,7 @@ import {
 } from '@/modules/ui/components/dropdown-menu';
 
 export function AdminStrategiesPage() {
+	const canManage = useCanManage();
 	usePageBreadcrumb([
 		{ label: 'Administración' },
 		{ label: 'Gestionar estrategias' },
@@ -43,6 +45,7 @@ export function AdminStrategiesPage() {
 						label: 'Nueva estrategia',
 						icon: <IconPlus />,
 						onClick: () => setEditing(null),
+						hidden: !canManage,
 					},
 				]}
 			/>
@@ -71,10 +74,12 @@ export function AdminStrategiesPage() {
 									<IconEye />
 									Ver detalle
 								</DropdownMenuItem>
-								<DropdownMenuItem onClick={() => setEditing(strategy)}>
-									<IconPencil />
-									Editar
-								</DropdownMenuItem>
+								{canManage && (
+									<DropdownMenuItem onClick={() => setEditing(strategy)}>
+										<IconPencil />
+										Editar
+									</DropdownMenuItem>
+								)}
 							</DropdownMenuContent>
 						</DropdownMenu>
 					</div>

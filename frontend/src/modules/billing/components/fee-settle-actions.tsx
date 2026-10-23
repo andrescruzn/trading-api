@@ -1,5 +1,6 @@
 import { IconCheck, IconLoader2, IconX } from '@tabler/icons-react';
 import { useState } from 'react';
+import { useCanManage } from '@/modules/auth/hooks/use-can-manage';
 import type {
 	FeeSettleAction,
 	FeeTransaction,
@@ -42,9 +43,13 @@ const COPY: Record<
 
 /** Botones del admin para una comisión pendiente (con confirmación y nota). */
 export function FeeSettleActions({ fee }: { fee: FeeTransaction }) {
+	const canManage = useCanManage();
 	const settleMutation = useSettleFeeMutation();
 	const [action, setAction] = useState<FeeSettleAction | null>(null);
 	const [notes, setNotes] = useState('');
+
+	// Solo un super admin cobra o condona; el socio ve la comisión en solo lectura.
+	if (!canManage) return null;
 
 	if (fee.status !== 'pending') return null;
 

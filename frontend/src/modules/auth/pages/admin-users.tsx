@@ -14,6 +14,7 @@ import { OwnerCell } from '@/modules/auth/components/owner-cell';
 import { UserRoleDialog } from '@/modules/auth/components/user-role-dialog';
 import { UserStatusDialog } from '@/modules/auth/components/user-status-dialog';
 import { useAuth } from '@/modules/auth/hooks/use-auth';
+import { useCanManage } from '@/modules/auth/hooks/use-can-manage';
 import {
 	useOwners,
 	userDisplayName,
@@ -57,6 +58,11 @@ const STATUS_ACTIONS: UserStatus[] = [
 	USER_STATUSES.DISABLED,
 ];
 
+/** Los propietarios no se tocan desde la app (ni rol ni estado). */
+function isSuperAdmin(user: UserSummary) {
+	return user.role_code === ROLES.SUPER_ADMIN;
+}
+
 const ROLE_FILTER_OPTIONS = [
 	{ value: ALL, label: 'Todos los roles' },
 	...ROLE_OPTIONS,
@@ -65,6 +71,7 @@ const ROLE_FILTER_OPTIONS = [
 export function AdminUsersPage() {
 	usePageBreadcrumb([{ label: 'Administración' }, { label: 'Usuarios' }]);
 	const { user: currentUser } = useAuth();
+	const canManage = useCanManage();
 	const owners = useOwners(ALL);
 	const [role, setRole] = useState(ALL);
 	const [editing, setEditing] = useState<UserSummary | null>(null);
@@ -78,7 +85,7 @@ export function AdminUsersPage() {
 		(user) => role === ALL || user.role_code === role,
 	);
 
-	const columns: DataTableColumn<UserSummary>[] = [
+	const baseColumns: DataTableColumn<UserSummary>[] = [
 		{
 			id: 'user',
 			header: 'Usuario',
@@ -90,7 +97,9 @@ export function AdminUsersPage() {
 			header: 'Rol',
 			cell: (row) => (
 				<Badge
-					variant={row.role_code === ROLES.ADMIN ? 'default' : 'secondary'}
+					variant={
+						row.role_code === ROLES.SUPER_ADMIN ? 'default' : 'secondary'
+					}
 				>
 					{row.role_label ?? row.role_code ?? '—'}
 				</Badge>
@@ -116,55 +125,57 @@ export function AdminUsersPage() {
 					<span className="text-muted-foreground">Nunca</span>
 				),
 		},
-		{
-			id: 'actions',
-			header: <span className="sr-only">Acciones</span>,
-			className: 'text-right',
-			cell: (row) =>
-				row.id === currentUser?.id ? (
-					// El backend no deja cambiar el propio rol ni el propio estado:
-					// así nunca falta un admin ni alguien se deja fuera por error.
-					<span className="text-sm text-muted-foreground">Tú</span>
-				) : (
-					<DropdownMenu>
-						<DropdownMenuTrigger
-							render={<Button variant="ghost" size="icon-sm" />}
-						>
-							<IconDots />
-							<span className="sr-only">
-								Acciones de {userDisplayName(row)}
-							</span>
-						</DropdownMenuTrigger>
-						<DropdownMenuContent align="end" className="w-auto min-w-44">
-							<DropdownMenuItem onClick={() => setEditing(row)}>
-								<IconUserCog />
-								Cambiar rol
-							</DropdownMenuItem>
-							<DropdownMenuSeparator />
-							{STATUS_ACTIONS.filter((status) => status !== row.status).map(
-								(status) => {
-									const Icon = STATUS_ACTION_ICONS[status];
-									return (
-										<DropdownMenuItem
-											key={status}
-											variant={
-												status === USER_STATUSES.ACTIVE
-													? 'default'
-													: 'destructive'
-											}
-											onClick={() => setStatusChange({ user: row, status })}
-										>
-											<Icon />
-											{USER_STATUS_ACTION_LABELS[status]}
-										</DropdownMenuItem>
-									);
-								},
-							)}
-						</DropdownMenuContent>
-					</DropdownMenu>
-				),
-		},
 	];
+
+	// Solo un super admin cambia roles y estados; el socio ve la lista.
+	const actionsColumn: DataTableColumn<UserSummary> = {
+		id: 'actions',
+		header: <span className="sr-only">Acciones</span>,
+		className: 'text-right',
+		cell: (row) =>
+			row.id === currentUser?.id ? (
+				// El backend no deja cambiar el propio rol ni el propio estado:
+				// así nadie se deja fuera por error.
+				<span className="text-sm text-muted-foreground">Tú</span>
+			) : isSuperAdmin(row) ? null : (
+				<DropdownMenu>
+					<DropdownMenuTrigger
+						render={<Button variant="ghost" size="icon-sm" />}
+					>
+						<IconDots />
+						<span className="sr-only">Acciones de {userDisplayName(row)}</span>
+					</DropdownMenuTrigger>
+					<DropdownMenuContent align="end" className="w-auto min-w-44">
+						<DropdownMenuItem onClick={() => setEditing(row)}>
+							<IconUserCog />
+							Cambiar rol
+						</DropdownMenuItem>
+						<DropdownMenuSeparator />
+						{STATUS_ACTIONS.filter((status) => status !== row.status).map(
+							(status) => {
+								const Icon = STATUS_ACTION_ICONS[status];
+								return (
+									<DropdownMenuItem
+										key={status}
+										variant={
+											status === USER_STATUSES.ACTIVE
+												? 'default'
+												: 'destructive'
+										}
+										onClick={() => setStatusChange({ user: row, status })}
+									>
+										<Icon />
+										{USER_STATUS_ACTION_LABELS[status]}
+									</DropdownMenuItem>
+								);
+							},
+						)}
+					</DropdownMenuContent>
+				</DropdownMenu>
+			),
+	};
+
+	const columns = canManage ? [...baseColumns, actionsColumn] : baseColumns;
 
 	return (
 		<div className="flex flex-col gap-6">
@@ -176,6 +187,7 @@ export function AdminUsersPage() {
 						label: 'Invitar usuario',
 						icon: <IconUserPlus />,
 						onClick: () => setInviting(true),
+						hidden: !canManage,
 					},
 				]}
 			/>

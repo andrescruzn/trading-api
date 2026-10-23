@@ -1,4 +1,5 @@
 import { IconLoader2, IconSparkles } from '@tabler/icons-react';
+import { useCanManage } from '@/modules/auth/hooks/use-can-manage';
 import type { Bot, Signal } from '@/modules/bots/api/bots.api';
 import { useGenerateSignalMutation } from '@/modules/bots/hooks/use-bots-mutations';
 import {
@@ -25,7 +26,11 @@ export function AnalyzeNowButton({
 	onResult,
 	size = 'sm',
 }: AnalyzeNowButtonProps) {
+	const canManage = useCanManage();
 	const mutation = useGenerateSignalMutation();
+	// Solo un super admin cambia cosas: el socio ve el agente en solo lectura.
+	if (!canManage) return null;
+
 	const isRunning = bot.status === 'running';
 
 	function handleClick() {

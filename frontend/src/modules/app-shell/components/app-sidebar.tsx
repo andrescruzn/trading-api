@@ -20,7 +20,7 @@ import { NavSection } from '@/modules/app-shell/components/nav-section';
 import type { NavSectionData } from '@/modules/app-shell/components/nav-section.types';
 import { isPathActive } from '@/modules/app-shell/components/nav-section.utils';
 import { NavUser } from '@/modules/app-shell/components/nav-user';
-import { ROLES } from '@/modules/auth/lib/roles';
+import { MANAGER_ROLES, ROLES, STAFF_ROLES } from '@/modules/auth/lib/roles';
 import {
 	Sidebar,
 	SidebarContent,
@@ -30,7 +30,8 @@ import {
 } from '@/modules/ui/components/sidebar';
 
 // Las secciones sin `role` las ve cualquier usuario autenticado (el inversor
-// también: además ve "Mi inversión"). "Administración" solo la ve `admin`.
+// también: además ve "Mi inversión"). "Administración" la ven el super admin y
+// el socio (este en solo lectura: las páginas ocultan las acciones).
 // Orden: lo que se opera a diario arriba (agentes); lo de consulta, al final.
 const navSections: NavSectionData[] = [
 	{
@@ -49,7 +50,13 @@ const navSections: NavSectionData[] = [
 		label: 'Operar',
 		items: [
 			{ title: 'Alertas', icon: IconBell, url: '/alerts' },
-			{ title: 'Mis cuentas', icon: IconWallet, url: '/portfolio' },
+			// Solo los super admin tienen cuentas de exchange (las operan ellos).
+			{
+				title: 'Mis cuentas',
+				icon: IconWallet,
+				url: '/portfolio',
+				role: MANAGER_ROLES,
+			},
 		],
 	},
 	{
@@ -78,7 +85,7 @@ const navSections: NavSectionData[] = [
 	},
 	{
 		label: 'Administración',
-		role: ROLES.ADMIN,
+		role: STAFF_ROLES,
 		items: [
 			{
 				title: 'Datos de mercado',
@@ -104,13 +111,13 @@ const navSections: NavSectionData[] = [
 				],
 			},
 			{
-				// Lo que el admin define para todo el sistema.
+				// Lo que el super admin define para todo el sistema.
 				title: 'Configuración',
 				icon: IconSettings,
 				items: [
 					{ title: 'Usuarios', url: '/admin/users' },
 					{ title: 'Gestionar estrategias', url: '/admin/strategies' },
-					{ title: 'Telegram', url: '/admin/telegram' },
+					{ title: 'Telegram', url: '/admin/telegram', role: MANAGER_ROLES },
 					{ title: 'Auditoría', url: '/admin/audit' },
 				],
 			},

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useAccountsQuery } from '@/modules/accounts/hooks/use-accounts-queries';
 import { usePageBreadcrumb } from '@/modules/app-shell/hooks/use-page-breadcrumb';
 import { useAuth } from '@/modules/auth/hooks/use-auth';
+import { useCanManage } from '@/modules/auth/hooks/use-can-manage';
 import type { BotStatus } from '@/modules/bots/api/bots.api';
 import { AgentCard } from '@/modules/bots/components/agent-card';
 import { AgentsEmptyState } from '@/modules/bots/components/agents-empty-state';
@@ -30,6 +31,7 @@ const ACTIVE_STATUSES: BotStatus[] = ['running', 'paused'];
 // mercado de cada uno (precio, variación y régimen) va en su tarjeta; velas e
 // indicadores, en la pestaña Mercado del agente.
 export function DashboardPage() {
+	const canManage = useCanManage();
 	usePageBreadcrumb([]);
 	const { user } = useAuth();
 	const accountsQuery = useAccountsQuery();
@@ -76,7 +78,7 @@ export function DashboardPage() {
 					</h1>
 					<p className="text-sm text-muted-foreground">{subtitle}</p>
 				</div>
-				{hasBots && (
+				{hasBots && canManage && (
 					<Button render={<Link to="/agents/new" />}>
 						<IconPlus />
 						Crear agente

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useCanManage } from '@/modules/auth/hooks/use-can-manage';
 import type { Bot, BotExecutionMode } from '@/modules/bots/api/bots.api';
 import { ApprovalTtlField } from '@/modules/bots/components/approval-ttl-field';
 import { ExecutionModePicker } from '@/modules/bots/components/execution-mode-picker';
@@ -30,6 +31,8 @@ import { toast } from '@/modules/ui/components/toast';
  * detener el agente.
  */
 export function ExecutionModeCard({ bot }: { bot: Bot }) {
+	// El socio ve el modo pero no lo cambia.
+	const canManage = useCanManage();
 	const mutation = useUpdateBotMutation();
 	const [pendingAuto, setPendingAuto] = useState(false);
 
@@ -79,9 +82,9 @@ export function ExecutionModeCard({ bot }: { bot: Bot }) {
 					value={bot.execution_mode}
 					onChange={handleChange}
 					accountMode={bot.mode}
-					disabled={mutation.isPending}
+					disabled={mutation.isPending || !canManage}
 				/>
-				{bot.execution_mode === 'approval' && (
+				{bot.execution_mode === 'approval' && canManage && (
 					<ApprovalTtlField
 						key={bot.approval_ttl_minutes ?? 'default'}
 						bot={bot}

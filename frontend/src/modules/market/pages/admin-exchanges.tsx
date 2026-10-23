@@ -1,6 +1,7 @@
 import { IconPencil, IconPlus } from '@tabler/icons-react';
 import { useState } from 'react';
 import { usePageBreadcrumb } from '@/modules/app-shell/hooks/use-page-breadcrumb';
+import { useCanManage } from '@/modules/auth/hooks/use-can-manage';
 import type { Exchange } from '@/modules/market/api/market.api';
 import { ExchangeFormDialog } from '@/modules/market/components/exchange-form-dialog';
 import { useExchangesQuery } from '@/modules/market/hooks/use-market-queries';
@@ -15,6 +16,7 @@ import { Badge } from '@/modules/ui/components/badge';
 import { Button } from '@/modules/ui/components/button';
 
 export function AdminExchangesPage() {
+	const canManage = useCanManage();
 	usePageBreadcrumb([{ label: 'Administración' }, { label: 'Exchanges' }]);
 	const exchangesQuery = useExchangesQuery();
 	// `undefined` = diálogo cerrado; `null` = crear; un exchange = editar.
@@ -76,11 +78,16 @@ export function AdminExchangesPage() {
 						label: 'Nuevo exchange',
 						icon: <IconPlus />,
 						onClick: () => setEditing(null),
+						hidden: !canManage,
 					},
 				]}
 			/>
 			<DataTable
-				columns={columns}
+				columns={
+					canManage
+						? columns
+						: columns.filter((column) => column.id !== 'actions')
+				}
 				rows={exchangesQuery.data}
 				getRowId={(row) => row.id}
 				isLoading={exchangesQuery.isLoading}

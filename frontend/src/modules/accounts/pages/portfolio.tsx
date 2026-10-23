@@ -16,6 +16,7 @@ import { AccountFormDialog } from '@/modules/accounts/components/account-form-di
 import { useAccountsQuery } from '@/modules/accounts/hooks/use-accounts-queries';
 import { usePageBreadcrumb } from '@/modules/app-shell/hooks/use-page-breadcrumb';
 import { useAuth } from '@/modules/auth/hooks/use-auth';
+import { useCanManage } from '@/modules/auth/hooks/use-can-manage';
 import { useExchangesQuery } from '@/modules/market/hooks/use-market-queries';
 import {
 	DataTable,
@@ -33,6 +34,7 @@ import {
 
 export function PortfolioPage() {
 	usePageBreadcrumb([{ label: 'Operar' }, { label: 'Mis cuentas' }]);
+	const canManage = useCanManage();
 	const { user } = useAuth();
 	const accountsQuery = useAccountsQuery();
 	const exchangesQuery = useExchangesQuery();
@@ -126,6 +128,7 @@ export function PortfolioPage() {
 						label: 'Nueva cuenta',
 						icon: <IconPlus />,
 						onClick: () => setEditing(null),
+						hidden: !canManage,
 					},
 				]}
 			/>

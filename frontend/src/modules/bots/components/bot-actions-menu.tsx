@@ -7,6 +7,7 @@ import {
 	IconPlayerStop,
 } from '@tabler/icons-react';
 import { useState } from 'react';
+import { useCanManage } from '@/modules/auth/hooks/use-can-manage';
 import type { Bot } from '@/modules/bots/api/bots.api';
 import { StopBotDialog } from '@/modules/bots/components/stop-bot-dialog';
 import { useBotTransition } from '@/modules/bots/hooks/use-bot-transition';
@@ -32,8 +33,12 @@ type BotActionsMenuProps = {
  * deshabilitadas.
  */
 export function BotActionsMenu({ bot, onView }: BotActionsMenuProps) {
+	const canManage = useCanManage();
 	const { run, isPending } = useBotTransition(bot);
 	const [confirmStop, setConfirmStop] = useState(false);
+
+	// El socio no inicia, pausa ni detiene: abre el agente con clic en la fila.
+	if (!canManage) return null;
 
 	return (
 		// La fila de la tabla es clicable y los eventos del menú y del diálogo

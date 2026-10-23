@@ -64,6 +64,7 @@ from app.modules.fund.infrastructure.payout_models import (  # noqa: F401
     PayoutMethodModel,
     RedemptionRequestModel,
     SettlementRedemptionModel,
+    WithdrawalReceiptModel,
     WithdrawalRequestModel,
 )
 

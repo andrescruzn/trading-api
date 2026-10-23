@@ -120,11 +120,18 @@ class WithdrawalCreateRequest(BaseModel):
     payout_method_id: int = Field(..., gt=0)
 
 
+class ReceiptFileRequest(BaseModel):
+    filename: str | None = Field(default=None, max_length=200)
+    # 5 MB en base64 ≈ 7 MB de texto
+    data_base64: str = Field(..., min_length=4, max_length=7_200_000)
+
+
 class WithdrawalPayRequest(BaseModel):
     paid_cop_amount: Decimal = Field(..., gt=0, max_digits=30, decimal_places=12)
     cop_rate: Decimal = Field(..., gt=0, max_digits=30, decimal_places=12)
     payment_reference: str = Field(..., min_length=1, max_length=120)
     note: str | None = Field(default=None, max_length=500)
+    receipt: ReceiptFileRequest | None = Field(default=None, description="Comprobante (opcional)")
 
 
 class WithdrawalRejectRequest(BaseModel):

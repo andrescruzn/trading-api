@@ -12,6 +12,7 @@
 # - `commission_credits`: la parte de cada comisión de cada propietario.
 # - `payout_methods`: medios de pago (banco / Nequi), datos cifrados.
 # - `withdrawal_requests`: retiros a banco / Nequi.
+# - `withdrawal_receipts`: comprobante del pago de un retiro (F6).
 # ======================================================================
 
 from __future__ import annotations
@@ -24,11 +25,13 @@ from sqlalchemy import (
     Column,
     ForeignKey,
     Index,
+    Integer,
     String,
     Text,
+    UniqueConstraint,
     text,
 )
-from sqlalchemy.dialects.mysql import TIMESTAMP, TINYINT
+from sqlalchemy.dialects.mysql import MEDIUMBLOB, TIMESTAMP, TINYINT
 
 from app.extensions.db import MYSQL_TABLE_OPTIONS, Base
 
@@ -280,4 +283,38 @@ class WithdrawalRequestModel(Base):
         nullable=True,
     )
     resolved_at = Column(TIMESTAMP(fsp=6), nullable=True)
+    created_at = _created_at()
+
+
+class WithdrawalReceiptModel(Base):
+    """Comprobante del pago de un retiro (PDF / PNG / JPG, máx. 5 MB)."""
+
+    __tablename__ = "withdrawal_receipts"
+    __table_args__ = (
+        UniqueConstraint("withdrawal_request_id", name="uq_withdrawal_receipts_request"),
+        CheckConstraint(
+            "`content_type` IN ('application/pdf', 'image/png', 'image/jpeg')",
+            name="chk_withdrawal_receipts_type",
+        ),
+        CheckConstraint(
+            "`size_bytes` > 0 AND `size_bytes` <= 5242880", name="chk_withdrawal_receipts_size"
+        ),
+        MYSQL_TABLE_OPTIONS,
+    )
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    withdrawal_request_id = Column(
+        BigInteger,
+        ForeignKey("withdrawal_requests.id", name="fk_withdrawal_receipts_request"),
+        nullable=False,
+    )
+    filename = Column(String(200), nullable=False)
+    content_type = Column(String(64), nullable=False, comment="application/pdf | image/png | image/jpeg")
+    size_bytes = Column(Integer, nullable=False)
+    content = Column(MEDIUMBLOB, nullable=False, comment="El archivo (tipo validado por su contenido)")
+    uploaded_by_user_id = Column(
+        BigInteger,
+        ForeignKey("users.id", name="fk_withdrawal_receipts_uploaded_by", ondelete="SET NULL"),
+        nullable=True,
+    )
     created_at = _created_at()

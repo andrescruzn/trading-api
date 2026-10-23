@@ -36,9 +36,10 @@ from app.modules.fund.domain.payout_repositories import (
     PayoutMethodRepository,
     RedemptionRequestRepository,
     SettlementRedemptionRepository,
+    WithdrawalReceiptRepository,
     WithdrawalRequestRepository,
 )
-from app.modules.fund.domain.withdrawal_entity import PayoutMethod, WithdrawalRequest
+from app.modules.fund.domain.withdrawal_entity import PayoutMethod, WithdrawalReceipt, WithdrawalRequest
 from app.modules.fund.infrastructure.payout_models import (
     CommissionCreditModel,
     CommissionShareVersionModel,
@@ -46,6 +47,7 @@ from app.modules.fund.infrastructure.payout_models import (
     PayoutMethodModel,
     RedemptionRequestModel,
     SettlementRedemptionModel,
+    WithdrawalReceiptModel,
     WithdrawalRequestModel,
 )
 
@@ -291,6 +293,18 @@ class SqlAlchemySettlementRedemptionRepository(SqlAlchemyRepository, SettlementR
         )
         return [self._to_domain(m) for m in models]
 
+    def totals_by_user(self) -> dict[int, tuple[Decimal, Decimal]]:
+        rows = (
+            self._session.query(
+                SettlementRedemptionModel.user_id,
+                func.sum(SettlementRedemptionModel.gain),
+                func.sum(SettlementRedemptionModel.fee),
+            )
+            .group_by(SettlementRedemptionModel.user_id)
+            .all()
+        )
+        return {int(user_id): (_dec(gain), _dec(fee)) for user_id, gain, fee in rows}
+
 
 class SqlAlchemyCommissionCreditRepository(SqlAlchemyRepository, CommissionCreditRepository):
 
@@ -433,6 +447,17 @@ class SqlAlchemyWithdrawalRequestRepository(SqlAlchemyRepository, WithdrawalRequ
         m = self._session.get(WithdrawalRequestModel, request_id)
         return None if m is None else self._to_domain(m)
 
+    def open_summary(self) -> tuple[int, Decimal]:
+        count, total = (
+            self._session.query(
+                func.count(WithdrawalRequestModel.id),
+                func.coalesce(func.sum(WithdrawalRequestModel.amount), 0),
+            )
+            .filter(WithdrawalRequestModel.status == "requested")
+            .one()
+        )
+        return int(count or 0), _dec(total)
+
     def open_total(self, user_id: int) -> Decimal:
         value = (
             self._session.query(func.coalesce(func.sum(WithdrawalRequestModel.amount), 0))
@@ -488,3 +513,55 @@ class SqlAlchemyWithdrawalRequestRepository(SqlAlchemyRepository, WithdrawalRequ
         )
         self._session.flush()
         return updated == 1
+
+
+class SqlAlchemyWithdrawalReceiptRepository(SqlAlchemyRepository, WithdrawalReceiptRepository):
+
+    def __init__(self, session: Session):
+        self._session = session
+
+    def save(self, receipt: WithdrawalReceipt) -> WithdrawalReceipt:
+        m = (
+            self._session.query(WithdrawalReceiptModel)
+            .filter(WithdrawalReceiptModel.withdrawal_request_id == receipt.withdrawal_id)
+            .one_or_none()
+        )
+        if m is None:
+            m = WithdrawalReceiptModel(withdrawal_request_id=receipt.withdrawal_id)
+            self._session.add(m)
+        m.filename = receipt.filename
+        m.content_type = receipt.content_type
+        m.size_bytes = receipt.size_bytes
+        m.content = receipt.content
+        m.uploaded_by_user_id = receipt.uploaded_by_user_id
+        self._session.flush()
+        return receipt
+
+    def get(self, withdrawal_id: int) -> WithdrawalReceipt | None:
+        m = (
+            self._session.query(WithdrawalReceiptModel)
+            .filter(WithdrawalReceiptModel.withdrawal_request_id == withdrawal_id)
+            .one_or_none()
+        )
+        if m is None:
+            return None
+        return WithdrawalReceipt(
+            withdrawal_id=m.withdrawal_request_id,
+            filename=m.filename,
+            content_type=m.content_type,
+            content=bytes(m.content),
+            uploaded_by_user_id=m.uploaded_by_user_id,
+            created_at=ensure_aware_utc(m.created_at),
+        )
+
+    def names_for(self, withdrawal_ids: list[int]) -> dict[int, str]:
+        if not withdrawal_ids:
+            return {}
+        rows = (
+            self._session.query(
+                WithdrawalReceiptModel.withdrawal_request_id, WithdrawalReceiptModel.filename
+            )
+            .filter(WithdrawalReceiptModel.withdrawal_request_id.in_(withdrawal_ids))
+            .all()
+        )
+        return {int(wid): name for wid, name in rows}

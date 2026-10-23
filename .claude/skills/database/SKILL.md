@@ -22,8 +22,7 @@ El esquema lo definen los **modelos ORM** (`app/modules/*/infrastructure/*_model
 | Market data / ML | `candles`, `candle_features`, `datasets`, `models`, `model_runs` |
 | Ejecución de bots | `bots`, `signals`, `orders`, `fills`, `positions`, `predictions`, `portfolio_snapshots` |
 | Alertas y auditoría | `alert_rules`, `alert_events`, `audit_logs`, `system_events` |
-| Billing (M10) | `investors`, `managed_accounts`, `billing_periods`, `fee_transactions`, `capital_movements` |
-| Fondo común (M4 + M11) | `platform_wallet` (una fila), `wallet_snapshots`, `fund_settings` (una fila), `ledger_entries` (append-only), `deposit_requests`, `agent_pools`, `agent_settlements`, `unit_lots`, `allocation_orders`, `fee_schedules`, `commission_share_versions`, `redemption_requests`, `settlement_redemptions`, `commission_credits`, `payout_methods`, `withdrawal_requests` |
+| Fondo común (M4 + M11) | `platform_wallet` (una fila), `wallet_snapshots`, `fund_settings` (una fila), `ledger_entries` (append-only), `deposit_requests`, `agent_pools`, `agent_settlements`, `unit_lots`, `allocation_orders`, `fee_schedules`, `commission_share_versions`, `redemption_requests`, `settlement_redemptions`, `commission_credits`, `payout_methods`, `withdrawal_requests`, `withdrawal_receipts` (comprobante en `MEDIUMBLOB`) |
 
 ## Valores permitidos (CHECK constraints)
 
@@ -47,8 +46,6 @@ alert_events.severity      : info | warning | critical
 alert_events.delivery_status: pending | sent | failed
 system_events.level        : info | warning | error
 system_events.component    : market_data | execution | scheduler | api
-managed_accounts.period_type: daily | weekly | monthly
-billing_periods.status     : open | closed
 fee_transactions.status    : pending | charged | waived
 wallet_snapshots.source    : exchange | manual
 ledger_entries.entry_type  : deposit | refund | allocation | redemption | fee | commission | withdrawal

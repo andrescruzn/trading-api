@@ -2,7 +2,7 @@
 
 Aplicación de **trading asistido por IA** (nombre temporal: **trading-app**). Este repo contiene la aplicación completa: API REST **headless** (FastAPI), frontend React (`frontend/`), jobs y base de datos. El objetivo es quitar el sesgo emocional del trader: el sistema solo propone (y ejecuta) operaciones que pasan reglas objetivas.
 
-**Qué hace, de punta a punta:** descarga velas OHLCV de exchanges (ccxt) → calcula indicadores y régimen de mercado → un agente LLM evalúa la operación contra la estrategia → un bot emite la señal (BUY/SELL/HOLD con entry/SL/TP) → se crea la orden (paper o live) → se disparan alertas → a los inversores con cuenta administrada se les cobra un performance fee.
+**Qué hace, de punta a punta:** descarga velas OHLCV de exchanges (ccxt) → calcula indicadores y régimen de mercado → un agente LLM evalúa la operación contra la estrategia → un bot emite la señal (BUY/SELL/HOLD con entry/SL/TP) → se crea la orden (paper o live) → se disparan alertas → en la liquidación de cada agente se cobra una comisión escalonada sobre la ganancia que sale del fondo común (M11).
 
 **Reglas de negocio que el código debe respetar siempre:**
 1. **Filtro de régimen:** tendencia (HH/HL) vs. rango lateral; cada estrategia declara en qué régimen opera.
@@ -31,7 +31,7 @@ Explicación conceptual en lenguaje simple: [`docs/MANUAL.md`](docs/MANUAL.md). 
 | M7 — Bots & Signals | [M07-BOTS-SIGNALS.md](specs/M07-BOTS-SIGNALS.md) | `app/modules/bots` |
 | M8 — Orders & Execution | [M08-ORDERS-EXECUTION.md](specs/M08-ORDERS-EXECUTION.md) | `app/modules/orders` |
 | M9 — Alerts | [M09-ALERTS.md](specs/M09-ALERTS.md) | `app/modules/alerts` |
-| M10 — Billing & Managed Accounts | [M10-BILLING.md](specs/M10-BILLING.md) | `app/modules/billing` (lo reemplaza M11 en la F6) |
+| M10 — Billing & Managed Accounts | [M10-BILLING.md](specs/M10-BILLING.md) | 🗄️ Retirado el 2026-10-23 (lo reemplazó M11) |
 | M11 — Fondo común | [M11-FUND.md](specs/M11-FUND.md) | `app/modules/fund` · `app/modules/accounts` (billetera) |
 
 Inicio de sesión: el usuario dirá **"comenzamos Módulo X"** o **"continuamos donde quedamos"** → leer `_ROOT.md` + la spec correspondiente antes de proponer nada. Si hay algo nuevo en el entorno (p. ej. "instalé X"), lo dirá directamente.
@@ -136,7 +136,7 @@ frontend/
       shared/                 api-client, envelope, DataTable, OptionSelect, StatCard, format, layouts
       app-shell/              sidebar (navSections), nav-user, breadcrumb
       auth/ · dashboard/
-      market/ · features/ · accounts/ · strategies/ · bots/ · orders/ · alerts/ · billing/ · fund/   (uno por módulo M2–M11; M6 se usa desde bots)
+      market/ · features/ · accounts/ · strategies/ · bots/ · orders/ · alerts/ · fund/   (uno por módulo M2–M11; M6 se usa desde bots; M10 retirado)
         api/<x>.api.ts · hooks/use-<x>-queries.ts · hooks/use-<x>-mutations.ts · lib/ · components/ · pages/
 ```
 

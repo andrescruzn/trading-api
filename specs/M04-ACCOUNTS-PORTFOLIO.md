@@ -11,7 +11,7 @@
 | Madurez (estimada) | 81 % — ver [Avance](#avance) |
 | Tablas | `accounts`, `account_balances`, `platform_wallet`, `wallet_snapshots` (R/W); `exchanges` (R) |
 | Depende de | [M1](M01-AUTH.md), [M2](M02-MARKET-DATA.md) (exchange de la cuenta) |
-| Lo usan | [M6](M06-AI-AGENT.md) (capital disponible), [M7](M07-BOTS-SIGNALS.md) (cuenta del bot), [M8](M08-ORDERS-EXECUTION.md) (credenciales del `LiveExecutor`), [M10](M10-BILLING.md) (cuenta administrada) |
+| Lo usan | [M6](M06-AI-AGENT.md) (capital disponible), [M7](M07-BOTS-SIGNALS.md) (cuenta del bot), [M8](M08-ORDERS-EXECUTION.md) (credenciales del `LiveExecutor`), [M11](M11-FUND.md) (billetera única del fondo común) |
 | Prefijo API | `/api/accounts` (la página del front es `/#/portfolio`), `/api/wallet` |
 | Frontend | `frontend/src/modules/accounts` |
 | Última revisión | 2026-10-23 |
@@ -184,7 +184,7 @@ Settings: `WALLET_BASE_ASSET` (USDT), `WALLET_SYNC_INTERVAL_SECONDS` (300, míni
 | `/#/admin/accounts` | `routes/_app/admin/accounts.lazy.tsx` | `pages/admin-accounts.tsx` + `components/account-balances-sheet.tsx` |
 | `/#/admin/wallet` | `routes/_app/admin/wallet.lazy.tsx` | `pages/admin-wallet.tsx` + `components/wallet-account-dialog.tsx`; `api/wallet.api.ts`, `hooks/use-wallet-queries.ts` (relee cada 60 s), `hooks/use-wallet-mutations.ts`, `WALLET_SOURCE_LABELS` |
 
-- API: `api/accounts.api.ts`; hooks `use-accounts-queries.ts` (`useAccountsQuery`, reutilizado por dashboard, agent, bots y billing) y `use-accounts-mutations.ts`; etiquetas `lib/accounts-labels.ts`; badges `components/account-badges.tsx`.
+- API: `api/accounts.api.ts`; hooks `use-accounts-queries.ts` (`useAccountsQuery`, reutilizado por dashboard, agent y bots) y `use-accounts-mutations.ts`; etiquetas `lib/accounts-labels.ts`; badges `components/account-badges.tsx`.
 
 ### Seed
 - `database/seeds/accounts.py` — cuentas paper de ejemplo (Binance y Bybit) con balances en USDT para **cada** usuario demo (Andrés y Dayron), idempotente por (usuario, nombre). El usuario que no exista se omite.
@@ -212,7 +212,7 @@ Settings: `WALLET_BASE_ASSET` (USDT), `WALLET_SYNC_INTERVAL_SECONDS` (300, míni
 ## Historial
 
 - **2026-03** — Módulo completado (CRUD cuentas, balances, cifrado Fernet, UI `/portfolio` y `/admin/accounts`, 36 tests).
-- **Posterior** — Es la base de las cuentas administradas de [M10](M10-BILLING.md).
+- **Posterior** — Fue la base de las cuentas administradas de M10 (retirado); hoy su billetera única la usa [M11](M11-FUND.md).
 - **2026-10-08** — API headless (/api), páginas migradas a React (frontend/).
 - **2026-10-10** — Seed `accounts`: cuentas para Dayron y fix del re-run con varias fotos de balance.
 - **2026-10-19** — Auditoría de seguridad: `api_key` ≤ 512 y `api_secret` ≤ 1024 en los schemas; `CredentialsCipher.from_settings()` con MultiFernet y `CREDENTIALS_PREVIOUS_KEYS` (rotación de clave sin perder las cuentas). Spec corregida: `portfolio_snapshots` sí tiene modelo ORM (`portfolio_snapshot_model.py`, registrado), aunque nadie la escribe.

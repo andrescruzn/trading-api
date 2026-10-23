@@ -13,7 +13,7 @@ description: Patrones de diseño y principios usados en Trading App. Usar antes 
 
 ## Screaming Architecture
 
-La estructura grita *qué hace el sistema*: `app/modules/market`, `bots`, `orders`, `billing`… no `models/`, `views/`, `controllers/`. Las sub-carpetas representan capacidades de negocio (p. ej. `services/strategies/` y `services/datasets/`), no detalles técnicos.
+La estructura grita *qué hace el sistema*: `app/modules/market`, `bots`, `orders`, `fund`… no `models/`, `views/`, `controllers/`. Las sub-carpetas representan capacidades de negocio (p. ej. `services/strategies/` y `services/datasets/`), no detalles técnicos.
 
 ## Repository
 
@@ -22,7 +22,7 @@ La estructura grita *qué hace el sistema*: `app/modules/market`, `bots`, `order
 - Contrato en `domain/<x>_repository.py`; implementación `SqlAlchemy<X>Repository` en `infrastructure/<x>_repository_impl.py`.
 - El repositorio recibe y devuelve **entidades de dominio**, nunca modelos ORM.
 - Hereda `SqlAlchemyRepository` (implementación) / `TransactionalRepository` (contrato): es la única capa que toca `session.commit()`. El servicio decide cuándo, llamando `repo.commit()`.
-- Contratos: el código existente usa `ABC` (la mayoría) y `Protocol` (alerts, billing). **En código nuevo preferir `typing.Protocol`**; no migrar los ABC existentes salvo que el usuario lo pida.
+- Contratos: el código existente usa `ABC` (la mayoría) y `Protocol` (alerts, fund: `FundNotifier`). **En código nuevo preferir `typing.Protocol`**; no migrar los ABC existentes salvo que el usuario lo pida.
 
 ```python
 # domain/strategy_repository.py

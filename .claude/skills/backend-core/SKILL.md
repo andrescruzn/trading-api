@@ -31,7 +31,7 @@ app/
     base.py                  # class Base(DeclarativeBase)
     session.py               # engine síncrono (UTC) + get_db()
     models_registry.py       # importa TODOS los modelos ORM          ← registrar modelos nuevos
-  modules/<modulo>/          # accounts, agent, alerts, billing, bots, features, market,
+  modules/<modulo>/          # accounts, agent, alerts, bots, features, fund, market,
                              # orders, strategies, users, mailer, health, scheduler
 ```
 

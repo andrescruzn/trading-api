@@ -29,8 +29,10 @@ Una palabra por concepto. Si la app dice "cuenta" en un lado y "wallet" en otro,
 | **modo de ejecución** | modo de operación, autopiloto | Qué hace el agente cuando la IA aprueba: **Manual**, **Con aprobación**, **Automático**. No confundir con modo paper/live. |
 | **señal por aprobar** | señal pendiente (en pantalla) | Señal de un agente Con aprobación que espera tu decisión. Acciones: **Aprobar** / **Descartar** (igual en la app y en Telegram). Estados: **Por aprobar**, **Ejecutada**, **Descartada**, **Vencida**, **No ejecutada**. |
 | **regla de alerta** | trigger, alarma | Historial = **eventos de alerta**. |
-| **inversor** | cliente, socio | |
-| **cuenta gestionada** | cuenta administrada, managed account | |
+| **inversor** | cliente | Participante del fondo común que solo ve lo suyo. |
+| **socio** | partner, asociado | Ve todo en solo lectura y puede recibir parte de la comisión. |
+| **super admin** | administrador, admin, dueño | Los propietarios de la plataforma. |
+| **fondo común** | cuenta gestionada, cuenta administrada, managed account | M10 se retiró: el dinero de todos está en una billetera y cada persona tiene su saldo |
 | **comisión de desempeño** | performance fee, fee (en texto corrido) | En tablas: `Comisión`. |
 | **marca de agua (HWM)** | high water mark (solo) | Primera mención con la sigla entre paréntesis. |
 | **período de facturación** | período (solo, si hay ambigüedad) | Acciones: **Abrir período**, **Cerrar período**. |

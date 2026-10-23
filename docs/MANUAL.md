@@ -605,6 +605,39 @@ Para los super admin (Administración → Fondo):
   Liquidar     → la vista previa muestra quién sale, su comisión y su neto. Sin tabla de comisión o
                  sin reparto no se puede liquidar un agente que tiene salidas pedidas.
 
+3.0.6 Módulo 11 — El resumen del fondo, los avisos y los comprobantes
+───────────────────────────────────────────────────────────────────────
+Resumen del fondo (Administración → Fondo → Resumen del fondo; super admin y socios):
+  - Cuánto hay en la billetera y cuánto de eso está en cada agente.
+  - Cuánto tienen las personas pendiente de asignar y disponible, qué retiros están por pagar y
+    qué depósitos esperan una decisión.
+  - Lo que ganó cada propietario o socio: comisiones recibidas más la ganancia de su propio
+    dinero en los agentes.
+  - La CONCILIACIÓN: comprueba que cada peso de la billetera tiene dueño.
+      Billetera − capital de los agentes − pendiente − disponible = diferencia
+    Lo normal es que dé casi 0 ("Todo cuadra").
+
+  Ejemplo: la billetera tiene 10.050 USDT. Los agentes suman 8.000, el pendiente 1.500 y el
+  disponible 500 → 10.000 tienen dueño y sobran 50. Suele ser un depósito que llegó y aún no se
+  confirma, o una posición abierta que hoy vale más de lo que costó. Si la diferencia es
+  negativa (falta dinero), hay que revisarla antes de pagar retiros.
+
+Mi saldo, para todos:
+  - "Lo que has ganado": lo que ya salió de los agentes (después de la comisión), lo que vas
+    ganando en los agentes y, si recibes comisión, cuánto llevas.
+  - "Descargar extracto (CSV)" en Movimientos: todos tus movimientos en un archivo que abre Excel.
+  - En Retiros, el botón "Comprobante" descarga el soporte del pago cuando el super admin lo subió.
+
+Comprobantes: al pagar un retiro, el super admin puede adjuntar el soporte de la transferencia
+(PDF, PNG o JPG de hasta 5 MB), o hacerlo después con "Adjuntar comprobante".
+
+Avisos: te llegan a la campana de la app y, si están activos, por correo y por Telegram (a tu
+chat, si lo vinculaste):
+  - tu depósito se confirmó o se rechazó;
+  - tu dinero entró a un agente o salió de él en una liquidación (con la comisión);
+  - tu retiro se pagó (pesos, tasa y referencia) o se rechazó.
+  Los super admin reciben además: un depósito necesita revisión y alguien pidió un retiro.
+
 3.1 Módulo 5 — Strategies (Estrategias)
 
 Una estrategia es el conjunto de reglas que define cuándo el sistema debe considerar una operación.
@@ -1339,78 +1372,32 @@ Para no llenarte de mensajes, una regla que ya avisó espera 60 minutos antes de
 (ALERT_REPEAT_MINUTES). Si la condición sigue, te lo recuerda cada hora.
 
 ---
-PARTE 5 — Módulo 10: Billing & Managed Accounts (El modelo de negocio)
+PARTE 5 — El modelo de negocio: el fondo común
 
-5.1 ¿Qué es una Managed Account?
-──────────────────────────────────
-Es el modelo donde una persona (inversor) te entrega capital para que tú lo operes
-con el sistema. Si el sistema genera ganancias, tú te quedas con un porcentaje
-acordado de esas ganancias. Si pierde, no cobras nada.
+5.1 De las cuentas administradas al fondo común
+─────────────────────────────────────────────────
+  Antes cada inversor tenía su propia "cuenta administrada" y la comisión se calculaba con una
+  marca de agua por cuenta (Módulo 10). Desde el 2026-10-23 eso se retiró: ahora todo el dinero
+  está en UNA billetera y el Módulo 11 (Fondo común, sección 3.0.3 a 3.0.6) lleva la cuenta de
+  cada persona.
 
-Ejemplo real:
-  Tu jefe aporta: $10,000 USD
-  El bot opera durante un mes y genera: $800 de ganancia (8%)
-  Tu performance fee (20%): $160
-  Tu jefe recibe: $640 netos
-
-  Si el bot pierde $200 ese mes → tú no cobras nada y el jefe absorbe la pérdida.
-
-Esto alinea los intereses: solo ganas cuando el inversor gana.
-
-5.2 ¿Qué es el High-Water Mark?
-─────────────────────────────────
-Es una protección para el inversor. Garantiza que no pagas fee dos veces sobre
-el mismo capital.
-
-Ejemplo sin High-Water Mark (injusto):
-  Mes 1: capital $10,000 → gana $1,000 → cobras fee sobre $1,000 ✓
-  Mes 2: capital $11,000 → pierde $500 → no cobras (correcto)
-  Mes 3: capital $10,500 → gana $600 → cobras fee sobre $600 ← INJUSTO
-  (en mes 3 el capital nunca superó el máximo de $11,000, pero cobras igual)
-
-Con High-Water Mark (justo):
-  Solo cobras fee cuando el capital supera su máximo histórico previo.
-  En el ejemplo: mes 3 el capital llega a $11,100 → solo cobras fee sobre $100
-  (el excedente sobre el máximo anterior de $11,000)
-
-5.3 ¿Cómo funciona en el sistema? (Módulo 10)
-───────────────────────────────────────────────
-El Módulo 10 automatiza todo esto:
-
-  1. Admin registra al inversor con su capital aportado y el fee_pct acordado (ej: 20%)
-  2. El capital queda vinculado a una cuenta de trading del sistema
-  3. El bot opera esa cuenta (M7 + M8 generan señales y ejecutan órdenes)
-  4. Al cierre de cada período (semanal o mensual):
-     - El sistema calcula el PnL neto del período
-     - Aplica el High-Water Mark: solo hay fee si hay nuevos máximos
-     - Calcula el fee: PnL_positivo × fee_pct
-     - Registra la transacción en el historial
-     - (Pendiente, todavía no implementado: enviar el estado de cuenta por correo al inversor)
-  5. El inversor puede ver su dashboard: capital, rendimiento, historial de fees
-
-  El cierre del período lo hace el administrador desde /#/admin/billing. La app le sugiere el
-  capital final sumando los últimos balances de la cuenta al último precio ("Usar este valor");
-  si algún activo no tiene precio, lo avisa y no lo suma. El administrador puede corregirlo.
-
-  Comisiones: al cerrar queda una comisión "Pendiente". Cuando el pago llega, el administrador
-  la marca "Cobrada" (o "Condonar" si decide no cobrarla). En "Mi inversión" el inversor ve
-  cuánto ha pagado y cuánto tiene pendiente, y puede descargar su extracto en CSV.
-
-  Aportes y retiros: si el inversor deposita o retira dinero, el administrador lo registra en
-  Cuentas gestionadas → "Aportes y retiros". La marca de agua se mueve en el mismo monto, así
-  la comisión nunca se cobra sobre dinero depositado.
-    Ejemplo: marca de agua 10.000. El inversor aporta 2.000 → la marca pasa a 12.000. Si la
-    cuenta cierra el mes en 12.500, la comisión se cobra solo sobre 500 de ganancia.
+  Lo que se mantiene de la idea original:
+  - Si el agente no gana, no hay comisión.
+  - Recuperar una pérdida no se cobra dos veces: la comisión se calcula sobre lo que costó cada
+    parte de tu dinero, igual que una marca de agua.
+  - Todo queda escrito y la persona lo ve: sus movimientos, lo que salió de cada agente y la
+    comisión tramo por tramo.
 
 5.4 Roles del sistema (fondo común)
 ─────────────────────────────────────
   Super admin → los propietarios de la plataforma (Andrés y Dayron). Crean y operan los
                 agentes, invitan personas y configuran todo. No se puede dar este rol
                 desde la app.
-  Socio       → ve todo lo que ve un super admin (agentes, cuentas, órdenes, inversores,
+  Socio       → ve todo lo que ve un super admin (agentes, cuentas, órdenes, el fondo,
                 auditoría), pero no puede crear, editar, pausar ni aprobar nada. Se invita
                 desde Configuración → Usuarios.
-  Inversor    → ve lo suyo: "Mi inversión", con su rendimiento y sus comisiones.
+  Inversor    → ve lo suyo en "Mi saldo": sus saldos, sus agentes, lo que ha ganado, sus
+                retiros y la tabla de comisión. Nunca ve el total de la billetera.
 
   Ejemplo: un socio abre un agente y ve sus señales y órdenes, pero no aparecen los botones
   Iniciar, Pausar, Analizar ahora ni Nueva orden. Si intentara la acción por otro medio, la
@@ -1419,8 +1406,10 @@ El Módulo 10 automatiza todo esto:
 5.5 ¿Qué necesitas para lanzar esto?
 ──────────────────────────────────────
   Requisito técnico:   Módulos 7 y 8 funcionando (bots operando en live)
-  Requisito legal:     Un contrato simple con el inversor que especifique el % de fee,
-                       el período de cobro y las condiciones de retiro
+  Requisito legal:     Administrar dinero de terceros con comisión es actividad regulada
+                       (en Colombia, la SFC): validarlo con un abogado antes de recibir
+                       dinero real. Un contrato con la tabla de comisión, la permanencia
+                       mínima y cómo se piden los retiros
   Requisito de confianza: 3-6 meses de historial paper verificable antes de pedirle
                           dinero real a alguien
 

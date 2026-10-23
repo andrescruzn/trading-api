@@ -17,7 +17,7 @@ description: Estándares de tests de Trading App. Usar SOLO cuando el usuario pi
 ```
 tests/
   conftest.py              # app, client (TestClient), make_user(), make_mock_repo(), mock_session
-  <modulo>/                # accounts, agent, billing, bots, features, users, web, common/audit
+  <modulo>/                # accounts, agent, bots, features, users, web, common/audit
     test_<x>_service.py    # unitarios de un servicio
     test_<x>_entity.py     # reglas de una entidad de dominio
   web/test_web_routes.py   # redirecciones y páginas con TestClient

@@ -31,6 +31,7 @@ from app.modules.fund.domain.payout_repositories import (
     RedemptionRequestRepository,
     SettlementRedemptionRepository,
 )
+from app.modules.fund.services.pools.agent_info import AgentInfo, AgentInfoReader
 
 
 @dataclass(frozen=True)
@@ -38,6 +39,9 @@ class MyRedemptions:
     queued: list[RedemptionRequest] = field(default_factory=list)
     history: list[RedemptionRequest] = field(default_factory=list)
     lines: list[SettlementRedemption] = field(default_factory=list)
+    # pool_id → agente: la persona puede haber salido del todo y ya no verlo
+    # en sus participaciones
+    agents: dict[int, AgentInfo | None] = field(default_factory=dict)
 
 
 class RedemptionService:
@@ -49,11 +53,13 @@ class RedemptionService:
         line_repo: SettlementRedemptionRepository,
         pool_repo: AgentPoolRepository,
         lot_repo: UnitLotRepository,
+        agents: AgentInfoReader,
     ):
         self._repo = repo
         self._line_repo = line_repo
         self._pool_repo = pool_repo
         self._lot_repo = lot_repo
+        self._agents = agents
 
     def request(
         self,
@@ -115,10 +121,16 @@ class RedemptionService:
 
     def mine(self, user_id: int) -> ServiceResult[MyRedemptions]:
         requests = self._repo.list_by_user(int(user_id))
+        lines = self._line_repo.list_by_user(int(user_id))
+        agents: dict[int, AgentInfo | None] = {}
+        for pool_id in {r.pool_id for r in requests} | {line.pool_id for line in lines}:
+            pool = self._pool_repo.get_by_id(pool_id)
+            agents[pool_id] = self._agents.info_by_id(pool.bot_id) if pool else None
         return ServiceResult.ok(
             MyRedemptions(
                 queued=[r for r in requests if r.status == "queued"],
                 history=[r for r in requests if r.status != "queued"],
-                lines=self._line_repo.list_by_user(int(user_id)),
+                lines=lines,
+                agents=agents,
             )
         )

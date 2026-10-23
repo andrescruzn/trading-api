@@ -269,6 +269,7 @@ def my_redemptions(
             "queued":  [redemption_request_to_dict(r) for r in data.queued],
             "history": [redemption_request_to_dict(r) for r in data.history],
             "lines":   [settlement_redemption_to_dict(line) for line in data.lines],
+            "agents":  {str(k): agent_info_to_dict(v) for k, v in data.agents.items()},
         }
     )
 

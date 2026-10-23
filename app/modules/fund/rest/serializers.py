@@ -260,7 +260,7 @@ def settlement_preview_to_dict(p: SettlementPreview) -> dict[str, Any]:
                 "value":          _money(r.value),
                 "cost":           _money(r.cost),
                 "gain":           _money(r.gain),
-                "return_pct":     _money(r.return_pct),
+                "return_pct":     _pct(r.return_pct),
                 "fee":            _money(r.fee),
                 "net":            _money(r.net),
                 "pending_amount": _money(r.pending_amount),
@@ -297,7 +297,8 @@ def participation_to_dict(p: Participation) -> dict[str, Any]:
 # ======================================================================
 
 def _pct(value: Decimal | None) -> str | None:
-    return None if value is None else str((value * 100).normalize())
+    # format "f": normalize() deja exponentes (Decimal("2E+2")) que la UI no entiende
+    return None if value is None else format((value * 100).normalize(), "f")
 
 
 def tier_charge_to_dict(c: TierCharge) -> dict[str, Any]:

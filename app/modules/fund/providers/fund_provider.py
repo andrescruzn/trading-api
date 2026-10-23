@@ -240,6 +240,7 @@ class FundServiceFactory:
             line_repo=self._line_repo,
             pool_repo=self._pool_repo,
             lot_repo=self._lot_repo,
+            agents=AgentInfoReader(self._bot_repo, self._symbol_repo),
         )
 
     def fee_schedule(self) -> FeeScheduleService:

@@ -99,6 +99,13 @@ class FundServiceFactory:
         self._payout_repo = SqlAlchemyPayoutMethodRepository(session)
         self._withdrawal_repo = SqlAlchemyWithdrawalRequestRepository(session)
 
+    def _notifier(self):
+        # Import diferido: alerts no depende del fondo más que de su dominio,
+        # pero así el fondo no arrastra alerts al importarse
+        from app.modules.alerts.providers.fund_notice_provider import build_fund_notifier
+
+        return build_fund_notifier(self._session)
+
     def _gateway(self) -> CcxtWalletGateway:
         # Solo se arma cuando el caso de uso habla con el exchange
         return CcxtWalletGateway(
@@ -135,7 +142,9 @@ class FundServiceFactory:
 
     def resolve_deposit_request(self) -> ResolveDepositRequestService:
         return ResolveDepositRequestService(
-            deposit_repo=self._deposit_repo, ledger_repo=self._ledger_repo
+            deposit_repo=self._deposit_repo,
+            ledger_repo=self._ledger_repo,
+            notifier=self._notifier(),
         )
 
     def verify_deposits(self) -> VerifyDepositsService:
@@ -145,6 +154,7 @@ class FundServiceFactory:
             settings_repo=self._settings_repo,
             wallet_resolver=self._wallet_resolver,
             gateway=self._gateway(),
+            notifier=self._notifier(),
         )
 
     def unclaimed_deposits(self) -> UnclaimedDepositsService:
@@ -154,6 +164,7 @@ class FundServiceFactory:
             user_repo=self._user_repo,
             wallet_resolver=self._wallet_resolver,
             gateway=self._gateway(),
+            notifier=self._notifier(),
         )
 
     # ------------------------------------------------------------------
@@ -219,6 +230,7 @@ class FundServiceFactory:
             credit_repo=self._credit_repo,
             fee_repo=self._fee_repo,
             shares_repo=self._shares_repo,
+            notifier=self._notifier(),
         )
 
     def participations(self) -> ParticipationsService:
@@ -271,6 +283,7 @@ class FundServiceFactory:
             ledger_repo=self._ledger_repo,
             allocation_repo=self._allocation_repo,
             asset=settings.WALLET_BASE_ASSET,
+            notifier=self._notifier(),
         )
 
 

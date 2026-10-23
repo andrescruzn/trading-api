@@ -21,6 +21,8 @@ from datetime import timedelta
 
 from app.common.contracts import ServiceResult
 from app.common.utils import utc_now
+from app.modules.fund.domain.fund_notifier import FundNotifier, NullFundNotifier
+from app.modules.fund.services.deposits.deposit_events import confirmed_event
 from app.modules.accounts.domain.wallet_gateway import (
     ExchangeDeposit,
     WalletGateway,
@@ -46,7 +48,9 @@ class UnclaimedDepositsService:
         user_repo: UserRepository,
         wallet_resolver: WalletContextResolver,
         gateway: WalletGateway,
+        notifier: FundNotifier | None = None,
     ):
+        self._notifier = notifier or NullFundNotifier()
         self._deposit_repo = deposit_repo
         self._user_repo = user_repo
         self._wallet_resolver = wallet_resolver
@@ -119,6 +123,7 @@ class UnclaimedDepositsService:
         except Exception:
             self._deposit_repo.rollback()
             raise
+        self._notifier.notify([confirmed_event(request)])
         return ServiceResult.ok(request)
 
     def _unclaimed(self, context: WalletContext) -> list[ExchangeDeposit]:

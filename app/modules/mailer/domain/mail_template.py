@@ -50,3 +50,10 @@ ALERT_TEMPLATE = MailTemplate(
     subject="Alerta de Trading App",
     filename="alert.html",
 )
+# Avisos del fondo común (depósitos, liquidaciones, retiros); el asunto se
+# reemplaza por el título del aviso.
+FUND_NOTICE_TEMPLATE = MailTemplate(
+    code="fund_notice",
+    subject="Novedad de tu inversión en Trading App",
+    filename="fund_notice.html",
+)

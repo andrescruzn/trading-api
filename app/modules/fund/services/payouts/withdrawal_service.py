@@ -27,6 +27,14 @@ from decimal import Decimal
 
 from app.common.contracts import Page, PageRequest, ServiceResult
 from app.common.utils import utc_now
+from app.modules.fund.domain.fund_notifier import (
+    FUND_WITHDRAWAL_PAID,
+    FUND_WITHDRAWAL_REJECTED,
+    FUND_WITHDRAWAL_REQUESTED,
+    FundEvent,
+    FundNotifier,
+    NullFundNotifier,
+)
 from app.modules.fund.domain.fund_repositories import AllocationOrderRepository, LedgerRepository
 from app.modules.fund.domain.ledger_entry_entity import LedgerEntry
 from app.modules.fund.domain.payout_repositories import (
@@ -50,7 +58,9 @@ class WithdrawalService:
         ledger_repo: LedgerRepository,
         allocation_repo: AllocationOrderRepository,
         asset: str,
+        notifier: FundNotifier | None = None,
     ):
+        self._notifier = notifier or NullFundNotifier()
         self._repo = repo
         self._payout_repo = payout_repo
         self._ledger_repo = ledger_repo
@@ -106,6 +116,13 @@ class WithdrawalService:
         except Exception:
             self._repo.rollback()
             raise
+        self._notifier.notify([
+            FundEvent(
+                code=FUND_WITHDRAWAL_REQUESTED,
+                about_user_id=created.user_id,
+                data={"amount": str(created.amount), "asset": self._asset},
+            )
+        ])
         return ServiceResult.ok(created)
 
     def cancel(self, request_id: int, user_id: int) -> ServiceResult[WithdrawalRequest]:
@@ -182,6 +199,19 @@ class WithdrawalService:
         except Exception:
             self._repo.rollback()
             raise
+        self._notifier.notify([
+            FundEvent(
+                code=FUND_WITHDRAWAL_PAID,
+                user_id=request.user_id,
+                data={
+                    "amount": str(request.amount),
+                    "asset": self._asset,
+                    "cop": str(paid_cop_amount),
+                    "rate": str(cop_rate),
+                    "reference": reference,
+                },
+            )
+        ])
         return ServiceResult.ok(request)
 
     def reject(
@@ -197,7 +227,16 @@ class WithdrawalService:
         request.resolution_note = clean
         request.resolved_by_user_id = int(requester_user_id)
         request.resolved_at = utc_now()
-        return self._resolve(request)
+        result = self._resolve(request)
+        if result.success:
+            self._notifier.notify([
+                FundEvent(
+                    code=FUND_WITHDRAWAL_REJECTED,
+                    user_id=request.user_id,
+                    data={"amount": str(request.amount), "asset": self._asset, "note": clean},
+                )
+            ])
+        return result
 
     def _resolve(self, request: WithdrawalRequest) -> ServiceResult[WithdrawalRequest]:
         """Cierra una solicitud abierta sin mover dinero (anular o rechazar)."""

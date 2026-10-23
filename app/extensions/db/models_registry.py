@@ -57,6 +57,15 @@ from app.modules.fund.infrastructure.agent_pool_models import (  # noqa: F401
     AllocationOrderModel,
     UnitLotModel,
 )
+from app.modules.fund.infrastructure.payout_models import (  # noqa: F401
+    CommissionCreditModel,
+    CommissionShareVersionModel,
+    FeeScheduleModel,
+    PayoutMethodModel,
+    RedemptionRequestModel,
+    SettlementRedemptionModel,
+    WithdrawalRequestModel,
+)
 
 # --------------------------------------------------------------
 # Strategies module models

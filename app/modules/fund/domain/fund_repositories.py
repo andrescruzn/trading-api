@@ -153,6 +153,14 @@ class UnitLotRepository(TransactionalRepository, ABC):
         """Lotes con unidades vivas de una persona, en todos los agentes."""
         ...
 
+    @abstractmethod
+    def consume(self, lot_id: int, units: Decimal) -> bool:
+        """
+        Resta unidades vivas de un lote (al redimir). UPDATE condicional: False
+        si el lote ya no tenía esas unidades (otra liquidación las usó).
+        """
+        ...
+
 
 class AllocationOrderRepository(TransactionalRepository, ABC):
 

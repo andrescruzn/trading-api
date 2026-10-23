@@ -72,6 +72,65 @@ class SettleRequest(BaseModel):
     note: str | None = Field(default=None, max_length=500)
 
 
+# ======================================================================
+# F5: comisión, salidas y retiros (porcentajes en %, no en fracción)
+# ======================================================================
+
+class FeeTierRequest(BaseModel):
+    from_return_pct: Decimal = Field(..., ge=0, le=100000, description="Desde este retorno (%)")
+    rate_pct: Decimal = Field(..., ge=0, le=100, description="Comisión del tramo (%)")
+
+
+class CreateFeeScheduleRequest(BaseModel):
+    tiers: list[FeeTierRequest] = Field(..., min_length=1, max_length=10)
+    note: str | None = Field(default=None, max_length=500)
+
+
+class CommissionShareRequest(BaseModel):
+    user_id: int = Field(..., gt=0)
+    pct: Decimal = Field(..., gt=0, le=100)
+
+
+class SetCommissionSharesRequest(BaseModel):
+    shares: list[CommissionShareRequest] = Field(..., min_length=1, max_length=20)
+    note: str | None = Field(default=None, max_length=500)
+
+
+class RedemptionCreateRequest(BaseModel):
+    pool_id: int = Field(..., gt=0)
+    # None = todo lo que cumpla la permanencia
+    amount: Decimal | None = Field(default=None, gt=0, max_digits=30, decimal_places=12)
+    # Solo un super admin: pedirla por otra persona
+    user_id: int | None = Field(default=None, gt=0)
+
+
+class PayoutMethodCreateRequest(BaseModel):
+    kind: str = Field(..., pattern="^(bank|nequi)$")
+    label: str = Field(..., min_length=1, max_length=80)
+    holder_name: str = Field(..., min_length=1, max_length=120)
+    document_number: str = Field(..., min_length=1, max_length=120)
+    bank_name: str | None = Field(default=None, max_length=120)
+    account_type: str | None = Field(default=None, max_length=120)
+    account_number: str | None = Field(default=None, max_length=120)
+    phone: str | None = Field(default=None, max_length=120)
+
+
+class WithdrawalCreateRequest(BaseModel):
+    amount: Decimal = Field(..., gt=0, max_digits=30, decimal_places=12)
+    payout_method_id: int = Field(..., gt=0)
+
+
+class WithdrawalPayRequest(BaseModel):
+    paid_cop_amount: Decimal = Field(..., gt=0, max_digits=30, decimal_places=12)
+    cop_rate: Decimal = Field(..., gt=0, max_digits=30, decimal_places=12)
+    payment_reference: str = Field(..., min_length=1, max_length=120)
+    note: str | None = Field(default=None, max_length=500)
+
+
+class WithdrawalRejectRequest(BaseModel):
+    note: str = Field(..., min_length=1, max_length=500)
+
+
 class RefundRequest(BaseModel):
     amount: Decimal = Field(..., gt=0, max_digits=30, decimal_places=12)
     reason: str = Field(..., min_length=5, max_length=500)

@@ -77,6 +77,13 @@ class CredentialsCipher:
         payload = json.dumps({"api_key": api_key, "api_secret": api_secret})
         return self._fernet.encrypt(payload.encode()).decode()
 
+    def encrypt_dict(self, data: dict[str, str]) -> str:
+        """
+        Cifra cualquier diccionario de textos (p. ej. los datos bancarios de un
+        medio de pago del fondo). `decrypt` lo devuelve tal cual.
+        """
+        return self._fernet.encrypt(json.dumps(data).encode()).decode()
+
     def decrypt(self, token: str) -> dict[str, str]:
         """
         Descifra un token y retorna {"api_key": ..., "api_secret": ...}.

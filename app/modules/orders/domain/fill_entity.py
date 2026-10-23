@@ -11,6 +11,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
 
@@ -68,3 +69,20 @@ class Fill:
     def is_valid(self) -> bool:
         """Un fill es válido si tiene cantidad y precio positivos."""
         return self.qty > Decimal("0") and self.price >= Decimal("0")
+
+
+@dataclass(frozen=True)
+class BotFill:
+    """
+    Ejecución de un bot con lo que necesita la contabilidad del fondo común:
+    lado de su orden, monto, comisión con su moneda e id (para saber qué ya
+    se liquidó).
+    """
+
+    id: int
+    side: str
+    qty: Decimal
+    price: Decimal
+    fee: Decimal
+    fee_asset: str | None
+    ts: datetime | None

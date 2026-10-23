@@ -201,6 +201,9 @@ class BotServiceFactory:
         )
 
     def generate_signal(self) -> GenerateSignalService:
+        # Import diferido: el fondo (M11) importa repositorios de bots
+        from app.modules.fund.providers import build_fund_capital
+
         return GenerateSignalService(
             bot_repo=self._bot_repo,
             signal_repo=self._signal_repo,
@@ -210,6 +213,8 @@ class BotServiceFactory:
             notify_pending=build_signal_approval_notifier(self._session).notify,
             approval_ttl_minutes=settings.SIGNAL_APPROVAL_TTL_MINUTES,
             notify_subscribers=build_shared_signal_notifier(self._session).notify,
+            # Fondo común: el 1 % sobre el capital del agente, no de la billetera
+            fund_capital=build_fund_capital(self._session),
         )
 
     # ------------------------------------------------------------------

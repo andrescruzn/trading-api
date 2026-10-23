@@ -178,6 +178,7 @@ class AnalyzeService:
         owner_id: int | None = None,
         risk_pct: float | None = None,
         as_of: datetime | None = None,
+        capital: Decimal | None = None,
     ) -> ServiceResult[AnalysisResult]:
         """
         Ejecuta el Prompt Maestro completo.
@@ -189,6 +190,9 @@ class AnalyzeService:
             as_of:    analiza la vela con ese ts (o la anterior) en vez de la
                       última. El scheduler pasa la última vela CERRADA para no
                       decidir con la vela en formación.
+            capital:  capital del agente en el fondo común (M11). Si viene, la
+                      regla del 1 % usa este monto y no el saldo libre de la
+                      cuenta (que es de todos los participantes).
 
         Returns:
             ServiceResult[AnalysisResult] con la decisión final y todos
@@ -264,17 +268,23 @@ class AnalyzeService:
                 meta={"missing": sorted(missing)},
             )
 
-        # Capital disponible en la moneda base de la cuenta
+        # Capital: el del agente en el fondo común si viene; si no, el saldo
+        # libre en la moneda base de la cuenta.
         base_currency = account.base_currency
-        balance = self._balance_repo.get_latest_by_asset(
-            account_id=account_id,
-            asset=base_currency,
-        )
-        if balance is None or float(balance.free) <= 0:
-            return ServiceResult.fail(
-                code="AGENT_NO_BALANCE", http_status=422
+        if capital is not None:
+            if capital <= 0:
+                return ServiceResult.fail(code="AGENT_NO_FUND_CAPITAL", http_status=422)
+            capital = float(capital)
+        else:
+            balance = self._balance_repo.get_latest_by_asset(
+                account_id=account_id,
+                asset=base_currency,
             )
-        capital = float(balance.free)
+            if balance is None or float(balance.free) <= 0:
+                return ServiceResult.fail(
+                    code="AGENT_NO_BALANCE", http_status=422
+                )
+            capital = float(balance.free)
 
         # ----------------------------------------------------------
         # Fase 1: Filtro de Régimen (Python determinístico)

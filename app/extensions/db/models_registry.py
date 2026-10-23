@@ -51,6 +51,12 @@ from app.modules.fund.infrastructure.fund_models import (  # noqa: F401
     FundSettingsModel,
     LedgerEntryModel,
 )
+from app.modules.fund.infrastructure.agent_pool_models import (  # noqa: F401
+    AgentPoolModel,
+    AgentSettlementModel,
+    AllocationOrderModel,
+    UnitLotModel,
+)
 
 # --------------------------------------------------------------
 # Strategies module models

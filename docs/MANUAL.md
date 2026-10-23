@@ -531,6 +531,30 @@ Para los super admin (Administración → Fondo):
                    reglas: permanencia mínima, tope de confirmación automática y vencimiento.
   Los socios ven todo esto sin poder cambiarlo, pero sí pueden depositar su propio dinero.
 
+3.0.4 Módulo 11 — Los agentes del fondo: cómo trabaja tu dinero
+─────────────────────────────────────────────────────────────────
+El dinero del fondo no opera todo junto: cada agente tiene su propia "bolsa". Lo que tienes en un
+agente se mide en UNIDADES, como las participaciones de un fondo de inversión.
+
+  Valor de una unidad (NAV) = saldo del agente ÷ unidades que existen.
+  La primera vez vale 1 USDT. Si el agente gana, cada unidad vale más; si pierde, vale menos.
+
+Cómo entra tu dinero a un agente:
+  1. Un super admin "pone en cola" parte de tu saldo pendiente para un agente.
+  2. El dinero entra en la próxima LIQUIDACIÓN del agente. La liquidación se hace con el agente en
+     pausa y sin operaciones abiertas, para que su saldo sea exacto (no un estimado).
+  3. Con tu dinero se compran unidades al valor de ese momento.
+
+  Ejemplo: el agente tiene 1.500 USDT y 1.500 unidades (cada una vale 1). Gana 300 → tiene 1.800
+  y cada unidad vale 1,20. Tú entras con 600 USDT → recibes 500 unidades (600 ÷ 1,20).
+  Así no te quedas con la ganancia que hicieron los demás antes de que entraras, ni ellos con la tuya.
+
+Dónde lo ves: Mi saldo → "En agentes" y la pestaña "Mis agentes": cuánto aportaste, cuánto vale
+hoy (según la última liquidación) y el resultado.
+
+La regla del 1 % en un agente del fondo se calcula sobre el dinero de ESE agente, no sobre toda la
+billetera. Un agente de la billetera que no está en el fondo no opera.
+
 3.1 Módulo 5 — Strategies (Estrategias)
 
 Una estrategia es el conjunto de reglas que define cuándo el sistema debe considerar una operación.

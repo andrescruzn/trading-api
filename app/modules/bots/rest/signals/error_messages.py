@@ -30,6 +30,10 @@ SIGNAL_ERROR_MESSAGES: dict[str, str] = {
     "AGENT_NO_BALANCE": (
         "La cuenta del agente no tiene saldo en su moneda base. Regístralo en Mis cuentas."
     ),
+    "AGENT_NO_FUND_CAPITAL": (
+        "Este agente opera con el dinero del fondo y no tiene capital asignado. "
+        "Ábrelo al fondo y asígnale dinero en Administración → Fondo → Agentes del fondo."
+    ),
     "AGENT_LLM_CALL_FAILED":     "No pudimos contactar a la IA. Inténtalo de nuevo en unos minutos.",
     "AGENT_LLM_PARSE_ERROR":     "La IA respondió en un formato inesperado. Inténtalo de nuevo.",
     "AGENT_LLM_MISSING_PRICES":  "La IA no propuso entrada, stop loss y take profit. Inténtalo de nuevo.",

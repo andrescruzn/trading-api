@@ -1,4 +1,5 @@
 import type {
+	AllocationStatus,
 	DepositReviewReason,
 	DepositStatus,
 	LedgerBucket,
@@ -40,6 +41,7 @@ const DEPOSIT_REVIEW_REASON_LABELS: Record<DepositReviewReason, string> = {
 const LEDGER_ENTRY_TYPE_LABELS: Record<LedgerEntryType, string> = {
 	deposit: 'Depósito',
 	refund: 'Devolución',
+	allocation: 'Asignación a un agente',
 };
 
 const LEDGER_BUCKET_LABELS: Record<LedgerBucket, string> = {
@@ -47,7 +49,19 @@ const LEDGER_BUCKET_LABELS: Record<LedgerBucket, string> = {
 	available: 'Disponible',
 };
 
+const ALLOCATION_SOURCE_OPTIONS = (
+	Object.keys(LEDGER_BUCKET_LABELS) as LedgerBucket[]
+).map((value) => ({ value, label: LEDGER_BUCKET_LABELS[value] }));
+
+const ALLOCATION_STATUS_LABELS: Record<AllocationStatus, string> = {
+	queued: 'En cola',
+	applied: 'Aplicada',
+	canceled: 'Cancelada',
+};
+
 export {
+	ALLOCATION_SOURCE_OPTIONS,
+	ALLOCATION_STATUS_LABELS,
 	DEPOSIT_REVIEW_REASON_LABELS,
 	DEPOSIT_STATUS_BADGE_VARIANT,
 	DEPOSIT_STATUS_LABELS,

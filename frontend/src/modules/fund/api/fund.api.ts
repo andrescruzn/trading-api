@@ -22,7 +22,8 @@ type DepositReviewReason =
 	| 'wrong_asset';
 
 type LedgerBucket = 'pending' | 'available';
-type LedgerEntryType = 'deposit' | 'refund';
+type LedgerEntryType = 'deposit' | 'refund' | 'allocation';
+type AllocationStatus = 'queued' | 'applied' | 'canceled';
 
 type DepositNetworkConfig = {
 	network: string;
@@ -152,6 +153,123 @@ type LedgerEntry = {
 	created_at: string | null;
 };
 
+// ----------------------------------------------------------------------
+// Agentes del fondo (F4)
+// ----------------------------------------------------------------------
+
+/** Datos públicos del agente (sin cuenta ni credenciales). */
+type FundAgentInfo = {
+	bot_id: number;
+	name: string;
+	status: 'running' | 'stopped' | 'paused' | 'error';
+	mode: 'paper' | 'live';
+	symbol: string | null;
+};
+
+type FundPool = {
+	id: number;
+	bot_id: number;
+	asset: string;
+	/** Equity exacta de la última liquidación. */
+	equity: string;
+	units: string;
+	/** Valor de una unidad en la última liquidación. */
+	nav: string;
+	/** Hoy: equity liquidada + resultado desde entonces (lo abierto a costo). */
+	estimated_capital: string;
+	queued_total: string;
+	participants: number;
+	last_settled_at: string | null;
+	created_at: string | null;
+	agent: FundAgentInfo | null;
+};
+
+type AllocationOrder = {
+	id: number;
+	pool_id: number;
+	user_id: number;
+	amount: string;
+	source_bucket: LedgerBucket;
+	status: AllocationStatus;
+	note: string | null;
+	settlement_id: number | null;
+	created_by_user_id: number | null;
+	created_at: string | null;
+	resolved_at: string | null;
+};
+
+type AgentSettlement = {
+	id: number;
+	pool_id: number;
+	previous_equity: string;
+	/** Ventas − compras − comisiones desde la liquidación anterior. */
+	trading_result: string;
+	equity_before: string;
+	units_before: string;
+	nav: string;
+	allocated_amount: string;
+	units_issued: string;
+	equity_after: string;
+	units_after: string;
+	fills_count: number;
+	unvalued_fees: Record<string, string>;
+	note: string | null;
+	created_by_user_id: number | null;
+	settled_at: string | null;
+};
+
+type PoolParticipant = {
+	user_id: number;
+	units: string;
+	cost: string;
+	value: string;
+	/** Fracción 0–1 de las unidades del agente. */
+	share: string;
+	first_acquired_at: string | null;
+};
+
+type FundPoolDetail = FundPool & {
+	participants_detail: PoolParticipant[];
+	queued: AllocationOrder[];
+	settlements: AgentSettlement[];
+};
+
+type SettlementPreview = {
+	pool_id: number;
+	/** Códigos que impiden liquidar ahora; `blocker_messages` es su texto. */
+	blockers: string[];
+	blocker_messages: string[];
+	fills_count: number;
+	sells: string;
+	buys: string;
+	fees: string;
+	unvalued_fees: Record<string, string>;
+	previous_equity: string;
+	trading_result: string;
+	equity_before: string;
+	units_before: string;
+	nav: string;
+	allocations: (AllocationOrder & { units: string })[];
+	canceled: (AllocationOrder & { reason: string })[];
+	allocated_amount: string;
+	units_issued: string;
+	equity_after: string;
+	units_after: string;
+};
+
+type Participation = {
+	pool_id: number;
+	agent: FundAgentInfo | null;
+	units: string;
+	cost: string;
+	nav: string;
+	/** Unidades × NAV de la última liquidación. */
+	value: string;
+	result: string;
+	first_acquired_at: string | null;
+	last_settled_at: string | null;
+};
+
 // ======================================================================
 // Ajustes
 // ======================================================================
@@ -252,7 +370,55 @@ function refundPending(
 	return api.post<LedgerEntry>(`/fund/participants/${userId}/refunds`, input);
 }
 
+// ======================================================================
+// Agentes del fondo (F4)
+// ======================================================================
+
+function listPools() {
+	return api.get<FundPool[]>('/fund/agents');
+}
+
+function listEligibleAgents() {
+	return api.get<FundAgentInfo[]>('/fund/agents/eligible');
+}
+
+function openPool(botId: number) {
+	return api.post<FundPoolDetail>('/fund/agents', { bot_id: botId });
+}
+
+function getPool(poolId: number) {
+	return api.get<FundPoolDetail>(`/fund/agents/${poolId}`);
+}
+
+function queueAllocation(
+	poolId: number,
+	input: { user_id: number; amount: string; source_bucket: LedgerBucket },
+) {
+	return api.post<AllocationOrder>(`/fund/agents/${poolId}/allocations`, input);
+}
+
+function cancelAllocation(orderId: number) {
+	return api.post<AllocationOrder>(`/fund/allocations/${orderId}/cancel`);
+}
+
+function getSettlementPreview(poolId: number) {
+	return api.get<SettlementPreview>(
+		`/fund/agents/${poolId}/settlement-preview`,
+	);
+}
+
+function settleAgent(poolId: number, note: string | null) {
+	return api.post<AgentSettlement>(`/fund/agents/${poolId}/settle`, { note });
+}
+
+function listMyParticipations() {
+	return api.get<Participation[]>('/fund/me/participations');
+}
+
 export type {
+	AgentSettlement,
+	AllocationOrder,
+	AllocationStatus,
 	AvailableNetwork,
 	AvailableNetworks,
 	DepositFilters,
@@ -263,32 +429,47 @@ export type {
 	DepositReviewReason,
 	DepositStatus,
 	ExchangeDeposit,
+	FundAgentInfo,
 	FundBalances,
+	FundPool,
+	FundPoolDetail,
 	FundSettings,
 	FundSettingsInput,
 	LedgerBucket,
 	LedgerEntry,
 	LedgerEntryType,
 	NetworkChoice,
+	Participation,
+	PoolParticipant,
+	SettlementPreview,
 	VerifySummary,
 };
 export {
 	assignUnclaimedDeposit,
+	cancelAllocation,
 	cancelDeposit,
 	confirmDeposit,
 	createDeposit,
 	getDepositInfo,
 	getFundSettings,
 	getMyBalances,
+	getPool,
+	getSettlementPreview,
 	listAvailableNetworks,
 	listDeposits,
+	listEligibleAgents,
 	listMyLedger,
+	listMyParticipations,
 	listParticipantBalances,
 	listParticipantLedger,
+	listPools,
 	listUnclaimedDeposits,
+	openPool,
+	queueAllocation,
 	refundPending,
 	rejectDeposit,
 	setDepositNetworks,
+	settleAgent,
 	updateFundSettings,
 	verifyDeposits,
 };

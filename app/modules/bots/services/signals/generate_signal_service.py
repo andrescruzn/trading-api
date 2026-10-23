@@ -33,6 +33,7 @@ from app.common.contracts import ServiceResult
 from app.modules.accounts.domain.account_repository import AccountRepository
 from app.modules.agent.services.agent.analyze_service import AnalyzeService
 from app.modules.bots.domain.bot_entity import Bot
+from app.modules.bots.domain.fund_capital_port import FundCapitalPort
 from app.modules.bots.domain.bot_repository import BotRepository
 from app.modules.bots.domain.signal_entity import Signal
 from app.common.utils import utc_now
@@ -70,6 +71,7 @@ class GenerateSignalService:
         notify_pending: "Callable[[Signal, Bot], None] | None" = None,
         approval_ttl_minutes: int = 60,
         notify_subscribers: "Callable[[Signal, Bot], object] | None" = None,
+        fund_capital: FundCapitalPort | None = None,
     ):
         self._notify_pending = notify_pending
         self._notify_subscribers = notify_subscribers
@@ -79,6 +81,7 @@ class GenerateSignalService:
         self._signal_repo = signal_repo
         self._analyze = analyze_service
         self._evaluate_alerts = evaluate_alerts
+        self._fund_capital = fund_capital
 
     def generate(
         self,
@@ -123,6 +126,9 @@ class GenerateSignalService:
             feature_set_id=bot.feature_set_id,
             risk_pct=bot.effective_risk_pct,
             as_of=candle_ts,
+            # Fondo común: el 1 % se calcula sobre el capital del agente, no
+            # sobre el saldo de la billetera (que es de todos)
+            capital=self._fund_capital_of(bot),
         )
 
         if not analysis_result.success:
@@ -230,3 +236,10 @@ class GenerateSignalService:
                 logger.exception("No se pudo repartir la señal compartida %s", created.id)
 
         return ServiceResult.ok(data=created)
+
+    def _fund_capital_of(self, bot: Bot) -> Decimal | None:
+        """Capital del agente en el fondo común, o None si el fondo no lo maneja."""
+        if self._fund_capital is None:
+            return None
+        fund = self._fund_capital.capital_for(bot)
+        return None if fund is None else fund.capital

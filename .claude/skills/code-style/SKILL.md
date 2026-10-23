@@ -60,7 +60,7 @@ from __future__ import annotations
 
 ## Utilidades obligatorias
 
-- Fechas: `utc_now()` de `app.common.utils`; para mostrar en hora local, `utc_to_bogota()`.
+- Fechas: `utc_now()` de `app.common.utils`. Para serializar en la API, **siempre** `to_iso_utc(dt)` (ISO UTC con `+00:00`), nunca `dt.isoformat()`: MySQL devuelve fechas sin zona y el navegador las leería como hora local. La conversión a hora de Colombia la hace el front; en el backend, `utc_to_bogota()` solo para textos salientes (Telegram, correo) y cálculos "del día".
 - Inputs de texto: `clean_str()` / `clean_email()` de `app.common.utils`.
 - Configuración: `from app.common.config import settings`; nunca `os.getenv` fuera de `settings.py`.
 

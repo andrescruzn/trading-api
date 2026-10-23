@@ -26,7 +26,7 @@ Toda respuesta pasa por `app.common.http.send()` (directo o vía `build_*_respon
 | `build_created_response(data, msg)` | POST que crea | el objeto (201) |
 | `build_list_response(items, msg="OK")` | Listado simple | **la lista directamente** (`data: [...]`) |
 | `build_paginated_response(items, total, page, page_size)` | Listado paginado | `{items, pagination: {total, page, page_size, total_pages}}` |
-| `build_data_response(data, datetime_fields=[...])` | Convierte fechas UTC → Bogotá | el objeto |
+| `build_data_response(data, datetime_fields=[...])` | Serializa esos campos datetime en ISO UTC (`+00:00`) | el objeto |
 | `build_error_response(result, ERROR_MESSAGES)` | `ServiceResult` fallido | `[]`, status = `error.http_status` |
 | `build_from_service_result(result, ERROR_MESSAGES, transform=...)` | Éxito o error en una llamada | — |
 | `build_cookie_auth_response` / `build_logout_response` | Auth con cookie HTTP-only | — |

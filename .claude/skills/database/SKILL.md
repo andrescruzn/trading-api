@@ -164,7 +164,7 @@ Ejemplo de referencia: `app/modules/agent/infrastructure/prediction_model.py`.
 
 - Fechas: `from sqlalchemy.dialects.mysql import TIMESTAMP` → `TIMESTAMP(fsp=6)`. **Nunca** `sqlalchemy.TIMESTAMP(6)`: ahí el primer argumento es `timezone`, sale `TIMESTAMP` sin precisión y MySQL rechaza el `DEFAULT CURRENT_TIMESTAMP(6)` (error 1067).
 - `updated_at`: `server_default=text("CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6)")`.
-- PyMySQL devuelve `TIMESTAMP` **sin zona**: al mapear a entidad usar `ensure_aware_utc()` (`app.common.utils`) para compararlas con `utc_now()` y serializarlas con `+00:00` (si no, el navegador las lee como hora local).
+- PyMySQL devuelve `TIMESTAMP` **sin zona**: al mapear a entidad usar `ensure_aware_utc()` (`app.common.utils`) para compararlas con `utc_now()` y en la ruta serializarlas con `to_iso_utc()` (`+00:00`; si no, el navegador las lee como hora local).
 - Defaults de BD con `server_default=text("'1'")`, `text("'0.000000000000'")`… (el `default=` de Python no llega al DDL).
 - Nada de `index=True` / `unique=True` en `Column` (generan nombres `ix_*`). Todo con nombre en `__table_args__`: `Index("idx_<tabla>_<cols>", ...)`, `UniqueConstraint(..., name="uq_...")`, `CheckConstraint("`col` IN ('a', 'b')", name="chk_...")`. FKs con `ForeignKey("t.id", name="fk_...", ondelete=...)`.
 - No declarar un índice solo para una FK: MySQL lo crea con el nombre de la FK.

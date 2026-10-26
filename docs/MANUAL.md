@@ -515,8 +515,12 @@ Tus saldos (Mi inversión → Mi saldo):
 
 Cómo depositar:
   1. En Mi saldo verás la red (p. ej. TRC20) y la dirección de la billetera. Cópiala con el botón.
-  2. Envía USDT desde tu billetera POR ESA MISMA RED (y con el memo, si la red lo pide).
-  3. Copia el hash de la transacción (txid) y pulsa "Registrar depósito" con el monto enviado.
+  2. Desde TU PROPIA billetera (Binance u otra), envía USDT a esa dirección POR ESA MISMA RED (y
+     con el memo, si la red lo pide). La plataforma no recibe transferencias bancarias: el dinero
+     entra solo de billetera a billetera.
+  3. Copia el ID de la transacción (TxID, a veces llamado hash) y pulsa "Registrar depósito" con
+     el monto enviado. Si enviaste desde Binance a Binance, el ID es un número ("Internal
+     transfer 513…"): pégalo tal cual.
   4. La app busca ese txid en el exchange cada pocos minutos. Si llegó el mismo monto y es de
      hasta 1.000 USDT, se confirma solo. Si el monto no coincide, si es mayor o si el exchange lo
      marcó fallido, queda "En revisión" y un super admin decide.
@@ -565,7 +569,7 @@ billetera. Un agente de la billetera que no está en el fondo no opera.
 3.0.5 Módulo 11 — Sacar dinero, la comisión y los retiros
 ───────────────────────────────────────────────────────────
 Retirar tu dinero tiene dos pasos: primero sale del agente y queda "Disponible"; después pides que
-te lo paguen a tu cuenta.
+te lo envíen a tu billetera.
 
 Paso 1 — Sacar dinero de un agente (Mi saldo → Mis agentes → "Sacar dinero"):
   - Eliges un monto o "Sacar todo". La salida queda EN COLA y se aplica en la próxima liquidación
@@ -592,21 +596,35 @@ La comisión es escalonada, como los impuestos:
   La comisión se reparte entre los propietarios y los socios según los % acordados (que suman 100 %).
   Con 40 % / 40 % / 20 %, esos 325 se reparten así: 130 + 130 + 65.
 
-Paso 2 — Retirar a tu cuenta (Mi saldo → "Retirar"):
-  1. Primero registra a dónde te pagamos (pestaña Retiros → "Agregar medio"): una cuenta bancaria o
-     Nequi. Por seguridad, un medio nuevo se puede usar 48 horas después de registrarlo.
-  2. Pulsa "Retirar", elige el medio y el monto. Solo puedes retirar lo Disponible; ese dinero queda
-     reservado mientras el retiro está por pagar.
-  3. Un super admin te transfiere en pesos y registra cuánto pagó, la tasa (COP por USDT) y la
-     referencia de la transferencia. Lo verás como "Pagado" con esos datos.
-  4. Si el retiro se rechaza (con motivo) o lo anulas, el dinero vuelve a estar disponible.
+Paso 2 — Retirar a tu billetera (Mi saldo → "Retirar"):
+  No hay transferencias a bancos ni a Nequi: el dinero sale de la billetera de la plataforma en
+  Binance a una dirección cripto tuya.
+  1. Primero registra tu dirección (pestaña Retiros → "Agregar dirección"): la red (una de las que
+     acepta el fondo, p. ej. TRC20), la dirección copiada de tu billetera y el memo si tu billetera
+     lo pide. La app revisa que la dirección tenga la forma de esa red. Por seguridad, una dirección
+     nueva se puede usar 48 horas después de registrarla.
+  2. Pulsa "Retirar", elige la dirección y el monto. Verás la comisión de red de Binance y cuánto
+     te llega. Solo puedes retirar lo Disponible; ese dinero queda reservado mientras el retiro
+     está por enviar. El monto debe superar el mínimo de retiro de la red.
+  3. Un super admin envía el dinero desde Binance y registra el ID de la transacción. La app lo
+     busca en Binance y comprueba que salió completo hacia tu dirección y por tu red.
+  4. Te llega un aviso con los detalles: cuánto recibes, la comisión de red, la red, tu dirección
+     (abreviada), el ID de la transacción y el enlace para verla en el explorador de la red.
+  5. Si el retiro se rechaza (con motivo) o lo anulas, el dinero vuelve a estar disponible.
 
-  Ejemplo: retiras 500 USDT. El super admin paga con una tasa de 4.000 → 2.000.000 COP a tu Nequi,
-  con la referencia del banco.
+  La comisión de red la pagas tú: Binance la descuenta de lo que se envía.
+  Ejemplo: retiras 500 USDT por TRC20 y la comisión de la red es 1 USDT → recibes 499 USDT en tu
+  billetera y de tu saldo salen 500.
 
 Para los super admin (Administración → Fondo):
-  Retiros      → los "Por pagar": "Pagar" muestra los datos completos de la cuenta para copiarlos y
-                 pide la tasa, los pesos pagados y la referencia; "Rechazar" pide un motivo.
+  Retiros      → los "Por enviar": "Registrar envío" muestra la red, la dirección completa, el memo
+                 y el monto para copiarlos. Haz el retiro en Binance por ese monto, pega el ID de
+                 la transacción y pulsa "Buscar en Binance": la app trae lo enviado y la comisión.
+                 Si Binance aún lo procesa, espera a que salga como completado. Si fue a otra
+                 dirección o red, no se puede registrar. Si Binance no lo muestra, se registra a
+                 mano (recibido y comisión) con una nota. "Rechazar" pide un motivo.
+                 La API key de la billetera solo LEE el historial: los retiros los hacen ustedes en
+                 Binance (recomendado: lista blanca de direcciones de retiro en Binance).
   Comisiones   → la tabla escalonada (cada cambio es una versión nueva y no cambia lo ya cobrado), el
                  reparto entre propietarios y socios, y cuánto ha recibido cada uno.
   Liquidar     → la vista previa muestra quién sale, su comisión y su neto. Sin tabla de comisión o
@@ -616,7 +634,7 @@ Para los super admin (Administración → Fondo):
 ───────────────────────────────────────────────────────────────────────
 Resumen del fondo (Administración → Fondo → Resumen del fondo; super admin y socios):
   - Cuánto hay en la billetera y cuánto de eso está en cada agente.
-  - Cuánto tienen las personas pendiente de asignar y disponible, qué retiros están por pagar y
+  - Cuánto tienen las personas pendiente de asignar y disponible, qué retiros están por enviar y
     qué depósitos esperan una decisión.
   - Lo que ganó cada propietario o socio: comisiones recibidas más la ganancia de su propio
     dinero en los agentes.
@@ -627,22 +645,25 @@ Resumen del fondo (Administración → Fondo → Resumen del fondo; super admin 
   Ejemplo: la billetera tiene 10.050 USDT. Los agentes suman 8.000, el pendiente 1.500 y el
   disponible 500 → 10.000 tienen dueño y sobran 50. Suele ser un depósito que llegó y aún no se
   confirma, o una posición abierta que hoy vale más de lo que costó. Si la diferencia es
-  negativa (falta dinero), hay que revisarla antes de pagar retiros.
+  negativa (falta dinero), hay que revisarla antes de enviar retiros.
 
 Mi saldo, para todos:
   - "Lo que has ganado": lo que ya salió de los agentes (después de la comisión), lo que vas
     ganando en los agentes y, si recibes comisión, cuánto llevas.
   - "Descargar extracto (CSV)" en Movimientos: todos tus movimientos en un archivo que abre Excel.
-  - En Retiros, el botón "Comprobante" descarga el soporte del pago cuando el super admin lo subió.
+  - En Retiros, cada envío muestra lo que recibiste, la comisión y el ID de la transacción con su
+    enlace al explorador; "Comprobante" descarga el soporte si el super admin lo subió.
 
-Comprobantes: al pagar un retiro, el super admin puede adjuntar el soporte de la transferencia
-(PDF, PNG o JPG de hasta 5 MB), o hacerlo después con "Adjuntar comprobante".
+Comprobantes (opcionales): el ID de la transacción ya es la prueba del envío; aun así, al
+registrarlo el super admin puede adjuntar una captura (PDF, PNG o JPG de hasta 5 MB), o hacerlo
+después con "Adjuntar comprobante".
 
 Avisos: te llegan a la campana de la app y, si están activos, por correo y por Telegram (a tu
 chat, si lo vinculaste):
   - tu depósito se confirmó o se rechazó;
   - tu dinero entró a un agente o salió de él en una liquidación (con la comisión);
-  - tu retiro se pagó (pesos, tasa y referencia) o se rechazó.
+  - tu retiro se envió (recibido, comisión de red, red, dirección e ID de la transacción) o se
+    rechazó.
   Los super admin reciben además: un depósito necesita revisión y alguien pidió un retiro.
 
 3.1 Módulo 5 — Strategies (Estrategias)
@@ -1432,7 +1453,8 @@ PARTE 5 — El modelo de negocio: el fondo común
     tener un tope y guardar el resto fuera.
   - Los retiros solo se atienden en una liquidación, y un agente con una operación abierta no se
     puede liquidar: acuerden un calendario (p. ej. el día 1 de cada mes).
-  - Los retiros se pagan a mano: revisen dos veces la tasa y la cuenta antes de transferir.
+  - Los retiros se envían a mano desde Binance: copien la dirección y la red desde la app (nunca
+    las escriban) y usen la lista blanca de direcciones de Binance.
   - Si la conciliación del Resumen del fondo sale negativa (falta dinero), no paguen retiros
     hasta entender por qué.
 

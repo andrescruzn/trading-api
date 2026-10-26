@@ -128,6 +128,11 @@ class WithdrawalRequestRepository(TransactionalRepository, ABC):
     def get_by_id(self, request_id: int) -> WithdrawalRequest | None: ...
 
     @abstractmethod
+    def txid_taken(self, txid: str) -> bool:
+        """True si otro retiro ya se registró con ese txid (UNIQUE en la BD)."""
+        ...
+
+    @abstractmethod
     def open_total(self, user_id: int) -> Decimal:
         """Lo que la persona ya tiene pedido y sin pagar (reservado de su disponible)."""
         ...

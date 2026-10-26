@@ -51,7 +51,7 @@ wallet_snapshots.source    : exchange | manual
 ledger_entries.entry_type  : deposit | refund | allocation | redemption | fee | commission | withdrawal
 redemption_requests.status : queued | applied | canceled
 withdrawal_requests.status : requested | paid | rejected | canceled
-payout_methods.kind        : bank | nequi
+payout_methods.kind        : crypto (bank | nequi solo en filas viejas desactivadas)
 allocation_orders.status   : queued | applied | canceled
 allocation_orders.source_bucket: pending | available
 ledger_entries.bucket      : pending | available

@@ -114,13 +114,20 @@ FUND_ERROR_MESSAGES: dict[str, str] = {
     ),
     "FUND_REDEMPTION_NOT_FOUND": "No encontramos esa salida.",
     "FUND_REDEMPTION_NOT_QUEUED": "Esa salida ya no está en cola: se aplicó o se anuló.",
-    "FUND_PAYOUT_INVALID_KIND": "Elige banco o Nequi.",
-    "FUND_PAYOUT_INVALID_DETAILS": "Completa todos los datos del medio de pago (máximo 120 caracteres cada uno).",
-    "FUND_PAYOUT_TOO_MANY": "Ya tienes 5 medios de pago activos. Desactiva uno antes de agregar otro.",
-    "FUND_PAYOUT_NOT_FOUND": "No encontramos ese medio de pago.",
-    "FUND_PAYOUT_UNREADABLE": "No pudimos leer los datos de ese medio de pago. Pídele a la persona que lo registre de nuevo.",
+    "FUND_PAYOUT_INVALID_KIND": "Los retiros solo se envían a una dirección cripto.",
+    "FUND_PAYOUT_INVALID_DETAILS": "Escribe un nombre, la red y la dirección (máximo 120 caracteres cada uno).",
+    "FUND_PAYOUT_INVALID_NETWORK": (
+        "Esa red no está entre las que acepta el fondo. Elige una de la lista."
+    ),
+    "FUND_PAYOUT_INVALID_ADDRESS": (
+        "Esa dirección no tiene el formato de la red elegida. Cópiala de nuevo desde tu billetera "
+        "y revisa que sea de la misma red."
+    ),
+    "FUND_PAYOUT_TOO_MANY": "Ya tienes 5 direcciones activas. Desactiva una antes de agregar otra.",
+    "FUND_PAYOUT_NOT_FOUND": "No encontramos esa dirección.",
+    "FUND_PAYOUT_UNREADABLE": "No pudimos leer esa dirección. Pídele a la persona que la registre de nuevo.",
     "FUND_PAYOUT_COOLING_DOWN": (
-        "Por seguridad, un medio de pago nuevo se puede usar 48 horas después de registrarlo."
+        "Por seguridad, una dirección nueva se puede usar 48 horas después de registrarla."
     ),
     "FUND_WITHDRAWAL_INVALID_AMOUNT": "Escribe un monto mayor que 0.",
     "FUND_WITHDRAWAL_EXCEEDS_AVAILABLE": (
@@ -130,7 +137,34 @@ FUND_ERROR_MESSAGES: dict[str, str] = {
     "FUND_WITHDRAWAL_TOO_MANY_OPEN": "Tienes 5 retiros sin pagar. Espera a que se paguen antes de pedir otro.",
     "FUND_WITHDRAWAL_NOT_FOUND": "No encontramos ese retiro.",
     "FUND_WITHDRAWAL_NOT_OPEN": "Ese retiro ya se pagó, se rechazó o se anuló. Recarga la página.",
-    "FUND_WITHDRAWAL_INVALID_PAYMENT": "Escribe el monto en pesos, la tasa y la referencia del pago.",
+    "FUND_WITHDRAWAL_BELOW_NETWORK_MIN": (
+        "El monto es menor que el mínimo de retiro de esa red, o no alcanza a cubrir su comisión. "
+        "Pide un monto mayor."
+    ),
+    "FUND_WITHDRAWAL_INVALID_TXID": (
+        "Ese no parece un ID de transacción. Cópialo completo desde el historial de retiros de Binance."
+    ),
+    "FUND_WITHDRAWAL_TXID_TAKEN": "Ese ID de transacción ya está registrado en otro retiro.",
+    "FUND_WITHDRAWAL_TX_PENDING": (
+        "Binance todavía está procesando ese envío. Regístralo cuando aparezca como completado."
+    ),
+    "FUND_WITHDRAWAL_TX_FAILED": (
+        "Binance reporta ese envío como fallido o cancelado: el dinero no salió. "
+        "Revisa el historial de retiros de Binance."
+    ),
+    "FUND_WITHDRAWAL_ADDRESS_MISMATCH": (
+        "Ese envío no fue a la dirección de la persona (red, dirección o memo distintos). "
+        "No se puede registrar en este retiro."
+    ),
+    "FUND_WITHDRAWAL_TX_NOT_FOUND": (
+        "No encontramos ese envío en Binance. Revisa el ID o, si estás seguro, escribe el monto "
+        "enviado, la comisión y una nota que lo explique."
+    ),
+    "FUND_WITHDRAWAL_INVALID_PAYMENT": "Escribe el monto que recibió la persona y la comisión de red.",
+    "FUND_WITHDRAWAL_PAYMENT_NOTE_REQUIRED": (
+        "Lo que salió (enviado + comisión) no coincide con lo pedido, o Binance no muestra la "
+        "dirección. Escribe una nota que lo explique."
+    ),
     "FUND_WITHDRAWAL_NOTE_REQUIRED": "Escribe el motivo: la persona lo ve en su historial.",
     "FUND_WITHDRAWAL_INVALID_STATUS": "Ese estado no existe.",
     "FUND_RECEIPT_INVALID": "El comprobante debe ser un PDF, PNG o JPG.",

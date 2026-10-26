@@ -1,13 +1,14 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { IconLoader2 } from '@tabler/icons-react';
 import { useEffect } from 'react';
-import { Controller, useForm, useWatch } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
-import type { PayoutKind } from '@/modules/fund/api/fund-payouts.api';
 import { useCreatePayoutMethodMutation } from '@/modules/fund/hooks/use-fund-payouts-mutations';
-import { PAYOUT_KIND_OPTIONS } from '@/modules/fund/lib/fund-payouts-labels';
+import { useWithdrawNetworksQuery } from '@/modules/fund/hooks/use-fund-payouts-queries';
 import { OptionSelect } from '@/modules/shared/components/option-select';
+import { formatNumber } from '@/modules/shared/lib/format';
 import { getErrorMessage } from '@/modules/shared/lib/get-error-message';
+import { requiredSelectField } from '@/modules/shared/lib/required-select-field';
 import { Button } from '@/modules/ui/components/button';
 import {
 	Dialog,
@@ -20,6 +21,7 @@ import {
 } from '@/modules/ui/components/dialog';
 import {
 	Field,
+	FieldDescription,
 	FieldError,
 	FieldGroup,
 	FieldLabel,
@@ -27,129 +29,98 @@ import {
 import { Input } from '@/modules/ui/components/input';
 import { toast } from '@/modules/ui/components/toast';
 
-const text = (message: string) =>
-	z.string().trim().max(120, 'Máximo 120 caracteres').min(1, message);
-const optional = z.string().trim().max(120, 'Máximo 120 caracteres');
+const payoutSchema = z.object({
+	label: z
+		.string()
+		.trim()
+		.min(1, 'Ponle un nombre')
+		.max(80, 'Máximo 80 caracteres'),
+	network: requiredSelectField('Elige la red'),
+	address: z
+		.string()
+		.trim()
+		.min(1, 'Pega la dirección')
+		.max(120, 'Máximo 120 caracteres')
+		.refine((value) => !/\s/.test(value), 'La dirección no lleva espacios'),
+	memo: z.string().trim().max(120, 'Máximo 120 caracteres'),
+});
 
-const payoutSchema = z
-	.object({
-		kind: z.enum(['bank', 'nequi']),
-		label: z
-			.string()
-			.trim()
-			.min(1, 'Ponle un nombre')
-			.max(80, 'Máximo 80 caracteres'),
-		holder_name: text('Escribe el nombre del titular'),
-		document_number: text('Escribe el documento del titular'),
-		bank_name: optional,
-		account_type: optional,
-		account_number: optional,
-		phone: optional,
-	})
-	.superRefine((value, ctx) => {
-		const required =
-			value.kind === 'bank'
-				? (['bank_name', 'account_type', 'account_number'] as const)
-				: (['phone'] as const);
-		for (const key of required) {
-			if (!value[key]) {
-				ctx.addIssue({
-					code: 'custom',
-					path: [key],
-					message: 'Completa este dato',
-				});
-			}
-		}
-	});
+type PayoutInput = z.input<typeof payoutSchema>;
+type PayoutOutput = z.output<typeof payoutSchema>;
 
-type PayoutValues = z.infer<typeof payoutSchema>;
-
-const EMPTY: PayoutValues = {
-	kind: 'bank',
-	label: '',
-	holder_name: '',
-	document_number: '',
-	bank_name: '',
-	account_type: '',
-	account_number: '',
-	phone: '',
-};
-
-const FIELDS: Record<
-	PayoutKind,
-	{ name: keyof PayoutValues; label: string; placeholder: string }[]
-> = {
-	bank: [
-		{ name: 'bank_name', label: 'Banco', placeholder: 'Bancolombia' },
-		{ name: 'account_type', label: 'Tipo de cuenta', placeholder: 'Ahorros' },
-		{
-			name: 'account_number',
-			label: 'Número de cuenta',
-			placeholder: '000123456789',
-		},
-	],
-	nequi: [
-		{ name: 'phone', label: 'Celular de Nequi', placeholder: '3001234567' },
-	],
-};
+const EMPTY: PayoutInput = { label: '', network: null, address: '', memo: '' };
 
 type PayoutMethodDialogProps = {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 };
 
-/** La persona registra a dónde le pagan sus retiros. Los datos van cifrados. */
+/**
+ * La persona registra la dirección cripto a la que le enviamos sus retiros
+ * (sin bancos: solo movimientos entre billeteras). Los datos van cifrados.
+ */
 export function PayoutMethodDialog({
 	open,
 	onOpenChange,
 }: PayoutMethodDialogProps) {
+	const networksQuery = useWithdrawNetworksQuery(open);
 	const mutation = useCreatePayoutMethodMutation();
-	const form = useForm<PayoutValues>({
+	const form = useForm<PayoutInput, unknown, PayoutOutput>({
 		resolver: zodResolver(payoutSchema),
 		defaultValues: EMPTY,
 	});
-	const kind = useWatch({ control: form.control, name: 'kind' });
 
 	useEffect(() => {
 		if (open) form.reset(EMPTY);
 	}, [open, form]);
 
-	function handleSubmit(values: PayoutValues) {
-		const keys = FIELDS[values.kind].map((field) => field.name);
-		const input = {
-			kind: values.kind,
-			label: values.label,
-			holder_name: values.holder_name,
-			document_number: values.document_number,
-			...Object.fromEntries(keys.map((key) => [key, values[key]])),
-		};
-		mutation.mutate(input, {
-			onSuccess: () => {
-				toast.add({
-					title: 'Medio de pago guardado',
-					description: 'Por seguridad podrás usarlo dentro de 48 horas.',
-					type: 'success',
-				});
-				onOpenChange(false);
+	const asset = networksQuery.data?.asset ?? 'USDT';
+	const networks = networksQuery.data?.networks ?? [];
+	const options = networks.map((item) => ({
+		value: item.network,
+		label:
+			item.fee !== null
+				? `${item.name} (${item.network}) · comisión ${formatNumber(item.fee, 2)} ${asset}`
+				: `${item.name} (${item.network})`,
+	}));
+
+	function handleSubmit(values: PayoutOutput) {
+		mutation.mutate(
+			{
+				label: values.label,
+				network: values.network as string,
+				address: values.address,
+				memo: values.memo || undefined,
 			},
-			onError: (error) =>
-				toast.add({
-					title: 'No pudimos guardar el medio de pago',
-					description: getErrorMessage(error),
-					type: 'error',
-				}),
-		});
+			{
+				onSuccess: () => {
+					toast.add({
+						title: 'Dirección guardada',
+						description: 'Por seguridad podrás usarla dentro de 48 horas.',
+						type: 'success',
+					});
+					onOpenChange(false);
+				},
+				onError: (error) =>
+					toast.add({
+						title: 'No pudimos guardar la dirección',
+						description: getErrorMessage(error),
+						type: 'error',
+					}),
+			},
+		);
 	}
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent>
 				<DialogHeader>
-					<DialogTitle>Nuevo medio de pago</DialogTitle>
+					<DialogTitle>Nueva dirección de retiro</DialogTitle>
 					<DialogDescription>
-						A dónde te pagan los retiros. Los datos se guardan cifrados y solo
-						los ve un super admin al pagarte. Un medio nuevo se puede usar 48
-						horas después de registrarlo.
+						La dirección de tu billetera a la que te enviamos los retiros en{' '}
+						{asset}. Se guarda cifrada y solo la ve un super admin al enviarte
+						el dinero. Una dirección nueva se puede usar 48 horas después de
+						registrarla.
 					</DialogDescription>
 				</DialogHeader>
 				<form
@@ -161,69 +132,103 @@ export function PayoutMethodDialog({
 					<DialogBody>
 						<FieldGroup>
 							<Controller
-								name="kind"
+								name="label"
 								control={form.control}
-								render={({ field }) => (
-									<Field>
-										<FieldLabel htmlFor="payout-kind" required>
-											Tipo
+								render={({ field, fieldState }) => (
+									<Field data-invalid={fieldState.invalid}>
+										<FieldLabel htmlFor="payout-label" required>
+											Nombre para reconocerla
 										</FieldLabel>
-										<OptionSelect
-											id="payout-kind"
-											value={field.value}
-											onChange={(value) => field.onChange(value ?? 'bank')}
-											options={PAYOUT_KIND_OPTIONS}
+										<Input
+											{...field}
+											id="payout-label"
+											placeholder="Mi billetera de Binance"
+											autoComplete="off"
+											aria-invalid={fieldState.invalid}
 										/>
+										{fieldState.invalid && (
+											<FieldError errors={[fieldState.error]} />
+										)}
 									</Field>
 								)}
 							/>
-							{(
-								[
-									{
-										name: 'label',
-										label: 'Nombre para reconocerlo',
-										placeholder: 'Mi cuenta de ahorros',
-									},
-									{
-										name: 'holder_name',
-										label: 'Titular',
-										placeholder: 'Nombre completo',
-									},
-									{
-										name: 'document_number',
-										label: 'Documento del titular',
-										placeholder: 'CC 1234567890',
-									},
-									...FIELDS[kind],
-								] as {
-									name: keyof PayoutValues;
-									label: string;
-									placeholder: string;
-								}[]
-							).map((item) => (
-								<Controller
-									key={item.name}
-									name={item.name}
-									control={form.control}
-									render={({ field, fieldState }) => (
-										<Field data-invalid={fieldState.invalid}>
-											<FieldLabel htmlFor={`payout-${item.name}`} required>
-												{item.label}
-											</FieldLabel>
-											<Input
-												{...field}
-												id={`payout-${item.name}`}
-												placeholder={item.placeholder}
-												autoComplete="off"
-												aria-invalid={fieldState.invalid}
-											/>
-											{fieldState.invalid && (
-												<FieldError errors={[fieldState.error]} />
-											)}
-										</Field>
-									)}
-								/>
-							))}
+							<Controller
+								name="network"
+								control={form.control}
+								render={({ field, fieldState }) => (
+									<Field data-invalid={fieldState.invalid}>
+										<FieldLabel htmlFor="payout-network" required>
+											Red
+										</FieldLabel>
+										<OptionSelect
+											id="payout-network"
+											value={field.value}
+											onChange={field.onChange}
+											options={options}
+											placeholder={
+												networksQuery.isLoading
+													? 'Cargando redes…'
+													: options.length === 0
+														? 'El fondo aún no tiene redes configuradas'
+														: 'Elige la red'
+											}
+											aria-invalid={fieldState.invalid}
+										/>
+										<FieldDescription>
+											Usa la misma red en tu billetera: si la dirección es de
+											otra red, el dinero se pierde.
+										</FieldDescription>
+										{fieldState.invalid && (
+											<FieldError errors={[fieldState.error]} />
+										)}
+									</Field>
+								)}
+							/>
+							<Controller
+								name="address"
+								control={form.control}
+								render={({ field, fieldState }) => (
+									<Field data-invalid={fieldState.invalid}>
+										<FieldLabel htmlFor="payout-address" required>
+											Dirección
+										</FieldLabel>
+										<Input
+											{...field}
+											id="payout-address"
+											placeholder="Pégala desde tu billetera"
+											autoComplete="off"
+											spellCheck={false}
+											className="font-mono"
+											aria-invalid={fieldState.invalid}
+										/>
+										{fieldState.invalid && (
+											<FieldError errors={[fieldState.error]} />
+										)}
+									</Field>
+								)}
+							/>
+							<Controller
+								name="memo"
+								control={form.control}
+								render={({ field, fieldState }) => (
+									<Field data-invalid={fieldState.invalid}>
+										<FieldLabel htmlFor="payout-memo">Memo</FieldLabel>
+										<Input
+											{...field}
+											id="payout-memo"
+											autoComplete="off"
+											aria-invalid={fieldState.invalid}
+										/>
+										<FieldDescription>
+											Solo si tu billetera te lo pide para esta red (también se
+											llama tag).
+										</FieldDescription>
+										{fieldState.invalid && (
+											<FieldError errors={[fieldState.error]} />
+										)}
+									</Field>
+								)}
+							/>
 						</FieldGroup>
 					</DialogBody>
 				</form>
@@ -237,7 +242,7 @@ export function PayoutMethodDialog({
 						disabled={mutation.isPending}
 					>
 						{mutation.isPending && <IconLoader2 className="animate-spin" />}
-						Guardar medio de pago
+						Guardar dirección
 					</Button>
 				</DialogFooter>
 			</DialogContent>

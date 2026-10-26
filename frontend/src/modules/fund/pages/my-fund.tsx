@@ -261,7 +261,7 @@ export function MyFundPage() {
 					}
 					hint={
 						reserved > 0
-							? `${formatNumber(reserved, 2)} ${asset} reservados en retiros por pagar`
+							? `${formatNumber(reserved, 2)} ${asset} reservados en retiros por enviar`
 							: 'Lo que ya pasó por un agente y puedes retirar'
 					}
 					icon={<IconCoins className="size-4" />}
@@ -383,11 +383,11 @@ export function MyFundPage() {
 						onCancel={setCancelingWithdrawal}
 					/>
 					<Section
-						title="Medios de pago"
+						title="Direcciones de retiro"
 						action={
 							<Button variant="outline" onClick={() => setAddingMethod(true)}>
 								<IconPlus />
-								Agregar medio
+								Agregar dirección
 							</Button>
 						}
 					>

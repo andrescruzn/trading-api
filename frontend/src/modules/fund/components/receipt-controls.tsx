@@ -96,7 +96,7 @@ type AttachReceiptDialogProps = {
 	onClose: () => void;
 };
 
-/** Adjunta o cambia el comprobante de un retiro ya pagado (super admin). */
+/** Adjunta o cambia el comprobante de un retiro ya enviado (super admin). */
 function AttachReceiptDialog({
 	withdrawal,
 	onClose,

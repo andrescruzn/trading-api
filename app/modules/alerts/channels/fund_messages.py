@@ -100,19 +100,25 @@ def fund_notice(code: str, data: dict[str, str]) -> FundNotice | None:
         return FundNotice(title="Salida aplicada", message=message)
     if code == FUND_WITHDRAWAL_REQUESTED:
         return FundNotice(
-            title="Retiro por pagar",
-            message=f"{person} pidió retirar {amount}. Págalo y regístralo en Retiros.",
+            title="Retiro por enviar",
+            message=(
+                f"{person} pidió retirar {amount}. Envíalo desde Binance a su dirección "
+                f"y registra el ID de la transacción en Retiros."
+            ),
             link="/admin/withdrawals",
         )
     if code == FUND_WITHDRAWAL_PAID:
-        return FundNotice(
-            title="Retiro pagado",
-            message=(
-                f"Te pagamos {_num(data.get('cop'), 0)} COP por {amount} "
-                f"(tasa {_num(data.get('rate'))} COP por {asset}). "
-                f"Referencia: {data.get('reference', '—')}."
-            ),
+        # Detalles del envío entre billeteras; el explorador solo si la red tiene uno público
+        explorer = data.get("explorer_url")
+        message = (
+            f"Te enviamos {_num(data.get('sent'))} {asset} por la red {data.get('network', '—')} "
+            f"a tu dirección {data.get('address', '—')}. "
+            f"Comisión de red: {_num(data.get('fee'))} {asset} (se descontó de tu retiro de {amount}). "
+            f"ID de la transacción: {data.get('txid', '—')}."
         )
+        if explorer:
+            message += f" Consúltala en {explorer}"
+        return FundNotice(title="Retiro enviado", message=message)
     if code == FUND_WITHDRAWAL_REJECTED:
         return FundNotice(
             title="Retiro rechazado",

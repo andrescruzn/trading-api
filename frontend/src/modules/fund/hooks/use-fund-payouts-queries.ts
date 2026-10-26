@@ -5,6 +5,7 @@ import {
 	getMyRedemptions,
 	getMyWithdrawable,
 	getWithdrawalPayoutDetails,
+	getWithdrawNetworks,
 	listMyCommissions,
 	listMyPayoutMethods,
 	listOwnerEarnings,
@@ -22,6 +23,7 @@ const PAYOUT_METHODS_QUERY_KEY = ['fund-payout-methods'] as const;
 const WITHDRAWABLE_QUERY_KEY = ['fund-withdrawable'] as const;
 const WITHDRAWALS_QUERY_KEY = ['fund-withdrawals'] as const;
 const PAYOUT_DETAILS_QUERY_KEY = ['fund-payout-details'] as const;
+const WITHDRAW_NETWORKS_QUERY_KEY = ['fund-withdraw-networks'] as const;
 
 const REFETCH_MS = 60_000;
 
@@ -85,7 +87,17 @@ function useWithdrawalsQuery(filters: WithdrawalFilters, page: PageParams) {
 	});
 }
 
-/** Datos completos del medio de pago: solo al abrir el diálogo de pagar. */
+/** Redes de retiro con la comisión de Binance; cambian poco. */
+function useWithdrawNetworksQuery(enabled = true) {
+	return useQuery({
+		queryKey: WITHDRAW_NETWORKS_QUERY_KEY,
+		queryFn: getWithdrawNetworks,
+		enabled,
+		staleTime: 5 * 60_000,
+	});
+}
+
+/** Dirección completa: solo al abrir el diálogo de enviar. */
 function usePayoutDetailsQuery(withdrawalId: number | null) {
 	return useQuery({
 		queryKey: [...PAYOUT_DETAILS_QUERY_KEY, withdrawalId],
@@ -113,6 +125,7 @@ export {
 	useOwnerEarningsQuery,
 	usePayoutDetailsQuery,
 	useWithdrawalsQuery,
+	useWithdrawNetworksQuery,
 	WITHDRAWABLE_QUERY_KEY,
 	WITHDRAWALS_QUERY_KEY,
 };

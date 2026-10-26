@@ -230,7 +230,7 @@ export function AdminFundOverviewPage() {
 					isLoading={overviewQuery.isLoading}
 				/>
 				<StatCard
-					label="Retiros por pagar"
+					label="Retiros por enviar"
 					value={money(data?.open_withdrawals_total)}
 					hint={
 						<Link
@@ -377,7 +377,7 @@ export function AdminFundOverviewPage() {
 								/>
 								<Line label="Disponible" value={money(data.available_total)} />
 								<Line
-									label="De eso, reservado en retiros por pagar"
+									label="De eso, reservado en retiros por enviar"
 									value={money(data.open_withdrawals_total)}
 									className="pl-4"
 								/>

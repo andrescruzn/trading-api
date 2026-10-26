@@ -422,9 +422,11 @@ class SqlAlchemyWithdrawalRequestRepository(SqlAlchemyRepository, WithdrawalRequ
             amount=_dec(m.amount),
             payout_method_id=m.payout_method_id,
             status=m.status,
-            paid_cop_amount=_dec_or_none(m.paid_cop_amount),
-            cop_rate=_dec_or_none(m.cop_rate),
-            payment_reference=m.payment_reference,
+            txid=m.txid,
+            network=m.network,
+            sent_amount=_dec_or_none(m.sent_amount),
+            network_fee=_dec_or_none(m.network_fee),
+            exchange_withdrawal_id=m.exchange_withdrawal_id,
             resolution_note=m.resolution_note,
             resolved_by_user_id=m.resolved_by_user_id,
             resolved_at=ensure_aware_utc(m.resolved_at),
@@ -446,6 +448,14 @@ class SqlAlchemyWithdrawalRequestRepository(SqlAlchemyRepository, WithdrawalRequ
     def get_by_id(self, request_id: int) -> WithdrawalRequest | None:
         m = self._session.get(WithdrawalRequestModel, request_id)
         return None if m is None else self._to_domain(m)
+
+    def txid_taken(self, txid: str) -> bool:
+        return (
+            self._session.query(WithdrawalRequestModel.id)
+            .filter(WithdrawalRequestModel.txid == txid)
+            .first()
+            is not None
+        )
 
     def open_summary(self) -> tuple[int, Decimal]:
         count, total = (
@@ -501,9 +511,11 @@ class SqlAlchemyWithdrawalRequestRepository(SqlAlchemyRepository, WithdrawalRequ
             .update(
                 {
                     "status": request.status,
-                    "paid_cop_amount": request.paid_cop_amount,
-                    "cop_rate": request.cop_rate,
-                    "payment_reference": request.payment_reference,
+                    "txid": request.txid,
+                    "network": request.network,
+                    "sent_amount": request.sent_amount,
+                    "network_fee": request.network_fee,
+                    "exchange_withdrawal_id": request.exchange_withdrawal_id,
                     "resolution_note": request.resolution_note,
                     "resolved_by_user_id": request.resolved_by_user_id,
                     "resolved_at": request.resolved_at,

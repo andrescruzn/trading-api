@@ -3,8 +3,9 @@
 # ======================================================================
 # app/modules/accounts/infrastructure/ccxt_wallet_gateway.py
 #
-# Implementación ccxt de WalletGateway: saldo y precios de la billetera, y
-# depósitos, redes y direcciones para verificar lo que entra al fondo.
+# Implementación ccxt de WalletGateway: saldo y precios de la billetera,
+# depósitos, redes y direcciones para verificar lo que entra al fondo, y el
+# historial de retiros para verificar lo que sale.
 #
 # DECISIONES:
 # - El saldo de un exchange puede estar repartido en varias "cuentas"
@@ -35,7 +36,9 @@ from app.modules.accounts.domain.wallet_gateway import (
     DepositAddress,
     DepositNetwork,
     ExchangeDeposit,
+    ExchangeWithdrawal,
     WalletGatewayError,
+    WithdrawNetwork,
 )
 from app.modules.accounts.domain.wallet_snapshot_entity import AssetBalance
 from app.modules.accounts.infrastructure.exchange_client import (
@@ -70,6 +73,24 @@ def _to_decimal(value: Any) -> Decimal:
         return Decimal(str(value))
     except (InvalidOperation, ValueError):
         return Decimal("0")
+
+
+def _to_decimal_or_none(value: Any) -> Decimal | None:
+    return None if value is None else _to_decimal(value)
+
+
+def _unified_network(client: Any, network: str | None, asset: str) -> str | None:
+    """
+    El historial trae el id de red de Binance (`TRX`, `BSC`); las redes de
+    `fetch_currencies` vienen con el código unificado de ccxt (`TRC20`,
+    `BEP20`). Se traduce para poder compararlas.
+    """
+    if not network:
+        return None
+    try:
+        return client.network_id_to_code(network, asset.upper()) or network
+    except Exception:
+        return network
 
 
 def _translate_ccxt_error(exc: Exception) -> WalletGatewayError:
@@ -222,6 +243,66 @@ class CcxtWalletGateway:
         return DepositAddress(
             network=network, address=address, tag=(raw.get("tag") or None)
         )
+
+    # ==================================================================
+    # Retiros (pagos del fondo común). Solo se LEE el historial: los envía
+    # un super admin desde Binance y la API key no necesita permiso de retiro.
+    # ==================================================================
+
+    def fetch_withdraw_networks(self, account: Account, asset: str) -> list[WithdrawNetwork]:
+        client = self._client(account, authenticated=True)
+        try:
+            currencies = client.fetch_currencies() or {}
+        except ccxt.BaseError as exc:
+            raise _translate_ccxt_error(exc) from exc
+
+        networks = (currencies.get(asset.upper()) or {}).get("networks") or {}
+        result: list[WithdrawNetwork] = []
+        for code, info in sorted(networks.items()):
+            limits = (info.get("limits") or {}).get("withdraw") or {}
+            result.append(
+                WithdrawNetwork(
+                    code=str(code),
+                    name=str(info.get("name") or info.get("network") or code),
+                    withdraw_enabled=info.get("withdraw") is not False and info.get("active") is not False,
+                    fee=_to_decimal_or_none(info.get("fee")),
+                    min_amount=_to_decimal_or_none(limits.get("min")),
+                )
+            )
+        return result
+
+    def fetch_withdrawals(
+        self, account: Account, asset: str, since: datetime | None
+    ) -> list[ExchangeWithdrawal]:
+        client = self._client(account, authenticated=True)
+        since_ms = int(since.timestamp() * 1000) if since else None
+        try:
+            raw = client.fetch_withdrawals(asset, since_ms)
+        except ccxt.BaseError as exc:
+            raise _translate_ccxt_error(exc) from exc
+
+        withdrawals: list[ExchangeWithdrawal] = []
+        for item in raw or []:
+            txid = (item.get("txid") or "").strip()
+            if not txid:
+                continue
+            ts_ms = item.get("timestamp")
+            fee = item.get("fee") or {}
+            withdrawals.append(
+                ExchangeWithdrawal(
+                    txid=txid,
+                    amount=_to_decimal(item.get("amount")),
+                    fee=_to_decimal(fee.get("cost")),
+                    asset=(item.get("currency") or asset).upper(),
+                    network=_unified_network(client, item.get("network"), asset),
+                    address=item.get("addressTo") or item.get("address"),
+                    tag=item.get("tagTo") or item.get("tag"),
+                    status=(item.get("status") or "pending").lower(),
+                    exchange_id=str(item["id"]) if item.get("id") is not None else None,
+                    ts=datetime.fromtimestamp(ts_ms / 1000, tz=timezone.utc) if ts_ms else None,
+                )
+            )
+        return withdrawals
 
     # ==================================================================
     # Cliente

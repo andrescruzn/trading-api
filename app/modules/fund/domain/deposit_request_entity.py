@@ -40,6 +40,9 @@ DEPOSIT_REVIEW_REASONS = ("amount_mismatch", "over_threshold", "exchange_failed"
 AMOUNT_TOLERANCE_RATIO = Decimal("0.01")
 
 _HEX_TXID = re.compile(r"^(0[xX])?[0-9a-fA-F]+$")
+# Envío entre cuentas de Binance: el historial muestra "Internal transfer 123…"
+# y ccxt entrega solo el número
+_INTERNAL_TRANSFER = re.compile(r"^(internal|off-chain)\s+transfer\s+", re.IGNORECASE)
 _VALID_TXID = re.compile(r"^[A-Za-z0-9:_\-]{10,128}$")
 
 
@@ -48,9 +51,11 @@ def normalize_txid(raw: str) -> str:
     Quita espacios y, si el txid es hexadecimal (Tron, EVM), lo pasa a
     minúsculas: en esas redes la misma transacción se puede escribir con
     mayúsculas o minúsculas. Otros formatos (p. ej. Solana, base58)
-    distinguen mayúsculas y se dejan tal cual.
+    distinguen mayúsculas y se dejan tal cual. De un envío interno de
+    Binance ("Internal transfer 51376627901") queda solo el número, como lo
+    reporta ccxt.
     """
-    txid = (raw or "").strip()
+    txid = _INTERNAL_TRANSFER.sub("", (raw or "").strip())
     return txid.lower() if _HEX_TXID.match(txid) else txid
 
 

@@ -47,7 +47,11 @@ from app.modules.fund.services.deposits import (
 from app.modules.fund.services.fees import CommissionSharesService, FeeScheduleService
 from app.modules.fund.services.overview import FundOverviewService
 from app.modules.fund.services.ledger import FundLedgerService
-from app.modules.fund.services.payouts import PayoutMethodsService, WithdrawalService
+from app.modules.fund.services.payouts import (
+    PayoutMethodsService,
+    WithdrawalService,
+    WithdrawNetworksReader,
+)
 from app.modules.fund.services.pools import (
     AgentCapitalService,
     AgentInfoReader,
@@ -291,14 +295,23 @@ class FundServiceFactory:
             ),
         )
 
+    def _withdraw_networks(self, gateway: CcxtWalletGateway) -> WithdrawNetworksReader:
+        return WithdrawNetworksReader(
+            settings_repo=self._settings_repo,
+            wallet_resolver=self._wallet_resolver,
+            gateway=gateway,
+        )
+
     def payout_methods(self) -> PayoutMethodsService:
         return PayoutMethodsService(
             repo=self._payout_repo,
             cipher=CredentialsCipher.from_settings(),
             cooldown_hours=settings.PAYOUT_METHOD_COOLDOWN_HOURS,
+            networks=self._withdraw_networks(self._gateway()),
         )
 
     def withdrawals(self) -> WithdrawalService:
+        gateway = self._gateway()
         return WithdrawalService(
             repo=self._withdrawal_repo,
             payout_repo=self._payout_repo,
@@ -306,6 +319,10 @@ class FundServiceFactory:
             allocation_repo=self._allocation_repo,
             receipt_repo=self._receipt_repo,
             asset=settings.WALLET_BASE_ASSET,
+            cipher=CredentialsCipher.from_settings(),
+            networks=self._withdraw_networks(gateway),
+            wallet_resolver=self._wallet_resolver,
+            gateway=gateway,
             notifier=self._notifier(),
         )
 

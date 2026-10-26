@@ -9,7 +9,7 @@
 | Estado | ✅ Completo |
 | Avance (alcance original) | 100 % — 10/10 entregables del plan original (+ 11 nuevos de 2026-10-19) |
 | Madurez (estimada) | 84 % — ver [Avance](#avance) |
-| Tablas | `orders`, `fills`, `positions` (R/W); `signals` (R/W: decisión de ejecución); `bots` (R, y `status` → `error` por drawdown); `candles`, `symbols`, `exchanges`, `accounts`, `account_balances` (R) |
+| Tablas | `orders`, `fills`, `positions`, `funding_payments` (R/W); `signals` (R/W: decisión de ejecución); `bots` (R, y `status` → `error` por drawdown); `candles`, `symbols`, `exchanges`, `accounts`, `account_balances` (R) |
 | Depende de | [M2](M02-MARKET-DATA.md), [M4](M04-ACCOUNTS-PORTFOLIO.md) (credenciales Fernet, saldo para el drawdown), [M7](M07-BOTS-SIGNALS.md) (bots, señales, propiedad) |
 | Lo usan | [M9](M09-ALERTS.md) (hook de orden; Telegram aprueba/rechaza vía `ExecuteSignalService`), [M11](M11-FUND.md) (fills del agente para liquidar; drawdown sobre su capital), scheduler de [M2](M02-MARKET-DATA.md) (ejecución automática, reconciliación y SL/TP) |
 | Prefijo API | `/api/orders`, `/api/fills`, `/api/positions`, `/api/signals/{id}/approve`, `/api/signals/{id}/reject` |
@@ -32,7 +32,8 @@
 - **Cancela órdenes** live abiertas (`CancelOrderService`, `POST /api/orders/{id}/cancel`) y las sincroniza con el exchange en el mismo paso.
 - **Stop loss nativo en live** (`NativeStopService`): tras la compra de una señal en live, el SL queda como orden stop en el exchange (`positions.sl_order_id`), así protege aunque la app esté caída; el scheduler solo vigila el TP. Antes de cualquier otra venta de esa posición se cancela el SL nativo. Sin OCO: el TP no es una orden en el exchange.
 - **Reconcilia con el exchange** (`ReconcileOrdersService`, paso del scheduler): pone al día las órdenes live abiertas (límites que se ejecutaron después, ejecuciones parciales, el SL nativo que disparó el exchange y las órdenes "sin respuesta" que nunca llegaron).
-- Registra las **ejecuciones** (fills) y gestiona las **posiciones**: precio medio ponderado (WAP) en cada compra y P&L realizado en cada venta. En spot no hay cortos: no se vende más de lo que hay.
+- Registra las **ejecuciones** (fills) y gestiona las **posiciones**: precio medio ponderado (WAP) en cada compra y P&L realizado en cada venta. No hay cortos: no se vende más de lo que hay.
+- **Perpetuos de Binance en live (2026-10-26):** metales, materias primas, ETFs y acciones (`XAU/USDT:USDT`) se operan con dinero real, **solo largos, a 1x y con margen aislado**, desde la billetera de Futuros USDⓈ-M. Registra además el **funding** que Binance cobra o paga sobre esas posiciones.
 - Máquina de estados de la orden: `new → sent → filled / partially_filled / canceled / rejected`.
 
 **Importante:** Las cuentas "paper" simulan las órdenes sin tocar dinero real. Las cuentas "live" operan con dinero real y, por defecto, están **desactivadas en el servidor** (`TRADING_LIVE_ENABLED=false`).
@@ -80,6 +81,7 @@ Entregables:
 - ✅ (2026-10-20) **Protección en órdenes manuales**: `stop_loss` / `take_profit` en `POST /api/orders` (compras a mercado) + SL nativo en live
 - ✅ (2026-10-20) **Rate limit** por usuario en crear, cancelar y aprobar órdenes (`ORDER_REQUESTS_PER_MINUTE`)
 - ✅ (2026-10-20) **Tests** del módulo (`tests/orders/`) y **script de testnet** (`scripts/testnet_check.py` + `docs/TESTNET.md`)
+- ✅ (2026-10-26) **Perpetuos en live**: `LiveExecutor` con precisión y mínimos del mercado, `isolated` + 1x + modo one-way por cuenta y símbolo, margen libre de Futuros, `reduceOnly` en ventas y SL nativo, comisión desde los trades; tabla `funding_payments` y `SyncFundingService` (migración `b7d4e2a91c63`)
 - ✅ (2026-10-20) **Rendimiento y track record**: `domain/performance.py` (`compute_performance`), `GetBotPerformanceService`, `ListStrategyTrackRecordService`, `GET /api/performance` y `/api/performance/strategies`; pestaña Rendimiento del agente y página `/#/track-record`
 
 ## Decisiones de diseño
@@ -100,6 +102,12 @@ Entregables:
 | Las **ventas** no se bloquean por notional ni drawdown (sí por el kill switch y por live apagado) | Reducir o cerrar riesgo siempre debe poder hacerse | Mismo filtro para compras y ventas |
 | Drawdown alcanzado → el agente pasa a `error` (`BOT_MAX_DRAWDOWN_REACHED`) | Frena al agente hasta que una persona lo revise | Solo rechazar la orden y seguir operando |
 | Drawdown = pérdida realizada acumulada / (saldo libre en la moneda base + esa pérdida) | Aproxima el capital inicial sin snapshots | `portfolio_snapshots` (tiene modelo ORM, pero ningún servicio la escribe) |
+| **Perpetuos en live, solo largos a 1x con margen aislado** (decisión del usuario, 2026-10-26). Antes de la primera compra de cada (cuenta, símbolo) se exige modo one-way (`fetch_position_mode`; Hedge → rechazo), se fija `isolated` y `set_leverage(1)` (cache en memoria del proceso). Toda venta y todo SL nativo de un perpetuo llevan `reduceOnly` | Con 1x un perpetuo se contabiliza igual que spot (compra = nocional = margen; venta lo devuelve): posiciones, P&L, flujo de caja del fondo y regla del 1 % siguen valiendo. `reduceOnly` impide abrir un corto si la posición ya se cerró en el exchange (p. ej. el SL nativo se disparó) | Cortos y apalancamiento configurable (cambian posiciones, SL/TP, riesgo y la liquidación del fondo) |
+| El USDT de Futuros lo pasa **un super admin a mano**; antes de comprar un perpetuo se lee el margen libre (`fetch_balance({"type": "future"})`) y se rechaza si no cubre el nocional × 1,01 | La API key no necesita permiso de transferencias | Transferir Spot → Futuros por API |
+| Cantidad redondeada **hacia abajo** a la precisión del mercado (`amount_to_precision`) y, en compras, mínimos de cantidad y de valor (`limits.amount.min`, `limits.cost.min`) con el precio de referencia (`meta.reference_price`). La orden queda con la cantidad enviada (`order.qty`) | El exchange rechazaría cantidades con más decimales; guardar lo enviado mantiene `filled == qty` | Enviar la cantidad tal cual y dejar que el exchange la rechace |
+| Comisión de futuros leída de los trades (`fetch_order_trades`) cuando la respuesta no la trae | Binance Futuros no la devuelve al crear la orden; sin ella el flujo de caja del fondo quedaría inflado | Comisión 0 |
+| **Funding** en su propia tabla (`funding_payments`, con signo) leída cada `WALLET_SYNC_INTERVAL_SECONDS` con `fetch_funding_history`; un agente live por perpetuo y cuenta ([M7](M07-BOTS-SIGNALS.md)) para poder asignarlo | No es un fill (no compra ni vende) pero mueve dinero: entra al resultado del agente y al flujo del fondo ([M11](M11-FUND.md)) | Ignorarlo · guardarlo como fill |
+| Perpetuos con `contractSize` distinto de 1 se rechazan | Binance USDⓈ-M usa 1 unidad por contrato; otro tamaño cambiaría tamaños y P&L | Convertir contratos ↔ unidades |
 | **Spot sin cortos:** `side=sell` solo hasta la cantidad de la posición (`ORDER_SELL_EXCEEDS_POSITION`); una señal SELL ejecutada cierra la posición abierta | El esquema (`chk_positions_qty`, `qty ≥ 0`) y los executors no manejan cortos | Representar cortos con `qty` negativa |
 | **Una señal = una orden:** `signal_id` debe ser del mismo agente, aprobada, con la misma dirección y sin otra orden que no esté `rejected`/`canceled` | No ejecutar dos veces la misma decisión | Permitir varias órdenes por señal |
 | Aprobar una señal = crear la orden, por eso `POST /signals/{id}/approve|reject` vive en `orders` (router `signal_decisions`) y no en `bots` | `orders` ya depende de `bots`; al revés habría ciclo | Endpoint en `bots` que importe `orders` |
@@ -157,6 +165,9 @@ Entregables:
 | Media | Métricas/avisos de la reconciliación (órdenes que siguen abiertas días, errores seguidos del exchange) | S |
 | Media | Saldo mínimo y límite diario de pérdidas/operaciones por agente en el RiskGate | S |
 | Media | Soporte de posiciones cortas (`qty` negativa o campo `side`) para perpetuos | L |
+| Media | Apalancamiento configurable por agente en perpetuos (hoy fijo 1x) | M |
+| Media | Aviso cuando el margen libre de Futuros no alcanza para la próxima compra de un agente | S |
+| Baja | Tope de tamaño por capital también al revalidar una señal aprobada (hoy solo en el análisis; si el precio se acercó al SL la cantidad crece y el margen de Futuros puede rechazarla) | S |
 | Baja | Cálculo de P&L no realizado de la posición abierta en `/api/positions` | S |
 
 ## Fuera de alcance y pendientes conocidos
@@ -164,7 +175,7 @@ Entregables:
 - **Paper:** fill siempre total al cierre de la última vela (también los cierres por SL/TP), sin comisión ni *slippage*.
 - **SL/TP:** en live el SL es una orden stop nativa (si el exchange soporta `createStopLossOrder`), pero el **TP** se vigila una vez por ciclo del scheduler (`SCHEDULER_INTERVAL_SECONDS`, 60 s); no hay OCO. En spot un TP nativo aparte no sirve: el exchange bloquea el saldo del SL y rechazaría la segunda venta por la misma cantidad; solo una OCO (API propia de cada exchange) dejaría los dos niveles en el exchange. En paper, y en live sin SL nativo, los dos van por ciclo. Las órdenes manuales solo tienen protección si se pidió SL/TP (compras a mercado).
 - **Reconciliación:** solo órdenes **live** `sent`/`partially_filled` de los **últimos 7 días** (hasta 50 por ciclo); una más vieja que siga abierta hay que revisarla en el exchange.
-- Posiciones cortas y apalancamiento / futuros. Por eso los perpetuos TradFi de [M2](M02-MARKET-DATA.md) (`XAU/USDT:USDT`) solo se operan en paper: `LiveExecutor` rechaza cualquier símbolo con `:` (ccxt leería `amount` como contratos).
+- Posiciones cortas y apalancamiento > 1x en perpetuos (desde el 2026-10-26 se operan en live solo largos a 1x; antes, solo paper).
 - Tests (el roadmap original no los listaba).
 
 ## Detalle técnico
@@ -174,6 +185,7 @@ Entregables:
 |-------|--------|------|
 | `orders` | WRITE | Órdenes por bot (market/limit/stop/stop_limit). `client_order_id VARCHAR(64) NULL` + `uq_orders_client_order_id` (NULL en las anteriores a m08). `meta`: `symbol`, `mode`, `reason` (`stop_loss_native` para el SL nativo), y si aplica `error`, `needs_reconciliation` |
 | `fills` | WRITE | Ejecuciones de órdenes (CASCADE delete); la reconciliación añade un fill por cada tramo nuevo ejecutado |
+| `funding_payments` | WRITE | (2026-10-26) Funding de perpetuos en live: `bot_id`, `account_id`, `symbol_id`, `amount` con signo (+ recibido, − pagado), `asset`, `exchange_funding_id` (UNIQUE con `account_id`), `ts`; índice `(bot_id, ts)` |
 | `positions` | WRITE | Posición por bot+symbol (UNIQUE `uq_positions_bot_symbol`). `stop_loss`, `take_profit` `DECIMAL(30,12) NULL` y `signal_id BIGINT NULL` (FK `fk_positions_signal` → `signals`): protección que vigila el scheduler. `sl_order_id BIGINT NULL` (FK `fk_positions_sl_order` → `orders`): orden stop loss nativa en el exchange (NULL = la vigila el scheduler) |
 | `signals` | WRITE | `ExecuteSignalService` cambia `decision_status` y los campos de decisión (columnas de [M7](M07-BOTS-SIGNALS.md)) |
 | `bots` | READ / WRITE | Validar propiedad y estado; el RiskGate lo pasa a `error` por drawdown |
@@ -186,6 +198,7 @@ Entregables:
 ### Migraciones
 - `218d50385270` — `m08 orders client_order_id and otp failed attempts`: `orders.client_order_id` + UNIQUE (y `users.otp_failed_attempts` de [M1](M01-AUTH.md)). Escrita a mano (`AFTER exchange_order_id`).
 - `f51e2dad9c13` — `m07 execution mode and signal decisions`: entre otras, `positions.stop_loss`, `take_profit`, `signal_id` + FK. Ver [M7](M07-BOTS-SIGNALS.md#migraciones).
+- `b7d4e2a91c63` — `m08 futuros live y funding` (2026-10-26): tabla `funding_payments` y, para [M11](M11-FUND.md), `agent_pools.last_funding_id` y `agent_settlements.funding_total`. Escrita a mano.
 - `3ac9fef574cb` — `m08 positions native stop order` (`down_revision = f51e2dad9c13`): `positions.sl_order_id BIGINT NULL` + FK `fk_positions_sl_order` → `orders`. Escrita a mano (`AFTER signal_id`); el downgrade quita la FK, su índice y la columna.
 
 ### Modelos ORM (`app/modules/orders/infrastructure/`)
@@ -194,6 +207,7 @@ Entregables:
 | `order_model.py` | `OrderModel` | `orders` |
 | `fill_model.py` | `FillModel` | `fills` |
 | `position_model.py` | `PositionModel` | `positions` |
+| `funding_payment_model.py` | `FundingPaymentModel` | `funding_payments` (repo `SqlAlchemyFundingRepository`: `latest_ts`, `add_new`, `total_after`, `total_by_bot`) |
 
 Registrados en: `app/extensions/db/models_registry.py`
 
@@ -324,7 +338,12 @@ Por agente: `risk_params.max_notional` (tope propio; se aplica el menor) y `risk
 - **Paper y SL/TP:** el cierre por stop loss o take profit sale a mercado y en paper se ejecuta al **cierre de la última vela**, no al nivel tocado; el P&L simulado puede ser mejor o peor que el del nivel.
 - **Protección y vela en formación:** `ProtectPositionsService` mira la vela más reciente (también la que no ha cerrado); su `high`/`low` ya refleja si se cruzó el nivel.
 - **Kill switch y protección:** con `TRADING_ENABLED=false` tampoco salen los cierres por SL/TP del scheduler. Un SL nativo ya colocado sí lo ejecuta el exchange (el kill switch no lo cancela) y la reconciliación, que no pasa por el RiskGate, lo registra.
-- **Señal SELL ejecutada = vender toda la posición** del agente, no abrir un corto.
+- **Señal SELL ejecutada = vender toda la posición** del agente, no abrir un corto (en perpetuos, además, con `reduceOnly`).
+- **Perpetuos en live — requisitos en Binance:** API key con "Enable Futures" (sin retiro ni transferencias), el acuerdo de los perpetuos TradFi firmado en la app de Binance, modo de posición **One-way** (con Hedge la compra se rechaza) y USDT en la billetera de Futuros. Sin margen suficiente, la compra queda `rejected` con "Margen insuficiente en la billetera de Futuros…".
+- **Preparación de perpetuos en memoria:** el margen aislado y 1x se fijan una vez por proceso y (cuenta, símbolo). Si alguien cambia el apalancamiento a mano en Binance, la app no lo vuelve a fijar hasta reiniciar. No cambiarlo a mano.
+- **`order.qty` cambia al enviar en live:** el `LiveExecutor` la redondea a la precisión del mercado y el servicio la guarda así; una compra demasiado chica (bajo el mínimo de cantidad o de valor) queda `rejected` con el motivo.
+- **Funding sin agente:** el funding se asigna al agente live de esa cuenta y símbolo; con dos agentes en el mismo perpetuo se mezclaría (por eso la regla de [M7](M07-BOTS-SIGNALS.md)).
+- **Testnet de Futuros:** con `LIVE_USE_SANDBOX=true` ccxt usa la testnet de Futuros de Binance para los perpetuos; las claves se crean en testnet.binancefuture.com (distintas de las de spot).
 - **Decimales como `float`:** los serializadores de órdenes, fills y posiciones (`_decimal_or_none` → `float(...)`) devuelven `qty`, `price`, `fee`, `avg_price`, `realized_pnl`, `stop_loss`… como números; el front los tipa como `number`. Puede perder precisión en cantidades con muchos decimales.
 - **PaperExecutor:** usa `candle_repo.list_candles(symbol_id, timeframe_id, limit=1)` — método se llama `list_candles`, NO `list_by_symbol_and_timeframe`.
 - **symbol string para ccxt:** se guarda en `order.meta["symbol"]` en `CreateOrderService` para que `LiveExecutor` lo use.
@@ -362,3 +381,4 @@ Por agente: `risk_params.max_notional` (tope propio; se aplica el menor) y `risk
 - **2026-10-23** — Se retira el grupo **Supervisión** del menú: fuera "Todas las órdenes" (`/#/admin/orders`, `pages/admin-orders.tsx`); `OrdersTable` pierde `botNames` y `renderOwner`. Las órdenes se ven en la pestaña Órdenes del agente. `GET /api/orders` sigue igual en el backend.
 - **2026-10-26** — `CreateOrderService` rechaza las compras live cuyo símbolo es de otro exchange que la cuenta (`ORDER_EXCHANGE_MISMATCH`); las ventas siguen para no atrapar posiciones. Respaldo de la regla de [M7](M07-BOTS-SIGNALS.md).
 - **2026-10-26** — Se quita `ORDER_EXCHANGE_MISMATCH`: la plataforma opera solo con Binance ([M2](M02-MARKET-DATA.md)).
+- **2026-10-26** — **Perpetuos de Binance en live** (solo largos, 1x, margen aislado, modo one-way): precisión y mínimos, margen libre de Futuros, `reduceOnly` en ventas y SL nativo, comisión desde los trades, funding en `funding_payments` (paso del scheduler junto a la billetera) y en Rendimiento (`funding_total`). Migración `b7d4e2a91c63`.

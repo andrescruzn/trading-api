@@ -33,6 +33,10 @@ Una palabra por concepto. Si la app dice "cuenta" en un lado y "wallet" en otro,
 | **socio** | partner, asociado | Ve todo en solo lectura y puede recibir parte de la comisión. |
 | **super admin** | administrador, admin, dueño | Los propietarios de la plataforma. |
 | **fondo común** | cuenta gestionada, cuenta administrada, managed account | M10 se retiró: el dinero de todos está en una billetera y cada persona tiene su saldo |
+| **ID de la transacción (TxID)** (*) | hash, ticket, número de ticket, referencia | Lo que identifica un envío entre billeteras (depósito o retiro). Primera mención con la sigla entre paréntesis; en tablas `TxID`. |
+| **dirección de retiro** (*) | medio de pago, cuenta bancaria, wallet | Red + dirección + memo a la que se le envían los retiros a una persona. Acciones: **Agregar dirección** / **Quitar dirección**. Sin bancos ni Nequi (decisión legal, 2026-10-26). |
+| **retiro por enviar** / **enviado** (*) | por pagar / pagado | Estados de un retiro. El super admin **registra el envío**; la persona recibe el monto menos la **comisión de red**. |
+| **comisión de red** (*) | fee, gas, comisión del exchange (para esto) | Lo que cobra Binance por enviar por una red; la paga quien retira. |
 | **comisión de desempeño** | performance fee, fee (en texto corrido) | En tablas: `Comisión`. |
 | **marca de agua (HWM)** | high water mark (solo) | Primera mención con la sigla entre paréntesis. |
 | **período de facturación** | período (solo, si hay ambigüedad) | Acciones: **Abrir período**, **Cerrar período**. |

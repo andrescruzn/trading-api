@@ -289,6 +289,8 @@ class CreateOrderService:
                     "symbol": symbol.symbol,
                     "mode": bot.mode,
                     "reason": reason or ("signal" if signal_id else "manual"),
+                    # Para validar mínimos y margen en live sin pedir otro precio
+                    "reference_price": str(reference_price),
                 },
                 ts=utc_now(),
             )

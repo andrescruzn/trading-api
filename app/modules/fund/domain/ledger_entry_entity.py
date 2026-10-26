@@ -30,7 +30,7 @@ LEDGER_BUCKETS = ("pending", "available")
 # (sale del saldo pendiente o disponible y se convierte en unidades). F5:
 # redemption (sale de un agente, entra al disponible), fee (la comisión que
 # paga quien sale), commission (la parte de un propietario) y withdrawal
-# (retiro pagado a banco / Nequi).
+# (retiro enviado a la dirección cripto de la persona).
 LEDGER_ENTRY_TYPES = (
     "deposit",
     "refund",

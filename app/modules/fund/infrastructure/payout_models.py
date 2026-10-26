@@ -216,12 +216,13 @@ class CommissionCreditModel(Base):
 
 
 class PayoutMethodModel(Base):
-    """Medio de pago de una persona (banco o Nequi). Datos cifrados."""
+    """A dónde se le envía el dinero a una persona: dirección cripto. Datos cifrados."""
 
     __tablename__ = "payout_methods"
     __table_args__ = (
         Index("idx_payout_methods_user_active", "user_id", "is_active"),
-        CheckConstraint("`kind` IN ('bank', 'nequi')", name="chk_payout_methods_kind"),
+        # bank / nequi solo en filas viejas (desactivadas); lo nuevo es crypto
+        CheckConstraint("`kind` IN ('bank', 'nequi', 'crypto')", name="chk_payout_methods_kind"),
         MYSQL_TABLE_OPTIONS,
     )
 
@@ -231,10 +232,10 @@ class PayoutMethodModel(Base):
         ForeignKey("users.id", name="fk_payout_methods_user"),
         nullable=False,
     )
-    kind = Column(String(16), nullable=False, comment="bank | nequi")
+    kind = Column(String(16), nullable=False, comment="crypto (bank | nequi: históricos)")
     label = Column(String(80), nullable=False, comment="Nombre que le pone la persona")
     masked = Column(String(120), nullable=False, comment="Resumen sin datos completos")
-    enc_details = Column(Text, nullable=False, comment="Datos bancarios cifrados (Fernet)")
+    enc_details = Column(Text, nullable=False, comment="Red, dirección y memo cifrados (Fernet)")
     usable_from = Column(
         TIMESTAMP(fsp=6), nullable=False, comment="Antes de esta fecha no se puede usar (seguridad)"
     )
@@ -243,10 +244,11 @@ class PayoutMethodModel(Base):
 
 
 class WithdrawalRequestModel(Base):
-    """Retiro a banco / Nequi desde el saldo disponible."""
+    """Retiro a una dirección cripto desde el saldo disponible."""
 
     __tablename__ = "withdrawal_requests"
     __table_args__ = (
+        UniqueConstraint("txid", name="uq_withdrawal_requests_txid"),
         Index("idx_withdrawal_requests_status_created", "status", "created_at"),
         Index("idx_withdrawal_requests_user_created", "user_id", "created_at"),
         CheckConstraint(
@@ -273,9 +275,13 @@ class WithdrawalRequestModel(Base):
         String(16), nullable=False, server_default=text("'requested'"),
         comment="requested | paid | rejected | canceled",
     )
-    paid_cop_amount = Column(DECIMAL(30, 12), nullable=True, comment="Pesos que se pagaron")
-    cop_rate = Column(DECIMAL(30, 12), nullable=True, comment="COP por USDT usados")
-    payment_reference = Column(String(120), nullable=True, comment="Referencia de la transferencia")
+    txid = Column(String(128), nullable=True, comment="Hash (o id interno de Binance) del envío")
+    network = Column(String(32), nullable=True, comment="Red por la que se envió")
+    sent_amount = Column(DECIMAL(30, 12), nullable=True, comment="Lo que recibió el destino")
+    network_fee = Column(
+        DECIMAL(30, 12), nullable=True, comment="Comisión de red (la paga la persona)"
+    )
+    exchange_withdrawal_id = Column(String(64), nullable=True, comment="Id del retiro en Binance")
     resolution_note = Column(String(500), nullable=True)
     resolved_by_user_id = Column(
         BigInteger,

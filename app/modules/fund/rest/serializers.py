@@ -35,9 +35,12 @@ from app.modules.fund.domain.withdrawal_entity import (
     PayoutMethod,
     WithdrawalReceipt,
     WithdrawalRequest,
+    explorer_url,
 )
 from app.modules.fund.services.fees import OwnerEarning
 from app.modules.fund.services.overview import FundOverview, ParticipantSummary
+from app.modules.fund.services.payouts.withdraw_networks import WithdrawNetworks
+from app.modules.fund.services.payouts.withdrawal_service import WithdrawalCheck
 from app.modules.fund.services.pools import (
     AgentInfo,
     ParticipantPosition,
@@ -420,14 +423,51 @@ def withdrawal_to_dict(w: WithdrawalRequest) -> dict[str, Any]:
         "amount":              _money(w.amount),
         "payout_method_id":    w.payout_method_id,
         "status":              w.status,
-        "paid_cop_amount":     _money(w.paid_cop_amount),
-        "cop_rate":            _money(w.cop_rate),
-        "payment_reference":   w.payment_reference,
+        "txid":                w.txid,
+        "network":             w.network,
+        "sent_amount":         _money(w.sent_amount),
+        "network_fee":         _money(w.network_fee),
+        "explorer_url":        explorer_url(w.network, w.txid),
         "resolution_note":     w.resolution_note,
         "resolved_by_user_id": w.resolved_by_user_id,
         "resolved_at":         _iso(w.resolved_at),
         "created_at":          _iso(w.created_at),
         "receipt_name":        w.receipt_name,
+    }
+
+
+def withdraw_networks_to_dict(n: WithdrawNetworks) -> dict[str, Any]:
+    return {
+        "asset":   n.asset,
+        "is_live": n.is_live,
+        "networks": [
+            {
+                "network":    item.network,
+                "name":       item.name,
+                "fee":        _money(item.fee),
+                "min_amount": _money(item.min_amount),
+                "enabled":    item.enabled,
+            }
+            for item in n.networks
+        ],
+    }
+
+
+def withdrawal_check_to_dict(c: WithdrawalCheck) -> dict[str, Any]:
+    found = c.found
+    return {
+        "txid":            c.txid,
+        "is_live":         c.is_live,
+        "found":           found is not None,
+        "status":          found.status if found else None,
+        "sent_amount":     _money(found.amount) if found else None,
+        "network_fee":     _money(found.fee) if found else None,
+        "network":         found.network if found else None,
+        "address":         found.address if found else None,
+        "address_matches": c.address_matches,
+        "amount_matches":  c.amount_matches,
+        "exchange_error":  c.exchange_error,
+        "explorer_url":    explorer_url(c.network, c.txid),
     }
 
 

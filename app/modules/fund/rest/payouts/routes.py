@@ -3,21 +3,23 @@
 # ======================================================================
 # app/modules/fund/rest/payouts/routes.py
 #
-# ENDPOINTS (retiros del fondo común, F5):
-# - GET  /fund/me/payout-methods                    → mis medios de pago (enmascarados)
-# - POST /fund/me/payout-methods                    → registrar uno (banco / Nequi)
+# ENDPOINTS (retiros del fondo común, F5; entre billeteras desde 2026-10-26):
+# - GET  /fund/withdrawals/networks                 → redes de retiro (comisión y mínimo)
+# - GET  /fund/me/payout-methods                    → mis direcciones de retiro (enmascaradas)
+# - POST /fund/me/payout-methods                    → registrar una (red, dirección, memo)
 # - POST /fund/me/payout-methods/{id}/deactivate    → dejar de usarlo
 # - GET  /fund/me/withdrawable                      → lo que puedo retirar hoy
 # - POST /fund/withdrawals                          → pedir un retiro
 # - GET  /fund/withdrawals                          → retiros (los míos; staff, todos)
 # - POST /fund/withdrawals/{id}/cancel              → anular el mío sin pagar
-# - GET  /fund/withdrawals/{id}/payout-details      → datos completos para pagar (super admin)
-# - POST /fund/withdrawals/{id}/pay                 → marcarlo pagado (super admin)
+# - GET  /fund/withdrawals/{id}/payout-details      → dirección completa para enviar (super admin)
+# - POST /fund/withdrawals/{id}/lookup              → buscar el txid en Binance (super admin)
+# - POST /fund/withdrawals/{id}/pay                 → registrar el envío (super admin)
 # - POST /fund/withdrawals/{id}/reject              → rechazarlo con motivo (super admin)
 #
 # SEGURIDAD:
-# - Los datos bancarios completos solo salen para un super admin y solo de
-#   un retiro concreto; en todo lo demás, el resumen enmascarado.
+# - La dirección completa solo sale para un super admin y solo de un
+#   retiro concreto; en todo lo demás, el resumen enmascarado.
 # ======================================================================
 
 from __future__ import annotations
@@ -42,12 +44,15 @@ from app.modules.fund.rest.schemas import (
     PayoutMethodCreateRequest,
     ReceiptFileRequest,
     WithdrawalCreateRequest,
+    WithdrawalLookupRequest,
     WithdrawalPayRequest,
     WithdrawalRejectRequest,
 )
 from app.modules.fund.rest.serializers import (
     payout_method_to_dict,
     receipt_to_dict,
+    withdraw_networks_to_dict,
+    withdrawal_check_to_dict,
     withdrawal_to_dict,
 )
 
@@ -59,8 +64,20 @@ def get_factory(db: Session = Depends(get_db)) -> FundServiceFactory:
 
 
 # ======================================================================
-# Medios de pago
+# Medios de pago (direcciones cripto)
 # ======================================================================
+
+@router.get("/withdrawals/networks", status_code=200)
+def list_withdraw_networks(
+    _identity: dict = Depends(token_required_actual),
+    factory: FundServiceFactory = Depends(get_factory),
+):
+    """Redes por las que el fondo envía los retiros, con la comisión de Binance."""
+    result = factory.payout_methods().networks()
+    if not result.success:
+        return build_error_response(result, FUND_ERROR_MESSAGES)
+    return build_success_response(data=withdraw_networks_to_dict(result.data))
+
 
 @router.get("/me/payout-methods", status_code=200)
 def list_my_payout_methods(
@@ -78,7 +95,7 @@ def create_payout_method(
     identity: dict = Depends(token_required_actual),
     factory: FundServiceFactory = Depends(get_factory),
 ):
-    """Registra un medio de pago; se puede usar tras la espera de seguridad."""
+    """Registra una dirección de retiro; se puede usar tras la espera de seguridad."""
     details = payload.model_dump(exclude={"kind", "label"}, exclude_none=True)
     result = factory.payout_methods().create(
         user_id=int(identity["user_id"]), kind=payload.kind, label=payload.label, details=details
@@ -87,7 +104,7 @@ def create_payout_method(
         return build_error_response(result, FUND_ERROR_MESSAGES)
     return build_created_response(
         data=payout_method_to_dict(result.data),
-        msg="Medio de pago guardado. Por seguridad podrás usarlo dentro de 48 horas.",
+        msg="Dirección guardada. Por seguridad podrás usarla dentro de 48 horas.",
     )
 
 
@@ -97,11 +114,11 @@ def deactivate_payout_method(
     identity: dict = Depends(token_required_actual),
     factory: FundServiceFactory = Depends(get_factory),
 ):
-    """Desactiva uno de mis medios de pago."""
+    """Desactiva una de mis direcciones de retiro."""
     result = factory.payout_methods().deactivate(int(identity["user_id"]), method_id)
     if not result.success:
         return build_error_response(result, FUND_ERROR_MESSAGES)
-    return build_success_response(data=None, msg="Medio de pago desactivado.")
+    return build_success_response(data=None, msg="Dirección desactivada.")
 
 
 # ======================================================================
@@ -124,7 +141,7 @@ def create_withdrawal(
     identity: dict = Depends(token_required_actual),
     factory: FundServiceFactory = Depends(get_factory),
 ):
-    """Pide un retiro de mi saldo disponible a uno de mis medios de pago."""
+    """Pide un retiro de mi saldo disponible a una de mis direcciones."""
     result = factory.withdrawals().create(
         user_id=int(identity["user_id"]),
         amount=payload.amount,
@@ -134,7 +151,7 @@ def create_withdrawal(
         return build_error_response(result, FUND_ERROR_MESSAGES)
     return build_created_response(
         data=withdrawal_to_dict(result.data),
-        msg="Retiro pedido. Un super admin te paga y lo verás como pagado aquí.",
+        msg="Retiro pedido. Te avisaremos cuando enviemos el dinero a tu dirección.",
     )
 
 
@@ -182,7 +199,7 @@ def get_payout_details(
     _identity: dict = Depends(super_admin_required),
     factory: FundServiceFactory = Depends(get_factory),
 ):
-    """Datos completos del medio de pago de un retiro, para pagarlo (super admin)."""
+    """Dirección completa (red, dirección y memo) de un retiro, para enviarlo (super admin)."""
     withdrawal = factory.withdrawals().get(request_id)
     if not withdrawal.success:
         return build_error_response(withdrawal, FUND_ERROR_MESSAGES)
@@ -192,6 +209,20 @@ def get_payout_details(
     return build_success_response(data=payout_method_to_dict(result.data, with_details=True))
 
 
+@router.post("/withdrawals/{request_id}/lookup", status_code=200)
+def lookup_withdrawal(
+    request_id: int,
+    payload: WithdrawalLookupRequest,
+    _identity: dict = Depends(super_admin_required),
+    factory: FundServiceFactory = Depends(get_factory),
+):
+    """Busca el txid en los retiros de Binance y lo compara con el pedido (no cambia nada)."""
+    result = factory.withdrawals().lookup(request_id, payload.txid)
+    if not result.success:
+        return build_error_response(result, FUND_ERROR_MESSAGES)
+    return build_success_response(data=withdrawal_check_to_dict(result.data))
+
+
 @router.post("/withdrawals/{request_id}/pay", status_code=200)
 def pay_withdrawal(
     request_id: int,
@@ -199,20 +230,23 @@ def pay_withdrawal(
     identity: dict = Depends(super_admin_required),
     factory: FundServiceFactory = Depends(get_factory),
 ):
-    """Marca un retiro como pagado (se pagó por fuera): COP, tasa y referencia."""
+    """Registra el envío del retiro (txid); con billetera live se comprueba en Binance."""
     result = factory.withdrawals().mark_paid(
         request_id,
         requester_user_id=int(identity["user_id"]),
-        paid_cop_amount=payload.paid_cop_amount,
-        cop_rate=payload.cop_rate,
-        payment_reference=payload.payment_reference,
+        txid=payload.txid,
+        sent_amount=payload.sent_amount,
+        network_fee=payload.network_fee,
         note=payload.note,
         receipt_filename=payload.receipt.filename if payload.receipt else None,
         receipt_base64=payload.receipt.data_base64 if payload.receipt else None,
     )
     if not result.success:
         return build_error_response(result, FUND_ERROR_MESSAGES)
-    return build_success_response(data=withdrawal_to_dict(result.data), msg="Retiro marcado como pagado.")
+    return build_success_response(
+        data=withdrawal_to_dict(result.data),
+        msg="Envío registrado. Le avisamos a la persona con los detalles.",
+    )
 
 
 @router.put("/withdrawals/{request_id}/receipt", status_code=200)

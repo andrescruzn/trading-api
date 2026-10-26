@@ -50,6 +50,33 @@ class ExchangeDeposit:
 
 
 @dataclass(frozen=True)
+class ExchangeWithdrawal:
+    """Un retiro enviado desde la billetera, tal como lo reporta el exchange."""
+
+    txid: str
+    amount: Decimal          # lo que recibe el destino
+    fee: Decimal             # comisión de red que cobró el exchange
+    asset: str
+    network: str | None
+    address: str | None
+    tag: str | None
+    status: str              # pending | ok | failed | canceled
+    exchange_id: str | None
+    ts: datetime | None
+
+
+@dataclass(frozen=True)
+class WithdrawNetwork:
+    """Red por la que el exchange envía un activo, con su comisión y mínimo."""
+
+    code: str
+    name: str
+    withdraw_enabled: bool
+    fee: Decimal | None
+    min_amount: Decimal | None
+
+
+@dataclass(frozen=True)
 class DepositNetwork:
     """Red por la que el exchange acepta depósitos de un activo (p. ej. TRC20)."""
 
@@ -96,4 +123,14 @@ class WalletGateway(Protocol):
         self, account: Account, asset: str, network: str
     ) -> DepositAddress:
         """Dirección de depósito de la cuenta en esa red."""
+        ...
+
+    def fetch_withdraw_networks(self, account: Account, asset: str) -> list[WithdrawNetwork]:
+        """Redes por las que se puede enviar `asset`, con comisión y mínimo."""
+        ...
+
+    def fetch_withdrawals(
+        self, account: Account, asset: str, since: datetime | None
+    ) -> list[ExchangeWithdrawal]:
+        """Retiros enviados de `asset` desde `since` (solo lectura del historial)."""
         ...

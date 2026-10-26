@@ -4,15 +4,22 @@
 # app/modules/fund/services/payouts/payout_methods_service.py
 #
 # CASOS DE USO:
+# - networks()                 → redes por las que se envían los retiros
+#                                (con comisión y mínimo de Binance en live).
 # - list_mine(user_id)         → mis medios de pago (enmascarados).
-# - create(...)                → registrar uno (banco o Nequi).
+# - create(...)                → registrar una dirección cripto (red,
+#                                dirección y memo si la red lo usa).
 # - deactivate(user_id, id)    → dejar de usarlo.
 # - details_for_payment(id)    → datos completos (descifrados) para que un
 #                                super admin pague un retiro.
 #
 # REGLAS:
-# - Los datos bancarios se guardan cifrados (Fernet); en pantalla solo un
-#   resumen enmascarado.
+# - Sin bancos (decisión legal, 2026-10-26): el dinero sale solo a
+#   direcciones cripto, por una de las redes que el fondo acepta.
+# - La dirección se valida por su forma según la red (EVM, Tron, Solana…):
+#   un error de tipeo mandaría el dinero a una dirección ajena.
+# - Los datos se guardan cifrados (Fernet); en pantalla solo un resumen
+#   enmascarado.
 # - Un medio nuevo se puede usar a partir de `PAYOUT_METHOD_COOLDOWN_HOURS`
 #   (48 h por defecto): si alguien toma la cuenta, no puede desviar un
 #   retiro al instante.
@@ -29,8 +36,15 @@ from app.modules.fund.domain.payout_repositories import PayoutMethodRepository
 from app.modules.fund.domain.withdrawal_entity import (
     PAYOUT_FIELDS,
     PAYOUT_KINDS,
+    PAYOUT_OPTIONAL_FIELDS,
     PayoutMethod,
+    is_valid_address,
     mask_payout,
+    normalize_network,
+)
+from app.modules.fund.services.payouts.withdraw_networks import (
+    WithdrawNetworks,
+    WithdrawNetworksReader,
 )
 
 MAX_ACTIVE_METHODS = 5
@@ -45,10 +59,18 @@ class PayoutMethodsService:
         repo: PayoutMethodRepository,
         cipher: CredentialsCipher,
         cooldown_hours: int,
+        networks: WithdrawNetworksReader,
     ):
         self._repo = repo
         self._cipher = cipher
         self._cooldown = timedelta(hours=max(0, int(cooldown_hours)))
+        self._networks = networks
+
+    def networks(self) -> ServiceResult[WithdrawNetworks]:
+        networks, error = self._networks.read()
+        if networks is None:
+            return ServiceResult.fail(code=error, http_status=409)
+        return ServiceResult.ok(networks)
 
     def list_mine(self, user_id: int) -> ServiceResult[list[PayoutMethod]]:
         return ServiceResult.ok(self._repo.list_by_user(int(user_id)))
@@ -59,8 +81,19 @@ class PayoutMethodsService:
         if kind not in PAYOUT_KINDS:
             return ServiceResult.fail(code="FUND_PAYOUT_INVALID_KIND", http_status=422)
         clean = {key: (details.get(key) or "").strip() for key in PAYOUT_FIELDS[kind]}
-        if any(not value or len(value) > MAX_FIELD_LENGTH for value in clean.values()):
+        clean["network"] = normalize_network(clean["network"])
+        if any(
+            (not value and key not in PAYOUT_OPTIONAL_FIELDS) or len(value) > MAX_FIELD_LENGTH
+            for key, value in clean.items()
+        ):
             return ServiceResult.fail(code="FUND_PAYOUT_INVALID_DETAILS", http_status=422)
+        networks, error = self._networks.read()
+        if networks is None:
+            return ServiceResult.fail(code=error, http_status=409)
+        if networks.find(clean["network"]) is None:
+            return ServiceResult.fail(code="FUND_PAYOUT_INVALID_NETWORK", http_status=422)
+        if not is_valid_address(clean["network"], clean["address"]):
+            return ServiceResult.fail(code="FUND_PAYOUT_INVALID_ADDRESS", http_status=422)
         clean_label = (label or "").strip()[:80]
         if not clean_label:
             return ServiceResult.fail(code="FUND_PAYOUT_INVALID_DETAILS", http_status=422)

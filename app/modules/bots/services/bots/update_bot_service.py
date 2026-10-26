@@ -34,6 +34,7 @@ class UpdateBotService:
     - No se puede cambiar la cuenta, símbolo, estrategia ni timeframe
       de un bot activo (podría dejar posiciones huérfanas).
     - Un agente sobre un perpetuo no puede pasar a live.
+    - Para pasar a live, el símbolo debe ser del exchange de la cuenta.
     """
 
     def __init__(
@@ -90,6 +91,15 @@ class UpdateBotService:
                 if symbol is not None and is_perpetual(symbol.symbol):
                     return ServiceResult.fail(
                         code="BOT_PERPETUAL_LIVE_NOT_SUPPORTED", http_status=422
+                    )
+                if symbol is not None and symbol.exchange_id != account.exchange_id:
+                    return ServiceResult.fail(
+                        code="BOT_EXCHANGE_ACCOUNT_MISMATCH",
+                        http_status=422,
+                        meta={
+                            "account_exchange_id": account.exchange_id,
+                            "symbol_exchange_id": symbol.exchange_id,
+                        },
                     )
 
         if risk_params is not None:

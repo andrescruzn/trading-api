@@ -138,6 +138,12 @@ export function SettleAgentDialog({ pool, onClose }: SettleAgentDialogProps) {
 									label={`Resultado de ${preview.fills_count} ejecuciones`}
 									value={formatSignedPrice(preview.trading_result)}
 								/>
+								{Number(preview.funding) !== 0 && (
+									<Row
+										label="De eso, funding de futuros"
+										value={formatSignedPrice(preview.funding)}
+									/>
+								)}
 								<Row
 									label="Saldo del agente ahora"
 									value={`${formatNumber(preview.equity_before, 2)} USDT`}

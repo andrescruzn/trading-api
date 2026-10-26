@@ -94,7 +94,7 @@ const columns: DataTableColumn<TrendExplorerRow>[] = [
 			<div className="flex flex-col gap-0.5">
 				<span className="font-mono font-medium">{row.symbol}</span>
 				<span className="text-xs text-muted-foreground">
-					{row.is_perpetual ? 'Perpetuo (solo paper)' : 'Spot'}
+					{row.is_perpetual ? 'Perpetuo' : 'Spot'}
 				</span>
 			</div>
 		),

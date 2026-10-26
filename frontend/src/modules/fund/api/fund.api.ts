@@ -293,6 +293,8 @@ type SettlementPreview = {
 	sells: string;
 	buys: string;
 	fees: string;
+	/** Funding de perpetuos (+/−), ya incluido en `trading_result`. */
+	funding: string;
 	unvalued_fees: Record<string, string>;
 	previous_equity: string;
 	trading_result: string;

@@ -116,11 +116,16 @@ export function AgentPerformanceTab({ botId }: { botId: number }) {
 							'—'
 						)
 					}
-					hint={
+					hint={[
 						hasOpen && data?.unrealized_pnl !== null
 							? `Posición abierta: ${formatSignedPrice(data?.unrealized_pnl ?? null)} sin realizar`
-							: 'De las operaciones cerradas'
-					}
+							: 'De las operaciones cerradas',
+						data?.funding_total
+							? `Funding: ${formatSignedPrice(data.funding_total)}`
+							: null,
+					]
+						.filter(Boolean)
+						.join(' · ')}
 				/>
 				<StatCard
 					label="Operaciones ganadoras"

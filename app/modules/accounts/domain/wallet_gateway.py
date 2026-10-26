@@ -7,9 +7,8 @@
 # Implementado en infrastructure/ccxt_wallet_gateway.py (ccxt).
 #
 # DECISIÓN:
-# - Es una Strategy por exchange: la billetera puede ser Binance, Bybit u
-#   otro exchange de ccxt; uno sin ccxt (p. ej. eToro) necesita su propia
-#   implementación de este contrato.
+# - Contrato aparte del exchange: hoy la billetera es siempre Binance
+#   (ccxt); otro proveedor necesitaría su propia implementación.
 # - Los errores salen como `WalletGatewayError(code)`: el servicio los
 #   traduce a ServiceResult y la ruta a texto de UI.
 # ======================================================================

@@ -24,8 +24,8 @@ WALLET_ERROR_MESSAGES: dict[str, str] = {
         "No pudimos leer la API key guardada. Vuelve a cargarla en Mis cuentas."
     ),
     "WALLET_EXCHANGE_NOT_SUPPORTED": (
-        "Ese exchange aún no se puede conectar como billetera. Hoy se puede con Binance, Bybit, "
-        "Kraken, Coinbase, Bitget y OKX."
+        "Ese exchange no se puede conectar como billetera. La plataforma solo opera con Binance: "
+        "elige una cuenta de Binance."
     ),
     "WALLET_EXCHANGE_AUTH_FAILED": (
         "El exchange rechazó la API key. Revisa que sea correcta y que tenga permiso de lectura."

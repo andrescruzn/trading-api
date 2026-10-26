@@ -46,17 +46,12 @@ class TestIsPerpetual:
 
 class TestCcxtExchangeMap:
 
-    @pytest.mark.parametrize("name, expected", [
-        ("Binance", "binance"),
-        ("BYBIT", "bybit"),
-        ("okx", "okx"),
-        ("Coinbase", "coinbase"),
-    ])
-    def test_db_name_maps_to_ccxt_id_ignoring_case(self, name, expected):
-        assert ccxt_id_for(name) == expected
+    @pytest.mark.parametrize("name", ["Binance", "BINANCE", "binance"])
+    def test_binance_maps_to_ccxt_id_ignoring_case(self, name):
+        assert ccxt_id_for(name) == "binance"
         assert supports_auto_fetch(name) is True
 
-    @pytest.mark.parametrize("name", ["TradingView", "Desconocido", "", None])
+    @pytest.mark.parametrize("name", ["Bybit", "OKX", "TradingView", "Desconocido", "", None])
     def test_unsupported_exchanges_have_no_auto_fetch(self, name):
         assert ccxt_id_for(name) is None
         assert supports_auto_fetch(name) is False

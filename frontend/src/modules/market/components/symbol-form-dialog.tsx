@@ -8,7 +8,6 @@ import {
 	useCreateSymbolMutation,
 	useUpdateSymbolMutation,
 } from '@/modules/market/hooks/use-market-mutations';
-import { useExchangesQuery } from '@/modules/market/hooks/use-market-queries';
 import { ASSET_CLASS_OPTIONS } from '@/modules/market/lib/market-labels';
 import { OptionSelect } from '@/modules/shared/components/option-select';
 import { getErrorMessage } from '@/modules/shared/lib/get-error-message';
@@ -43,7 +42,6 @@ const optionalDecimal = z
 	);
 
 const symbolSchema = z.object({
-	exchange_id: requiredSelectField('Elige el exchange'),
 	symbol: z.string().trim().min(1, 'Escribe el símbolo').max(64),
 	asset_class: requiredSelectField('Elige la clase de activo'),
 	base_asset: z.string().trim().max(32),
@@ -59,7 +57,7 @@ type SymbolFormOutput = z.output<typeof symbolSchema>;
 type SymbolFormDialogProps = {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
-	/** `null` = crear; un símbolo = editar (exchange y símbolo no se cambian). */
+	/** `null` = crear; un símbolo = editar (el símbolo no se cambia). */
 	symbol: MarketSymbol | null;
 };
 
@@ -71,7 +69,6 @@ export function SymbolFormDialog({
 	symbol,
 }: SymbolFormDialogProps) {
 	const isEdit = !!symbol;
-	const exchangesQuery = useExchangesQuery({ is_active: true });
 	const createMutation = useCreateSymbolMutation();
 	const updateMutation = useUpdateSymbolMutation();
 	const isPending = createMutation.isPending || updateMutation.isPending;
@@ -79,7 +76,6 @@ export function SymbolFormDialog({
 	const form = useForm<SymbolFormInput, unknown, SymbolFormOutput>({
 		resolver: zodResolver(symbolSchema),
 		defaultValues: {
-			exchange_id: null,
 			symbol: '',
 			asset_class: null,
 			base_asset: '',
@@ -93,7 +89,6 @@ export function SymbolFormDialog({
 	useEffect(() => {
 		if (!open) return;
 		form.reset({
-			exchange_id: symbol ? String(symbol.exchange_id) : null,
 			symbol: symbol?.symbol ?? '',
 			asset_class: symbol?.asset_class ?? null,
 			base_asset: symbol?.base_asset ?? '',
@@ -150,18 +145,12 @@ export function SymbolFormDialog({
 			createMutation.mutate(
 				{
 					...shared,
-					exchange_id: Number(values.exchange_id),
 					symbol: values.symbol.toUpperCase(),
 				},
 				callbacks,
 			);
 		}
 	}
-
-	const exchangeOptions = (exchangesQuery.data ?? []).map((exchange) => ({
-		value: String(exchange.id),
-		label: exchange.name,
-	}));
 
 	const textFields: {
 		name: 'base_asset' | 'quote_asset' | 'tick_size' | 'lot_size';
@@ -183,8 +172,8 @@ export function SymbolFormDialog({
 					</DialogTitle>
 					<DialogDescription>
 						{symbol
-							? `${symbol.symbol} · ${symbol.exchange_name ?? ''}`
-							: 'Par o activo que el sistema puede descargar y operar.'}
+							? symbol.symbol
+							: 'Par o activo de Binance que el sistema puede descargar y operar.'}
 					</DialogDescription>
 				</DialogHeader>
 				<form
@@ -196,56 +185,34 @@ export function SymbolFormDialog({
 					<DialogBody>
 						<FieldGroup>
 							{!isEdit && (
-								<>
-									<Controller
-										name="exchange_id"
-										control={form.control}
-										render={({ field, fieldState }) => (
-											<Field data-invalid={fieldState.invalid}>
-												<FieldLabel htmlFor="symbol-exchange" required>
-													Exchange
-												</FieldLabel>
-												<OptionSelect
-													id="symbol-exchange"
-													value={field.value}
-													onChange={field.onChange}
-													options={exchangeOptions}
-													aria-invalid={fieldState.invalid}
-												/>
-												{fieldState.invalid && (
-													<FieldError errors={[fieldState.error]} />
-												)}
-											</Field>
-										)}
-									/>
-									<Controller
-										name="symbol"
-										control={form.control}
-										render={({ field, fieldState }) => (
-											<Field data-invalid={fieldState.invalid}>
-												<FieldLabel htmlFor="symbol-symbol" required>
-													Símbolo
-												</FieldLabel>
-												<Input
-													{...field}
-													id="symbol-symbol"
-													placeholder="BTC/USDT"
-													aria-invalid={fieldState.invalid}
-													onBlur={(event) => {
-														field.onBlur();
-														handleSymbolBlur(event.target.value);
-													}}
-												/>
-												<FieldDescription>
-													Tal como lo nombra el exchange (formato ccxt).
-												</FieldDescription>
-												{fieldState.invalid && (
-													<FieldError errors={[fieldState.error]} />
-												)}
-											</Field>
-										)}
-									/>
-								</>
+								<Controller
+									name="symbol"
+									control={form.control}
+									render={({ field, fieldState }) => (
+										<Field data-invalid={fieldState.invalid}>
+											<FieldLabel htmlFor="symbol-symbol" required>
+												Símbolo
+											</FieldLabel>
+											<Input
+												{...field}
+												id="symbol-symbol"
+												placeholder="BTC/USDT"
+												aria-invalid={fieldState.invalid}
+												onBlur={(event) => {
+													field.onBlur();
+													handleSymbolBlur(event.target.value);
+												}}
+											/>
+											<FieldDescription>
+												Tal como lo nombra Binance en ccxt: BTC/USDT para spot,
+												XAU/USDT:USDT para un perpetuo.
+											</FieldDescription>
+											{fieldState.invalid && (
+												<FieldError errors={[fieldState.error]} />
+											)}
+										</Field>
+									)}
+								/>
 							)}
 							<Controller
 								name="asset_class"

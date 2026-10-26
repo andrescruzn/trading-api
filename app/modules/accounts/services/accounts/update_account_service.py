@@ -8,7 +8,6 @@ from app.common.contracts import ServiceResult
 from app.common.security.credentials_cipher import CredentialsCipher
 from app.modules.accounts.domain.account_entity import Account
 from app.modules.accounts.domain.account_repository import AccountRepository
-from app.modules.market.domain.exchange_repository import ExchangeRepository
 
 
 class UpdateAccountService:
@@ -24,11 +23,9 @@ class UpdateAccountService:
     def __init__(
         self,
         account_repo: AccountRepository,
-        exchange_repo: ExchangeRepository,
         cipher: CredentialsCipher,
     ):
         self._account_repo = account_repo
-        self._exchange_repo = exchange_repo
         self._cipher = cipher
 
     def update(
@@ -38,7 +35,6 @@ class UpdateAccountService:
         is_admin: bool = False,
         name: Optional[str] = None,
         status: Optional[str] = None,
-        exchange_id: Optional[int] = None,
         base_currency: Optional[str] = None,
         api_key: Optional[str] = None,
         api_secret: Optional[str] = None,
@@ -55,13 +51,6 @@ class UpdateAccountService:
         # Validar status si se provee
         if status is not None and status not in Account.VALID_STATUSES:
             return ServiceResult.fail(code="ACCOUNT_INVALID_STATUS", http_status=422)
-
-        # Validar exchange si se cambia
-        if exchange_id is not None:
-            exchange = self._exchange_repo.get_by_id(exchange_id)
-            if exchange is None:
-                return ServiceResult.fail(code="EXCHANGE_NOT_FOUND", http_status=404)
-            account.exchange_id = exchange_id
 
         # Aplicar cambios
         if name is not None:

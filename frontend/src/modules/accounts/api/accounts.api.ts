@@ -36,24 +36,23 @@ type AccountBalance = {
 
 /**
  * Las credenciales solo se guardan si llegan API key y secret juntos; el
- * backend las cifra y nunca las devuelve.
+ * backend las cifra y nunca las devuelve. El exchange no se envía: toda
+ * cuenta queda en Binance.
  */
 type AccountInput = {
 	name: string;
 	mode: AccountMode;
 	base_currency: string;
-	exchange_id: number | null;
 	api_key?: string;
 	api_secret?: string;
 	credentials_label?: string;
 };
 
-/** El modo no se puede cambiar tras crear la cuenta; `exchange_id: null` se ignora. */
+/** El modo no se puede cambiar tras crear la cuenta. */
 type AccountUpdate = {
 	name?: string;
 	status?: AccountStatus;
 	base_currency?: string;
-	exchange_id?: number;
 	api_key?: string;
 	api_secret?: string;
 	credentials_label?: string;

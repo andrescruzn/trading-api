@@ -4,7 +4,6 @@ import { api } from '@/modules/shared/lib/api-client';
 // Tipos (reflejan el JSON del backend tal cual, en snake_case)
 // ======================================================================
 
-type ExchangeType = 'crypto_exchange' | 'broker' | 'data_vendor';
 type AssetClass =
 	| 'crypto'
 	| 'metal'
@@ -13,14 +12,6 @@ type AssetClass =
 	| 'etf'
 	| 'stock'
 	| 'forex';
-
-type Exchange = {
-	id: number;
-	name: string;
-	type: ExchangeType;
-	is_active: boolean;
-	created_at: string | null;
-};
 
 type MarketSymbol = {
 	id: number;
@@ -95,11 +86,8 @@ type RefreshExplorerResult = {
 	failed: { symbol: string; code: string }[];
 };
 
-type ExchangeInput = { name: string; type: ExchangeType };
-type ExchangeUpdate = Partial<ExchangeInput> & { is_active?: boolean };
-
+/** El exchange no se envía: el backend lo crea siempre en Binance. */
 type SymbolInput = {
-	exchange_id: number;
 	symbol: string;
 	asset_class: AssetClass;
 	base_asset?: string | null;
@@ -107,14 +95,13 @@ type SymbolInput = {
 	tick_size?: string | null;
 	lot_size?: string | null;
 };
-type SymbolUpdate = Partial<Omit<SymbolInput, 'exchange_id' | 'symbol'>> & {
+type SymbolUpdate = Partial<Omit<SymbolInput, 'symbol'>> & {
 	is_active?: boolean;
 };
 
 type TimeframeInput = { code: string; seconds: number };
 
 type SymbolFilters = {
-	exchange_id?: number;
 	asset_class?: AssetClass;
 	is_active?: boolean;
 };
@@ -124,22 +111,6 @@ type CandleFilters = {
 	timeframe_id: number;
 	limit?: number;
 };
-
-// ======================================================================
-// Exchanges
-// ======================================================================
-
-function listExchanges(filters: { is_active?: boolean } = {}) {
-	return api.get<Exchange[]>('/exchanges', filters);
-}
-
-function createExchange(input: ExchangeInput) {
-	return api.post<Exchange>('/exchanges', input);
-}
-
-function updateExchange(id: number, input: ExchangeUpdate) {
-	return api.put<Exchange>(`/exchanges/${id}`, input);
-}
 
 // ======================================================================
 // Símbolos
@@ -195,10 +166,6 @@ export type {
 	AssetClass,
 	Candle,
 	CandleFilters,
-	Exchange,
-	ExchangeInput,
-	ExchangeType,
-	ExchangeUpdate,
 	MarketSymbol,
 	RefreshExplorerResult,
 	SymbolFilters,
@@ -210,15 +177,12 @@ export type {
 	TrendExplorerRow,
 };
 export {
-	createExchange,
 	createSymbol,
 	createTimeframe,
 	listCandles,
-	listExchanges,
 	listSymbols,
 	listTimeframes,
 	listTrendExplorer,
 	refreshExplorer,
-	updateExchange,
 	updateSymbol,
 };

@@ -21,12 +21,12 @@ def _make_created_account(**kwargs) -> Account:
     return Account(**defaults)
 
 
-def _make_service(exchange=None, created_account=None):
+def _make_service(exchange=_make_exchange(), created_account=None):
     account_repo = MagicMock()
     account_repo.create.return_value = created_account or _make_created_account()
 
     exchange_repo = MagicMock()
-    exchange_repo.get_by_id.return_value = exchange
+    exchange_repo.get_by_name.return_value = exchange
 
     cipher = MagicMock()
     cipher.encrypt.return_value = "encrypted_token"
@@ -67,16 +67,12 @@ class TestCreateAccountService:
             credentials_ref="encrypted",
             meta={"enc_creds": "encrypted_token"},
         )
-        svc, repo, _, tx_repo, cipher = _make_service(
-            exchange=_make_exchange(),
-            created_account=created,
-        )
+        svc, repo, _, tx_repo, cipher = _make_service(created_account=created)
 
         result = svc.create(
             user_id=5,
             name="Live Binance",
             mode="live",
-            exchange_id=1,
             api_key="my_key",
             api_secret="my_secret",
         )
@@ -86,16 +82,17 @@ class TestCreateAccountService:
         tx_repo.commit.assert_called_once()
 
     # ------------------------------------------------------------------
-    # Éxito — con exchange válido
+    # Éxito — siempre en el exchange de la plataforma
     # ------------------------------------------------------------------
 
-    def test_creates_account_with_valid_exchange(self):
+    def test_account_is_always_linked_to_binance(self):
         svc, repo, exchange_repo, _, _ = _make_service(exchange=_make_exchange(id=2))
 
-        result = svc.create(user_id=5, name="Bybit", mode="paper", exchange_id=2)
+        result = svc.create(user_id=5, name="Práctica", mode="paper")
 
         assert result.success is True
-        exchange_repo.get_by_id.assert_called_once_with(2)
+        exchange_repo.get_by_name.assert_called_once_with("Binance")
+        assert repo.create.call_args[0][0].exchange_id == 2
 
     # ------------------------------------------------------------------
     # Error — modo inválido
@@ -113,17 +110,17 @@ class TestCreateAccountService:
         tx_repo.commit.assert_not_called()
 
     # ------------------------------------------------------------------
-    # Error — exchange no encontrado
+    # Error — falta Binance en el catálogo
     # ------------------------------------------------------------------
 
-    def test_fails_if_exchange_not_found(self):
+    def test_fails_if_platform_exchange_missing(self):
         svc, repo, _, tx_repo, _ = _make_service(exchange=None)
 
-        result = svc.create(user_id=5, name="Test", mode="paper", exchange_id=99)
+        result = svc.create(user_id=5, name="Test", mode="paper")
 
         assert result.success is False
-        assert result.error.code == "EXCHANGE_NOT_FOUND"
-        assert result.error.http_status == 404
+        assert result.error.code == "PLATFORM_EXCHANGE_MISSING"
+        assert result.error.http_status == 409
         repo.create.assert_not_called()
         tx_repo.commit.assert_not_called()
 

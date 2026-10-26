@@ -7,7 +7,7 @@ Una explicación simple de los 10 módulos del sistema, sin tecnicismos. Cada m�
 | Módulo | Estado | Alcance | Madurez | Descripción |
 |--------|--------|--------:|--------:|-------------|
 | [M1 — Auth & Frontend](M01-AUTH.md) | ✅ Completo | 100 % | 84 % | Login solo por código OTP (con intentos máximos), una sesión por persona con aviso, perfil propio, roles del fondo común (super admin, socio de solo lectura, inversor), bloquear/desactivar cuentas (pausa sus agentes), auditoría visible, defensa CSRF por Origin, auditoría sin secretos, vínculo de Telegram, frontend React (shell, dashboard) |
-| [M2 — Market Data](M02-MARKET-DATA.md) | ✅ Completo | 100 % | 86 % | Exchanges, símbolos (cripto + perpetuos TradFi: metales, materias primas, ETFs, acciones), velas OHLCV via ccxt, scheduler de ingesta (un solo líder por lock de MySQL) y explorador de tendencia |
+| [M2 — Market Data](M02-MARKET-DATA.md) | ✅ Completo | 100 % | 86 % | Un solo exchange (Binance), símbolos (cripto + perpetuos TradFi: metales, materias primas, ETFs, acciones), velas OHLCV via ccxt, scheduler de ingesta (un solo líder por lock de MySQL) y explorador de tendencia |
 | [M3 — Feature Engineering](M03-FEATURE-ENGINEERING.md) | ✅ Completo | 100 % | 82 % | RSI, ATR, EMA, MACD, Bollinger Bands, régimen; conjuntos por enfoque (Completo/Tendencia/Rango) |
 | [M4 — Accounts & Portfolio](M04-ACCOUNTS-PORTFOLIO.md) | ✅ Completo | 100 % | 81 % | Cuentas de exchange (credenciales cifradas), balances, equity curve, **billetera única de la plataforma** sincronizada con el exchange (fondo común) |
 | [M5 — Strategies](M05-STRATEGIES.md) | ✅ Completo | 100 % | 78 % | Reglas de entrada/salida, backtesting sin IA, validación tipo/régimen, datasets |
@@ -191,7 +191,7 @@ Hash routing: la URL real es `/#/<ruta>`. Cada ruta vive en `frontend/src/routes
 | Público | `/login` |
 | Todos los roles | `/my-fund` (Mi saldo), `/dashboard` (inicio = lista de agentes), `/agents/:id`, `/alerts`, `/strategies`, `/track-record`, `/backtest`, `/market/explorer` (`/agents`, `/bots`, `/agent`, `/orders`, `/features` y `/market/candles` redirigen a `/dashboard`; `/market/symbols` a `/market/explorer`) |
 | Solo super admin | `/agents/new`, `/portfolio` (`ManagerGuard`) y `/admin/telegram` en el menú |
-| Super admin y socio (`_app/admin/*`; el socio sin botones de escritura) | `/admin/fund`, `/admin/wallet`, `/admin/deposits`, `/admin/fund-agents`, `/admin/fund-agents/:poolId`, `/admin/withdrawals`, `/admin/commissions`, `/admin/participants`, `/admin/fund-settings`, `/admin/exchanges`, `/admin/symbols`, `/admin/timeframes`, `/admin/feature-sets`, `/admin/users`, `/admin/audit`, `/admin/telegram` |
+| Super admin y socio (`_app/admin/*`; el socio sin botones de escritura) | `/admin/fund`, `/admin/wallet`, `/admin/deposits`, `/admin/fund-agents`, `/admin/fund-agents/:poolId`, `/admin/withdrawals`, `/admin/commissions`, `/admin/participants`, `/admin/fund-settings`, `/admin/symbols`, `/admin/timeframes`, `/admin/feature-sets`, `/admin/users`, `/admin/audit`, `/admin/telegram` |
 
 Comprar/Vender vive en el [Módulo 8 — Orders & Execution](M08-ORDERS-EXECUTION.md).
 

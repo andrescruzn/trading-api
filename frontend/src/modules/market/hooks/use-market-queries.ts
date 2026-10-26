@@ -3,14 +3,12 @@ import {
 	type AssetClass,
 	type CandleFilters,
 	listCandles,
-	listExchanges,
 	listSymbols,
 	listTimeframes,
 	listTrendExplorer,
 	type SymbolFilters,
 } from '@/modules/market/api/market.api';
 
-const EXCHANGES_QUERY_KEY = ['exchanges'] as const;
 const SYMBOLS_QUERY_KEY = ['symbols'] as const;
 const TIMEFRAMES_QUERY_KEY = ['timeframes'] as const;
 const CANDLES_QUERY_KEY = ['candles'] as const;
@@ -19,14 +17,6 @@ const EXPLORER_QUERY_KEY = ['explorer'] as const;
 // Catálogos casi estáticos: se cachean un rato para no repetir la petición en
 // cada página que los usa como opciones de un select.
 const CATALOG_STALE_TIME = 5 * 60 * 1000;
-
-function useExchangesQuery(filters: { is_active?: boolean } = {}) {
-	return useQuery({
-		queryKey: [...EXCHANGES_QUERY_KEY, filters],
-		queryFn: () => listExchanges(filters),
-		staleTime: CATALOG_STALE_TIME,
-	});
-}
 
 function useSymbolsQuery(filters: SymbolFilters = {}) {
 	return useQuery({
@@ -73,12 +63,10 @@ function useTrendExplorerQuery(filters: { asset_class?: AssetClass } = {}) {
 
 export {
 	CANDLES_QUERY_KEY,
-	EXCHANGES_QUERY_KEY,
 	EXPLORER_QUERY_KEY,
 	SYMBOLS_QUERY_KEY,
 	TIMEFRAMES_QUERY_KEY,
 	useCandlesQuery,
-	useExchangesQuery,
 	useSymbolsQuery,
 	useTimeframesQuery,
 	useTrendExplorerQuery,

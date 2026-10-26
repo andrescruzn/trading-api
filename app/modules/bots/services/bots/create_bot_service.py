@@ -39,9 +39,6 @@ class CreateBotService:
     - Regla del 1 %: risk_pct en risk_params debe ser > 0 y <= 0.01.
     - Los perpetuos (`XAU/USDT:USDT`) solo en paper: la ejecución live
       no maneja contratos, apalancamiento ni cortos.
-    - En live el símbolo debe ser del mismo exchange que la cuenta: las
-      órdenes van al exchange de la cuenta, y analizar las velas de otro
-      exchange daría entry/SL/TP de otro mercado.
     - El bot siempre inicia en estado 'stopped'.
     """
 
@@ -125,15 +122,6 @@ class CreateBotService:
             return ServiceResult.fail(code="BOT_SYMBOL_NOT_FOUND", http_status=404)
         if mode == "live" and is_perpetual(symbol.symbol):
             return ServiceResult.fail(code="BOT_PERPETUAL_LIVE_NOT_SUPPORTED", http_status=422)
-        if mode == "live" and symbol.exchange_id != account.exchange_id:
-            return ServiceResult.fail(
-                code="BOT_EXCHANGE_ACCOUNT_MISMATCH",
-                http_status=422,
-                meta={
-                    "account_exchange_id": account.exchange_id,
-                    "symbol_exchange_id": symbol.exchange_id,
-                },
-            )
 
         timeframe = self._timeframe_repo.get_by_id(timeframe_id)
         if timeframe is None:

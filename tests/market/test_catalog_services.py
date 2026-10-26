@@ -3,7 +3,7 @@
 # ======================================================================
 # tests/market/test_catalog_services.py
 #
-# CRUD de los catálogos de M2 (exchanges, símbolos, timeframes):
+# Catálogos de M2 (exchanges de solo lectura, símbolos, timeframes):
 # validaciones, códigos de error, http_status y commit solo en éxito.
 # Sin BD: repositorios MagicMock.
 # ======================================================================
@@ -16,11 +16,7 @@ from unittest.mock import MagicMock
 from app.modules.market.domain.exchange_entity import Exchange
 from app.modules.market.domain.symbol_entity import Symbol
 from app.modules.market.domain.timeframe_entity import Timeframe
-from app.modules.market.services.exchanges import (
-    CreateExchangeService,
-    ListExchangesService,
-    UpdateExchangeService,
-)
+from app.modules.market.services.exchanges import ListExchangesService
 from app.modules.market.services.symbols import (
     CreateSymbolService,
     ListSymbolsService,
@@ -47,84 +43,6 @@ def _assert_failed(result, code: str, http_status: int, repo: MagicMock) -> None
 # Exchanges
 # ======================================================================
 
-class TestCreateExchangeService:
-
-    def test_creates_active_exchange_and_commits(self):
-        repo = _repo()
-        repo.get_by_name.return_value = None
-
-        result = CreateExchangeService(repo).create(name="Kraken", type="crypto_exchange")
-
-        assert result.success is True
-        assert (result.data.name, result.data.type, result.data.is_active) == ("Kraken", "crypto_exchange", True)
-        repo.create.assert_called_once()
-        repo.commit.assert_called_once()
-
-    def test_rejects_invalid_type_with_422(self):
-        repo = _repo()
-
-        result = CreateExchangeService(repo).create(name="Banco", type="bank")
-
-        _assert_failed(result, "EXCHANGE_INVALID_TYPE", 422, repo)
-        repo.create.assert_not_called()
-
-    def test_rejects_duplicate_name_with_409(self):
-        repo = _repo()
-        repo.get_by_name.return_value = Exchange(id=1, name="Binance", type="crypto_exchange")
-
-        result = CreateExchangeService(repo).create(name="Binance", type="crypto_exchange")
-
-        _assert_failed(result, "EXCHANGE_NAME_EXISTS", 409, repo)
-        repo.create.assert_not_called()
-
-
-class TestUpdateExchangeService:
-
-    def _make(self, current: Exchange | None, by_name: Exchange | None = None):
-        repo = _repo()
-        repo.get_by_id.return_value = current
-        repo.get_by_name.return_value = by_name
-        return UpdateExchangeService(repo), repo
-
-    def test_not_found_returns_404(self):
-        svc, repo = self._make(None)
-
-        _assert_failed(svc.update(99, name="X"), "EXCHANGE_NOT_FOUND", 404, repo)
-
-    def test_rename_to_a_name_of_another_exchange_is_409(self):
-        current = Exchange(id=1, name="Binance", type="crypto_exchange")
-        other = Exchange(id=2, name="Bybit", type="crypto_exchange")
-        svc, repo = self._make(current, by_name=other)
-
-        _assert_failed(svc.update(1, name="Bybit"), "EXCHANGE_NAME_EXISTS", 409, repo)
-        repo.update.assert_not_called()
-
-    def test_keeping_its_own_name_is_allowed(self):
-        current = Exchange(id=1, name="Binance", type="crypto_exchange")
-        svc, repo = self._make(current, by_name=current)
-
-        result = svc.update(1, name="Binance", is_active=False)
-
-        assert result.success is True
-        assert result.data.is_active is False
-        repo.commit.assert_called_once()
-
-    def test_invalid_type_is_422(self):
-        svc, repo = self._make(Exchange(id=1, name="Binance", type="crypto_exchange"))
-
-        _assert_failed(svc.update(1, type="bank"), "EXCHANGE_INVALID_TYPE", 422, repo)
-        repo.update.assert_not_called()
-
-    def test_only_sent_fields_change(self):
-        svc, repo = self._make(Exchange(id=1, name="TradingView", type="crypto_exchange"))
-
-        result = svc.update(1, type="data_vendor")
-
-        assert (result.data.name, result.data.type, result.data.is_active) == ("TradingView", "data_vendor", True)
-        repo.get_by_name.assert_not_called()
-        repo.commit.assert_called_once()
-
-
 class TestListExchangesService:
 
     def test_passes_active_filter_to_repo(self):
@@ -147,38 +65,39 @@ class TestCreateSymbolService:
         symbol_repo = _repo()
         symbol_repo.get_by_exchange_and_symbol.return_value = existing
         exchange_repo = MagicMock()
-        exchange_repo.get_by_id.return_value = exchange
+        exchange_repo.get_by_name.return_value = exchange
         return CreateSymbolService(symbol_repo=symbol_repo, exchange_repo=exchange_repo), symbol_repo
 
     def test_creates_perpetual_symbol_and_commits(self):
         svc, repo = self._make(Exchange(id=1, name="Binance", type="crypto_exchange"))
 
         result = svc.create(
-            exchange_id=1, symbol="XAU/USDT:USDT", asset_class="metal",
+            symbol="XAU/USDT:USDT", asset_class="metal",
             base_asset="XAU", quote_asset="USDT", tick_size=Decimal("0.01"), lot_size=Decimal("0.001"),
         )
 
         assert result.success is True
         assert result.data.symbol == "XAU/USDT:USDT"
+        assert result.data.exchange_id == 1
         assert result.data.tick_size == Decimal("0.01")
         assert result.data.is_active is True
         repo.commit.assert_called_once()
 
-    def test_exchange_must_exist(self):
+    def test_platform_exchange_must_exist(self):
         svc, repo = self._make(None)
 
-        _assert_failed(svc.create(exchange_id=9, symbol="BTC/USDT", asset_class="crypto"), "EXCHANGE_NOT_FOUND", 404, repo)
+        _assert_failed(svc.create(symbol="BTC/USDT", asset_class="crypto"), "PLATFORM_EXCHANGE_MISSING", 409, repo)
 
     def test_invalid_asset_class_is_422(self):
         svc, repo = self._make(Exchange(id=1, name="Binance", type="crypto_exchange"))
 
-        _assert_failed(svc.create(exchange_id=1, symbol="BTC/USDT", asset_class="bond"), "SYMBOL_INVALID_ASSET_CLASS", 422, repo)
+        _assert_failed(svc.create(symbol="BTC/USDT", asset_class="bond"), "SYMBOL_INVALID_ASSET_CLASS", 422, repo)
 
     def test_same_symbol_in_same_exchange_is_409(self):
         existing = Symbol(id=3, exchange_id=1, symbol="BTC/USDT", asset_class="crypto")
         svc, repo = self._make(Exchange(id=1, name="Binance", type="crypto_exchange"), existing=existing)
 
-        _assert_failed(svc.create(exchange_id=1, symbol="BTC/USDT", asset_class="crypto"), "SYMBOL_ALREADY_EXISTS", 409, repo)
+        _assert_failed(svc.create(symbol="BTC/USDT", asset_class="crypto"), "SYMBOL_ALREADY_EXISTS", 409, repo)
         repo.create.assert_not_called()
 
 

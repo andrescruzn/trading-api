@@ -10,7 +10,6 @@ from pydantic import BaseModel, Field
 
 
 class CreateSymbolRequest(BaseModel):
-    exchange_id: int = Field(ge=1)
     symbol: str = Field(min_length=1, max_length=64)
     asset_class: Literal["crypto", "metal", "commodity", "index", "etf", "stock", "forex"]
     base_asset: Optional[str] = Field(default=None, max_length=32)

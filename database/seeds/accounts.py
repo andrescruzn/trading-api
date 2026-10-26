@@ -4,9 +4,9 @@
 # database/seeds/accounts.py
 #
 # PROPÓSITO:
-# - Cuentas paper de ejemplo del Módulo 4 (Binance y Bybit) con balances
-#   iniciales, para desarrollo y pruebas. Una pareja por usuario demo:
-#   sin cuenta propia un usuario no puede crear agentes.
+# - Cuenta paper de ejemplo del Módulo 4 (Binance, el único exchange de
+#   la plataforma) con balances iniciales, para desarrollo y pruebas. Una
+#   por usuario demo: sin cuenta propia un usuario no puede crear agentes.
 #
 # NOTAS:
 # - Requiere los usuarios de DEMO_USER_EMAILS (seed `users` o registrados
@@ -43,12 +43,6 @@ ACCOUNTS: list[tuple[str, str, str, list[tuple[str, Decimal]]]] = [
         "Binance Paper — Demo",
         "Cuenta de simulación para desarrollo",
         [("USDT", Decimal("10000")), ("BTC", Decimal("0.25"))],
-    ),
-    (
-        "Bybit",
-        "Bybit Paper — Demo",
-        "Cuenta de simulación Bybit",
-        [("USDT", Decimal("5000"))],
     ),
 ]
 

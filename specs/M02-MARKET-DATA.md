@@ -14,15 +14,15 @@
 | Lo usan | [M3](M03-FEATURE-ENGINEERING.md), [M5](M05-STRATEGIES.md), [M6](M06-AI-AGENT.md), [M7](M07-BOTS-SIGNALS.md), [M8](M08-ORDERS-EXECUTION.md) y el scheduler (que además corre el ciclo de ejecución de [M7](M07-BOTS-SIGNALS.md)/[M8](M08-ORDERS-EXECUTION.md)) |
 | Prefijo API | `/api/exchanges`, `/api/symbols`, `/api/timeframes`, `/api/candles`, `/api/explorer` |
 | Frontend | `frontend/src/modules/market` |
-| Última revisión | 2026-10-20 |
+| Última revisión | 2026-10-26 |
 
 ## Descripción
 
 **En palabras simples:** Es la bodega de datos. Guarda toda la información de los precios de los activos financieros a lo largo del tiempo.
 
 **Qué hace:**
-- Registra los **exchanges** (plataformas de trading) como Binance, Bybit, Kraken, etc.
-- Registra los **símbolos** como BTC/USDT o ETH/USDT, y también **perpetuos TradFi** de Binance/Bybit que siguen el precio del oro, la plata, el petróleo, el gas, el cobre, ETFs (SPY, QQQ) y acciones (NVDA, TSLA, AAPL): `XAU/USDT:USDT`.
+- Opera con **un solo exchange: Binance** (desde el 2026-10-26). La tabla `exchanges` se conserva con esa fila; los demás quedaron desactivados y ya no se crean ni se editan exchanges.
+- Registra los **símbolos** de Binance como BTC/USDT o ETH/USDT, y también **perpetuos TradFi** de Binance que siguen el precio del oro, la plata, el petróleo, el gas, el cobre, ETFs (SPY, QQQ) y acciones (NVDA, TSLA, AAPL): `XAU/USDT:USDT`.
 - Registra los **timeframes** (marcos de tiempo) como 1 minuto, 5 minutos, 1 hora, 1 día, etc.
 - Almacena **velas OHLCV**: cada vela es un resumen del precio en un período de tiempo (precio de apertura, precio más alto, precio más bajo, precio de cierre y volumen negociado)
 - **Explorador de tendencia:** ordena los mercados por la fuerza de su tendencia en velas diarias para elegir dónde crear agentes.
@@ -38,7 +38,6 @@ Hash routing: la URL real es `/#/<ruta>`.
 - Las velas del símbolo y timeframe de cada agente se ven en su pestaña **Mercado** (`/#/agents/:id`, [M7](M07-BOTS-SIGNALS.md)): solo existen velas para agentes activos, así que no hay visor suelto para el usuario. `/#/market/symbols` redirige a `/#/market/explorer` y `/#/market/candles` al inicio (`/#/dashboard`).
 
 **Admin:**
-- `/#/admin/exchanges` — Gestionar exchanges
 - `/#/admin/symbols` — Gestionar símbolos
 - `/#/admin/timeframes` — Gestionar timeframes
 - Sin páginas de velas para el admin: las velas solo importan para el símbolo y timeframe de un agente, así que se ven y se actualizan desde su pestaña **Mercado** ("Actualizar datos", `POST /api/bots/{id}/market/sync` de [M7](M07-BOTS-SIGNALS.md)). `POST /api/candles/fetch` y `/api/candles/ingest` siguen disponibles para el admin solo por API (Swagger) para cargas puntuales.
@@ -48,16 +47,17 @@ Hash routing: la URL real es `/#/<ruta>`.
 Tablas: `exchanges`, `symbols`, `timeframes`, `candles`
 
 Entregables:
-- CRUD exchanges (Binance, Bybit, Kraken, etc.)
-- CRUD symbols (BTC/USDT, ETH/USDT, etc.) asociados a un exchange
+- Exchanges de solo lectura: solo Binance (el CRUD se quitó el 2026-10-26)
+- CRUD symbols (BTC/USDT, ETH/USDT, etc.), siempre en Binance
 - CRUD timeframes (1m, 5m, 15m, 1h, 4h, 1d)
 - Ingestión de velas OHLCV: manual (endpoint) y/o automática (scheduler)
 - Endpoint: `GET /api/candles?symbol_id=…&timeframe_id=…&from_ts=…&to_ts=…`
 - Web UI: lista de símbolos, últimas velas en tabla (desde 2026-10-08 en React, `frontend/src/modules/market`)
 - ✅ (2026-10-20) Tests unitarios de los services y del scheduler (`tests/market/`, `tests/scheduler/`)
-- ✅ Perpetuos TradFi (metales, materias primas, ETFs, acciones) vía ccxt en Binance/Bybit; clases de activo `commodity` e `index` (2026-10-10)
+- ✅ Perpetuos TradFi (metales, materias primas, ETFs, acciones) vía ccxt en Binance; clases de activo `commodity` e `index` (2026-10-10)
 - ✅ Explorador de tendencia: `GET /api/explorer`, `POST /api/explorer/refresh` y página `/#/market/explorer` (2026-10-10)
 - ✅ (2026-10-20) `FetchCandleHistoryService`: últimas N velas del exchange por páginas (1000 por llamada), **sin guardarlas** y sin la vela en formación; lo usa el backtesting de [M5](M05-STRATEGIES.md)
+- ✅ (2026-10-26) **Solo Binance:** `PLATFORM_EXCHANGE_NAME`, `CCXT_EXCHANGE_MAP` con solo `binance`, sin `POST/PUT /api/exchanges` ni página de exchanges; símbolos y cuentas nuevos siempre en Binance; migración `9869015f140f`
 
 ## Decisiones de diseño
 
@@ -66,9 +66,10 @@ Entregables:
 | Precios y volúmenes como `DECIMAL(30,12)` y `Decimal(str(valor))` al leer | Evita errores de coma flotante en datos financieros | `float` |
 | `bulk_upsert` con `INSERT … ON DUPLICATE KEY UPDATE` sobre `uq_candles_symbol_tf_ts` | La ingesta es idempotente: reintentar o solapar rangos no duplica velas | Insertar y capturar errores de clave duplicada |
 | Cada vela se valida con `candle.is_valid_ohlcv()` antes del upsert | Rechaza datos corruptos (high < low, negativos) antes de llegar a la BD | Confiar solo en los `CHECK` de MySQL |
-| El exchange de ccxt se resuelve desde `symbol.exchange_id` → nombre en minúsculas (`_CCXT_EXCHANGE_MAP`) | Un único símbolo en BD determina el origen del dato | Parámetro `exchange` libre en cada request |
+| El exchange de ccxt se resuelve desde `symbol.exchange_id` → nombre en minúsculas (`CCXT_EXCHANGE_MAP`) | Un único símbolo en BD determina el origen del dato | Parámetro `exchange` libre en cada request |
+| **Un solo exchange: Binance** (`PLATFORM_EXCHANGE_NAME`, 2026-10-26). Se conserva la tabla `exchanges` con una fila activa; los demás se desactivan (con sus símbolos) sin borrar historia | Decisión del negocio: todo el dinero vive en la billetera de Binance y se opera con todos sus mercados (spot y perpetuos). Mantener la tabla evita tocar las FK de `symbols` y `accounts` | Borrar la tabla y la columna `exchange_id` (migración grande, sin beneficio) · seguir con varios exchanges |
 | `exchanges` admite `crypto_exchange` / `broker` / `data_vendor` | Mismo modelo para cripto, metales y forex | Una tabla por tipo de activo |
-| Metales, materias primas, ETFs y acciones como **perpetuos TradFi** de Binance/Bybit (`XAU/USDT:USDT`) | Datos y ejecución en el mismo sitio, 24/7, con el mismo código ccxt: ccxt elige el mercado por el símbolo unificado | Proveedor de datos aparte (yfinance, Twelve Data) + bróker: más código, horarios de mercado y sin ejecución |
+| Metales, materias primas, ETFs y acciones como **perpetuos TradFi** de Binance (`XAU/USDT:USDT`) | Datos y ejecución en el mismo sitio, 24/7, con el mismo código ccxt: ccxt elige el mercado por el símbolo unificado | Proveedor de datos aparte (yfinance, Twelve Data) + bróker: más código, horarios de mercado y sin ejecución |
 | Perpetuos solo en **paper** (`is_perpetual()` en `domain/ccxt_exchanges.py`) | En live ccxt interpreta `amount` como contratos y harían falta apalancamiento, margen y cortos | Habilitar live con la lógica spot (tamaños de posición erróneos) |
 | Explorador calculado al vuelo desde `candles` (1d), sin tabla nueva | ~40 símbolos × 250 velas: barato y siempre coherente con las velas | Tabla de métricas precalculadas |
 | `strength` = min(ADX/50, 1) × eficiencia de Kaufman (30 d); ADX < 20 → lateral | Exige fuerza y limpieza del movimiento a la vez; comparable entre activos de precios muy distintos | Solo rendimiento %: premia saltos puntuales |
@@ -117,18 +118,16 @@ Entregables:
 | Tabla | Uso | Notas |
 |-------|-----|-------|
 | `exchanges` | Exchanges, brokers, data vendors | UNIQUE `name`; type: crypto_exchange/broker/data_vendor |
-| `symbols` | Pares por exchange (BTC/USDT, XAU/USDT:USDT…) | UNIQUE (exchange_id, symbol); asset_class: crypto/metal/commodity/index/etf/stock/forex (revisión `m02 asset_class commodity index`) |
+| `symbols` | Pares de Binance (BTC/USDT, XAU/USDT:USDT…) | UNIQUE (exchange_id, symbol); asset_class: crypto/metal/commodity/index/etf/stock/forex (revisión `m02 asset_class commodity index`) |
 | `timeframes` | Marcos temporales | PK es `SMALLINT`; UNIQUE `code`; tiene `seconds` |
 | `candles` | Velas OHLCV | UNIQUE (symbol_id, timeframe_id, ts); bulk upsert vía ON DUPLICATE KEY UPDATE |
 
 ### Seed de datos
 Archivo: `database/seeds/market_data.py` (`uv run python -m database.seeds market_data`)
-- 7 exchanges: Binance, Bybit, Kraken, Coinbase, Bitget, OKX, TradingView (sin símbolos)
+- 1 exchange: Binance
 - 14 timeframes: 1m, 3m, 5m, 15m, 30m, 1h, 2h, 4h, 6h, 8h, 12h, 1d, 3d, 1w
-- 37 símbolos:
-  - Binance: 18 cripto spot (BTC, ETH, BNB, SOL, XRP, ADA, DOGE, AVAX, LINK, DOT, POL, UNI, ATOM, LTC, BCH, TRX, NEAR, SUI), `PAXG/USDT` (oro tokenizado, spot) y 12 perpetuos `X/USDT:USDT`: XAU, XAG, XPT, XPD (metal), CL, NATGAS, COPPER (commodity), SPY, QQQ (etf), NVDA, TSLA, AAPL (stock)
-  - Bybit: 4 cripto spot (BTC, ETH, SOL, XRP) y perpetuos XAU y XAG
-- La migración m02 desactiva los 5 símbolos viejos de TradingView (sin descarga) y `MATIC/USDT` (renombrado a POL).
+- 31 símbolos de Binance: 18 cripto spot (BTC, ETH, BNB, SOL, XRP, ADA, DOGE, AVAX, LINK, DOT, POL, UNI, ATOM, LTC, BCH, TRX, NEAR, SUI), `PAXG/USDT` (oro tokenizado, spot) y 12 perpetuos `X/USDT:USDT`: XAU, XAG, XPT, XPD (metal), CL, NATGAS, COPPER (commodity), SPY, QQQ (etf), NVDA, TSLA, AAPL (stock)
+- La migración m02 desactiva los 5 símbolos viejos de TradingView (sin descarga) y `MATIC/USDT` (renombrado a POL); `9869015f140f` (m02 solo binance) desactiva Bybit, Kraken, Coinbase, Bitget, OKX y TradingView con sus símbolos y pasa todas las cuentas a Binance.
 
 ### Modelos ORM (`app/modules/market/infrastructure/`)
 | Archivo | Clase | Tabla |
@@ -186,19 +185,19 @@ from app.modules.market.rest import exchanges_router, symbols_router, timeframes
 |-----|----------|----|
 | `/#/market/explorer` | `routes/_app/market/explorer.lazy.tsx` | `pages/explorer.tsx` (`useTrendExplorerQuery`, `useRefreshExplorerMutation`) |
 | `/#/market/symbols`, `/#/market/candles` | `routes/_app/market/{symbols,candles}.tsx` | Redirecciones (a `/market/explorer` y `/dashboard`) |
-| `/#/admin/exchanges` | `routes/_app/admin/exchanges.lazy.tsx` | `pages/admin-exchanges.tsx` + `components/exchange-form-dialog.tsx` |
+| `/#/admin/exchanges` | `routes/_app/admin/exchanges.tsx` | Redirección a `/admin/symbols` (página quitada el 2026-10-26) |
 | `/#/admin/symbols` | `routes/_app/admin/symbols.lazy.tsx` | `pages/admin-symbols.tsx` + `components/symbol-form-dialog.tsx` |
 | `/#/admin/timeframes` | `routes/_app/admin/timeframes.lazy.tsx` | `pages/admin-timeframes.tsx` |
 | — (pestaña Mercado de `/#/agents/:id`, [M7](M07-BOTS-SIGNALS.md)) | — | `components/candles-table.tsx` (`CandlesTable`) |
 
-- API: `api/market.api.ts`; queries `hooks/use-market-queries.ts` (`useExchangesQuery`, `useSymbolsQuery`, `useTimeframesQuery`, `useCandlesQuery`, reutilizadas por dashboard, features, bots, orders…); mutations `hooks/use-market-mutations.ts`; etiquetas `lib/market-labels.ts`.
+- API: `api/market.api.ts`; queries `hooks/use-market-queries.ts` (`useSymbolsQuery`, `useTimeframesQuery`, `useCandlesQuery`, reutilizadas por dashboard, features, bots, orders…); mutations `hooks/use-market-mutations.ts`; etiquetas `lib/market-labels.ts`.
 - Las páginas admin están bajo `_app/admin.tsx` (`AdminGuardLayout`: sin rol admin → `/dashboard`); la API responde 403 a quien no es admin.
 
 ### Endpoint de descarga ccxt
 - `POST /api/candles/fetch` → `FetchCandlesService` → usa ccxt para descargar OHLCV del exchange real
 - Exchange se resuelve desde `symbol.exchange_id` → busca en DB → mapea a ccxt id (lowercase)
 - Schema: `FetchCandlesRequest(symbol_id, timeframe_id, limit)`
-- Soporta: binance, bybit, kraken, coinbase, bitget, okx (`CCXT_EXCHANGE_MAP` en `domain/ccxt_exchanges.py`, compartido con `live_executor.py`)
+- Soporta solo binance (`CCXT_EXCHANGE_MAP` en `domain/ccxt_exchanges.py`, compartido con `live_executor.py` y la billetera)
 - Perpetuos: el símbolo unificado (`XAU/USDT:USDT`) basta para que ccxt use el mercado de futuros; no hace falta `defaultType`.
 
 ### Scheduler (ingesta automática)
@@ -235,12 +234,12 @@ Desde 2026-10-19, después de `run_cycle()` el scheduler corre `run_execution_cy
 - **ccxt:** versión fijada en `pyproject.toml` (`ccxt==4.4.96`).
 - **Scheduler que "no hace nada" con varios workers:** es lo esperado en los que no son líder (solo uno tiene el lock). Si **ninguno** trabaja, buscar en el log `[Scheduler] No se pudo verificar el lock` (conexión a MySQL) y comprobar que nadie más tenga `trading-app-scheduler` (`SELECT IS_USED_LOCK('trading-app-scheduler')`).
 - **Dos entornos sobre la misma BD** (p. ej. dos máquinas de desarrollo) comparten el lock: solo uno de los dos corre el scheduler.
-- **Símbolos sin descarga automática:** solo los exchanges de `domain/ccxt_exchanges.py` (`CCXT_EXCHANGE_MAP`: binance, bybit, kraken, coinbase, bitget, okx) se descargan solos. `GET /api/symbols` devuelve `supports_auto_fetch` y el asistente de agentes ([M7](M07-BOTS-SIGNALS.md)) solo ofrece esos símbolos. Los de TradingView (`data_vendor`) nunca reciben velas: por eso el seed ya no los crea y la migración m02 los desactiva.
-- **`SPX/USDT:USDT` no es el S&P 500:** en Binance y Bybit es la memecoin SPX6900. Para el índice usar `SPY` (o `US500`/`SP500` en otros exchanges).
+- **Símbolos sin descarga automática:** solo Binance (`CCXT_EXCHANGE_MAP` en `domain/ccxt_exchanges.py`) se descarga solo; los símbolos de los exchanges desactivados quedan con `supports_auto_fetch = false`. `GET /api/symbols` devuelve `supports_auto_fetch` y el asistente de agentes ([M7](M07-BOTS-SIGNALS.md)) solo ofrece esos símbolos. Los de TradingView (`data_vendor`) nunca reciben velas: por eso el seed ya no los crea y la migración m02 los desactiva.
+- **`SPX/USDT:USDT` no es el S&P 500:** en Binance es la memecoin SPX6900. Para el índice usar `SPY`.
 - **`MATIC/USDT` ya no existe** (renombrado a `POL/USDT`): ccxt responde `BadSymbol`.
 - **Perpetuos y volumen:** los perpetuos TradFi traen volumen real, así que `vol_rel` funciona; un proveedor de forex sin volumen lo dejaría en `NaN`.
 - **Perpetuos en live:** bloqueados en `CreateBotService`, `UpdateBotService` (`BOT_PERPETUAL_LIVE_NOT_SUPPORTED`) y `LiveExecutor`; el asistente oculta las cuentas live si el símbolo es perpetuo.
-- **Dropdowns de símbolos duplicados** (BTC/USDT ×2 en Binance y Bybit): la entidad `Symbol` incluye `exchange_name` vía JOIN → el front muestra `BTC/USDT (Binance)`.
+- **Falta la fila Binance** (BD sin el seed `market_data`): crear una cuenta o un símbolo responde 409 `PLATFORM_EXCHANGE_MISSING`. La migración `9869015f140f` la crea si no existe.
 - Resueltos con la migración a React (2026-10-08): CSP por prefijo web (`_is_web_route`), clases `.page-header`/`.pagination` de `app.css` y el redirect admin por `role_id` de la cookie ya no aplican (ver [M1](M01-AUTH.md)).
 
 - **Filas del exchange con precio nulo o NaN** (corregido el 2026-10-20): `Decimal(str(None))` y las comparaciones con `Decimal('NaN')` lanzan `InvalidOperation`. Antes, una sola fila así hacía fallar la descarga entera del par (y en el scheduler el par quedaba sin velas nuevas). Ahora la conversión vive en `candle_from_ccxt_row()` (`domain/candle_entity.py`, la usan `FetchCandlesService` y `FetchCandleHistoryService`) y descarta esas filas, e `is_valid_ohlcv()` exige valores finitos.
@@ -258,12 +257,12 @@ Desde el 2026-10-20. Unitarios sin BD ni red: repositorios `MagicMock`, cliente 
 
 | Archivo | Tests | Qué cubre |
 |---|---:|---|
-| `tests/market/test_market_domain.py` | 43 | `is_perpetual`, `ccxt_id_for` / `supports_auto_fetch` (mayúsculas, TradingView), `Candle.is_valid_ohlcv` (high < low, negativos, NaN, infinito), tipos de exchange, clases de activo, timeframe válido |
-| `tests/market/test_catalog_services.py` | 21 | Crear/editar/listar exchanges, símbolos y timeframes: `*_INVALID_*` (422), duplicados (409), no encontrado (404), commit solo en éxito, actualización parcial |
+| `tests/market/test_market_domain.py` | 44 | `is_perpetual`, `ccxt_id_for` / `supports_auto_fetch` (solo Binance, sin importar mayúsculas), `Candle.is_valid_ohlcv` (high < low, negativos, NaN, infinito), tipos de exchange, clases de activo, timeframe válido |
+| `tests/market/test_catalog_services.py` | 13 | Listar exchanges; crear (siempre en Binance, `PLATFORM_EXCHANGE_MISSING`) y editar símbolos; timeframes: `*_INVALID_*` (422), duplicados (409), no encontrado (404), commit solo en éxito, actualización parcial |
 | `tests/market/test_candle_services.py` | 29 | Ingesta (Decimal, volumen por defecto, `row_index` en `CANDLES_INVALID_ROW` / `CANDLES_INVALID_OHLCV`, NaN), `ListCandles` (límite 1–1000), `FetchCandles` (conversión, filas inválidas o nulas descartadas, errores ccxt → 422/503/502, `client_cache`) |
 | `tests/market/test_fetch_candle_history_service.py` | 15 | Historia del backtest: `since` = ahora − bars × timeframe, paginado, sin duplicados, sin vela en formación, solo las últimas `bars`, tope de 20 páginas, errores |
 | `tests/market/test_trend_explorer.py` | 28 | `compute_trend_metrics` con series de números conocidos (recta: ADX 100, eficiencia 1, fuerza 100; patrón +2/−1: eficiencia 1/3, fuerza = ADX/50 × 1/3 × 100 ≈ 22,28; zigzag: lateral; ADX < 20 fuerza lateral), helpers; orden del ranking; refresco (límite = días que faltan + 2, `force`, fallos aislados, un `client_cache` por lote) |
-| `tests/market/test_market_error_messages.py` | 20 | Todo código de error de los servicios tiene texto en su `error_messages.py` |
+| `tests/market/test_market_error_messages.py` | 18 | Todo código de error de los servicios tiene texto en su `error_messages.py` |
 | `tests/scheduler/test_scheduler_service.py` | 14 | `_should_fetch` (500 / 3 / nada) y `run_cycle`: un fetch por par, features por tripla (velas nuevas o atrasadas), limpieza con la retención, fallos aislados |
 | `tests/scheduler/test_execution_cycle.py` | 43 | Ciclo de ejecución salvo alertas (ver [M9](M09-ALERTS.md)): orden de los pasos, agentes elegibles, vela cerrada a analizar (timeframe mínimo, datos viejos > 2 timeframes, features de esa vela, señal ya existente, ts naive de MySQL), tope diario por dueño, auto ejecuta / approval espera, `IntegrityError` → rollback, caducar, reconciliar, proteger y Telegram en polling |
 
@@ -290,4 +289,5 @@ Desde el 2026-10-20. Unitarios sin BD ni red: repositorios `MagicMock`, cliente 
 - **2026-10-19** — El ciclo de ejecución suma la **reconciliación de órdenes** ([M8](M08-ORDERS-EXECUTION.md)): señales automáticas → caducar → reconciliar → proteger posiciones → Telegram.
 - **2026-10-19** — Velas centradas en el agente: Símbolos y Velas salen del menú del usuario (las velas se ven en la pestaña **Mercado** del agente, con "Actualizar datos"); se retira la página admin "Descargar velas" (el endpoint queda solo por API); la tabla se extrae a `components/candles-table.tsx`. Datos de mercado (admin) queda en Exchanges · Símbolos · Timeframes · Conjuntos de indicadores.
 - **2026-10-20** — `FetchCandleHistoryService` (historia paginada del exchange sin guardar) para el backtesting.
+- **2026-10-26** — **Solo Binance:** la plataforma opera con un único exchange. Sin alta ni edición de exchanges (API y página), símbolos y cuentas siempre en Binance, seeds solo con Binance (31 símbolos) y migración `9869015f140f` que desactiva los demás exchanges y sus símbolos.
 - **2026-10-20** — Tests unitarios de M2 y del scheduler (`tests/market/`, `tests/scheduler/`: 213 tests). Destaparon un bug, corregido: una fila del exchange con precio nulo o NaN lanzaba `InvalidOperation` y tumbaba la descarga del par; ahora se descarta (`candle_from_ccxt_row`, `is_valid_ohlcv` con valores finitos).

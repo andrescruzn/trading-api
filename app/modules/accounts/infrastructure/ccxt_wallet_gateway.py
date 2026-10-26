@@ -50,7 +50,6 @@ logger = logging.getLogger(__name__)
 # Tipos de cuenta que se suman al saldo principal (id ccxt → `type` de fetch_balance)
 _EXTRA_BALANCE_TYPES: dict[str, tuple[str, ...]] = {
     "binance": ("funding",),
-    "bybit": ("funding",),
 }
 
 # Códigos de ExchangeClientError → código de la billetera

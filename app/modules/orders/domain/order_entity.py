@@ -111,7 +111,7 @@ class Order:
 
         Es determinista a partir del ID interno: si una llamada se corta por
         red, se puede buscar la orden en el exchange con este valor en vez de
-        reenviarla. Corto y con caracteres válidos en Binance/Bybit/OKX (≤ 36).
+        reenviarla. Corto y con caracteres válidos en Binance (≤ 36).
         """
         return f"ta-{order_id}"
 

@@ -16,7 +16,6 @@ import {
 	ACCOUNT_MODE_OPTIONS,
 	ACCOUNT_STATUS_OPTIONS,
 } from '@/modules/accounts/lib/accounts-labels';
-import { useExchangesQuery } from '@/modules/market/hooks/use-market-queries';
 import { OptionSelect } from '@/modules/shared/components/option-select';
 import { getErrorMessage } from '@/modules/shared/lib/get-error-message';
 import { requiredSelectField } from '@/modules/shared/lib/required-select-field';
@@ -42,9 +41,6 @@ import {
 import { Input } from '@/modules/ui/components/input';
 import { toast } from '@/modules/ui/components/toast';
 
-// Valor del select para "sin exchange": Base UI usa `null` para "sin selección".
-const NO_EXCHANGE = 'none';
-
 const accountSchema = z
 	.object({
 		name: z
@@ -58,7 +54,6 @@ const accountSchema = z
 			.trim()
 			.min(1, 'Escribe la moneda base')
 			.max(16, 'Máximo 16 caracteres'),
-		exchange_id: z.string().nullable(),
 		status: requiredSelectField('Elige el estado'),
 		api_key: z.string().trim(),
 		api_secret: z.string().trim(),
@@ -89,9 +84,6 @@ function valuesFor(account: Account | null): AccountFormInput {
 		name: account?.name ?? '',
 		mode: account?.mode ?? null,
 		base_currency: account?.base_currency ?? 'USDT',
-		exchange_id: account?.exchange_id
-			? String(account.exchange_id)
-			: NO_EXCHANGE,
 		status: account?.status ?? 'active',
 		// Los secretos nunca se precargan: vacío = conservar los actuales.
 		api_key: '',
@@ -106,7 +98,6 @@ export function AccountFormDialog({
 	account,
 }: AccountFormDialogProps) {
 	const isEdit = !!account;
-	const exchangesQuery = useExchangesQuery();
 	const createMutation = useCreateAccountMutation();
 	const updateMutation = useUpdateAccountMutation();
 	const isPending = createMutation.isPending || updateMutation.isPending;
@@ -128,10 +119,6 @@ export function AccountFormDialog({
 	}, [open, account, form]);
 
 	function handleSubmit(values: AccountFormOutput) {
-		const exchangeId =
-			values.exchange_id && values.exchange_id !== NO_EXCHANGE
-				? Number(values.exchange_id)
-				: null;
 		const credentials =
 			values.api_key && values.api_secret
 				? {
@@ -166,8 +153,6 @@ export function AccountFormDialog({
 						name: values.name,
 						status: values.status as AccountStatus,
 						base_currency: values.base_currency.toUpperCase(),
-						// El backend no permite quitar el exchange: `null` se omite.
-						exchange_id: exchangeId ?? undefined,
 						...credentials,
 					},
 				},
@@ -179,31 +164,12 @@ export function AccountFormDialog({
 					name: values.name,
 					mode: values.mode as AccountMode,
 					base_currency: values.base_currency.toUpperCase(),
-					exchange_id: exchangeId,
 					...credentials,
 				},
 				callbacks,
 			);
 		}
 	}
-
-	// Exchanges activos + el actual de la cuenta (aunque esté inactivo), para
-	// que el select no se vacíe al editar.
-	const exchangeOptions = [
-		// Una cuenta con exchange no puede quedar sin él (el backend lo ignora).
-		...(isEdit && account?.exchange_id
-			? []
-			: [{ value: NO_EXCHANGE, label: 'Sin exchange' }]),
-		...(exchangesQuery.data ?? [])
-			.filter(
-				(exchange) =>
-					exchange.is_active || exchange.id === account?.exchange_id,
-			)
-			.map((exchange) => ({
-				value: String(exchange.id),
-				label: exchange.name,
-			})),
-	];
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
@@ -213,7 +179,7 @@ export function AccountFormDialog({
 					<DialogDescription>
 						{account
 							? account.name
-							: 'Cuenta de exchange donde los agentes registran sus órdenes, en modo paper o live.'}
+							: 'Cuenta de Binance donde los agentes registran sus órdenes, en modo paper o live.'}
 					</DialogDescription>
 				</DialogHeader>
 				<form
@@ -317,32 +283,13 @@ export function AccountFormDialog({
 									)}
 								/>
 							</div>
-							<Controller
-								name="exchange_id"
-								control={form.control}
-								render={({ field, fieldState }) => (
-									<Field data-invalid={fieldState.invalid}>
-										<FieldLabel htmlFor="account-exchange">Exchange</FieldLabel>
-										<OptionSelect
-											id="account-exchange"
-											value={field.value}
-											onChange={field.onChange}
-											options={exchangeOptions}
-											aria-invalid={fieldState.invalid}
-										/>
-										{fieldState.invalid && (
-											<FieldError errors={[fieldState.error]} />
-										)}
-									</Field>
-								)}
-							/>
 							<FieldSet className="gap-4">
 								<FieldLegend
 									variant="label"
 									className="mb-0 flex items-center gap-1.5"
 								>
 									<IconLock className="size-4 text-muted-foreground" />
-									Credenciales del exchange
+									Credenciales de Binance
 								</FieldLegend>
 								<FieldDescription>
 									{account?.has_credentials

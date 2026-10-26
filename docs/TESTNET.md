@@ -1,8 +1,8 @@
 # Prueba del circuito live en testnet
 
-Antes del primer peso real hay que ver el circuito live funcionando contra la **testnet** de cada exchange que se vaya a usar. Hay dos niveles: el script (solo el ejecutor, sin BD) y la prueba completa en la app.
+Antes del primer peso real hay que ver el circuito live funcionando contra la **testnet** de Binance (el único exchange de la plataforma). Hay dos niveles: el script (solo el ejecutor, sin BD) y la prueba completa en la app.
 
-> Las claves de testnet se crean en el sitio de testnet de cada exchange (p. ej. Binance Spot: <https://testnet.binance.vision>). Las de producción no funcionan en la testnet ni al revés.
+> Las claves de testnet se crean en el sitio de testnet de Binance (Spot: <https://testnet.binance.vision>). Las de producción no funcionan en la testnet ni al revés.
 
 ## 1. Script del ejecutor (5 minutos)
 

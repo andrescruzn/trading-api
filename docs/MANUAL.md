@@ -42,6 +42,21 @@ Es la bolsa donde se compran y venden activos. Como Binance, Bybit, Kraken. El s
 
 Es lo que se negocia: BTC/USDT significa "compro Bitcoin pagando con USDT (dólar digital)". Cada symbol pertenece a un exchange.
 
+**¿Por qué hay varios exchanges si el dinero está en uno solo?** Cada exchange guarda su propio
+dinero: con los USDT que tienes en Binance no puedes comprar en Kraken; primero tendrías que
+enviarlos de un exchange al otro. La app usa los exchanges para dos cosas distintas:
+
+- **Leer precios (velas):** de cualquiera de los exchanges del catálogo. No hace falta tener cuenta
+  ni dinero allí.
+- **Comprar y vender de verdad (live):** solo en el exchange de la cuenta del agente, que en el
+  fondo común es la billetera de la plataforma.
+
+Por eso, **un agente live solo puede operar un símbolo del mismo exchange que su cuenta.** Si la
+billetera está en Binance, el agente live analiza el BTC/USDT *de Binance*, no el de Kraken: así la
+entrada, el stop loss y el take profit se calculan con los precios del mercado donde de verdad se
+compra. El asistente de agentes solo muestra las cuentas live que cumplen esta regla. En paper no
+aplica: ahí no se envía nada a ningún exchange.
+
 1.3.1 ¿Qué mercados puedo operar? (cripto, metales, materias primas, acciones)
 
 Además de cripto, la app trae **perpetuos TradFi** de Binance y Bybit. Un perpetuo es un contrato

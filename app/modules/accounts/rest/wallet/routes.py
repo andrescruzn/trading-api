@@ -3,11 +3,14 @@
 # ======================================================================
 # app/modules/accounts/rest/wallet/routes.py
 #
-# ENDPOINTS (billetera de la plataforma, fondo común):
+# ENDPOINTS (billetera única de Binance, fondo común):
 # - GET  /wallet            → cuenta, última foto de saldo y estado (staff)
-# - PUT  /wallet            → elegir la cuenta que es la billetera (super admin)
 # - POST /wallet/sync       → leer el saldo ahora (super admin)
 # - GET  /wallet/snapshots  → historia de fotos de saldo (staff)
+#
+# NOTAS:
+# - Nadie elige la billetera: es siempre la de Binance y sus credenciales
+#   viven en el `.env` del servidor. `configured` = hay credenciales.
 #
 # SEGURIDAD:
 # - El inversor nunca ve el saldo total de la billetera: todo es staff.
@@ -32,7 +35,6 @@ from app.modules.accounts.providers import AccountServiceFactory
 from app.modules.accounts.services.wallet import WalletOverview
 
 from .error_messages import WALLET_ERROR_MESSAGES
-from .schemas import SetPlatformWalletRequest
 
 router = APIRouter(prefix="/wallet", tags=["Accounts — Platform wallet"])
 
@@ -100,7 +102,7 @@ def _snapshot_to_dict(s: WalletSnapshot) -> dict[str, Any]:
 
 def _overview_to_dict(o: WalletOverview) -> dict[str, Any]:
     return {
-        "configured":      o.wallet is not None,
+        "configured":      o.credentials_configured and o.wallet is not None,
         "wallet":          _wallet_to_dict(o.wallet) if o.wallet else None,
         "account":         _account_to_dict(o.account),
         "latest_snapshot": _snapshot_to_dict(o.latest_snapshot) if o.latest_snapshot else None,
@@ -119,31 +121,6 @@ def get_wallet(
     """Billetera de la plataforma y su último saldo (super admin y socio)."""
     result = factory.get_wallet().get()
     return build_success_response(data=_overview_to_dict(result.data))
-
-
-# ======================================================================
-# PUT /wallet
-# ======================================================================
-
-@router.put("", status_code=200)
-def set_platform_wallet(
-    payload: SetPlatformWalletRequest,
-    identity: dict = Depends(super_admin_required),
-    factory: AccountServiceFactory = Depends(get_factory),
-):
-    """Elige la cuenta de exchange que es la billetera de la plataforma (solo super admin)."""
-    result = factory.set_platform_wallet().set(
-        account_id=payload.account_id,
-        requester_user_id=int(identity["user_id"]),
-    )
-    if not result.success:
-        return build_error_response(result, WALLET_ERROR_MESSAGES)
-
-    overview = factory.get_wallet().get().data
-    return build_success_response(
-        data=_overview_to_dict(overview),
-        msg="Billetera guardada. Sincronízala para ver su saldo.",
-    )
 
 
 # ======================================================================

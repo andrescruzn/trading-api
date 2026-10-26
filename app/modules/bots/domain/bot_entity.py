@@ -11,6 +11,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from decimal import Decimal
 from typing import Any
 
 
@@ -19,7 +20,12 @@ class Bot:
     Entidad de dominio: Bot.
 
     Un Bot instancia una estrategia de trading sobre un símbolo y
-    timeframe específicos, operando sobre una cuenta del usuario.
+    timeframe específicos. Hay dos tipos que conviven:
+    - real (`mode = live`): opera la billetera única de Binance (su
+      `account_id` es el de la billetera) con el capital de su pool.
+    - demo (`mode = paper`): dinero simulado; su `account_id` es una
+      cuenta de práctica interna con el monto que se escribió al crearlo
+      (`demo_capital`, solo de presentación).
 
     Estados válidos:
     - stopped  : bot detenido (estado inicial)
@@ -73,6 +79,7 @@ class Bot:
         execution_mode: str = "manual",
         approval_ttl_minutes: int | None = None,
         share_signals: bool = False,
+        demo_capital: Decimal | None = None,
     ):
         self.id = id
         self.name = name
@@ -91,6 +98,8 @@ class Bot:
         self.approval_ttl_minutes = approval_ttl_minutes
         # Otros usuarios pueden suscribirse a sus señales aprobadas (Telegram)
         self.share_signals = share_signals
+        # Monto inicial de un agente demo (no persistido: vive en su cuenta interna)
+        self.demo_capital = demo_capital
 
     # ------------------------------------------------------------------
     # Accessors sobre risk_params

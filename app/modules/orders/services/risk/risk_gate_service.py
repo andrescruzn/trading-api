@@ -9,9 +9,10 @@
 #   aprobada por una persona o en modo automático.
 #
 # REGLAS (en orden):
-# 1. Kill switch global: TRADING_ENABLED=false → no sale ninguna orden.
-# 2. Live apagado: TRADING_LIVE_ENABLED=false → solo paper.
-# 3. Solo para órdenes que ABREN riesgo (buy en spot):
+# 1. Kill switch global: TRADING_ENABLED=false → no sale ninguna orden
+#    (ni de agentes reales ni de agentes demo). No hay interruptor aparte
+#    para lo real: los agentes reales y los demo conviven (2026-10-26).
+# 2. Solo para órdenes que ABREN riesgo (buy en spot):
 #    a. Notional máximo: qty × precio ≤ min(ORDER_MAX_NOTIONAL,
 #       risk_params.max_notional).
 #    b. Drawdown máximo del bot: si la pérdida realizada acumulada supera
@@ -60,9 +61,6 @@ class RiskGateService:
     ) -> ServiceResult[None]:
         if not settings.TRADING_ENABLED:
             return ServiceResult.fail(code="TRADING_DISABLED", http_status=503)
-
-        if bot.mode == "live" and not settings.TRADING_LIVE_ENABLED:
-            return ServiceResult.fail(code="TRADING_LIVE_DISABLED", http_status=403)
 
         if side != "buy":
             return ServiceResult.ok(data=None)

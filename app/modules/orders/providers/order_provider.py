@@ -30,7 +30,6 @@ from sqlalchemy.orm import Session
 
 from app.common.config import settings
 
-from app.common.security.credentials_cipher import CredentialsCipher
 
 # Repos propios del módulo
 from app.modules.orders.infrastructure import (
@@ -108,18 +107,12 @@ class OrderServiceFactory:
         self._balance_repo = SqlAlchemyAccountBalanceRepository(session)
 
         # ------------------------------------------------------------------
-        # Cipher para descifrar credenciales API (LiveExecutor)
-        # ------------------------------------------------------------------
-        self._cipher = CredentialsCipher.from_settings()
-
-        # ------------------------------------------------------------------
         # Ejecutores (patrón Strategy) — stateless, se pueden reutilizar
         # ------------------------------------------------------------------
         self._paper_executor = PaperExecutor(candle_repo=self._candle_repo)
         self._live_executor = LiveExecutor(
             account_repo=self._account_repo,
             exchange_repo=self._exchange_repo,
-            cipher=self._cipher,
         )
 
     # ------------------------------------------------------------------

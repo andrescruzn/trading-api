@@ -4,29 +4,34 @@
 # database/seeds/bots.py
 #
 # PROPÓSITO:
-# - Agentes (bots) de ejemplo del Módulo 7 para el usuario demo, para no
-#   arrancar con la pantalla de agentes vacía: uno sobre oro (perpetuo
-#   TradFi) y otro sobre BTC.
+# - Agentes demo (dinero simulado) de ejemplo del Módulo 7 para el super
+#   admin, para no arrancar con "Agentes demo" vacío: uno sobre oro
+#   (perpetuo TradFi) y otro sobre BTC.
 #
 # NOTAS:
-# - Requiere los seeds `market_data`, `strategies`, `feature_sets` y
-#   `accounts`. Si falta alguna referencia, ese agente se omite.
-# - Se crean en `paper` y `stopped`: nadie opera hasta que el usuario
-#   los inicia desde la app.
-# - Clave natural: (account_id, name).
-# - Mismas reglas que CreateBotService: modo igual al de la cuenta,
-#   risk_pct <= 0.01 (regla del 1 %) y conjunto de indicadores compatible
+# - Requiere los seeds `market_data`, `strategies` y `feature_sets`. Si
+#   falta alguna referencia, ese agente se omite.
+# - Se crean en `paper` (demo) y `stopped`: nadie opera hasta que el
+#   usuario los inicia desde la app.
+# - Igual que CreateBotService: cada agente demo tiene su propia cuenta de
+#   práctica interna ("Demo · <nombre>") con el monto como balance inicial
+#   y en `meta["demo_capital"]`.
+# - Clave natural: cuenta = (user_id, name); agente = (account_id, name).
+# - risk_pct <= 0.01 (regla del 1 %) y conjunto de indicadores compatible
 #   con las reglas de la estrategia (por eso ambos usan "Tendencia").
 # ======================================================================
 
 from __future__ import annotations
 
+from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.modules.accounts.infrastructure.account_balance_model import AccountBalanceModel
 from app.modules.accounts.infrastructure.account_model import AccountModel
+from app.modules.bots.services.bots.demo_capital import DEMO_CAPITAL_META_KEY
 from app.modules.bots.infrastructure.bot_model import BotModel
 from app.modules.features.infrastructure.feature_set_model import FeatureSetModel
 from app.modules.market.infrastructure.exchange_model import ExchangeModel
@@ -37,11 +42,11 @@ from app.modules.users.infrastructure.user_model import UserModel
 from database.seeds._helpers import SeedStats, get_or_create
 
 DEMO_USER_EMAIL = "andrescruznovoa@gmail.com"
+DEMO_CAPITAL = Decimal("10000")
 
 BOTS: list[dict[str, Any]] = [
     {
         "name": "Oro — tendencia 4h",
-        "account": "Binance Paper — Demo",
         "exchange": "Binance",
         "symbol": "XAU/USDT:USDT",
         "strategy": ("Tendencia Metales", "1.0.0"),
@@ -51,7 +56,6 @@ BOTS: list[dict[str, Any]] = [
     },
     {
         "name": "BTC — tendencia 1h",
-        "account": "Binance Paper — Demo",
         "exchange": "Binance",
         "symbol": "BTC/USDT",
         "strategy": ("EMA Trend Follower", "1.0.0"),
@@ -73,15 +77,16 @@ def run(session: Session) -> SeedStats:
         return stats
 
     for spec in BOTS:
-        refs = _resolve_refs(session, user.id, spec)
+        refs = _resolve_refs(session, spec)
         if refs is None:
             stats.notes.append(f"omitido '{spec['name']}': falta alguna referencia")
             continue
 
+        account_id = _demo_account(session, user.id, spec["name"], refs["quote_asset"], stats)
         get_or_create(
             session,
             BotModel,
-            lookup={"account_id": refs["account_id"], "name": spec["name"]},
+            lookup={"account_id": account_id, "name": spec["name"]},
             values={
                 "strategy_id": refs["strategy_id"],
                 "symbol_id": refs["symbol_id"],
@@ -97,14 +102,42 @@ def run(session: Session) -> SeedStats:
     return stats
 
 
-def _resolve_refs(session: Session, user_id: int, spec: dict[str, Any]) -> dict[str, int] | None:
-    """IDs de cuenta, símbolo, estrategia, timeframe y conjunto; None si falta uno."""
+def _demo_account(
+    session: Session, user_id: int, bot_name: str, quote_asset: str, stats: SeedStats
+) -> int:
+    """Cuenta de práctica del agente demo con su monto inicial (crea la que falte)."""
+    account = get_or_create(
+        session,
+        AccountModel,
+        lookup={"user_id": user_id, "name": f"Demo · {bot_name}"},
+        values={
+            "mode": "paper",
+            "base_currency": quote_asset,
+            "status": "active",
+            "credentials_ref": None,
+            "meta": {DEMO_CAPITAL_META_KEY: str(DEMO_CAPITAL)},
+        },
+        stats=stats,
+    )
+    has_balance = session.execute(
+        select(AccountBalanceModel.id).filter_by(account_id=account.id).limit(1)
+    ).first() is not None
+    if not has_balance:
+        session.add(
+            AccountBalanceModel(
+                account_id=account.id, asset=quote_asset, free=DEMO_CAPITAL, locked=Decimal("0")
+            )
+        )
+        session.flush()
+    stats.track(AccountBalanceModel.__tablename__, created=not has_balance)
+    return account.id
+
+
+def _resolve_refs(session: Session, spec: dict[str, Any]) -> dict[str, Any] | None:
+    """IDs de símbolo, estrategia, timeframe y conjunto; None si falta uno."""
     strategy_name, strategy_version = spec["strategy"]
     set_name, set_version = spec["feature_set"]
 
-    account = session.execute(
-        select(AccountModel).filter_by(user_id=user_id, name=spec["account"], mode="paper")
-    ).scalar_one_or_none()
     symbol = session.execute(
         select(SymbolModel)
         .join(ExchangeModel, ExchangeModel.id == SymbolModel.exchange_id)
@@ -120,10 +153,10 @@ def _resolve_refs(session: Session, user_id: int, spec: dict[str, Any]) -> dict[
         select(FeatureSetModel).filter_by(name=set_name, version=set_version)
     ).scalar_one_or_none()
 
-    if None in (account, symbol, strategy, timeframe, feature_set) or not symbol.is_active:
+    if None in (symbol, strategy, timeframe, feature_set) or not symbol.is_active:
         return None
     return {
-        "account_id": account.id,
+        "quote_asset": (symbol.quote_asset or "USDT").upper(),
         "symbol_id": symbol.id,
         "strategy_id": strategy.id,
         "timeframe_id": timeframe.id,

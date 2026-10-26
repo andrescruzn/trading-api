@@ -367,16 +367,13 @@ class Settings:
         # --------------------------------------------------------------
         # Trading — Salvaguardas de ejecución (M8)
         # --------------------------------------------------------------
-        # TRADING_ENABLED: kill switch global. false → no sale ninguna orden.
-        # TRADING_LIVE_ENABLED: false → solo se ejecutan órdenes paper.
+        # TRADING_ENABLED: kill switch global. false → no sale ninguna orden
+        #   (ni de agentes reales ni de agentes demo).
         # ORDER_MAX_NOTIONAL: valor máximo (qty × precio) de una orden, en la
         #   moneda de cotización. 0 = sin tope global (el bot puede fijar
         #   el suyo en risk_params.max_notional).
         # --------------------------------------------------------------
         self.TRADING_ENABLED: bool = os.getenv("TRADING_ENABLED", "true").lower() == "true"
-        self.TRADING_LIVE_ENABLED: bool = (
-            os.getenv("TRADING_LIVE_ENABLED", "false").lower() == "true"
-        )
         self.ORDER_MAX_NOTIONAL: float = _env_float("ORDER_MAX_NOTIONAL", 10000.0)
         # ORDER_REQUESTS_PER_MINUTE: crear, cancelar o aprobar órdenes por
         #   usuario y minuto (cada una puede llegar al exchange).
@@ -387,25 +384,26 @@ class Settings:
         #   API esté caída). Si el exchange no lo soporta, vigila el scheduler.
         # LIVE_USE_SANDBOX: usa la testnet del exchange (claves de testnet)
         #   para probar el circuito live sin dinero real.
+        # BINANCE_API_KEY / BINANCE_API_SECRET: credenciales de la billetera
+        #   única de la plataforma (Binance). Solo lectura y trading: nunca
+        #   con permiso de retiro. Vacías → la billetera no está configurada
+        #   y los agentes reales no pueden operar.
         self.ORDER_NATIVE_STOP_LOSS: bool = (
             os.getenv("ORDER_NATIVE_STOP_LOSS", "true").lower() == "true"
         )
         self.LIVE_USE_SANDBOX: bool = os.getenv("LIVE_USE_SANDBOX", "false").lower() == "true"
+        self.BINANCE_API_KEY: str = os.getenv("BINANCE_API_KEY", "").strip()
+        self.BINANCE_API_SECRET: str = os.getenv("BINANCE_API_SECRET", "").strip()
 
         # --------------------------------------------------------------
         # Modo de ejecución de los agentes (manual / approval / auto)
         # --------------------------------------------------------------
-        # TRADING_LIVE_AUTO_ENABLED: permite agentes `auto` en live (órdenes
-        #   reales sin aprobación humana). false por defecto.
         # SIGNAL_APPROVAL_TTL_MINUTES: minutos para aprobar una señal si el
         #   agente no fija los suyos (approval_ttl_minutes).
         # SIGNALS_AUTO_MIN_TIMEFRAME_SECONDS: timeframe mínimo para señales
         #   automáticas (por debajo, el coste de IA se dispara). 900 = 15m.
         # AGENT_MAX_AUTO_ANALYSES_PER_DAY: análisis automáticos por usuario y día.
         # --------------------------------------------------------------
-        self.TRADING_LIVE_AUTO_ENABLED: bool = (
-            os.getenv("TRADING_LIVE_AUTO_ENABLED", "false").lower() == "true"
-        )
         self.SIGNAL_APPROVAL_TTL_MINUTES: int = _env_int("SIGNAL_APPROVAL_TTL_MINUTES", 60)
         self.SIGNALS_AUTO_MIN_TIMEFRAME_SECONDS: int = _env_int(
             "SIGNALS_AUTO_MIN_TIMEFRAME_SECONDS", 900

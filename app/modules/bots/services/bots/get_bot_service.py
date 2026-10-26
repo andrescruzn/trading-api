@@ -11,6 +11,7 @@ from app.modules.accounts.domain.account_repository import AccountRepository
 from app.modules.bots.domain.bot_entity import Bot
 from app.modules.bots.domain.bot_repository import BotRepository
 from app.modules.bots.services.bots.bot_access import find_accessible_bot
+from app.modules.bots.services.bots.demo_capital import attach_demo_capital
 
 
 class GetBotService:
@@ -24,4 +25,5 @@ class GetBotService:
         bot = find_accessible_bot(self._repo, self._account_repo, bot_id, owner_id)
         if bot is None:
             return ServiceResult.fail(code="BOT_NOT_FOUND", http_status=404)
+        attach_demo_capital([bot], self._account_repo)
         return ServiceResult.ok(data=bot)

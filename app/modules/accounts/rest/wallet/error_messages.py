@@ -8,24 +8,22 @@
 
 WALLET_ERROR_MESSAGES: dict[str, str] = {
     "WALLET_NOT_CONFIGURED": (
-        "Aún no hay billetera de la plataforma. Elige la cuenta de exchange que guarda el dinero del fondo."
+        "La billetera de Binance aún no está conectada. Pide a quien administra el servidor que "
+        "cargue la API key de Binance."
     ),
-    "WALLET_ACCOUNT_NOT_FOUND": "No encontramos esa cuenta.",
+    "WALLET_ACCOUNT_NOT_FOUND": "No encontramos la billetera de Binance.",
     "WALLET_ACCOUNT_INACTIVE": (
-        "La cuenta de la billetera está suspendida. Actívala en Mis cuentas para leer su saldo."
+        "La billetera de Binance está suspendida, así que no podemos leer su saldo."
     ),
     "WALLET_ACCOUNT_NO_EXCHANGE": (
-        "La cuenta no tiene exchange. Elígelo en Mis cuentas antes de usarla como billetera."
+        "No encontramos Binance en el catálogo de exchanges. Revisa los datos iniciales del sistema."
     ),
-    "WALLET_ACCOUNT_NO_CREDENTIALS": (
-        "La cuenta live no tiene API key. Agrégala en Mis cuentas para poder leer el saldo."
-    ),
-    "WALLET_CREDENTIALS_UNREADABLE": (
-        "No pudimos leer la API key guardada. Vuelve a cargarla en Mis cuentas."
+    "WALLET_CREDENTIALS_MISSING": (
+        "Faltan la API key y el secret de Binance en el servidor. Sin ellos no podemos leer el saldo "
+        "ni operar con dinero real."
     ),
     "WALLET_EXCHANGE_NOT_SUPPORTED": (
-        "Ese exchange no se puede conectar como billetera. La plataforma solo opera con Binance: "
-        "elige una cuenta de Binance."
+        "La billetera no está en Binance. La plataforma solo opera con Binance."
     ),
     "WALLET_EXCHANGE_AUTH_FAILED": (
         "El exchange rechazó la API key. Revisa que sea correcta y que tenga permiso de lectura."

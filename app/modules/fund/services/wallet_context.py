@@ -5,13 +5,16 @@
 #
 # PROPÓSITO:
 # - Resolver la billetera de la plataforma (M4) para los casos de uso del
-#   fondo: qué cuenta es, si es live (se verifica contra el exchange) o
-#   paper (desarrollo: todo se confirma a mano) y en qué moneda se lleva.
+#   fondo: qué cuenta es y en qué moneda se lleva. Desde el 2026-10-26 es
+#   siempre la billetera live de Binance (se asegura al resolver), así que
+#   `is_live` es siempre verdadero; las ramas "paper" del fondo quedaron de
+#   cuando la billetera podía ser una cuenta de práctica.
 # ======================================================================
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Callable
 
 from app.modules.accounts.domain.account_entity import Account
 from app.modules.accounts.domain.account_repository import AccountRepository
@@ -31,11 +34,18 @@ class WalletContext:
 class WalletContextResolver:
     """Billetera configurada y activa, o el código de error para el servicio."""
 
-    def __init__(self, wallet_repo: PlatformWalletRepository, account_repo: AccountRepository):
+    def __init__(
+        self,
+        wallet_repo: PlatformWalletRepository,
+        account_repo: AccountRepository,
+        ensure_wallet: Callable[[], Account | None],
+    ):
         self._wallet_repo = wallet_repo
         self._account_repo = account_repo
+        self._ensure_wallet = ensure_wallet
 
     def resolve(self) -> tuple[WalletContext | None, str | None]:
+        self._ensure_wallet()
         wallet = self._wallet_repo.get()
         if wallet is None:
             return None, "FUND_WALLET_NOT_CONFIGURED"

@@ -29,7 +29,6 @@ ORDER_ERROR_MESSAGES: dict[str, str] = {
         "(puede que ya se haya ejecutado). Espera unos minutos a que se sincronice."
     ),
     "TRADING_DISABLED":         "El envío de órdenes está detenido temporalmente por el administrador.",
-    "TRADING_LIVE_DISABLED":    "Las órdenes en modo live están desactivadas. Por ahora solo se ejecutan órdenes paper.",
     "BOT_MAX_DRAWDOWN_REACHED": "El agente alcanzó su pérdida máxima y se detuvo para proteger el capital. Revísalo antes de volver a operar.",
     "BOT_NOT_FOUND":            "El agente no existe.",
     "BOT_NOT_RUNNING":          "Inicia el agente para poder enviar órdenes.",

@@ -143,20 +143,24 @@ class BotServiceFactory:
         return GetBotService(repo=self._bot_repo, account_repo=self._account_repo)
 
     def create_bot(self) -> CreateBotService:
+        # Import diferido: accounts arma su factory (y ccxt) solo si se crea un agente
+        from app.modules.accounts.providers import build_platform_wallet_ensurer
+
         return CreateBotService(
             repo=self._bot_repo,
             account_repo=self._account_repo,
+            balance_repo=self._balance_repo,
             strategy_repo=self._strategy_repo,
             symbol_repo=self._symbol_repo,
             timeframe_repo=self._timeframe_repo,
             feature_set_repo=self._feature_set_repo,
+            ensure_wallet=build_platform_wallet_ensurer(self._session).ensure,
         )
 
     def update_bot(self) -> UpdateBotService:
         return UpdateBotService(
             repo=self._bot_repo,
             account_repo=self._account_repo,
-            symbol_repo=self._symbol_repo,
             timeframe_repo=self._timeframe_repo,
         )
 

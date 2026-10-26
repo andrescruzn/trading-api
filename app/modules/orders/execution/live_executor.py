@@ -7,8 +7,8 @@
 #
 # Flujo de ejecución:
 # 1. Obtener la cuenta del bot (para exchange y credenciales)
-# 2. Descifrar credenciales API (Fernet, de account.meta['enc_creds'])
-# 3. Inicializar cliente ccxt con api_key + api_secret
+# 2. Inicializar cliente ccxt con las credenciales de la billetera de
+#    Binance (BINANCE_API_KEY / BINANCE_API_SECRET del .env)
 # 4. Enviar la orden al exchange
 # 5. Traducir la respuesta al estado real (filled / partially_filled / sent)
 #
@@ -48,7 +48,6 @@ from typing import Any
 
 import ccxt
 
-from app.common.security.credentials_cipher import CredentialsCipher
 from app.common.utils.datetime_utils import utc_now
 from app.modules.accounts.domain.account_repository import AccountRepository
 from app.modules.accounts.infrastructure.exchange_client import build_authenticated_client
@@ -111,11 +110,9 @@ class LiveExecutor(ExecutorInterface):
         self,
         account_repo: AccountRepository,
         exchange_repo: ExchangeRepository,
-        cipher: CredentialsCipher,
     ):
         self._account_repo = account_repo
         self._exchange_repo = exchange_repo
-        self._cipher = cipher
 
     # ==================================================================
     # Enviar una orden
@@ -300,10 +297,7 @@ class LiveExecutor(ExecutorInterface):
         """Cliente ccxt autenticado con las credenciales de la cuenta del bot."""
         # 1. Obtener cuenta del bot
         if bot.account_id is None:
-            raise RuntimeError(
-                "El bot no tiene cuenta asociada. "
-                "Configura una cuenta live antes de operar."
-            )
+            raise RuntimeError("El agente real no está ligado a la billetera de Binance.")
 
         account = self._account_repo.get_by_id(bot.account_id)
         if account is None:
@@ -311,9 +305,9 @@ class LiveExecutor(ExecutorInterface):
                 f"Cuenta no encontrada: account_id={bot.account_id}."
             )
 
-        # 2. Credenciales descifradas + cliente ccxt (helper compartido con la
-        #    billetera de la plataforma; respeta LIVE_USE_SANDBOX)
-        return build_authenticated_client(account, self._exchange_repo, self._cipher)
+        # 2. Cliente ccxt con las credenciales de la billetera (helper
+        #    compartido con la billetera de la plataforma; respeta LIVE_USE_SANDBOX)
+        return build_authenticated_client(account, self._exchange_repo)
 
     @staticmethod
     def _order_symbol(order: Order) -> str:

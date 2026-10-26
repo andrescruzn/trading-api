@@ -4,10 +4,14 @@
 # app/modules/accounts/infrastructure/exchange_client.py
 #
 # PROPÓSITO:
-# - Armar el cliente ccxt de una cuenta: con sus credenciales descifradas
-#   (órdenes live de M8, saldo de la billetera) o sin ellas (precios
-#   públicos). Un solo sitio para descifrar credenciales y respetar
-#   LIVE_USE_SANDBOX.
+# - Armar el cliente ccxt de la billetera de la plataforma: con las
+#   credenciales de Binance (órdenes live de M8, saldo de la billetera,
+#   depósitos y retiros del fondo) o sin ellas (precios públicos). Un solo
+#   sitio para leer las credenciales y respetar LIVE_USE_SANDBOX.
+#
+# CREDENCIALES:
+# - Hay una sola billetera (Binance) y sus credenciales viven en el `.env`
+#   del servidor (BINANCE_API_KEY / BINANCE_API_SECRET), nunca en la BD.
 #
 # ERRORES:
 # - `ExchangeClientError(code, mensaje)` hereda de RuntimeError: el
@@ -22,7 +26,6 @@ from typing import Any
 import ccxt
 
 from app.common.config import settings
-from app.common.security.credentials_cipher import CredentialsCipher
 from app.modules.accounts.domain.account_entity import Account
 from app.modules.market.domain.ccxt_exchanges import PLATFORM_EXCHANGE_NAME, ccxt_id_for
 from app.modules.market.domain.exchange_repository import ExchangeRepository
@@ -41,8 +44,7 @@ def resolve_ccxt_id(account: Account, exchange_repo: ExchangeRepository) -> str:
     if account.exchange_id is None:
         raise ExchangeClientError(
             "ACCOUNT_NO_EXCHANGE",
-            "La cuenta no tiene un exchange asociado. "
-            "Configura el exchange desde la página de cuentas.",
+            "La cuenta no tiene un exchange asociado.",
         )
 
     exchange_entity = exchange_repo.get_by_id(account.exchange_id)
@@ -75,39 +77,25 @@ def _new_client(ccxt_id: str, config: dict[str, Any]):
     return client
 
 
-def build_authenticated_client(
-    account: Account,
-    exchange_repo: ExchangeRepository,
-    cipher: CredentialsCipher,
-):
-    """Cliente ccxt con las credenciales (descifradas) de la cuenta."""
-    enc_creds = account.meta.get("enc_creds")
-    if not enc_creds:
-        raise ExchangeClientError(
-            "ACCOUNT_NO_CREDENTIALS",
-            "La cuenta no tiene credenciales API configuradas. "
-            "Agrega api_key y api_secret desde la página de cuentas.",
-        )
+def platform_credentials_configured() -> bool:
+    """True si el `.env` trae las credenciales de la billetera de Binance."""
+    return bool(settings.BINANCE_API_KEY and settings.BINANCE_API_SECRET)
 
-    try:
-        creds = cipher.decrypt(enc_creds)
-    except Exception:
-        raise ExchangeClientError(
-            "ACCOUNT_CREDENTIALS_UNREADABLE",
-            "No se pudieron descifrar las credenciales API. "
-            "Reconfigura las credenciales de la cuenta.",
-        )
 
-    api_key: str = creds.get("api_key", "")
-    api_secret: str = creds.get("api_secret", "")
-    if not api_key or not api_secret:
+def build_authenticated_client(account: Account, exchange_repo: ExchangeRepository):
+    """Cliente ccxt con las credenciales de la billetera de la plataforma."""
+    if not platform_credentials_configured():
         raise ExchangeClientError(
-            "ACCOUNT_CREDENTIALS_INCOMPLETE",
-            "Las credenciales API están incompletas (api_key o api_secret vacíos).",
+            "EXCHANGE_CREDENTIALS_MISSING",
+            "Faltan las credenciales de Binance en el servidor "
+            "(BINANCE_API_KEY y BINANCE_API_SECRET).",
         )
 
     ccxt_id = resolve_ccxt_id(account, exchange_repo)
-    return _new_client(ccxt_id, {"apiKey": api_key, "secret": api_secret})
+    return _new_client(
+        ccxt_id,
+        {"apiKey": settings.BINANCE_API_KEY, "secret": settings.BINANCE_API_SECRET},
+    )
 
 
 def build_public_client(account: Account, exchange_repo: ExchangeRepository):

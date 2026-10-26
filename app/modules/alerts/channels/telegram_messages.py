@@ -30,7 +30,6 @@ DECISION_MESSAGES: dict[str, str] = {
     "SIGNAL_POSITION_ALREADY_OPEN": "El agente ya tiene una posición abierta. No se ejecutó.",
     "SIGNAL_NO_POSITION":         "El agente no tiene una posición que vender. No se ejecutó.",
     "TRADING_DISABLED":           "El envío de órdenes está detenido por el administrador. No se ejecutó.",
-    "TRADING_LIVE_DISABLED":      "Las órdenes live están desactivadas. No se ejecutó.",
     "BOT_NOT_RUNNING":            "El agente no está activo. Inícialo y vuelve a intentarlo.",
     "BOT_MAX_DRAWDOWN_REACHED":   "El agente alcanzó su pérdida máxima y se detuvo. No se ejecutó.",
     "ORDER_NOTIONAL_TOO_HIGH":    "La orden supera el valor máximo por operación. No se ejecutó.",

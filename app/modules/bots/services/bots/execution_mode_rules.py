@@ -6,8 +6,8 @@
 # Reglas del modo de ejecución de un agente, compartidas por crear y
 # editar:
 # - execution_mode válido (manual | approval | auto).
-# - `auto` en live solo con TRADING_LIVE_AUTO_ENABLED: órdenes con dinero
-#   real sin una persona en medio es una decisión del administrador.
+# - No hay variable de entorno que apague lo real: un agente real puede ir
+#   en cualquier modo (decidido el 2026-10-26).
 # - approval/auto exigen un timeframe ≥ SIGNALS_AUTO_MIN_TIMEFRAME_SECONDS:
 #   un análisis de IA por vela de 1m dispararía el coste.
 # ======================================================================
@@ -25,9 +25,6 @@ def check_execution_mode(bot: Bot, timeframe_seconds: int | None) -> ServiceResu
 
     if bot.approval_ttl_minutes is not None and not 1 <= bot.approval_ttl_minutes <= 1440:
         return ServiceResult.fail(code="BOT_INVALID_APPROVAL_TTL", http_status=422)
-
-    if bot.execution_mode == "auto" and bot.mode == "live" and not settings.TRADING_LIVE_AUTO_ENABLED:
-        return ServiceResult.fail(code="BOT_AUTO_LIVE_DISABLED", http_status=422)
 
     if (
         bot.is_automated()

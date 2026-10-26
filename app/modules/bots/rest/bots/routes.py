@@ -19,6 +19,9 @@
 #
 # NOTAS:
 # - En la UI los bots se llaman "agentes"; los mensajes usan esa palabra.
+# - Agentes reales (`mode=live`, billetera de Binance) y demo (`mode=paper`,
+#   dinero simulado con `demo_capital`) conviven: Inicio lista los reales y
+#   "Agentes demo" los demo, con el filtro `mode`.
 # - Un usuario solo ve y opera bots de sus cuentas (`owner_id`); para un
 #   bot ajeno la respuesta es 404, igual que si no existiera.
 # - `GET /bots/shared` va antes de `GET /bots/{bot_id}`: si no, "shared"
@@ -82,6 +85,7 @@ def _bot_to_dict(b: Bot) -> dict[str, Any]:
         "execution_mode": b.execution_mode,
         "approval_ttl_minutes": b.approval_ttl_minutes,
         "share_signals":  b.share_signals,
+        "demo_capital":   None if b.demo_capital is None else str(b.demo_capital),
         "started_at":     to_iso_utc(b.started_at),
         "stopped_at":     to_iso_utc(b.stopped_at),
         "created_at":     to_iso_utc(b.created_at),
@@ -194,17 +198,17 @@ def create_bot(
     identity: dict = Depends(super_admin_required),
     factory: BotServiceFactory = Depends(get_factory),
 ):
-    """Crea un nuevo bot. Disponible para todos los usuarios autenticados."""
+    """Crea un agente real (billetera de Binance) o demo (dinero simulado). Solo super admin."""
     result = factory.create_bot().create(
         name=payload.name,
         strategy_id=payload.strategy_id,
         symbol_id=payload.symbol_id,
         timeframe_id=payload.timeframe_id,
-        account_id=payload.account_id,
         feature_set_id=payload.feature_set_id,
         mode=payload.mode,
         risk_params=payload.risk_params,
-        owner_id=write_scope(identity),
+        requester_user_id=int(identity["user_id"]),
+        demo_capital=payload.demo_capital,
         execution_mode=payload.execution_mode,
         approval_ttl_minutes=payload.approval_ttl_minutes,
     )
@@ -250,12 +254,11 @@ def update_bot(
 ):
     """
     Renombra un bot o cambia su modo de ejecución (en cualquier estado), o
-    cambia su configuración de cuenta/riesgo (solo si 'stopped').
+    cambia su riesgo (solo si 'stopped'). Real o demo no se cambia.
     """
     result = factory.update_bot().update(
         bot_id=bot_id,
         name=payload.name,
-        mode=payload.mode,
         risk_params=payload.risk_params,
         owner_id=write_scope(identity),
         execution_mode=payload.execution_mode,

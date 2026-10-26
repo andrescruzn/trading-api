@@ -4,7 +4,6 @@ import type { Account } from '@/modules/accounts/api/accounts.api';
 import { useAccountsQuery } from '@/modules/accounts/hooks/use-accounts-queries';
 import { useSetPlatformWalletMutation } from '@/modules/accounts/hooks/use-wallet-mutations';
 import { ACCOUNT_MODE_LABELS } from '@/modules/accounts/lib/accounts-labels';
-import { useExchangesQuery } from '@/modules/market/hooks/use-market-queries';
 import { OptionSelect } from '@/modules/shared/components/option-select';
 import { getErrorMessage } from '@/modules/shared/lib/get-error-message';
 import {
@@ -45,14 +44,13 @@ function isEligible(account: Account) {
 	);
 }
 
-/** Un super admin elige qué cuenta de exchange guarda el dinero del fondo. */
+/** Un super admin elige qué cuenta de Binance guarda el dinero del fondo. */
 export function WalletAccountDialog({
 	open,
 	onOpenChange,
 	currentAccountId,
 }: WalletAccountDialogProps) {
 	const accountsQuery = useAccountsQuery();
-	const exchangesQuery = useExchangesQuery();
 	const setMutation = useSetPlatformWalletMutation();
 	const [accountId, setAccountId] = useState<string | null>(null);
 
@@ -60,13 +58,10 @@ export function WalletAccountDialog({
 		if (open) setAccountId(currentAccountId ? String(currentAccountId) : null);
 	}, [open, currentAccountId]);
 
-	const exchangeName = (id: number | null) =>
-		exchangesQuery.data?.find((exchange) => exchange.id === id)?.name ?? '—';
-
 	const eligible = (accountsQuery.data ?? []).filter(isEligible);
 	const options = eligible.map((account) => ({
 		value: String(account.id),
-		label: `${account.name} · ${exchangeName(account.exchange_id)} · ${ACCOUNT_MODE_LABELS[account.mode]}`,
+		label: `${account.name} · ${ACCOUNT_MODE_LABELS[account.mode]}`,
 	}));
 	const selected = eligible.find((account) => String(account.id) === accountId);
 	const changing =

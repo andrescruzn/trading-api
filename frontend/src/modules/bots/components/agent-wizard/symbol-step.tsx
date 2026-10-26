@@ -30,7 +30,9 @@ export function SymbolStep({
 		(symbol) =>
 			!term ||
 			symbol.symbol.toLowerCase().includes(term) ||
-			(symbol.exchange_name ?? '').toLowerCase().includes(term),
+			(ASSET_CLASS_LABELS[symbol.asset_class] ?? '')
+				.toLowerCase()
+				.includes(term),
 	);
 
 	return (
@@ -42,7 +44,7 @@ export function SymbolStep({
 				<InputGroupInput
 					value={search}
 					onChange={(event) => setSearch(event.target.value)}
-					placeholder="Busca BTC, ETH, Binance…"
+					placeholder="Busca BTC, ETH, metal…"
 					aria-label="Buscar símbolo"
 				/>
 			</InputGroup>
@@ -66,12 +68,9 @@ export function SymbolStep({
 							key={symbol.id}
 							selected={value === String(symbol.id)}
 							onSelect={() => onChange(String(symbol.id))}
-							eyebrow={[
-								ASSET_CLASS_LABELS[symbol.asset_class] ?? symbol.asset_class,
-								symbol.exchange_name,
-							]
-								.filter(Boolean)
-								.join(' · ')}
+							eyebrow={
+								ASSET_CLASS_LABELS[symbol.asset_class] ?? symbol.asset_class
+							}
 							title={<span className="font-mono">{symbol.symbol}</span>}
 						/>
 					))}

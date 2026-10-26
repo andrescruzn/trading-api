@@ -17,7 +17,6 @@ import { useAccountsQuery } from '@/modules/accounts/hooks/use-accounts-queries'
 import { usePageBreadcrumb } from '@/modules/app-shell/hooks/use-page-breadcrumb';
 import { useAuth } from '@/modules/auth/hooks/use-auth';
 import { useCanManage } from '@/modules/auth/hooks/use-can-manage';
-import { useExchangesQuery } from '@/modules/market/hooks/use-market-queries';
 import {
 	DataTable,
 	type DataTableColumn,
@@ -37,7 +36,6 @@ export function PortfolioPage() {
 	const canManage = useCanManage();
 	const { user } = useAuth();
 	const accountsQuery = useAccountsQuery();
-	const exchangesQuery = useExchangesQuery();
 	// `undefined` = diálogo cerrado; `null` = crear; una cuenta = editar.
 	const [editing, setEditing] = useState<Account | null | undefined>(undefined);
 	const [viewingBalances, setViewingBalances] = useState<Account | null>(null);
@@ -48,22 +46,11 @@ export function PortfolioPage() {
 		? accountsQuery.data?.filter((account) => account.user_id === user.id)
 		: accountsQuery.data;
 
-	const exchangeName = (id: number | null) =>
-		id === null
-			? '—'
-			: (exchangesQuery.data?.find((exchange) => exchange.id === id)?.name ??
-				'—');
-
 	const columns: DataTableColumn<Account>[] = [
 		{
 			id: 'name',
 			header: 'Nombre',
 			cell: (row) => <span className="font-medium">{row.name}</span>,
-		},
-		{
-			id: 'exchange',
-			header: 'Exchange',
-			cell: (row) => exchangeName(row.exchange_id),
 		},
 		{
 			id: 'mode',
@@ -122,7 +109,7 @@ export function PortfolioPage() {
 		<div className="flex flex-col gap-6">
 			<PageListHeader
 				title="Mis cuentas"
-				description="Cuentas de exchange en modo paper (simulado) o live (dinero real), con sus balances."
+				description="Cuentas de Binance en modo paper (simulado) o live (dinero real), con sus balances."
 				actions={[
 					{
 						label: 'Nueva cuenta',

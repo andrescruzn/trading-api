@@ -4,10 +4,7 @@ import { usePageBreadcrumb } from '@/modules/app-shell/hooks/use-page-breadcrumb
 import { useCanManage } from '@/modules/auth/hooks/use-can-manage';
 import type { AssetClass, MarketSymbol } from '@/modules/market/api/market.api';
 import { SymbolFormDialog } from '@/modules/market/components/symbol-form-dialog';
-import {
-	useExchangesQuery,
-	useSymbolsQuery,
-} from '@/modules/market/hooks/use-market-queries';
+import { useSymbolsQuery } from '@/modules/market/hooks/use-market-queries';
 import {
 	ASSET_CLASS_LABELS,
 	ASSET_CLASS_OPTIONS,
@@ -32,16 +29,13 @@ const STATUS_OPTIONS = [
 export function AdminSymbolsPage() {
 	const canManage = useCanManage();
 	usePageBreadcrumb([{ label: 'Administración' }, { label: 'Símbolos' }]);
-	const [exchangeId, setExchangeId] = useState(ALL);
 	const [assetClass, setAssetClass] = useState(ALL);
 	const [status, setStatus] = useState(ALL);
 	const [editing, setEditing] = useState<MarketSymbol | null | undefined>(
 		undefined,
 	);
 
-	const exchangesQuery = useExchangesQuery();
 	const symbolsQuery = useSymbolsQuery({
-		exchange_id: exchangeId === ALL ? undefined : Number(exchangeId),
 		asset_class: assetClass === ALL ? undefined : (assetClass as AssetClass),
 		is_active: status === ALL ? undefined : status === 'true',
 	});
@@ -59,11 +53,6 @@ export function AdminSymbolsPage() {
 			cell: (row) => (
 				<span className="font-mono font-medium">{row.symbol}</span>
 			),
-		},
-		{
-			id: 'exchange',
-			header: 'Exchange',
-			cell: (row) => row.exchange_name ?? '—',
 		},
 		{
 			id: 'class',
@@ -101,7 +90,7 @@ export function AdminSymbolsPage() {
 		<div className="flex flex-col gap-6">
 			<PageListHeader
 				title="Símbolos"
-				description="Activos que el sistema descarga y puede operar."
+				description="Activos de Binance que el sistema descarga y puede operar."
 				actions={[
 					{
 						label: 'Nuevo símbolo',
@@ -111,20 +100,7 @@ export function AdminSymbolsPage() {
 					},
 				]}
 			/>
-			<div className="grid gap-3 sm:grid-cols-3 lg:max-w-3xl">
-				<OptionSelect
-					aria-label="Exchange"
-					size="sm"
-					value={exchangeId}
-					onChange={(value) => setExchangeId(value ?? ALL)}
-					options={[
-						{ value: ALL, label: 'Todos los exchanges' },
-						...(exchangesQuery.data ?? []).map((exchange) => ({
-							value: String(exchange.id),
-							label: exchange.name,
-						})),
-					]}
-				/>
+			<div className="grid gap-3 sm:grid-cols-2 lg:max-w-xl">
 				<OptionSelect
 					aria-label="Clase de activo"
 					size="sm"

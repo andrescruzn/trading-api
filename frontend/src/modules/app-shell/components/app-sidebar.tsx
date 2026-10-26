@@ -100,7 +100,6 @@ const navSections: NavSectionData[] = [
 				title: 'Datos de mercado',
 				icon: IconDatabase,
 				items: [
-					{ title: 'Exchanges', url: '/admin/exchanges' },
 					{ title: 'Símbolos', url: '/admin/symbols' },
 					{ title: 'Timeframes', url: '/admin/timeframes' },
 					{ title: 'Conjuntos de indicadores', url: '/admin/feature-sets' },

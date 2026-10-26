@@ -96,7 +96,6 @@ function PracticeAccountForm({
 				name: name.trim(),
 				mode: 'paper',
 				base_currency: currency,
-				exchange_id: null,
 			});
 			await recordBalance.mutateAsync({
 				accountId: account.id,
@@ -182,7 +181,7 @@ type AccountStepProps = {
 	onChange: (value: string) => void;
 	/** Moneda de cotización del símbolo elegido: base de la cuenta de práctica. */
 	currency: string;
-	/** Por qué no aparecen algunas cuentas live (otro exchange o perpetuo). */
+	/** Por qué no aparecen las cuentas live (perpetuo, solo paper). */
 	hiddenLiveNote?: string;
 };
 

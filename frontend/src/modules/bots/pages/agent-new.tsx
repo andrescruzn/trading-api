@@ -165,25 +165,20 @@ export function AgentNewPage() {
 	// tendría datos para analizar.
 	const symbols = symbolsQuery.data?.filter((item) => item.supports_auto_fetch);
 	const symbol = symbols?.find((item) => String(item.id) === values.symbol_id);
-	// Cuentas propias y activas (un admin ve todas en `/accounts`). En live
-	// el agente compra en el exchange de su cuenta: solo sirven las live del
-	// exchange del símbolo, y nunca con un perpetuo (solo paper). El backend
-	// lo vuelve a validar.
+	// Cuentas propias y activas (un admin ve todas en `/accounts`). Un
+	// perpetuo solo se opera en paper, así que con él no sirven las live. El
+	// backend lo vuelve a validar.
 	const perpetual = isPerpetualSymbol(symbol?.symbol);
 	const ownAccounts = (accountsQuery.data ?? []).filter(
 		(account) => account.user_id === user?.id && account.status === 'active',
 	);
 	const accounts = ownAccounts.filter(
-		(account) =>
-			account.mode !== 'live' ||
-			(!perpetual && account.exchange_id === symbol?.exchange_id),
+		(account) => account.mode !== 'live' || !perpetual,
 	);
 	const hiddenLiveNote =
 		ownAccounts.length === accounts.length
 			? undefined
-			: perpetual
-				? 'Tus cuentas live no aparecen: los perpetuos solo se operan en paper.'
-				: `Tus cuentas live de otros exchanges no aparecen: en live, el agente compra y vende en el exchange de su cuenta${symbol?.exchange_name ? `, y este símbolo es de ${symbol.exchange_name}` : ''}. Para usarlas, elige un símbolo de su exchange.`;
+			: 'Tus cuentas live no aparecen: los perpetuos solo se operan en paper.';
 
 	const strategy = strategiesQuery.data?.find(
 		(item) => String(item.id) === values.strategy_id,
@@ -331,8 +326,8 @@ export function AgentNewPage() {
 										value={field.value}
 										onChange={(value) => {
 											field.onChange(value);
-											// Una cuenta live depende del exchange del símbolo:
-											// con otro símbolo hay que volver a elegirla.
+											// Una cuenta live depende del símbolo (spot o
+											// perpetuo): con otro hay que volver a elegirla.
 											const chosen = ownAccounts.find(
 												(item) => String(item.id) === values.account_id,
 											);

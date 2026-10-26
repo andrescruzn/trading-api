@@ -1,6 +1,5 @@
 import type {
 	AssetClass,
-	ExchangeType,
 	MarketSymbol,
 	Timeframe,
 	TrendDirection,
@@ -31,18 +30,8 @@ function isPerpetualSymbol(symbol: string | null | undefined): boolean {
 	return !!symbol && symbol.includes(':');
 }
 
-const EXCHANGE_TYPE_LABELS: Record<ExchangeType, string> = {
-	crypto_exchange: 'Exchange cripto',
-	broker: 'Bróker',
-	data_vendor: 'Proveedor de datos',
-};
-
 const ASSET_CLASS_OPTIONS: SelectOption[] = Object.entries(
 	ASSET_CLASS_LABELS,
-).map(([value, label]) => ({ value, label }));
-
-const EXCHANGE_TYPE_OPTIONS: SelectOption[] = Object.entries(
-	EXCHANGE_TYPE_LABELS,
 ).map(([value, label]) => ({ value, label }));
 
 const CANDLE_LIMIT_OPTIONS: SelectOption[] = [50, 100, 200, 500].map(
@@ -52,9 +41,7 @@ const CANDLE_LIMIT_OPTIONS: SelectOption[] = [50, 100, 200, 500].map(
 function symbolOptions(symbols: MarketSymbol[] | undefined): SelectOption[] {
 	return (symbols ?? []).map((symbol) => ({
 		value: String(symbol.id),
-		label: symbol.exchange_name
-			? `${symbol.symbol} · ${symbol.exchange_name}`
-			: symbol.symbol,
+		label: symbol.symbol,
 	}));
 }
 
@@ -87,8 +74,6 @@ export {
 	ASSET_CLASS_OPTIONS,
 	CANDLE_LIMIT_OPTIONS,
 	describeSeconds,
-	EXCHANGE_TYPE_LABELS,
-	EXCHANGE_TYPE_OPTIONS,
 	isPerpetualSymbol,
 	symbolOptions,
 	TREND_DIRECTION_LABELS,

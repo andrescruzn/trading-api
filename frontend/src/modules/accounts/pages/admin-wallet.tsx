@@ -21,7 +21,6 @@ import {
 import { WALLET_SOURCE_LABELS } from '@/modules/accounts/lib/accounts-labels';
 import { usePageBreadcrumb } from '@/modules/app-shell/hooks/use-page-breadcrumb';
 import { useCanManage } from '@/modules/auth/hooks/use-can-manage';
-import { useExchangesQuery } from '@/modules/market/hooks/use-market-queries';
 import {
 	DataTable,
 	type DataTableColumn,
@@ -130,7 +129,6 @@ export function AdminWalletPage() {
 	const canManage = useCanManage();
 	const walletQuery = useWalletQuery();
 	const historyQuery = useWalletSnapshotsQuery();
-	const exchangesQuery = useExchangesQuery();
 	const syncMutation = useSyncWalletMutation();
 	const [choosing, setChoosing] = useState(false);
 
@@ -139,10 +137,6 @@ export function AdminWalletPage() {
 	const account = overview?.account ?? null;
 	const snapshot = overview?.latest_snapshot ?? null;
 	const base = wallet?.base_asset ?? 'USDT';
-	const exchangeName =
-		exchangesQuery.data?.find(
-			(exchange) => exchange.id === account?.exchange_id,
-		)?.name ?? '—';
 
 	function sync() {
 		syncMutation.mutate(undefined, {
@@ -218,7 +212,7 @@ export function AdminWalletPage() {
 								{account.name}
 							</span>
 							<span aria-hidden>·</span>
-							<span>{exchangeName}</span>
+							<span>Binance</span>
 							<AccountModeBadge mode={account.mode} />
 						</div>
 					)}

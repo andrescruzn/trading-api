@@ -1,46 +1,19 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-	createExchange,
 	createSymbol,
 	createTimeframe,
-	type ExchangeInput,
-	type ExchangeUpdate,
 	refreshExplorer,
 	type SymbolInput,
 	type SymbolUpdate,
 	type TimeframeInput,
-	updateExchange,
 	updateSymbol,
 } from '@/modules/market/api/market.api';
 import {
 	CANDLES_QUERY_KEY,
-	EXCHANGES_QUERY_KEY,
 	EXPLORER_QUERY_KEY,
 	SYMBOLS_QUERY_KEY,
 	TIMEFRAMES_QUERY_KEY,
 } from '@/modules/market/hooks/use-market-queries';
-
-function useCreateExchangeMutation() {
-	const queryClient = useQueryClient();
-	return useMutation({
-		mutationFn: (input: ExchangeInput) => createExchange(input),
-		onSuccess: () =>
-			queryClient.invalidateQueries({ queryKey: EXCHANGES_QUERY_KEY }),
-	});
-}
-
-function useUpdateExchangeMutation() {
-	const queryClient = useQueryClient();
-	return useMutation({
-		mutationFn: ({ id, input }: { id: number; input: ExchangeUpdate }) =>
-			updateExchange(id, input),
-		onSuccess: () => {
-			queryClient.invalidateQueries({ queryKey: EXCHANGES_QUERY_KEY });
-			// El nombre del exchange también se muestra en los símbolos.
-			queryClient.invalidateQueries({ queryKey: SYMBOLS_QUERY_KEY });
-		},
-	});
-}
 
 function useCreateSymbolMutation() {
 	const queryClient = useQueryClient();
@@ -82,10 +55,8 @@ function useRefreshExplorerMutation() {
 }
 
 export {
-	useCreateExchangeMutation,
 	useCreateSymbolMutation,
 	useCreateTimeframeMutation,
 	useRefreshExplorerMutation,
-	useUpdateExchangeMutation,
 	useUpdateSymbolMutation,
 };

@@ -25,7 +25,7 @@ const STATUS_FILTER_OPTIONS = [
 	...WITHDRAWAL_STATUS_OPTIONS,
 ];
 
-/** Retiros (staff): los por pagar primero; el super admin los paga o rechaza. */
+/** Retiros (staff): los por enviar primero; el super admin registra el envío o los rechaza. */
 export function AdminWithdrawalsPage() {
 	usePageBreadcrumb([{ label: 'Administración' }, { label: 'Retiros' }]);
 	const canManage = useCanManage();
@@ -49,7 +49,7 @@ export function AdminWithdrawalsPage() {
 		<div className="flex flex-col gap-6">
 			<PageListHeader
 				title="Retiros"
-				description="Lo que los participantes pidieron retirar de su saldo disponible. Se paga por fuera (banco o Nequi) y aquí se registra el pago."
+				description="Lo que los participantes pidieron retirar de su saldo disponible. Se envía desde Binance a la dirección de cada persona y aquí se registra el ID de la transacción."
 			/>
 			<div className="grid gap-3 sm:grid-cols-2 lg:max-w-2xl">
 				<OptionSelect
@@ -74,7 +74,7 @@ export function AdminWithdrawalsPage() {
 				error={withdrawalsQuery.error}
 				empty={
 					status === 'requested'
-						? 'No hay retiros por pagar.'
+						? 'No hay retiros por enviar.'
 						: 'No hay retiros con esos filtros.'
 				}
 				pagination={tablePagination(withdrawalsQuery.data)}

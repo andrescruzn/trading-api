@@ -35,7 +35,7 @@ const depositSchema = z.object({
 	txid: z
 		.string()
 		.trim()
-		.min(10, 'Pega el hash completo de la transacción')
+		.min(10, 'Pega el ID completo de la transacción')
 		.max(128, 'Máximo 128 caracteres'),
 });
 
@@ -108,8 +108,8 @@ export function DepositFormDialog({
 				<DialogHeader>
 					<DialogTitle>Registrar depósito</DialogTitle>
 					<DialogDescription>
-						Hazlo después de enviar el dinero: con el hash lo buscamos en el
-						exchange y te lo acreditamos.
+						Hazlo después de enviar el dinero: con el ID de la transacción lo
+						buscamos en la billetera de la plataforma y te lo acreditamos.
 					</DialogDescription>
 				</DialogHeader>
 				<form
@@ -172,7 +172,7 @@ export function DepositFormDialog({
 								render={({ field, fieldState }) => (
 									<Field data-invalid={fieldState.invalid}>
 										<FieldLabel htmlFor="deposit-txid" required>
-											Hash de la transacción (txid)
+											ID de la transacción (TxID)
 										</FieldLabel>
 										<Input
 											{...field}

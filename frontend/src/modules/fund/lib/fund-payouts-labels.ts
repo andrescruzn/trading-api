@@ -1,6 +1,6 @@
 import type { RedemptionStatus } from '@/modules/fund/api/fund.api';
 import type {
-	PayoutKind,
+	PayoutMethod,
 	WithdrawalStatus,
 } from '@/modules/fund/api/fund-payouts.api';
 import { formatPercentValue } from '@/modules/shared/lib/format';
@@ -8,8 +8,8 @@ import { formatPercentValue } from '@/modules/shared/lib/format';
 type BadgeVariant = 'default' | 'secondary' | 'outline' | 'destructive';
 
 const WITHDRAWAL_STATUS_LABELS: Record<WithdrawalStatus, string> = {
-	requested: 'Por pagar',
-	paid: 'Pagado',
+	requested: 'Por enviar',
+	paid: 'Enviado',
 	rejected: 'Rechazado',
 	canceled: 'Anulado',
 };
@@ -32,24 +32,29 @@ const REDEMPTION_STATUS_LABELS: Record<RedemptionStatus, string> = {
 	canceled: 'Anulada',
 };
 
-const PAYOUT_KIND_LABELS: Record<PayoutKind, string> = {
-	bank: 'Cuenta bancaria',
-	nequi: 'Nequi',
-};
-
-const PAYOUT_KIND_OPTIONS = (
-	Object.keys(PAYOUT_KIND_LABELS) as PayoutKind[]
-).map((value) => ({ value, label: PAYOUT_KIND_LABELS[value] }));
-
-/** Etiquetas de los datos de un medio de pago (al pagar un retiro). */
+/** Etiquetas de los datos de una dirección de retiro (al enviar un retiro). */
 const PAYOUT_DETAIL_LABELS: Record<string, string> = {
-	holder_name: 'Titular',
-	document_number: 'Documento',
-	bank_name: 'Banco',
-	account_type: 'Tipo de cuenta',
-	account_number: 'Número de cuenta',
-	phone: 'Celular',
+	network: 'Red',
+	address: 'Dirección',
+	memo: 'Memo',
 };
+
+/** Estado de un envío según Binance (al buscar el txid). */
+const EXCHANGE_TX_STATUS_LABELS: Record<string, string> = {
+	pending: 'En proceso',
+	ok: 'Completado',
+	failed: 'Fallido',
+	canceled: 'Cancelado',
+};
+
+/**
+ * Red de una dirección de retiro. La dirección va cifrada, así que la red se
+ * lee del resumen (`TRC20 · TQ7xAb…9aBc`); las viejas de banco no tienen.
+ */
+function payoutNetwork(method: PayoutMethod | undefined): string | null {
+	if (method?.kind !== 'crypto') return null;
+	return method.masked.split(' · ')[0] || null;
+}
 
 /** `10 % de 0 % a 50 % de ganancia` (o `desde 100 % de ganancia`). */
 function describeTier(fromPct: string, toPct: string | null, ratePct: string) {
@@ -62,9 +67,9 @@ function describeTier(fromPct: string, toPct: string | null, ratePct: string) {
 
 export {
 	describeTier,
+	EXCHANGE_TX_STATUS_LABELS,
 	PAYOUT_DETAIL_LABELS,
-	PAYOUT_KIND_LABELS,
-	PAYOUT_KIND_OPTIONS,
+	payoutNetwork,
 	REDEMPTION_STATUS_LABELS,
 	WITHDRAWAL_STATUS_BADGE_VARIANT,
 	WITHDRAWAL_STATUS_LABELS,

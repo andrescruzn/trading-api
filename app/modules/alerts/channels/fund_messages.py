@@ -100,7 +100,7 @@ def fund_notice(code: str, data: dict[str, str]) -> FundNotice | None:
         return FundNotice(title="Salida aplicada", message=message)
     if code == FUND_WITHDRAWAL_REQUESTED:
         return FundNotice(
-            title="Retiro por pagar",
+            title="Retiro por enviar",
             message=(
                 f"{person} pidió retirar {amount}. Envíalo desde Binance a su dirección "
                 f"y registra el ID de la transacción en Retiros."

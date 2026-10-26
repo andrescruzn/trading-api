@@ -8,10 +8,12 @@ import {
 	createPayoutMethod,
 	createWithdrawal,
 	deactivatePayoutMethod,
+	lookupWithdrawal,
 	payWithdrawal,
 	rejectWithdrawal,
 	requestRedemption,
 	setCommissionShares,
+	type WithdrawalPayInput,
 } from '@/modules/fund/api/fund-payouts.api';
 import {
 	FUND_OVERVIEW_QUERY_KEY,
@@ -129,18 +131,17 @@ function usePayWithdrawalMutation() {
 		MY_COMMISSIONS_QUERY_KEY,
 	]);
 	return useMutation({
-		mutationFn: ({
-			id,
-			...input
-		}: {
-			id: number;
-			paid_cop_amount: string;
-			cop_rate: string;
-			payment_reference: string;
-			note: string | null;
-			receipt: ReceiptFile | null;
-		}) => payWithdrawal(id, input),
+		mutationFn: ({ id, ...input }: { id: number } & WithdrawalPayInput) =>
+			payWithdrawal(id, input),
 		onSuccess: invalidate,
+	});
+}
+
+/** Solo lee Binance: no cambia nada, así que no invalida consultas. */
+function useLookupWithdrawalMutation() {
+	return useMutation({
+		mutationFn: ({ id, txid }: { id: number; txid: string }) =>
+			lookupWithdrawal(id, txid),
 	});
 }
 
@@ -170,6 +171,7 @@ export {
 	useCreatePayoutMethodMutation,
 	useCreateWithdrawalMutation,
 	useDeactivatePayoutMethodMutation,
+	useLookupWithdrawalMutation,
 	usePayWithdrawalMutation,
 	useRejectWithdrawalMutation,
 	useRequestRedemptionMutation,

@@ -1,14 +1,16 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { IconLoader2 } from '@tabler/icons-react';
 import { useEffect } from 'react';
-import { Controller, useForm } from 'react-hook-form';
+import { Controller, useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
 import { useCreateWithdrawalMutation } from '@/modules/fund/hooks/use-fund-payouts-mutations';
 import {
 	useMyPayoutMethodsQuery,
 	useMyWithdrawableQuery,
+	useWithdrawNetworksQuery,
 } from '@/modules/fund/hooks/use-fund-payouts-queries';
 import { positiveAmountField } from '@/modules/fund/lib/fund-forms';
+import { payoutNetwork } from '@/modules/fund/lib/fund-payouts-labels';
 import { OptionSelect } from '@/modules/shared/components/option-select';
 import {
 	formatDateTime,
@@ -38,7 +40,7 @@ import { Input } from '@/modules/ui/components/input';
 import { toast } from '@/modules/ui/components/toast';
 
 const withdrawalSchema = z.object({
-	payout_method_id: requiredSelectField('Elige a dónde te pagamos'),
+	payout_method_id: requiredSelectField('Elige a dónde te lo enviamos'),
 	amount: positiveAmountField,
 });
 
@@ -50,13 +52,14 @@ type WithdrawalDialogProps = {
 	onOpenChange: (open: boolean) => void;
 };
 
-/** Pedir un retiro del saldo disponible a banco o Nequi. */
+/** Pedir un retiro del saldo disponible a una dirección cripto propia. */
 export function WithdrawalDialog({
 	open,
 	onOpenChange,
 }: WithdrawalDialogProps) {
 	const methodsQuery = useMyPayoutMethodsQuery();
 	const withdrawableQuery = useMyWithdrawableQuery();
+	const networksQuery = useWithdrawNetworksQuery(open);
 	const mutation = useCreateWithdrawalMutation();
 	const form = useForm<WithdrawalInput, unknown, WithdrawalOutput>({
 		resolver: zodResolver(withdrawalSchema),
@@ -67,20 +70,37 @@ export function WithdrawalDialog({
 		if (open) form.reset({ payout_method_id: null, amount: '' });
 	}, [open, form]);
 
+	const methodId = useWatch({
+		control: form.control,
+		name: 'payout_method_id',
+	});
+	const amount = useWatch({ control: form.control, name: 'amount' });
+
 	const now = Date.now();
-	const options = (methodsQuery.data ?? [])
-		.filter((method) => method.is_active)
-		.map((method) => {
-			const ready = (toTimestamp(method.usable_from) ?? 0) <= now;
-			return {
-				value: String(method.id),
-				label: ready
-					? `${method.label} · ${method.masked}`
-					: `${method.label} · disponible el ${formatDateTime(method.usable_from)}`,
-				disabled: !ready,
-			};
-		});
+	const methods = (methodsQuery.data ?? []).filter(
+		(method) => method.is_active && method.kind === 'crypto',
+	);
+	const options = methods.map((method) => {
+		const ready = (toTimestamp(method.usable_from) ?? 0) <= now;
+		return {
+			value: String(method.id),
+			label: ready
+				? `${method.label} · ${method.masked}`
+				: `${method.label} · disponible el ${formatDateTime(method.usable_from)}`,
+			disabled: !ready,
+		};
+	});
 	const withdrawable = withdrawableQuery.data?.withdrawable ?? '0';
+
+	// Comisión de red de la dirección elegida: la persona recibe monto − comisión
+	const network = networksQuery.data?.networks.find(
+		(item) =>
+			item.network ===
+			payoutNetwork(methods.find((method) => String(method.id) === methodId)),
+	);
+	const fee = network?.fee != null ? Number(network.fee) : null;
+	const receives =
+		fee !== null && Number(amount) > fee ? Number(amount) - fee : null;
 
 	function handleSubmit(values: WithdrawalOutput) {
 		mutation.mutate(
@@ -92,7 +112,8 @@ export function WithdrawalDialog({
 				onSuccess: () => {
 					toast.add({
 						title: 'Retiro pedido',
-						description: 'Un super admin te paga y lo verás como pagado aquí.',
+						description:
+							'Te avisaremos cuando enviemos el dinero a tu dirección.',
 						type: 'success',
 					});
 					onOpenChange(false);
@@ -114,8 +135,8 @@ export function WithdrawalDialog({
 					<DialogTitle>Retirar dinero</DialogTitle>
 					<DialogDescription>
 						Puedes retirar hasta {formatNumber(withdrawable, 2)} USDT: lo que ya
-						pasó por un agente. Te pagamos en pesos a tu cuenta, a la tasa del
-						día del pago.
+						pasó por un agente. Te lo enviamos desde la billetera de Binance a
+						tu dirección; la comisión de red se descuenta de lo que recibes.
 					</DialogDescription>
 				</DialogHeader>
 				<form
@@ -141,8 +162,8 @@ export function WithdrawalDialog({
 											options={options}
 											placeholder={
 												options.length === 0
-													? 'Primero registra un medio de pago'
-													: 'Elige un medio de pago'
+													? 'Primero registra una dirección de retiro'
+													: 'Elige una dirección'
 											}
 											aria-invalid={fieldState.invalid}
 										/>
@@ -167,8 +188,9 @@ export function WithdrawalDialog({
 											aria-invalid={fieldState.invalid}
 										/>
 										<FieldDescription>
-											Si tu dinero está en un agente, primero pide la salida
-											desde «Mis agentes».
+											{fee !== null
+												? `Comisión de red: ${formatNumber(fee, 2)} USDT${receives !== null ? `. Recibirás cerca de ${formatNumber(receives, 2)} USDT.` : '.'}`
+												: 'Si tu dinero está en un agente, primero pide la salida desde «Mis agentes».'}
 										</FieldDescription>
 										{fieldState.invalid && (
 											<FieldError errors={[fieldState.error]} />

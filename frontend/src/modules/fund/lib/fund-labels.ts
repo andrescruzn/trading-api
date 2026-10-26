@@ -45,7 +45,7 @@ const LEDGER_ENTRY_TYPE_LABELS: Record<LedgerEntryType, string> = {
 	redemption: 'Salida de un agente',
 	fee: 'Comisión pagada',
 	commission: 'Comisión recibida',
-	withdrawal: 'Retiro pagado',
+	withdrawal: 'Retiro enviado',
 };
 
 const LEDGER_BUCKET_LABELS: Record<LedgerBucket, string> = {

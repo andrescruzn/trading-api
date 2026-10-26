@@ -1,4 +1,10 @@
-import { IconCash, IconDots, IconPaperclip, IconX } from '@tabler/icons-react';
+import {
+	IconDots,
+	IconExternalLink,
+	IconPaperclip,
+	IconSend,
+	IconX,
+} from '@tabler/icons-react';
 import type { UserSummary } from '@/modules/auth/api/users.api';
 import { OwnerCell } from '@/modules/auth/components/owner-cell';
 import type { Withdrawal } from '@/modules/fund/api/fund-payouts.api';
@@ -31,27 +37,56 @@ type WithdrawalsTableProps = {
 	pagination?: ServerPagination;
 	/** Con usuarios se muestra la columna Persona (vista de staff). */
 	users?: Map<number, UserSummary>;
-	/** La persona anula su propio retiro mientras está por pagar. */
+	/** La persona anula su propio retiro mientras está por enviar. */
 	onCancel?: (withdrawal: Withdrawal) => void;
-	/** Super admin: pagar o rechazar. */
+	/** Super admin: registrar el envío o rechazar. */
 	onPay?: (withdrawal: Withdrawal) => void;
 	onReject?: (withdrawal: Withdrawal) => void;
-	/** Super admin: adjuntar o cambiar el comprobante de uno pagado. */
+	/** Super admin: adjuntar o cambiar el comprobante de uno enviado. */
 	onAttachReceipt?: (withdrawal: Withdrawal) => void;
 };
+
+/** `9f3a2c…b81e` para que el hash no ensanche la tabla. */
+function shortTxid(txid: string) {
+	return txid.length <= 16 ? txid : `${txid.slice(0, 8)}…${txid.slice(-6)}`;
+}
 
 function Paid({ row }: { row: Withdrawal }) {
 	if (row.status !== 'paid') return <>{row.resolution_note ?? '—'}</>;
 	return (
 		<div className="flex flex-col">
-			<span className="tabular-nums">
-				{formatNumber(row.paid_cop_amount, 0)} COP · tasa{' '}
-				{formatNumber(row.cop_rate, 2)}
-			</span>
-			<span className="text-xs text-muted-foreground">
-				Ref. {row.payment_reference}
-				{row.resolution_note ? ` · ${row.resolution_note}` : ''}
-			</span>
+			{row.sent_amount !== null ? (
+				<span className="tabular-nums">
+					Recibió {formatNumber(row.sent_amount, 2)} USDT · comisión{' '}
+					{formatNumber(row.network_fee, 2)}
+				</span>
+			) : (
+				// Retiros viejos (pagados por banco antes del 2026-10-26)
+				<span className="text-muted-foreground">Pagado por banco</span>
+			)}
+			{row.txid && (
+				<span className="flex items-center gap-1 text-xs text-muted-foreground">
+					{row.network} ·{' '}
+					{row.explorer_url ? (
+						<a
+							href={row.explorer_url}
+							target="_blank"
+							rel="noreferrer"
+							className="inline-flex items-center gap-0.5 font-mono underline-offset-2 hover:underline"
+						>
+							{shortTxid(row.txid)}
+							<IconExternalLink className="size-3" />
+						</a>
+					) : (
+						<span className="font-mono">{shortTxid(row.txid)}</span>
+					)}
+				</span>
+			)}
+			{row.resolution_note && (
+				<span className="text-xs text-muted-foreground">
+					{row.resolution_note}
+				</span>
+			)}
 			{row.receipt_name && (
 				<div className="-ml-2.5">
 					<ReceiptDownloadButton withdrawal={row} />
@@ -110,7 +145,7 @@ export function WithdrawalsTable({
 		},
 		{
 			id: 'paid',
-			header: 'Pago',
+			header: 'Envío',
 			className: 'max-w-72',
 			cell: (row) => <Paid row={row} />,
 		},
@@ -156,8 +191,8 @@ export function WithdrawalsTable({
 						</DropdownMenuTrigger>
 						<DropdownMenuContent align="end">
 							<DropdownMenuItem onClick={() => onPay(row)}>
-								<IconCash />
-								Pagar
+								<IconSend />
+								Registrar envío
 							</DropdownMenuItem>
 							<DropdownMenuItem
 								variant="destructive"

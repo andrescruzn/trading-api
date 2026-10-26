@@ -23,9 +23,10 @@ export function DepositInstructions({ info }: { info: DepositInfo }) {
 			<CardHeader>
 				<CardTitle>Cómo depositar</CardTitle>
 				<CardDescription>
-					1. Envía {asset} a la dirección de la red que elijas. 2. Copia el hash
-					de la transacción (txid) de tu billetera. 3. Pulsa «Registrar
-					depósito». Lo confirmamos en cuanto aparezca en el exchange.
+					1. Desde tu propia billetera (Binance u otra), envía {asset} a la
+					dirección de la red que elijas. 2. Copia el ID de la transacción
+					(TxID) del envío. 3. Pulsa «Registrar depósito». Lo confirmamos en
+					cuanto aparezca en la billetera de la plataforma.
 				</CardDescription>
 			</CardHeader>
 			<CardContent className="flex flex-col gap-4">

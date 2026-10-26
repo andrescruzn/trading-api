@@ -66,32 +66,63 @@ type MyRedemptions = {
 	agents: Record<string, FundAgentInfo | null>;
 };
 
-type PayoutKind = 'bank' | 'nequi';
+/** `bank` / `nequi` solo en direcciones viejas (desactivadas): ya no se crean. */
+type PayoutKind = 'crypto' | 'bank' | 'nequi';
 
 type PayoutMethod = {
 	id: number;
 	user_id: number;
 	kind: PayoutKind;
 	label: string;
-	/** Resumen sin datos completos: `Bancolombia · ahorros · ···6789`. */
+	/** Resumen sin la dirección completa: `TRC20 · TQ7xAb…9aBc`. */
 	masked: string;
 	/** Antes de esta fecha no recibe retiros (seguridad). */
 	usable_from: string;
 	is_active: boolean;
 	created_at: string | null;
-	/** Solo para un super admin al pagar un retiro. */
+	/** Solo para un super admin al enviar un retiro: `network`, `address`, `memo`. */
 	details?: Record<string, string>;
 };
 
 type PayoutMethodInput = {
-	kind: PayoutKind;
 	label: string;
-	holder_name: string;
-	document_number: string;
-	bank_name?: string;
-	account_type?: string;
-	account_number?: string;
-	phone?: string;
+	network: string;
+	address: string;
+	memo?: string;
+};
+
+/** Red por la que el fondo envía los retiros; comisión y mínimo de Binance (live). */
+type WithdrawNetwork = {
+	network: string;
+	name: string;
+	fee: string | null;
+	min_amount: string | null;
+	enabled: boolean;
+};
+
+type WithdrawNetworks = {
+	asset: string;
+	is_live: boolean;
+	networks: WithdrawNetwork[];
+};
+
+/** Lo que dice Binance de un txid, comparado con el retiro (antes de registrarlo). */
+type WithdrawalCheck = {
+	txid: string;
+	is_live: boolean;
+	found: boolean;
+	/** `pending` | `ok` | `failed` | `canceled` */
+	status: string | null;
+	sent_amount: string | null;
+	network_fee: string | null;
+	network: string | null;
+	address: string | null;
+	/** `null` = no se pudo comparar. */
+	address_matches: boolean | null;
+	amount_matches: boolean | null;
+	/** Binance no respondió (se registra con nota). */
+	exchange_error: string | null;
+	explorer_url: string | null;
 };
 
 type WithdrawalStatus = 'requested' | 'paid' | 'rejected' | 'canceled';
@@ -102,9 +133,12 @@ type Withdrawal = {
 	amount: string;
 	payout_method_id: number;
 	status: WithdrawalStatus;
-	paid_cop_amount: string | null;
-	cop_rate: string | null;
-	payment_reference: string | null;
+	/** Datos del envío (al pagarlo). */
+	txid: string | null;
+	network: string | null;
+	sent_amount: string | null;
+	network_fee: string | null;
+	explorer_url: string | null;
 	resolution_note: string | null;
 	resolved_by_user_id: number | null;
 	resolved_at: string | null;
@@ -181,6 +215,10 @@ function getMyRedemptions() {
 // Medios de pago y retiros
 // ======================================================================
 
+function getWithdrawNetworks() {
+	return api.get<WithdrawNetworks>('/fund/withdrawals/networks');
+}
+
 function listMyPayoutMethods() {
 	return api.get<PayoutMethod[]>('/fund/me/payout-methods');
 }
@@ -216,16 +254,20 @@ function getWithdrawalPayoutDetails(id: number) {
 	return api.get<PayoutMethod>(`/fund/withdrawals/${id}/payout-details`);
 }
 
-function payWithdrawal(
-	id: number,
-	input: {
-		paid_cop_amount: string;
-		cop_rate: string;
-		payment_reference: string;
-		note: string | null;
-		receipt: ReceiptFile | null;
-	},
-) {
+function lookupWithdrawal(id: number, txid: string) {
+	return api.post<WithdrawalCheck>(`/fund/withdrawals/${id}/lookup`, { txid });
+}
+
+/** `sent_amount` / `network_fee` solo si Binance no muestra el envío. */
+type WithdrawalPayInput = {
+	txid: string;
+	sent_amount: string | null;
+	network_fee: string | null;
+	note: string | null;
+	receipt: ReceiptFile | null;
+};
+
+function payWithdrawal(id: number, input: WithdrawalPayInput) {
 	return api.post<Withdrawal>(`/fund/withdrawals/${id}/pay`, input);
 }
 
@@ -249,8 +291,12 @@ export type {
 	PayoutMethodInput,
 	SettlementRedemption,
 	Withdrawal,
+	WithdrawalCheck,
 	WithdrawalFilters,
+	WithdrawalPayInput,
 	WithdrawalStatus,
+	WithdrawNetwork,
+	WithdrawNetworks,
 };
 export {
 	attachWithdrawalReceipt,
@@ -265,10 +311,12 @@ export {
 	getMyRedemptions,
 	getMyWithdrawable,
 	getWithdrawalPayoutDetails,
+	getWithdrawNetworks,
 	listMyCommissions,
 	listMyPayoutMethods,
 	listOwnerEarnings,
 	listWithdrawals,
+	lookupWithdrawal,
 	payWithdrawal,
 	rejectWithdrawal,
 	requestRedemption,

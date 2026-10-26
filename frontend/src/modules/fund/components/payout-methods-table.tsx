@@ -2,7 +2,6 @@ import { IconLoader2, IconTrash } from '@tabler/icons-react';
 import { useState } from 'react';
 import type { PayoutMethod } from '@/modules/fund/api/fund-payouts.api';
 import { useDeactivatePayoutMethodMutation } from '@/modules/fund/hooks/use-fund-payouts-mutations';
-import { PAYOUT_KIND_LABELS } from '@/modules/fund/lib/fund-payouts-labels';
 import {
 	DataTable,
 	type DataTableColumn,
@@ -29,7 +28,7 @@ type PayoutMethodsTableProps = {
 	error: unknown;
 };
 
-/** Mis medios de pago: resumen enmascarado y desde cuándo se pueden usar. */
+/** Mis direcciones de retiro: resumen enmascarado y desde cuándo se pueden usar. */
 export function PayoutMethodsTable({
 	rows,
 	isLoading,
@@ -43,12 +42,12 @@ export function PayoutMethodsTable({
 		if (!removing) return;
 		mutation.mutate(removing.id, {
 			onSuccess: () => {
-				toast.add({ title: 'Medio de pago quitado', type: 'success' });
+				toast.add({ title: 'Dirección quitada', type: 'success' });
 				setRemoving(null);
 			},
 			onError: (err) =>
 				toast.add({
-					title: 'No pudimos quitar el medio de pago',
+					title: 'No pudimos quitar la dirección',
 					description: getErrorMessage(err),
 					type: 'error',
 				}),
@@ -58,12 +57,12 @@ export function PayoutMethodsTable({
 	const columns: DataTableColumn<PayoutMethod>[] = [
 		{
 			id: 'label',
-			header: 'Medio',
+			header: 'Dirección',
 			cell: (row) => (
 				<div className="flex flex-col">
 					<span className="font-medium">{row.label}</span>
-					<span className="text-xs text-muted-foreground">
-						{PAYOUT_KIND_LABELS[row.kind]} · {row.masked}
+					<span className="font-mono text-xs text-muted-foreground">
+						{row.masked}
 					</span>
 				</div>
 			),
@@ -101,8 +100,8 @@ export function PayoutMethodsTable({
 				getRowId={(row) => row.id}
 				isLoading={isLoading}
 				error={error}
-				errorTitle="No pudimos cargar tus medios de pago"
-				empty="Aún no registras a dónde te pagamos. Agrega una cuenta bancaria o Nequi."
+				errorTitle="No pudimos cargar tus direcciones"
+				empty="Aún no registras a dónde te enviamos los retiros. Agrega la dirección de tu billetera."
 			/>
 			<AlertDialog
 				open={!!removing}
@@ -112,8 +111,8 @@ export function PayoutMethodsTable({
 					<AlertDialogHeader>
 						<AlertDialogTitle>¿Quitar «{removing?.label}»?</AlertDialogTitle>
 						<AlertDialogDescription>
-							Ya no podrás pedir retiros a este medio. Los retiros por pagar que
-							lo usan se pagan igual.
+							Ya no podrás pedir retiros a esta dirección. Los retiros por
+							enviar que la usan se envían igual.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
@@ -124,7 +123,7 @@ export function PayoutMethodsTable({
 							onClick={remove}
 						>
 							{mutation.isPending && <IconLoader2 className="animate-spin" />}
-							Quitar medio
+							Quitar dirección
 						</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>

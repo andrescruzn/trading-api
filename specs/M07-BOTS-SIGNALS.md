@@ -14,7 +14,7 @@
 | Lo usan | [M8](M08-ORDERS-EXECUTION.md) (órdenes por bot, ejecución de señales), [M9](M09-ALERTS.md) (hooks de señal/error), [M11](M11-FUND.md) (capital del agente del fondo vía `FundCapitalPort`), scheduler de [M2](M02-MARKET-DATA.md) (señales automáticas), dashboard de [M1](M01-AUTH.md) |
 | Prefijo API | `/api/bots`, `/api/signals` (ver [corrección de rutas](#corrección-de-rutas)) |
 | Frontend | `frontend/src/modules/bots` |
-| Última revisión | 2026-10-23 |
+| Última revisión | 2026-10-26 |
 
 ## Descripción
 
@@ -22,7 +22,7 @@
 
 **Qué hace:**
 - Crea **agentes** (tabla `bots`) con nombre + cuenta + símbolo + estrategia + conjunto de indicadores + parámetros de riesgo + modo de ejecución.
-- Valida al crear: que existan las referencias, que la cuenta sea del usuario y esté activa, que el modo coincida con el de la cuenta, que el conjunto de indicadores cubra las reglas de la estrategia, la regla del 1 % y las reglas del modo de ejecución.
+- Valida al crear: que existan las referencias, que la cuenta sea del usuario y esté activa, que el modo coincida con el de la cuenta, que en live el símbolo sea del mismo exchange que la cuenta, que el conjunto de indicadores cubra las reglas de la estrategia, la regla del 1 % y las reglas del modo de ejecución.
 - Los agentes se activan (`start`), pausan (`pause`) y detienen (`stop`) con una máquina de estados.
 - Un usuario solo ve y opera **sus** agentes (propiedad por cuenta); el admin ve todos.
 - **Manual:** la señal se genera con "Analizar ahora" y la orden la crea la persona.
@@ -88,6 +88,7 @@ Entregables:
 | El agente pasa a la IA `effective_risk_pct` (su `risk_pct` acotado a `MAX_RISK_PCT`; inválido o ≤ 0 → 1 %) | Antes la IA usaba el `risk_pct` de la estrategia y el del agente se ignoraba | Mantener el de la estrategia |
 | El nombre y el **modo de ejecución** se pueden cambiar en cualquier estado; modo paper/live y riesgo solo con el bot `stopped` | Renombrar no afecta la operación; pasar de Automático a Con aprobación es un freno que no debe esperar a detener el agente | Exigir `stopped` para todo |
 | Pasar el agente a otro modo paper/live exige una cuenta de ese modo (`BOT_MODE_ACCOUNT_MISMATCH`), igual que al crear | Antes `PUT` permitía un agente live sobre una cuenta paper (o al revés) | Validarlo solo al crear |
+| En **live**, `symbol.exchange_id` debe ser igual a `account.exchange_id` (`BOT_EXCHANGE_ACCOUNT_MISMATCH` 422) al crear y al pasar a live; el asistente oculta las cuentas live de otro exchange y explica por qué. En paper no aplica (2026-10-26) | `LiveExecutor` manda la orden al exchange de la cuenta con el texto del par (`BTC/USDT`): con velas de Kraken y la billetera en Binance, entry/SL/TP saldrían de otro mercado, y si el par no existe allí la orden falla | Mapear el símbolo al exchange de la cuenta por nombre · validarlo solo al enviar la orden |
 | **Tres modos de ejecución** (`manual` por defecto, `approval`, `auto`) en una columna del bot | La persona decide cuánta autonomía da a cada agente; los agentes existentes siguen como antes | Un interruptor "automático sí/no" |
 | `auto` + live solo con `TRADING_LIVE_AUTO_ENABLED=true` (`BOT_AUTO_LIVE_DISABLED`) | Órdenes con dinero real sin una persona en medio es decisión del administrador | Permitirlo a cualquier usuario |
 | Modos automáticos solo con timeframe ≥ `SIGNALS_AUTO_MIN_TIMEFRAME_SECONDS` (900 s = 15m) (`BOT_TIMEFRAME_TOO_SHORT_FOR_AUTOMATION`) | Un análisis de IA por vela de 1m dispararía el coste | Sin mínimo |
@@ -211,7 +212,7 @@ Nuevos en `SignalRepository`: `exists_for_candle(bot_id, candle_ts)`, `count_cre
 
 Todos los servicios que reciben un `bot_id` aceptan `owner_id` (`None` = admin o scheduler, sin restricción).
 
-`check_execution_mode`: `BOT_INVALID_EXECUTION_MODE` · `BOT_INVALID_APPROVAL_TTL` · `BOT_AUTO_LIVE_DISABLED` · `BOT_TIMEFRAME_TOO_SHORT_FOR_AUTOMATION` (422). `UpdateBotService` lo vuelve a correr en cada `PUT` (con el timeframe del bot) y valida `BOT_MODE_ACCOUNT_MISMATCH` al cambiar `mode`.
+`check_execution_mode`: `BOT_INVALID_EXECUTION_MODE` · `BOT_INVALID_APPROVAL_TTL` · `BOT_AUTO_LIVE_DISABLED` · `BOT_TIMEFRAME_TOO_SHORT_FOR_AUTOMATION` (422). `UpdateBotService` lo vuelve a correr en cada `PUT` (con el timeframe del bot) y valida `BOT_MODE_ACCOUNT_MISMATCH` al cambiar `mode`; al pasar a live también `BOT_PERPETUAL_LIVE_NOT_SUPPORTED` y `BOT_EXCHANGE_ACCOUNT_MISMATCH` (meta `account_exchange_id`, `symbol_exchange_id`), igual que `CreateBotService`.
 
 Provider: `app/modules/bots/providers/bot_provider.py` → `BotServiceFactory`
 - Repos propios: `SqlAlchemyBotRepository`, `SqlAlchemySignalRepository`
@@ -285,6 +286,7 @@ Routers registrados en `app/app_factory.py` (dentro de `api_routers`, con `prefi
 ## Gotchas críticos
 
 - **Perpetuos solo en paper:** `CreateBotService` y `UpdateBotService` (al pasar a live) devuelven `BOT_PERPETUAL_LIVE_NOT_SUPPORTED` (422) si el símbolo es un perpetuo (`XAU/USDT:USDT`, `is_perpetual()` de M2). El asistente oculta las cuentas live con un perpetuo elegido y acepta `?symbol_id=` (desde Explorar mercados).
+- **Live = mismo exchange (2026-10-26):** un agente live solo opera símbolos del exchange de su cuenta (`BOT_EXCHANGE_ACCOUNT_MISMATCH`). El asistente (`agent-new.tsx`) filtra las cuentas live por `exchange_id` del símbolo y pasa `hiddenLiveNote` a `AccountStep` para explicar por qué no aparecen; al cambiar el símbolo se limpia la cuenta si era live. Los agentes live creados **antes** de la regla no se migran: [M8](M08-ORDERS-EXECUTION.md) les bloquea las compras (`ORDER_EXCHANGE_MISMATCH`) pero deja vender para cerrar lo que ya tengan; hay que recrearlos con un símbolo del exchange de la cuenta.
 - **Seed `bots`:** dos agentes demo en paper y detenidos para el usuario demo ("Oro — tendencia 4h" con Tendencia Metales y "BTC — tendencia 1h" con EMA Trend Follower, conjunto Tendencia), idempotente por (account_id, name). Quedan en `manual`.
 - **Modo automático sin señales:** un agente `approval`/`auto` no genera nada si está `paused`, si su timeframe es < 15m, si la descarga de velas va atrasada (> 2 timeframes) o si el usuario llegó al tope diario. El log del scheduler (`[Execution]`) dice cuál fue.
 - **`GET /signals/pending` y admin:** por defecto (`mine=true`) el admin también ve solo las suyas; para todas, `?mine=false`.
@@ -335,3 +337,4 @@ Routers registrados en `app/app_factory.py` (dentro de `api_routers`, con `prefi
 - **2026-10-20** — **Paginación en el servidor** (Fase 4): `GET /api/bots` y `GET /api/signals` aceptan `page`/`page_size` opt-in (sin `page`, misma lista que antes); `GET /api/bots` suma los filtros `status`, `mode` y `user_id` (dueño, solo admin). `BotRepository.search/count` (`BotCriteria`), `SignalRepository.count_by_bot` y `offset` en `list_by_bot`; `ListBotsService.list_page`, `ListSignalsService.list_page` (contrato `Page`/`PageRequest` en `app/common/contracts/pagination.py`). Front: Todos los agentes y las pestañas Señales y Órdenes del agente piden página a página (`DataTable` con `pagination` + `useServerPagination`). La miga del detalle abierto por un admin desde Supervisión pasa a "Administración › Todos los agentes › <agente>". Tests: `tests/bots/test_list_bots_and_signals_pagination.py`, `tests/common/test_pagination.py`.
 - **2026-10-20** — Pestaña **Mercado**: gráfico de precio de cierre (`market/components/price-line-chart.tsx`, SVG propio sin librerías, tipo `PriceLevel` en `market/lib/price-chart.ts`) con las líneas Entrada / SL / TP de la posición abierta; tooltip con apertura, máximo y mínimo; accesible con teclado (`role=slider`). La tabla de velas sigue debajo como vista con todos los valores.
 - **2026-10-23** — Se retira el grupo **Supervisión** del menú: fuera "Todos los agentes" (`/#/admin/agents`, `pages/admin-agents.tsx`, `BotActionsMenu`, `listBotsPage`/`useBotsPageQuery`) y la redirección `/#/admin/bots`. Los agentes se revisan en su detalle; el staff llega a los de otros desde Administración → Fondo → **Agentes del fondo**, y la miga del detalle dice "Administración › Agentes del fondo". `GET /api/bots` (paginado y filtros) sigue igual en el backend.
+- **2026-10-26** — **Live = mismo exchange que la cuenta:** `CreateBotService` y `UpdateBotService` (al pasar a live) devuelven `BOT_EXCHANGE_ACCOUNT_MISMATCH` (422) si el símbolo es de otro exchange que la cuenta. El asistente solo ofrece las cuentas live del exchange del símbolo y explica las ocultas. Respaldo en [M8](M08-ORDERS-EXECUTION.md) para los agentes ya creados (`ORDER_EXCHANGE_MISMATCH` en compras live).

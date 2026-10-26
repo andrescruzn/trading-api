@@ -27,6 +27,10 @@ BOT_ERROR_MESSAGES: dict[str, str] = {
         "Los perpetuos (oro, petróleo, acciones…) solo se operan en paper por ahora. "
         "Usa una cuenta paper o elige un par spot."
     ),
+    "BOT_EXCHANGE_ACCOUNT_MISMATCH": (
+        "En live, el agente compra y vende en el exchange de su cuenta. "
+        "Elige un símbolo de ese mismo exchange o usa una cuenta paper."
+    ),
     "BOT_TIMEFRAME_NOT_FOUND":     "No encontramos ese timeframe.",
     "BOT_FEATURE_SET_NOT_FOUND":   "No encontramos ese conjunto de indicadores.",
     "BOT_FEATURE_SET_INCOMPATIBLE": (

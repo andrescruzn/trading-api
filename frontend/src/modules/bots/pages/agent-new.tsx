@@ -165,15 +165,25 @@ export function AgentNewPage() {
 	// tendría datos para analizar.
 	const symbols = symbolsQuery.data?.filter((item) => item.supports_auto_fetch);
 	const symbol = symbols?.find((item) => String(item.id) === values.symbol_id);
-	// Cuentas propias y activas (un admin ve todas en `/accounts`). Los
-	// perpetuos solo se operan en paper: con uno elegido, se ocultan las live.
+	// Cuentas propias y activas (un admin ve todas en `/accounts`). En live
+	// el agente compra en el exchange de su cuenta: solo sirven las live del
+	// exchange del símbolo, y nunca con un perpetuo (solo paper). El backend
+	// lo vuelve a validar.
 	const perpetual = isPerpetualSymbol(symbol?.symbol);
-	const accounts = (accountsQuery.data ?? []).filter(
-		(account) =>
-			account.user_id === user?.id &&
-			account.status === 'active' &&
-			!(perpetual && account.mode === 'live'),
+	const ownAccounts = (accountsQuery.data ?? []).filter(
+		(account) => account.user_id === user?.id && account.status === 'active',
 	);
+	const accounts = ownAccounts.filter(
+		(account) =>
+			account.mode !== 'live' ||
+			(!perpetual && account.exchange_id === symbol?.exchange_id),
+	);
+	const hiddenLiveNote =
+		ownAccounts.length === accounts.length
+			? undefined
+			: perpetual
+				? 'Tus cuentas live no aparecen: los perpetuos solo se operan en paper.'
+				: `Tus cuentas live de otros exchanges no aparecen: en live, el agente compra y vende en el exchange de su cuenta${symbol?.exchange_name ? `, y este símbolo es de ${symbol.exchange_name}` : ''}. Para usarlas, elige un símbolo de su exchange.`;
 
 	const strategy = strategiesQuery.data?.find(
 		(item) => String(item.id) === values.strategy_id,
@@ -321,6 +331,14 @@ export function AgentNewPage() {
 										value={field.value}
 										onChange={(value) => {
 											field.onChange(value);
+											// Una cuenta live depende del exchange del símbolo:
+											// con otro símbolo hay que volver a elegirla.
+											const chosen = ownAccounts.find(
+												(item) => String(item.id) === values.account_id,
+											);
+											if (chosen?.mode === 'live') {
+												form.setValue('account_id', null);
+											}
 											suggestName(
 												symbols?.find((item) => String(item.id) === value),
 												strategy,
@@ -369,6 +387,7 @@ export function AgentNewPage() {
 										value={field.value}
 										onChange={field.onChange}
 										currency={symbol?.quote_asset ?? 'USDT'}
+										hiddenLiveNote={hiddenLiveNote}
 									/>
 								)}
 							/>

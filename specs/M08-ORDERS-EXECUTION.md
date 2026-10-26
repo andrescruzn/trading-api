@@ -14,7 +14,7 @@
 | Lo usan | [M9](M09-ALERTS.md) (hook de orden; Telegram aprueba/rechaza vía `ExecuteSignalService`), [M11](M11-FUND.md) (fills del agente para liquidar; drawdown sobre su capital), scheduler de [M2](M02-MARKET-DATA.md) (ejecución automática, reconciliación y SL/TP) |
 | Prefijo API | `/api/orders`, `/api/fills`, `/api/positions`, `/api/signals/{id}/approve`, `/api/signals/{id}/reject` |
 | Frontend | `frontend/src/modules/orders` (aprobar/descartar vive en `frontend/src/modules/bots`) |
-| Última revisión | 2026-10-23 |
+| Última revisión | 2026-10-26 |
 
 ## Descripción
 
@@ -88,6 +88,7 @@ Entregables:
 
 | Decisión | Motivo | Alternativa descartada |
 |---|---|---|
+| Compra **live** con el símbolo de otro exchange que la cuenta → `ORDER_EXCHANGE_MISMATCH` (422), antes de persistir la orden; las **ventas** pasan (2026-10-26) | Respaldo de la regla de [M7](M07-BOTS-SIGNALS.md) para los agentes live creados antes de ella: la orden iría al exchange de la cuenta con precios de otro mercado. Bloquear la venta dejaría atrapada una posición que ya existe en la cuenta | Bloquear también las ventas · validarlo solo en `LiveExecutor` |
 | **Strategy Pattern** para la ejecución: `ExecutorInterface` → `PaperExecutor` / `LiveExecutor` | Mismo flujo para simular y operar con dinero real; añadir un broker no toca el servicio | `if mode == ...` repartido por el código |
 | El executor lo elige `bot.mode` (`paper` → `PaperExecutor`, `live` → `LiveExecutor`) en `CreateOrderService` | El modo vive en el bot; no se puede ejecutar *live* por error desde una cuenta paper | Parámetro `mode` en cada request |
 | `PaperExecutor` rellena con el cierre de la última vela y `fee = 0`, siempre `filled` | Simulación simple y determinista, sin red | Simular *slippage* y comisiones |
@@ -311,6 +312,7 @@ Por agente: `risk_params.max_notional` (tope propio; se aplica el menor) y `risk
 
 ## Gotchas críticos
 
+- **`ORDER_EXCHANGE_MISMATCH` (2026-10-26):** un agente live creado antes de la regla "live = mismo exchange" de [M7](M07-BOTS-SIGNALS.md) ya no puede comprar (manual, señal aprobada ni Automático: todo pasa por `CreateOrderService`), pero sí vender para cerrar su posición. Solución: detenerlo y crear otro con un símbolo del exchange de la cuenta. Los fixtures de `tests/orders/test_create_order_service.py` arman símbolo y cuenta con `exchange_id=1`.
 - ~~Prefijo `/api/` obligatorio por colisión con la página web~~ — resuelto el 2026-10-08: ya no hay páginas servidas por FastAPI.
 - **La orden se confirma antes de ejecutar:** ya no hay `rollback()` si falla el executor. Un fallo deja la orden en BD como `rejected` (con `meta.error`) o `sent` (con `meta.needs_reconciliation`). Quien lea el historial debe filtrar por estado.
 - **`ORDER_EXECUTION_UNCERTAIN` no es "falló":** la orden puede estar viva en el exchange. No reintentar: en live la reconciliación la busca por `client_order_id` en los ciclos siguientes y, si a los 10 min el exchange no la conoce, la marca `rejected`.
@@ -360,3 +362,4 @@ Por agente: `risk_params.max_notional` (tope propio; se aplica el menor) y `risk
 - **2026-10-20** — **Paginación en el servidor** (Fase 4): `GET /api/orders` acepta `page`/`page_size` opt-in (sin `page`, misma lista que antes) y los filtros `side`, `status`, `type` y `user_id` (dueño, solo admin). `OrderRepository.search/count` con `OrderCriteria` reemplaza a `list_all`/`list_by_bot`; `ListOrdersService.list_page`. Todas las órdenes deja de traer 500 y filtrar en el navegador; la pestaña Órdenes del agente también pagina. Tests: `tests/orders/test_list_orders_service.py` (servicio, repo con sesión mockeada y contrato de la ruta con y sin `page`).
 - **2026-10-20** — Rendimiento por agente y track record por estrategia (`domain/performance.py`, `GET /api/performance`, `/api/performance/strategies`, pestaña Rendimiento y página Track record; `tests/orders/test_performance.py`).
 - **2026-10-23** — Se retira el grupo **Supervisión** del menú: fuera "Todas las órdenes" (`/#/admin/orders`, `pages/admin-orders.tsx`); `OrdersTable` pierde `botNames` y `renderOwner`. Las órdenes se ven en la pestaña Órdenes del agente. `GET /api/orders` sigue igual en el backend.
+- **2026-10-26** — `CreateOrderService` rechaza las compras live cuyo símbolo es de otro exchange que la cuenta (`ORDER_EXCHANGE_MISMATCH`); las ventas siguen para no atrapar posiciones. Respaldo de la regla de [M7](M07-BOTS-SIGNALS.md).

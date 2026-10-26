@@ -124,7 +124,10 @@ def _make_service(
     signal_repo.get_by_id.return_value = signal
 
     symbol_repo = parent.symbol_repo
-    symbol_repo.get_by_id.return_value = SimpleNamespace(id=5, symbol="BTC/USDT")
+    symbol_repo.get_by_id.return_value = SimpleNamespace(id=5, symbol="BTC/USDT", exchange_id=1)
+
+    # Cuenta del bot en el mismo exchange que el símbolo (regla de live)
+    parent.account_repo.get_by_id.return_value = SimpleNamespace(id=2, user_id=7, exchange_id=1)
 
     candle_repo = parent.candle_repo
     candle_repo.list_candles.return_value = (

@@ -18,6 +18,10 @@ ORDER_ERROR_MESSAGES: dict[str, str] = {
     "ORDER_STOP_PRICE_REQUIRED":"Las órdenes Stop y Stop límite necesitan un precio de activación.",
     "ORDER_NO_MARKET_PRICE":    "Todavía no hay velas de este símbolo para calcular el precio. Espera a que se descarguen.",
     "ORDER_SELL_EXCEEDS_POSITION": "No puedes vender más de lo que tiene la posición del agente. En spot no se abren ventas en corto.",
+    "ORDER_EXCHANGE_MISMATCH": (
+        "El símbolo de este agente es de otro exchange que su cuenta, así que no puede "
+        "comprar en live. Crea un agente con un símbolo del exchange de la cuenta."
+    ),
     "ORDER_NOTIONAL_TOO_HIGH":  "La orden supera el valor máximo permitido por operación. Reduce la cantidad.",
     "ORDER_SIGNAL_MISMATCH":    "La orden no coincide con la señal: la señal debe estar aprobada y tener la misma dirección.",
     "ORDER_SIGNAL_ALREADY_USED":"Esta señal ya tiene una orden. Cada señal se ejecuta una sola vez.",

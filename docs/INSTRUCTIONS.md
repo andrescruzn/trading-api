@@ -39,23 +39,12 @@ Paso 1 — Verificar datos base (ya vienen con los seeds)
   Luego haz clic en Calcular para ese feature set, seleccionando el símbolo y timeframe que cargaste.
 
   ---
-  Paso 4 — Crear una Cuenta de Trading
+  Paso 4 — Dinero: billetera de Binance o monto simulado
 
-  Ve a /portfolio (Mis cuentas) → Nueva cuenta:
-
-  ┌─────────────────┬───────────────────────────────────┐
-  │      Campo      │  Valor recomendado para empezar   │
-  ├─────────────────┼───────────────────────────────────┤
-  │ Nombre          │ Paper BTC Binance                 │
-  ├─────────────────┼───────────────────────────────────┤
-  │ Exchange        │ Binance                           │
-  ├─────────────────┼───────────────────────────────────┤
-  │ Modo            │ paper (simulado, sin dinero real) │
-  ├─────────────────┼───────────────────────────────────┤
-  │ Moneda base     │ USDT                              │
-  ├─────────────────┼───────────────────────────────────┤
-  │ Capital inicial │ lo que quieras simular (ej: 1000) │
-  └─────────────────┴───────────────────────────────────┘
+  Ya no se crean cuentas (Mis cuentas se retiró el 2026-10-26). Hay dos caminos:
+  - Agente demo (para empezar): no necesita nada; al crearlo escribes el monto simulado.
+  - Agente real: pon BINANCE_API_KEY y BINANCE_API_SECRET en el .env del servidor (sin permiso
+    de retiro), reinicia la API y revisa el saldo en Administración → Fondo → Billetera.
 
   ---
   Paso 5 — Verificar Estrategias
@@ -73,27 +62,14 @@ Paso 1 — Verificar datos base (ya vienen con los seeds)
   Si quieres crear una propia, define el JSON de parameters con strategy_type, regime_required, rules y risk_pct.
 
   ---
-  Paso 6 — Crear un Bot
+  Paso 6 — Crear un agente
 
-  Ve a /admin/bots → Crear bot:
-
-  ┌─────────────┬───────────────────────────────────────────────────┐
-  │    Campo    │                       Valor                       │
-  ├─────────────┼───────────────────────────────────────────────────┤
-  │ Account     │ la que creaste en paso 4                          │
-  ├─────────────┼───────────────────────────────────────────────────┤
-  │ Symbol      │ BTC/USDT (Binance)                                │
-  ├─────────────┼───────────────────────────────────────────────────┤
-  │ Timeframe   │ 1h                                                │
-  ├─────────────┼───────────────────────────────────────────────────┤
-  │ Strategy    │ Trend Following BTC 4h                            │
-  ├─────────────┼───────────────────────────────────────────────────┤
-  │ Feature Set │ el que creaste en paso 3                          │
-  ├─────────────┼───────────────────────────────────────────────────┤
-  │ Mode        │ paper                                             │
-  ├─────────────┼───────────────────────────────────────────────────┤
-  │ Risk params │ {"risk_pct": 0.01} (1% del capital por operación) │
-  └─────────────┴───────────────────────────────────────────────────┘
+  Ve a Agentes demo → Crear agente demo (o Inicio → Crear agente real):
+  1. Símbolo: BTC/USDT.
+  2. Estrategia y conjunto de indicadores (el recomendado viene marcado).
+  3. Dinero: en demo, el monto a invertir (por ejemplo 10.000 USDT); en real, la billetera de
+     Binance (su capital se le asigna desde Agentes del fondo).
+  4. Nombre y modo de ejecución (Manual para empezar). El riesgo (1 %) lo pone la estrategia.
 
   ---
   Paso 7 — Iniciar el Bot y generar señales

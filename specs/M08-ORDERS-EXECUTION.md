@@ -10,7 +10,7 @@
 | Avance (alcance original) | 100 % — 10/10 entregables del plan original (+ 11 nuevos de 2026-10-19) |
 | Madurez (estimada) | 84 % — ver [Avance](#avance) |
 | Tablas | `orders`, `fills`, `positions`, `funding_payments` (R/W); `signals` (R/W: decisión de ejecución); `bots` (R, y `status` → `error` por drawdown); `candles`, `symbols`, `exchanges`, `accounts`, `account_balances` (R) |
-| Depende de | [M2](M02-MARKET-DATA.md), [M4](M04-ACCOUNTS-PORTFOLIO.md) (credenciales Fernet, saldo para el drawdown), [M7](M07-BOTS-SIGNALS.md) (bots, señales, propiedad) |
+| Depende de | [M2](M02-MARKET-DATA.md), [M4](M04-ACCOUNTS-PORTFOLIO.md) (billetera de Binance y sus credenciales del `.env`, saldo para el drawdown), [M7](M07-BOTS-SIGNALS.md) (bots, señales, propiedad) |
 | Lo usan | [M9](M09-ALERTS.md) (hook de orden; Telegram aprueba/rechaza vía `ExecuteSignalService`), [M11](M11-FUND.md) (fills del agente para liquidar; drawdown sobre su capital), scheduler de [M2](M02-MARKET-DATA.md) (ejecución automática, reconciliación y SL/TP) |
 | Prefijo API | `/api/orders`, `/api/fills`, `/api/positions`, `/api/signals/{id}/approve`, `/api/signals/{id}/reject` |
 | Frontend | `frontend/src/modules/orders` (aprobar/descartar vive en `frontend/src/modules/bots`) |
@@ -22,7 +22,7 @@
 
 **Qué hace:**
 - Crea **órdenes** para un agente: market (precio actual), limit (precio fijo), stop y stop-limit. Solo para agentes del usuario (el admin puede todos).
-- Antes de enviar, pasa toda orden por el **RiskGate**: kill switch global, live apagado por defecto, valor máximo por compra y pérdida máxima del agente.
+- Antes de enviar, pasa toda orden por el **RiskGate**: kill switch global, valor máximo por compra y pérdida máxima del agente. No hay interruptor aparte para lo real (desde el 2026-10-26).
 - **Guarda la orden antes de llamar al exchange** (con un `client_order_id` propio) y luego registra lo que el exchange respondió de verdad: ejecutada, ejecutada en parte, enviada sin ejecutar, rechazada o "sin respuesta" (la reconciliación la resuelve después en live).
 - Ejecuta según el modo del agente:
   - **Paper:** simula la ejecución total con el cierre de la última vela (fee = 0).
@@ -36,7 +36,7 @@
 - **Perpetuos de Binance en live (2026-10-26):** metales, materias primas, ETFs y acciones (`XAU/USDT:USDT`) se operan con dinero real, **solo largos, a 1x y con margen aislado**, desde la billetera de Futuros USDⓈ-M. Registra además el **funding** que Binance cobra o paga sobre esas posiciones.
 - Máquina de estados de la orden: `new → sent → filled / partially_filled / canceled / rejected`.
 
-**Importante:** Las cuentas "paper" simulan las órdenes sin tocar dinero real. Las cuentas "live" operan con dinero real y, por defecto, están **desactivadas en el servidor** (`TRADING_LIVE_ENABLED=false`).
+**Importante:** los agentes **demo** (`paper`) simulan las órdenes sin tocar dinero real; los agentes **reales** (`live`) envían sus órdenes a la billetera de Binance. Los dos conviven: desde el 2026-10-26 no existe una variable de entorno que apague lo real (se quitó `TRADING_LIVE_ENABLED`); el único freno global es el kill switch `TRADING_ENABLED`.
 
 ## Páginas
 
@@ -67,7 +67,7 @@ Entregables:
 - 🗄️ Web UI admin `/#/admin/orders` (retirada el 2026-10-23: las órdenes se ven en la pestaña Órdenes de cada agente)
 - ✅ LiveExecutor: integración completa ccxt + Fernet credentials
 - ✅ (2026-10-19) **Propiedad** en `POST/GET /api/orders`, `GET /api/orders/{id}`, `/api/fills` y `/api/positions` vía `find_accessible_bot`
-- ✅ (2026-10-19) **RiskGateService**: kill switch, live apagado, notional máximo, drawdown máximo
+- ✅ (2026-10-19) **RiskGateService**: kill switch, notional máximo, drawdown máximo (el bloqueo "live apagado" se quitó el 2026-10-26)
 - ✅ (2026-10-19) **Idempotencia y estado real**: `orders.client_order_id` (`ta-{id}`), orden confirmada antes de llamar al exchange, `ExecutionResult` con el estado reportado, rechazos guardados como `rejected`, `ORDER_EXECUTION_UNCERTAIN` + `meta.needs_reconciliation`
 - ✅ (2026-10-19) **Señal vinculada validada** (mismo agente, aprobada, misma dirección, una sola orden activa) y regla spot sin cortos
 - ✅ (2026-10-19) **ExecuteSignalService**: aprobar/rechazar señales pendientes con reclamo atómico y revalidación al precio actual
@@ -93,13 +93,13 @@ Entregables:
 | **Strategy Pattern** para la ejecución: `ExecutorInterface` → `PaperExecutor` / `LiveExecutor` | Mismo flujo para simular y operar con dinero real; añadir un broker no toca el servicio | `if mode == ...` repartido por el código |
 | El executor lo elige `bot.mode` (`paper` → `PaperExecutor`, `live` → `LiveExecutor`) en `CreateOrderService` | El modo vive en el bot; no se puede ejecutar *live* por error desde una cuenta paper | Parámetro `mode` en cada request |
 | `PaperExecutor` rellena con el cierre de la última vela y `fee = 0`, siempre `filled` | Simulación simple y determinista, sin red | Simular *slippage* y comisiones |
-| `LiveExecutor` descifra las credenciales con Fernet ([M4](M04-ACCOUNTS-PORTFOLIO.md)) y envía la orden con ccxt | Las claves nunca viajan ni se guardan en claro | Credenciales en variables de entorno |
+| `LiveExecutor` arma el cliente ccxt con las credenciales de la billetera de Binance del `.env` (`BINANCE_API_KEY` / `BINANCE_API_SECRET`, vía `build_authenticated_client` de [M4](M04-ACCOUNTS-PORTFOLIO.md)); desde el 2026-10-26 ya no recibe `CredentialsCipher` | Hay una sola billetera: sus claves no se guardan en la BD ni viajan por la API | Credenciales cifradas por cuenta en la BD (lo que había hasta el 2026-10-26) |
 | **Persistir antes de enviar:** la orden se crea (`new`), se le asigna `client_order_id = "ta-{id}"` y se hace `commit()` **antes** de llamar al exchange; después se actualiza con el resultado | Si la llamada se corta por red, la orden puede existir en el exchange: revertirla dejaría una orden viva que el sistema no conoce. Los rechazos quedan como historial auditable | Transacción única orden + fill con `rollback()` si falla el executor (esquema anterior a 2026-10-19) |
 | `client_order_id` determinista (`Order.build_client_order_id`), UNIQUE en BD y enviado como `clientOrderId` | El exchange rechaza un segundo envío con el mismo ID y permite buscar la orden si se pierde la respuesta; ≤ 36 caracteres válidos en Binance | UUID aleatorio (no se puede reconstruir) |
 | El executor devuelve `ExecutionResult(status, exchange_order_id, fill \| None)` con el estado **que reporta el exchange** (`filled` / `partially_filled` / `sent`) | Una límite lejos del precio queda `sent` sin fill; no se asume ejecución total ni se inventa precio 0 | Devolver siempre un `Fill` (antes) |
 | Dos tipos de error: `RuntimeError` → orden `rejected` (no existe en el exchange) · `ExecutionUncertainError` (timeout/red/error inesperado o ejecución sin precio) → queda `sent` con `meta.needs_reconciliation` | Distinguir "seguro que no se envió" de "no sabemos" evita reenviar una orden duplicada | Tratar todo fallo como rechazo |
-| **RiskGate** como última barrera, para órdenes manuales, aprobadas o automáticas: `TRADING_ENABLED` → `TRADING_LIVE_ENABLED` → solo en compras: notional ≤ min(`ORDER_MAX_NOTIONAL`, `risk_params.max_notional`) y drawdown < `risk_params.max_drawdown_pct` | Las reglas del servidor no dependen del front ni de la IA | Validar solo en el front o en el agente |
-| Las **ventas** no se bloquean por notional ni drawdown (sí por el kill switch y por live apagado) | Reducir o cerrar riesgo siempre debe poder hacerse | Mismo filtro para compras y ventas |
+| **RiskGate** como última barrera, para órdenes manuales, aprobadas o automáticas: `TRADING_ENABLED` → solo en compras: notional ≤ min(`ORDER_MAX_NOTIONAL`, `risk_params.max_notional`) y drawdown < `risk_params.max_drawdown_pct` | Las reglas del servidor no dependen del front ni de la IA | Validar solo en el front o en el agente |
+| Las **ventas** no se bloquean por notional ni drawdown (sí por el kill switch) | Reducir o cerrar riesgo siempre debe poder hacerse | Mismo filtro para compras y ventas |
 | Drawdown alcanzado → el agente pasa a `error` (`BOT_MAX_DRAWDOWN_REACHED`) | Frena al agente hasta que una persona lo revise | Solo rechazar la orden y seguir operando |
 | Drawdown = pérdida realizada acumulada / (saldo libre en la moneda base + esa pérdida) | Aproxima el capital inicial sin snapshots | `portfolio_snapshots` (tiene modelo ORM, pero ningún servicio la escribe) |
 | **Perpetuos en live, solo largos a 1x con margen aislado** (decisión del usuario, 2026-10-26). Antes de la primera compra de cada (cuenta, símbolo) se exige modo one-way (`fetch_position_mode`; Hedge → rechazo), se fija `isolated` y `set_leverage(1)` (cache en memoria del proceso). Toda venta y todo SL nativo de un perpetuo llevan `reduceOnly` | Con 1x un perpetuo se contabiliza igual que spot (compra = nocional = margen; venta lo devuelve): posiciones, P&L, flujo de caja del fondo y regla del 1 % siguen valiendo. `reduceOnly` impide abrir un corto si la posición ya se cerró en el exchange (p. ej. el SL nativo se disparó) | Cortos y apalancamiento configurable (cambian posiciones, SL/TP, riesgo y la liquidación del fondo) |
@@ -149,7 +149,7 @@ Entregables:
 
 - **Funcionalidad (92):** señal → orden (aprobación o automático), SL nativo en el exchange en live + TP por ciclo, protección en compras manuales y en compras que se ejecutan tarde, cancelación desde la app y reconciliación automática de las órdenes live abiertas (fills tardíos, parciales, órdenes que nunca llegaron). Faltan: TP nativo / OCO, ajustar el SL nativo si la posición crece con una compra manual, y un paper realista (comisión, *slippage*, fill en el nivel del SL/TP).
 - **Tests (80):** `tests/orders/` (2026-10-20) cubre entidades, `LiveExecutor` (ccxt mockeado), RiskGate, crear y cancelar órdenes, señales, protección, reconciliación y SL nativo; destaparon 6 bugs, ya corregidos. Falta correr el circuito contra una **testnet** real (`scripts/testnet_check.py`).
-- **Seguridad (90):** propiedad en todas las rutas (404 para agentes ajenos), RiskGate en el servidor, live apagado por defecto, `client_order_id` UNIQUE, una orden por señal, reclamo atómico de la señal, cancelación obligatoria del SL nativo antes de otra venta (evita doble venta), precios con `max_digits=30, decimal_places=12` en el esquema.
+- **Seguridad (90):** propiedad en todas las rutas (404 para agentes ajenos), RiskGate en el servidor, `client_order_id` UNIQUE, una orden por señal, reclamo atómico de la señal, cancelación obligatoria del SL nativo antes de otra venta (evita doble venta), precios con `max_digits=30, decimal_places=12` en el esquema.
 - **Operación (75):** kill switch y límites configurables por entorno; reconciliación y protección corren solas en el scheduler (proceso líder), con reintento en el siguiente ciclo ante errores de red; testnet con `LIVE_USE_SANDBOX`; SL nativo desactivable (`ORDER_NATIVE_STOP_LOSS`). Sin métricas ni avisos cuando la reconciliación falla seguido.
 
 ## Posibles mejoras
@@ -192,7 +192,7 @@ Entregables:
 | `candles` | READ | Precio de referencia, PaperExecutor, revalidación de la señal y SL/TP |
 | `symbols` | READ | Para resolver símbolo del bot |
 | `exchanges` | READ | Para resolver exchange en LiveExecutor |
-| `accounts` | READ | Propiedad y credenciales cifradas en LiveExecutor |
+| `accounts` | READ | Propiedad y exchange de la billetera en el LiveExecutor (las credenciales salen del `.env`) |
 | `account_balances` | READ | Saldo libre para el drawdown del RiskGate |
 
 ### Migraciones
@@ -275,7 +275,7 @@ Repos: `OrderRepository.has_active_order_for_signal(signal_id)` (orden que no es
 
 Provider: `app/modules/orders/providers/order_provider.py` → `OrderServiceFactory`
 - Repos propios: order, fill, position
-- Repos borrowed: M7 (bot, signal), M2 (candle/symbol/exchange), M4 (account, account_balance + `CredentialsCipher.from_settings()`)
+- Repos borrowed: M7 (bot, signal), M2 (candle/symbol/exchange), M4 (account, account_balance)
 - `risk_gate()`, `execute_signal()` (con `AGENT_MIN_RR_RATIO`; recibe `native_stop()` solo si `ORDER_NATIVE_STOP_LOSS=true`), `protect_positions()`, `native_stop()`, `reconcile_orders()` (con el hook de alertas)
 - `create_order()` siempre recibe `native_stop()`: aunque se apague `ORDER_NATIVE_STOP_LOSS`, los SL nativos ya colocados se cancelan antes de vender
 
@@ -302,12 +302,12 @@ from app.modules.orders.rest import orders_router, fills_router, positions_route
 
 ### Settings (`app/common/config/settings.py`)
 ```
-TRADING_ENABLED=true          # kill switch global: false → no sale ninguna orden (paper ni live)
-TRADING_LIVE_ENABLED=false    # false → solo paper (TRADING_LIVE_DISABLED 403)
+TRADING_ENABLED=true          # kill switch global: false → no sale ninguna orden (ni reales ni demo)
 ORDER_MAX_NOTIONAL=10000      # tope de qty × precio por compra; 0 = sin tope global
 ORDER_REQUESTS_PER_MINUTE=20  # crear, cancelar o aprobar órdenes por usuario y minuto
 ORDER_NATIVE_STOP_LOSS=true   # live: el SL de una posición abierta desde una señal queda como orden en el exchange; false = solo el scheduler
-LIVE_USE_SANDBOX=false        # true = testnet del exchange (set_sandbox_mode); necesita claves de testnet en la cuenta
+LIVE_USE_SANDBOX=false        # true = testnet del exchange (set_sandbox_mode); necesita claves de testnet en BINANCE_API_KEY / BINANCE_API_SECRET
+BINANCE_API_KEY= / BINANCE_API_SECRET=   # credenciales de la billetera única (M4); vacías → EXCHANGE_CREDENTIALS_MISSING
 ```
 Por agente: `risk_params.max_notional` (tope propio; se aplica el menor) y `risk_params.max_drawdown_pct`.
 
@@ -357,7 +357,7 @@ Por agente: `risk_params.max_notional` (tope propio; se aplica el menor) y `risk
 
 ## Riesgos
 
-- **Dinero real:** el modo `live` envía órdenes reales con un módulo sin tests y sin pruebas en testnet. Mitigado por `TRADING_LIVE_ENABLED=false` por defecto, el notional máximo y el kill switch.
+- **Dinero real:** el modo `live` envía órdenes reales con un módulo sin tests y sin pruebas en testnet. Mitigado por el notional máximo, el kill switch y que solo el super admin crea agentes reales (desde el 2026-10-26 no hay `TRADING_LIVE_ENABLED`).
 - Reconciliación por ciclo: mientras el scheduler esté caído, las órdenes abiertas y los SL nativos ejecutados no se registran (la posición en la app va por detrás del exchange); las órdenes de más de 7 días que sigan abiertas no se revisan.
 - TP por ciclo (y SL en paper o sin SL nativo): si el proceso del scheduler se detiene, el TP no se vigila; en live un hueco de precio cierra lejos del nivel. El SL nativo sí sigue protegiendo en el exchange.
 - El drawdown se calcula con la pérdida **realizada**: una posición abierta con pérdida grande no lo dispara hasta cerrarse.
@@ -382,3 +382,4 @@ Por agente: `risk_params.max_notional` (tope propio; se aplica el menor) y `risk
 - **2026-10-26** — `CreateOrderService` rechaza las compras live cuyo símbolo es de otro exchange que la cuenta (`ORDER_EXCHANGE_MISMATCH`); las ventas siguen para no atrapar posiciones. Respaldo de la regla de [M7](M07-BOTS-SIGNALS.md).
 - **2026-10-26** — Se quita `ORDER_EXCHANGE_MISMATCH`: la plataforma opera solo con Binance ([M2](M02-MARKET-DATA.md)).
 - **2026-10-26** — **Perpetuos de Binance en live** (solo largos, 1x, margen aislado, modo one-way): precisión y mínimos, margen libre de Futuros, `reduceOnly` en ventas y SL nativo, comisión desde los trades, funding en `funding_payments` (paso del scheduler junto a la billetera) y en Rendimiento (`funding_total`). Migración `b7d4e2a91c63`.
+- **2026-10-26** — **Sin interruptor de live:** se quitan `TRADING_LIVE_ENABLED` y el bloqueo `TRADING_LIVE_DISABLED` del RiskGate; agentes reales y demo conviven y el único freno global es `TRADING_ENABLED`. El `LiveExecutor` toma las credenciales de Binance del `.env` (sin `CredentialsCipher`); `scripts/testnet_check.py` pasa las claves `TESTNET_*` a esas settings.

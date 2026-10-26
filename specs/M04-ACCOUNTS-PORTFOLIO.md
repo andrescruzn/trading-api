@@ -7,12 +7,12 @@
 | Campo | Valor |
 |---|---|
 | Estado | ✅ Completo |
-| Avance (alcance original) | 100 % — 8/8 entregables (+ 1 de 2026-10-23: billetera única de la plataforma) |
-| Madurez (estimada) | 81 % — ver [Avance](#avance) |
+| Avance (alcance original) | 100 % — 8/8 entregables (+ 2026-10-23: billetera única de la plataforma; 2026-10-26: billetera solo de Binance con credenciales en el `.env`, sin "Mis cuentas") |
+| Madurez (estimada) | 80 % — ver [Avance](#avance) |
 | Tablas | `accounts`, `account_balances`, `platform_wallet`, `wallet_snapshots` (R/W); `exchanges` (R) |
 | Depende de | [M1](M01-AUTH.md), [M2](M02-MARKET-DATA.md) (exchange de la cuenta) |
-| Lo usan | [M6](M06-AI-AGENT.md) (capital disponible), [M7](M07-BOTS-SIGNALS.md) (cuenta del bot), [M8](M08-ORDERS-EXECUTION.md) (credenciales del `LiveExecutor`), [M11](M11-FUND.md) (billetera única del fondo común) |
-| Prefijo API | `/api/accounts` (la página del front es `/#/portfolio`), `/api/wallet` |
+| Lo usan | [M6](M06-AI-AGENT.md) (capital disponible), [M7](M07-BOTS-SIGNALS.md) (billetera de los agentes reales y cuenta de práctica interna de los demo), [M8](M08-ORDERS-EXECUTION.md) (cliente del `LiveExecutor`), [M11](M11-FUND.md) (billetera única del fondo común) |
+| Prefijo API | `/api/wallet` (desde el 2026-10-26 ya no existe `/api/accounts`) |
 | Frontend | `frontend/src/modules/accounts` |
 | Última revisión | 2026-10-26 |
 
@@ -21,22 +21,19 @@
 **En palabras simples:** Es la billetera. Guarda información sobre tu dinero: cuánto tienes en Binance y cómo ha evolucionado tu capital en el tiempo.
 
 **Qué hace:**
-- Registra tus **cuentas de trading** (puedes tener varias; todas en Binance, el único exchange de la plataforma desde el 2026-10-26)
-- Cada cuenta puede ser **paper** (simulada, sin dinero real) o **live** (dinero real)
-- Guarda los **balances**: cuánto tienes de cada moneda (USDT, BTC, ETH, etc.) — snapshots inmutables
-- Las credenciales de API (api_key/api_secret) se cifran con Fernet antes de guardarlas en la BD
-- Equity curve vía time series de `account_balances`
-- **Billetera de la plataforma (fondo común, 2026-10-23):** toda la plataforma usa una sola cuenta de Binance como billetera. Su saldo se lee solo del exchange cada pocos minutos (Spot + Funding + Futuros USDⓈ-M desde el 2026-10-26), se valora en USDT y queda como foto (`wallet_snapshots`): total, libre y en órdenes, con el desglose por activo. Solo la ven super admin y socio
+- **Una sola billetera: la de Binance (2026-10-26).** Nadie crea cuentas ni elige billetera: la app arma sola la cuenta "Billetera Binance" la primera vez que alguien la necesita. Sus credenciales (`BINANCE_API_KEY` / `BINANCE_API_SECRET`) viven en el `.env` del servidor, nunca en la BD.
+- Su saldo se lee solo del exchange cada pocos minutos (Spot + Funding + Futuros USDⓈ-M), se valora en USDT y queda como foto (`wallet_snapshots`): total, libre y en órdenes, con el desglose por activo. Solo la ven super admin y socio.
+- Guarda los **balances** como snapshots inmutables (`account_balances`): los de la billetera (leídos del exchange) y el monto inicial de cada **agente demo**.
+- `accounts` queda como detalle interno: la fila de la billetera de Binance y una cuenta de práctica por agente demo ([M7](M07-BOTS-SIGNALS.md)). Ninguna se ve ni se maneja desde la app.
 
 ## Páginas
 
 Hash routing: la URL real es `/#/<ruta>`.
 
-**Páginas — Usuario (cualquier usuario autenticado):**
-- `/#/portfolio` — "Mis cuentas": lista tus cuentas, crea/edita (diálogo), y abre un panel lateral con el historial de balances donde puedes registrar uno nuevo
+**Páginas — Usuario:** ninguna. "Mis cuentas" (`/#/portfolio`) se retiró el 2026-10-26; la URL redirige a `/#/dashboard`.
 
 **Páginas — Administración (super admin y socio):**
-- `/#/admin/wallet` — "Billetera" (Administración → Fondo): cuenta elegida (nombre, exchange, modo), tarjetas Saldo total / Saldo libre / En órdenes / Última lectura, aviso si la última sincronización falló (con el motivo) o si hay activos sin precio, tabla de activos (libre, en órdenes, total, precio, valor) e historial de lecturas. Solo el super admin ve **Sincronizar ahora** y **Elegir / Cambiar billetera** (diálogo con las cuentas activas con exchange y, si son live, con API key)
+- `/#/admin/wallet` — "Billetera de Binance" (Administración → Fondo): nombre de la billetera, tarjetas Saldo total / Saldo libre / En órdenes / Última lectura, aviso si la última sincronización falló (con el motivo) o si hay activos sin precio, tabla de activos (libre, en órdenes, total, precio, valor) e historial de lecturas. Si faltan las credenciales en el `.env`, una tarjeta lo explica. Solo el super admin ve **Sincronizar ahora**. No hay botón para elegir billetera: es siempre la de Binance.
 
 ## Entregables
 
@@ -46,14 +43,11 @@ Entregables:
 - ✅ CRUD cuentas (exchange + API key/secret cifrada con Fernet → `meta['enc_creds']`)
 - ✅ Registro de balances por moneda (USDT, BTC, etc.) — snapshots inmutables
 - ✅ Equity curve vía time series de `account_balances`
-- ✅ Endpoints: GET/POST `/api/accounts`, GET/PUT `/api/accounts/{id}`, GET/POST `/api/accounts/{id}/balances`
-- ✅ Cifrado simétrico: `CredentialsCipher` (Fernet, `CREDENTIALS_SECRET_KEY`)
-- ✅ Web UI: `/#/portfolio` (panel usuario) — en React desde 2026-10-08 (la vista admin `/#/admin/accounts` se retiró el 2026-10-23)
-- ✅ 36 tests unitarios pasando (list/get/create/update accounts + list/record balances)
-- ✅ (2026-10-23) **Billetera única de la plataforma:** tablas `platform_wallet` (una fila) y `wallet_snapshots` (migración `e500b821b8ec`), `WalletGateway` + `CcxtWalletGateway`, `SyncWalletService` (en live graba también `account_balances`), paso del scheduler `sync_platform_wallet`, `GET/PUT /api/wallet`, `POST /api/wallet/sync`, `GET /api/wallet/snapshots` y página Billetera
-- Test unitarios
-
-> Nota: el roadmap original citaba la página `/accounts`; la ruta real del panel de usuario es **`/#/portfolio`** (`frontend/src/routes/_app/portfolio.lazy.tsx`).
+- 🗄️ Endpoints `/api/accounts` (CRUD) y `/api/accounts/{id}/balances` — retirados el 2026-10-26 junto con sus servicios y sus 36 tests
+- 🗄️ Cifrado de credenciales de cuentas (`meta['enc_creds']`) — retirado el 2026-10-26: las credenciales van en el `.env`. `CredentialsCipher` sigue en uso para los medios de pago del fondo ([M11](M11-FUND.md))
+- 🗄️ Web UI `/#/portfolio` ("Mis cuentas") — retirada el 2026-10-26 (redirige al inicio)
+- ✅ (2026-10-23) **Billetera única de la plataforma:** tablas `platform_wallet` (una fila) y `wallet_snapshots` (migración `e500b821b8ec`), `WalletGateway` + `CcxtWalletGateway`, `SyncWalletService`, paso del scheduler `sync_platform_wallet`, `GET /api/wallet`, `POST /api/wallet/sync`, `GET /api/wallet/snapshots` y página Billetera
+- ✅ (2026-10-26) **Billetera solo de Binance:** `EnsurePlatformWalletService` la crea sola (cuenta live "Billetera Binance" a nombre del primer super admin activo + fila `platform_wallet`); credenciales `BINANCE_API_KEY` / `BINANCE_API_SECRET` en settings; fuera `PUT /api/wallet` y la rama paper de la sincronización
 
 ## Decisiones de diseño
 
@@ -67,46 +61,41 @@ Entregables:
 | Propiedad: un usuario solo ve/edita sus cuentas; el admin ve todas (`belongs_to` + `is_admin`) | Aislamiento entre usuarios | Filtrar solo en la UI |
 | La cuenta valida el modo (`ACCOUNT_INVALID_MODE`) al crear | Errores claros con códigos estables | Dejar que fallen los `CHECK` de MySQL |
 | **Toda cuenta queda en Binance** (2026-10-26): `exchange_id` ya no se envía; `CreateAccountService` lo resuelve con `PLATFORM_EXCHANGE_NAME` (409 `PLATFORM_EXCHANGE_MISSING` si falta la fila) y no se puede cambiar. También las de práctica, que usan precios de Binance | La plataforma opera con un solo exchange ([M2](M02-MARKET-DATA.md)) | Selector de exchange (con cuentas en otros exchanges que nunca podrían operar) |
-| **Una sola billetera** para toda la plataforma: tabla `platform_wallet` con una fila (CHECK `id = 1`) que apunta a una cuenta existente de `accounts` | Fondo común: el dinero de propietarios, socios e inversores está en una sola cuenta; reutilizar `accounts` conserva el cifrado de credenciales y el `LiveExecutor` | Columna `is_platform_wallet` en `accounts` (difícil de garantizar una sola) · tabla de billeteras por usuario |
+| **Una sola billetera** para toda la plataforma: tabla `platform_wallet` con una fila (CHECK `id = 1`) que apunta a una cuenta de `accounts` | Fondo común: el dinero de propietarios, socios e inversores está en una sola cuenta; reutilizar `accounts` conserva el `LiveExecutor`, los balances y la propiedad de los agentes | Columna `is_platform_wallet` en `accounts` (difícil de garantizar una sola) · tabla de billeteras por usuario |
+| **La billetera no se elige** (2026-10-26): `EnsurePlatformWalletService` la crea sola si falta (página Billetera, scheduler, fondo, crear un agente real); si apuntaba a una cuenta paper de desarrollo, crea la live y re-apunta | El negocio opera solo con la billetera de Binance: elegir no tenía sentido y confundía | Botón "Elegir billetera" + diálogo (retirado) |
+| **Credenciales en el `.env`** (`BINANCE_API_KEY` / `BINANCE_API_SECRET`), nunca en la BD (2026-10-26) | Hay una sola billetera y la configura quien administra el servidor; nadie las ve ni las cambia desde la app | Formulario en la página Billetera con la API key cifrada en la BD |
+| **`accounts` como detalle interno** (2026-10-26): la fila de la billetera y una cuenta de práctica por agente demo | La propiedad de los agentes, el RiskGate y el 1 % ya iban por `accounts`; sin cambio de esquema | `bots.user_id` + capital en el bot (tocaba unas 25 piezas y sus tests) |
 | **Saldo leído del exchange** cada `WALLET_SYNC_INTERVAL_SECONDS` (300 s) sumando los tipos de cuenta del exchange (`_EXTRA_BALANCE_TYPES`: Funding y Futuros en Binance); en live también se graba en `account_balances` con la misma hora para todos los activos | El P2P y los depósitos de Binance caen en Funding: sin sumarlo la conciliación del fondo daría diferencias. Grabar `account_balances` mantiene el 1 % de los agentes con el saldo real | Solo `fetch_balance()` (spot) · balances manuales |
 | Un activo que tenía saldo y ya no aparece se graba en 0; la moneda base se graba siempre | Si no, su último balance quedaría viejo y el agente seguiría viendo dinero que ya no está | Grabar todos los activos en 0 del exchange (cientos en Binance) |
 | **Precios por ticker público** (`fetch_tickers` de `ACTIVO/USDT`); un activo sin precio no suma y se avisa (`missing_prices`). Un fallo de precios no tumba la sincronización | Sin API key y siempre al día; el total nunca incluye un valor inventado | Velas de M2 (solo existen para los símbolos con agentes) |
-| Cuenta **paper** aceptada como billetera (desarrollo): la foto se arma con los balances manuales y no se escribe `account_balances` | Probar todo el fondo sin dinero real | Exigir live siempre |
+| La billetera es **siempre live** (desde el 2026-10-26; antes se aceptaba una cuenta paper de desarrollo) | Para probar sin dinero real está la testnet (`LIVE_USE_SANDBOX=true` con claves de testnet) | Cuenta paper como billetera |
 | **API key de solo lectura** recomendada (sin permiso de retiro) | Los retiros los hacen los propietarios en el exchange; una API key filtrada no puede sacar dinero | Retiros automáticos por API |
-| `exchange_client.py` (helper compartido) arma el cliente ccxt con credenciales; lo usan el `LiveExecutor` y la billetera, y lanza `ExchangeClientError(code)` (subclase de `RuntimeError`) | Un solo sitio para descifrar credenciales y respetar `LIVE_USE_SANDBOX`; el `LiveExecutor` conserva sus mensajes | Copiar la lógica en la billetera |
+| `exchange_client.py` (helper compartido) arma el cliente ccxt con las credenciales del `.env`; lo usan el `LiveExecutor` y la billetera, y lanza `ExchangeClientError(code)` (subclase de `RuntimeError`; `EXCHANGE_CREDENTIALS_MISSING` si faltan) | Un solo sitio para leer credenciales y respetar `LIVE_USE_SANDBOX`; el `LiveExecutor` conserva sus mensajes | Copiar la lógica en la billetera |
 | `portfolio_snapshots` diferida: el modelo ORM existe (`infrastructure/portfolio_snapshot_model.py`, registrado en `models_registry.py` para que Alembic gestione el esquema completo), pero no hay entidad, repositorio ni servicio que la escriba | La tabla es por bot (`bot_id`, [M7](M07-BOTS-SIGNALS.md)), no por cuenta | Snapshots por cuenta |
-| Ruta REST `/api/accounts` y página en `/#/portfolio` | Desde 2026-10-08 toda la API vive bajo `/api` y la UI usa hash routing, así que ya no hay colisión; se mantuvo `/portfolio` por continuidad de URLs | Página en `/accounts` |
 
 ## Avance
 
 | Métrica | Valor | Evidencia |
 |---|---|---|
-| Alcance original | **100 %** (8/8) | CRUD, balances, equity curve, cifrado, UI usuario + admin y 36 tests |
-| Madurez | **≈ 81 %** | Funcionalidad 88 · Tests 75 · Seguridad 90 · Operación 70 |
+| Alcance original | **100 %** (8/8) | Entregables hechos; desde el 2026-10-26 el CRUD de cuentas y "Mis cuentas" se retiraron a propósito (una sola billetera) |
+| Madurez | **≈ 80 %** | Funcionalidad 92 · Tests 55 · Seguridad 92 · Operación 80 |
 
-- **Funcionalidad (88):** la billetera de la plataforma se sincroniza sola con el exchange (2026-10-23); las demás cuentas siguen con balances **a mano**.
-- **Operación (70):** sincronización automática de la billetera con el estado del último intento visible en la UI.
-- **Tests (80):** 6 suites en `tests/accounts/` (list/get/create/update de cuentas, list/record de balances).
-- **Seguridad (90):** cifrado Fernet (MultiFernet con claves anteriores), control de propiedad y longitud máxima de las credenciales en los schemas.
-- **Operación (60):** la clave se puede rotar (`CREDENTIALS_PREVIOUS_KEYS`), pero no hay herramienta que re-cifre las cuentas; sin validación de credenciales contra el exchange.
+- **Funcionalidad (92):** la billetera de Binance se arma y se sincroniza sola; no queda nada que registrar a mano.
+- **Tests (55):** los 36 tests de cuentas y balances se fueron con sus servicios; la billetera (`EnsurePlatformWalletService`, `SyncWalletService`, `CcxtWalletGateway`) sigue sin archivo de test.
+- **Seguridad (92):** credenciales solo en el `.env` (nunca en la BD ni en respuestas); sin endpoints de escritura salvo "Sincronizar ahora".
+- **Operación (80):** sincronización automática con el estado del último intento visible en la UI; aviso claro si faltan las credenciales.
 
 ## Posibles mejoras
 
 | Prioridad | Mejora | Esfuerzo |
 |---|---|---|
-| Media | Sincronizar también las demás cuentas live (hoy solo la billetera de la plataforma) | S |
-| Media | Tests de `SyncWalletService` y `CcxtWalletGateway` (hoy verificados a mano con dobles de prueba) | S |
-| Baja | Adaptador de billetera para exchanges sin ccxt (p. ej. eToro), implementando `WalletGateway` | L |
-| Alta | "Probar conexión": validar API key/secret y permisos (solo lectura/trading, sin retiro) antes de guardar la cuenta | S |
-| Media | Script o job que re-cifre todas las `enc_creds` con la clave nueva (`CredentialsCipher.rotate`) para poder retirar la vieja de `CREDENTIALS_PREVIOUS_KEYS` (hoy la rotación solo descifra con las claves anteriores; nada llama a `rotate`) | S |
-| Media | Equity total valorada en la moneda base (conversión de activos) y gráfico de equity curve en `/#/portfolio` (hoy el panel de balances es una tabla) | M |
+| Media | Tests de `EnsurePlatformWalletService`, `SyncWalletService` y `CcxtWalletGateway` | S |
+| Alta | Al arrancar, comprobar que la API key del `.env` no tenga permiso de retiro (Binance lo informa en `apiRestrictions`) y avisar en la página Billetera | S |
 | Media | Usar `portfolio_snapshots` (tabla y modelo ORM creados; falta entidad, repositorio y un servicio que la escriba) para equity por bot | M |
-| Baja | Borrado lógico / archivado de cuentas | S |
 
 ## Fuera de alcance y pendientes conocidos
 
-- Sincronización automática de las cuentas que no son la billetera de la plataforma.
-- eToro (no está en ccxt).
+- Otros exchanges o varias billeteras: decisión de negocio (solo Binance).
 - `portfolio_snapshots`: la tabla y su modelo ORM (`PortfolioSnapshotModel`) existen, pero ningún servicio la escribe ni la lee.
 - Multi-moneda con conversión a una divisa base.
 - Retiros/depósitos: el sistema no mueve fondos entre cuentas.
@@ -118,11 +107,11 @@ Entregables:
 ### Tablas en BD
 | Tabla | Acción | Nota |
 |-------|--------|------|
-| `accounts` | WRITE | `mode` paper/live, `status` active/suspended, `credentials_ref`, `meta` JSON (`enc_creds`) |
-| `account_balances` | WRITE | Snapshots por `asset` con `free`/`locked`; UNIQUE `(account_id, asset, ts)`, CASCADE al borrar la cuenta. Desde 2026-10-23 también los escribe la sincronización de la billetera (live) |
+| `accounts` | WRITE | Interna: la billetera (`mode` live, `meta.platform_wallet`) y una cuenta paper por agente demo (`meta.demo_capital`, la crea [M7](M07-BOTS-SIGNALS.md)). `meta.enc_creds` ya no se usa |
+| `account_balances` | WRITE | Snapshots por `asset` con `free`/`locked`; UNIQUE `(account_id, asset, ts)`, CASCADE al borrar la cuenta. Los escriben la sincronización de la billetera y la creación de un agente demo (monto inicial) |
 | `platform_wallet` | WRITE | Una sola fila (CHECK `id = 1`): `account_id` (UNIQUE, FK `accounts`), `base_asset` (USDT), `last_synced_at`, `last_sync_error` (código del último fallo), `updated_by_user_id` |
 | `wallet_snapshots` | WRITE | Fotos del saldo: `total_value` / `free_value` / `locked_value` (DECIMAL 30,12, en `base_asset`), `source` (`exchange` \| `manual`), `assets` JSON (`[{asset, free, locked, price, value}]`, decimales como texto), `missing_prices` JSON, `ts`; índice `(account_id, ts)` |
-| `exchanges` | READ | Resuelve el id de Binance al crear la cuenta |
+| `exchanges` | READ | Resuelve el id de Binance al crear la cuenta de la billetera |
 
 ### Modelos ORM (`app/modules/accounts/infrastructure/`)
 | Archivo | Clase | Tabla |
@@ -146,53 +135,40 @@ Entregables:
 ### Servicios (`app/modules/accounts/services/`)
 | Subdir | Servicios |
 |--------|-----------|
-| `accounts/` | `list_accounts_service.py`, `get_account_service.py`, `create_account_service.py`, `update_account_service.py` |
-| `balances/` | `list_balances_service.py`, `record_balance_service.py` |
-| `wallet/` | `get_wallet_service.py` (`GetWalletService.get()` → `WalletOverview`, `list_snapshots`), `set_platform_wallet_service.py`, `sync_wallet_service.py` |
+| `wallet/` | `ensure_platform_wallet_service.py` (`EnsurePlatformWalletService.ensure()` → cuenta de la billetera o `None` si falta Binance o un super admin; `PLATFORM_WALLET_ACCOUNT_NAME`), `get_wallet_service.py` (`GetWalletService.get()` → `WalletOverview` con `credentials_configured`, `list_snapshots`), `sync_wallet_service.py` |
 
-Provider: `app/modules/accounts/providers/account_provider.py` → `AccountServiceFactory` + `get_account_factory(session)`; construye el cifrado con `CredentialsCipher.from_settings()` (clave actual + `CREDENTIALS_PREVIOUS_KEYS`).
+Provider: `app/modules/accounts/providers/account_provider.py` → `AccountServiceFactory` (`ensure_platform_wallet`, `get_wallet`, `sync_wallet`) + `get_account_factory(session)` + `build_platform_wallet_ensurer(session)` (lo usan bots, fondo y seeds). El dueño de la cuenta de la billetera se resuelve con el primer super admin activo (`SqlAlchemyUserRepository`, import diferido).
 
-Cifrado: `app/common/security/credentials_cipher.py` → `CredentialsCipher` (MultiFernet: `encrypt`, `decrypt`, `rotate`). Lo reutilizan [M8](M08-ORDERS-EXECUTION.md) (`LiveExecutor`, `OrderServiceFactory`, también con `from_settings()`).
-
-Schemas (`rest/accounts/schemas.py`): `api_key` `max_length=512`, `api_secret` `max_length=1024` (crear y editar); `name` 1–120, `base_currency` ≤ 16, `credentials_label` ≤ 255.
+Credenciales: `exchange_client.platform_credentials_configured()` y `build_authenticated_client(account, exchange_repo)` leen `settings.BINANCE_API_KEY` / `BINANCE_API_SECRET`.
 
 ### Endpoints REST
 | Método | Ruta | Auth | Nota |
 |--------|------|------|------|
-| GET | `/api/accounts` | token | Admin ve todas; usuario, las suyas |
-| POST | `/api/accounts` | token | Crea cuenta (cifra credenciales si se envían) |
-| GET | `/api/accounts/{id}` | token | Detalle con control de propiedad |
-| PUT | `/api/accounts/{id}` | token | Actualiza cuenta |
-| GET | `/api/accounts/{id}/balances` | token | Serie de balances |
-| POST | `/api/accounts/{id}/balances` | super admin | Registra un snapshot de balance |
-| GET | `/api/wallet` | staff | `{configured, wallet, account, latest_snapshot}`; `wallet.last_sync_error_msg` ya en español |
-| PUT | `/api/wallet` | super admin | `{account_id}` (404 `WALLET_ACCOUNT_NOT_FOUND`, 409 `WALLET_ACCOUNT_INACTIVE`, 422 `WALLET_ACCOUNT_NO_EXCHANGE` / `WALLET_ACCOUNT_NO_CREDENTIALS`) |
-| POST | `/api/wallet/sync` | super admin | Lee el saldo ahora (404 `WALLET_NOT_CONFIGURED`; 422 configuración; 502 `WALLET_EXCHANGE_AUTH_FAILED` / `WALLET_SYNC_FAILED`; 503 `WALLET_EXCHANGE_UNAVAILABLE`) |
+| GET | `/api/wallet` | staff | Asegura la billetera y devuelve `{configured, wallet, account, latest_snapshot}`; `configured` = hay credenciales en el `.env` y billetera; `wallet.last_sync_error_msg` ya en español |
+| POST | `/api/wallet/sync` | super admin | Lee el saldo ahora (404 `WALLET_NOT_CONFIGURED` si faltan las credenciales; 422 configuración; 502 `WALLET_EXCHANGE_AUTH_FAILED` / `WALLET_SYNC_FAILED`; 503 `WALLET_EXCHANGE_UNAVAILABLE`) |
 | GET | `/api/wallet/snapshots` | staff | `limit` 1–500, de la más reciente a la más antigua |
 
 Routers registrados en `app/app_factory.py` (dentro de `api_routers`, con `prefix=settings.API_PREFIX`):
 ```python
-from app.modules.accounts.rest import accounts_router, balances_router, wallet_router
+from app.modules.accounts.rest import wallet_router
 ```
 
-Settings: `WALLET_BASE_ASSET` (USDT), `WALLET_SYNC_INTERVAL_SECONDS` (300, mínimo 60). Scheduler: `sync_platform_wallet()` en `scheduler_service.py`, llamado por `scheduler_runner.py` antes del ciclo de ejecución.
+Settings: `BINANCE_API_KEY` / `BINANCE_API_SECRET` (vacías = billetera sin conectar), `WALLET_BASE_ASSET` (USDT), `WALLET_SYNC_INTERVAL_SECONDS` (300, mínimo 60), `LIVE_USE_SANDBOX` (testnet). Scheduler: `sync_platform_wallet()` en `scheduler_service.py`, llamado por `scheduler_runner.py` antes del ciclo de ejecución.
 
 ### Frontend (`frontend/src/modules/accounts/`)
 | Ruta | Archivo de ruta | Página / componentes |
 |-----|----------|----|
-| `/#/portfolio` | `routes/_app/portfolio.lazy.tsx` | `pages/portfolio.tsx` (`PortfolioPage`) + `components/account-form-dialog.tsx` + `components/account-balances-sheet.tsx` + `components/record-balance-dialog.tsx` |
-| `/#/admin/wallet` | `routes/_app/admin/wallet.lazy.tsx` | `pages/admin-wallet.tsx` + `components/wallet-account-dialog.tsx`; `api/wallet.api.ts`, `hooks/use-wallet-queries.ts` (relee cada 60 s), `hooks/use-wallet-mutations.ts`, `WALLET_SOURCE_LABELS` |
-
-- API: `api/accounts.api.ts`; hooks `use-accounts-queries.ts` (`useAccountsQuery`, reutilizado por dashboard, agent y bots) y `use-accounts-mutations.ts`; etiquetas `lib/accounts-labels.ts`; badges `components/account-badges.tsx`.
+| `/#/portfolio` | `routes/_app/portfolio.tsx` | Solo redirige a `/#/dashboard` (Mis cuentas se retiró el 2026-10-26) |
+| `/#/admin/wallet` | `routes/_app/admin/wallet.lazy.tsx` | `pages/admin-wallet.tsx`; `api/wallet.api.ts` (`getWallet`, `syncWallet`, `listWalletSnapshots`), `hooks/use-wallet-queries.ts` (relee cada 60 s), `hooks/use-wallet-mutations.ts` (`useSyncWalletMutation`), `lib/accounts-labels.ts` (`WALLET_SOURCE_LABELS`) |
 
 ### Seed
-- `database/seeds/accounts.py` — cuenta paper de ejemplo (Binance) con balances en USDT para **cada** usuario demo (Andrés y Dayron), idempotente por (usuario, nombre). El usuario que no exista se omite.
-- `account_balances` es una serie temporal (UNIQUE incluye `ts`): el balance inicial solo se inserta si el activo no tiene ninguna foto. Con `get_or_create` el seed fallaba (`MultipleResultsFound`) en cuanto alguien registraba un segundo balance.
+- `database/seeds/accounts.py` — asegura la billetera de Binance con `build_platform_wallet_ensurer` (necesita `market_data` y un super admin activo). Ya no siembra cuentas paper por usuario: cada agente demo trae la suya (seed `bots`).
 
 ## Gotchas críticos
 
-- **`CREDENTIALS_SECRET_KEY` es obligatoria** fuera de `development`/`testing` (settings falla al arrancar sin ella). Perderla deja las `enc_creds` ilegibles; para **cambiarla**, poner la nueva en `CREDENTIALS_SECRET_KEY` y la vieja en `CREDENTIALS_PREVIOUS_KEYS` hasta re-cifrar las cuentas (si se quita la vieja antes, las cuentas cifradas con ella dejan de descifrarse).
-- Las cuentas `live` guardan credenciales reales: nunca registrarlas en logs ni devolverlas en las respuestas.
+- **Sin `BINANCE_API_KEY` / `BINANCE_API_SECRET`** la página Billetera muestra "aún no está conectada", el scheduler omite la sincronización (log en debug) y toda orden de un agente real falla con `EXCHANGE_CREDENTIALS_MISSING`. Tras ponerlas hay que reiniciar la API.
+- **Sin super admin activo o sin la fila Binance en `exchanges`**, `EnsurePlatformWalletService` no puede crear la billetera (devuelve `None`): crear un agente real responde `BOT_WALLET_UNAVAILABLE` (409).
+- **Datos anteriores al 2026-10-26:** las cuentas creadas en "Mis cuentas" quedan en la BD sin uso (y sus `enc_creds`, sin leer). Lo recomendado es limpiar la BD y correr los seeds.
 - Los balances son inmutables: para "corregir" uno se registra un snapshot nuevo.
 - **Billetera sin migración:** sin `e500b821b8ec` las rutas `/api/wallet` fallan (tablas inexistentes) y el paso del scheduler deja un error por ciclo en el log.
 - **Saldo de Binance incompleto:** la API key necesita permiso de lectura de la wallet Funding; si falta, la sincronización sigue con Spot y deja un aviso en el log (`[Wallet] No se pudo leer el saldo 'funding'…`), y el total sale menor que el real.
@@ -200,13 +176,12 @@ Settings: `WALLET_BASE_ASSET` (USDT), `WALLET_SYNC_INTERVAL_SECONDS` (300, míni
 
 ## Tests
 
-- `tests/accounts/` — 36 tests unitarios: `test_list_accounts_service.py`, `test_get_account_service.py`, `test_create_account_service.py`, `test_update_account_service.py`, `test_list_balances_service.py`, `test_record_balance_service.py`.
-- **Huecos:** rutas REST, `CredentialsCipher` (cifrado/descifrado y clave inválida) y la billetera (`SyncWalletService`, `CcxtWalletGateway`, `value_wallet`): verificadas a mano con dobles de prueba, sin archivo de test.
+- `tests/accounts/` quedó vacío: los 36 tests de cuentas y balances se borraron con sus servicios (2026-10-26).
+- **Huecos:** rutas REST y la billetera (`EnsurePlatformWalletService`, `SyncWalletService`, `CcxtWalletGateway`, `value_wallet`): sin archivo de test.
 
 ## Riesgos
 
-- Fuga o pérdida de `CREDENTIALS_SECRET_KEY`: compromete o inutiliza todas las credenciales.
-- Balances manuales que no coinciden con el exchange pueden llevar a [M6](M06-AI-AGENT.md) a dimensionar mal las posiciones.
+- Fuga del `.env` del servidor: expone la API key de la billetera. Mitigación: API key sin permiso de retiro y con lista blanca de IP.
 
 ## Historial
 
@@ -220,3 +195,4 @@ Settings: `WALLET_BASE_ASSET` (USDT), `WALLET_SYNC_INTERVAL_SECONDS` (300, míni
 - **2026-10-23** — Se retira el grupo **Supervisión** del menú: fuera la página "Todas las cuentas" (`/#/admin/accounts`, `pages/admin-accounts.tsx`). `GET /api/accounts` sigue igual.
 - **2026-10-26** — **Solo Binance:** las cuentas ya no eligen exchange (sin `exchange_id` en crear/editar, sin selector ni columna Exchange en Mis cuentas); se crean siempre en Binance. La migración `9869015f140f` pasa las existentes a Binance. La billetera suma solo Funding de Binance.
 - **2026-10-26** — La billetera suma también la billetera de **Futuros USDⓈ-M** (`future`): ahí está el margen de los perpetuos en live ([M8](M08-ORDERS-EXECUTION.md)); el total y la conciliación del fondo lo incluyen (a mercado: el saldo de Futuros incluye lo no realizado).
+- **2026-10-26** — **Una sola billetera, la de Binance:** credenciales en el `.env` (`BINANCE_API_KEY` / `BINANCE_API_SECRET`), la billetera se arma sola (`EnsurePlatformWalletService`), fuera `PUT /api/wallet` y el botón "Elegir billetera". Se retiran "Mis cuentas" (`/#/portfolio` redirige al inicio), `/api/accounts`, los balances manuales y sus 36 tests. `accounts` queda interna: billetera + cuenta de práctica de cada agente demo ([M7](M07-BOTS-SIGNALS.md)).

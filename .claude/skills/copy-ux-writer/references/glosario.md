@@ -6,8 +6,8 @@ Una palabra por concepto. Si la app dice "cuenta" en un lado y "wallet" en otro,
 
 | Usa | Evita | Notas |
 |---|---|---|
-| **cuenta** | wallet, account, portafolio (para una sola) | Cuenta de exchange (paper o live). "Mis cuentas" para la lista. |
-| **modo paper** / **modo live** | simulado/real mezclados | En badges: `Paper` / `Live`. En explicaciones: "paper (simulado, sin dinero real)". |
+| **billetera de Binance** | cuenta, wallet, "Mis cuentas" | La única billetera de la plataforma (desde el 2026-10-26 no hay cuentas que crear ni elegir). |
+| **agente real** / **agente demo** | live/paper, modo live/modo paper | En badges: `Real` / `Demo`. El demo opera con "dinero simulado"; el real, con la billetera de Binance. |
 | **exchange** | bróker (para cripto), plataforma | Bróker solo cuando el tipo es `broker`. |
 | **símbolo** | par, ticker, activo (para el registro) | El registro `BTC/USDT`. "Activo" = base o cotización (`BTC`, `USDT`). |
 | **vela** | candle, barra | "Velas OHLCV" en títulos; "vela" en texto. |

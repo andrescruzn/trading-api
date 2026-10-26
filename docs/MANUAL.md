@@ -62,9 +62,30 @@ como el oro, y se paga en USDT. Se reconocen por el `:USDT` al final.
 | Acción | NVDA, TSLA, AAPL | La acción de la empresa |
 
 Ventajas: abren 24/7 como la cripto y se descargan igual, así que los agentes funcionan sin cambios.
-**Límite actual: los perpetuos solo se operan en modo paper.** En una cuenta real un perpetuo usa
-contratos, apalancamiento y posiciones cortas, y la app aún no maneja eso: no te deja crear un
-agente live sobre un perpetuo.
+
+Con dinero real (live), un perpetuo se opera así:
+  - Solo comprando: el agente compra y luego vende para cerrar. No apuesta a la baja (no abre
+    "cortos").
+  - Sin apalancamiento (1x) y con margen aislado: la posición nunca vale más que el dinero que
+    pones, y una pérdida no toca el resto de la billetera.
+  - Desde la billetera de Futuros de Binance (es distinta de la de Spot). Un super admin pasa a
+    mano los USDT de Spot a Futuros; si no hay margen suficiente, la compra se rechaza con un
+    aviso.
+  - Un solo agente live por perpetuo: Binance junta en una sola posición todo lo que se opera en
+    ese símbolo.
+  - El funding: cada pocas horas Binance cobra o paga un pequeño monto a quien tiene la posición
+    abierta (es lo que mantiene el precio del contrato pegado al del activo real). La app lo
+    registra y lo suma al resultado del agente; lo ves en Rendimiento y en la liquidación del
+    fondo.
+
+  Ejemplo: un agente con 2.000 USDT compra oro (XAU) a 2.500 con stop loss en 2.450. La regla del
+  1 % pide arriesgar 20 USDT: 20 ÷ 50 = 0,4 onzas (1.000 USDT de posición). Si el stop estuviera a
+  5 USDT, la regla pediría 4 onzas (10.000 USDT): como sin apalancamiento no se puede pasar del
+  capital, la app compra 0,8 onzas (2.000 USDT) y el riesgo real baja a 4 USDT (0,2 %).
+
+Para que funcione en Binance (super admin): API key con permiso de Futuros (sin retiro ni
+transferencias), el acuerdo de los perpetuos TradFi aceptado en la app de Binance y el modo de
+posición "unidireccional" (One-way) en las preferencias de Futuros.
 
 Forex (EUR/USD, USD/JPY) y los índices "de verdad" no están conectados: necesitan otro proveedor
 de datos y un bróker. Ojo con `SPX/USDT:USDT` en Binance: no es el S&P 500, es una memecoin.
@@ -491,7 +512,8 @@ Qué muestra:
   Historial    → las lecturas anteriores del saldo.
 
 Cómo se lee el saldo: la app le pregunta al exchange cada 5 minutos. Suma también la wallet
-Funding de Binance, que es donde suelen caer el P2P y los depósitos. Si una moneda no
+Funding de Binance, que es donde suelen caer el P2P y los depósitos, y la de Futuros, donde está
+el margen de los agentes que operan perpetuos (oro, acciones…). Si una moneda no
 tiene precio en USDT, se muestra pero no suma al total, y la página lo avisa.
 
 Para empezar (super admin):

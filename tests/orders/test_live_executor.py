@@ -15,7 +15,10 @@
 # - _to_result: mapeo de estados, precio (average / cost ÷ filled), fee.
 # - _send: traducción de errores de ccxt.
 # - execute / fetch / cancel / place_stop_loss.
-# - _order_symbol: símbolo obligatorio y sin perpetuos.
+# - _order_symbol: símbolo obligatorio.
+# - Perpetuos (2026-10-26): reduceOnly en ventas y stop loss, margen
+#   aislado y 1x una vez por cuenta y símbolo, margen libre de Futuros,
+#   modo Hedge rechazado, precisión y mínimos, comisión por trades.
 # ======================================================================
 
 from __future__ import annotations
@@ -67,7 +70,12 @@ def _make_executor(monkeypatch, client: MagicMock | None = None):
     """Retorna (executor, client) con _build_client parcheado."""
     client = client or MagicMock()
     client.id = "binance"
+    # Mercado sin mínimos y precisión que no cambia la cantidad
+    client.market.return_value = {"limits": {}}
+    client.amount_to_precision.side_effect = lambda symbol, amount: str(amount)
+    client.fetch_position_mode.return_value = {"hedged": False}
     monkeypatch.setattr(LiveExecutor, "_build_client", lambda self, bot: client)
+    LiveExecutor._prepared.clear()
     executor = LiveExecutor(
         account_repo=MagicMock(),
         exchange_repo=MagicMock(),
@@ -283,9 +291,8 @@ class TestOrderSymbol:
     def test_returns_spot_symbol(self):
         assert LiveExecutor._order_symbol(_make_order(symbol="BTC/USDT")) == "BTC/USDT"
 
-    def test_rejects_perpetual(self):
-        with pytest.raises(RuntimeError):
-            LiveExecutor._order_symbol(_make_order(symbol="XAU/USDT:USDT"))
+    def test_accepts_perpetual(self):
+        assert LiveExecutor._order_symbol(_make_order(symbol="XAU/USDT:USDT")) == "XAU/USDT:USDT"
 
     def test_rejects_missing_symbol(self):
         with pytest.raises(RuntimeError):
@@ -328,14 +335,87 @@ class TestExecute:
         assert kwargs["price"] == 95.0
         assert kwargs["params"]["stopPrice"] == 96.0
 
-    def test_perpetual_is_rejected_before_calling_exchange(self, monkeypatch):
+    def test_perpetual_buy_sets_isolated_1x_once_and_checks_margin(self, monkeypatch):
         executor, client = _make_executor(monkeypatch)
-        order = _make_order(symbol="XAU/USDT:USDT")
+        client.fetch_balance.return_value = {"USDT": {"free": 1000}}
+        client.create_order.return_value = {"id": "p-1", "status": "closed", "filled": 2, "average": 100}
+        order = _make_order(qty="2", symbol="XAU/USDT:USDT")
+        order.meta["reference_price"] = "100"
+
+        executor.execute(order, BOT)
+        executor.execute(_make_order(qty="2", symbol="XAU/USDT:USDT"), BOT)
+
+        client.set_margin_mode.assert_called_once_with("isolated", "XAU/USDT:USDT")
+        client.set_leverage.assert_called_once_with(1, "XAU/USDT:USDT")
+        client.fetch_balance.assert_called_once_with({"type": "future"})
+        assert "reduceOnly" not in client.create_order.call_args.kwargs["params"]
+
+    def test_perpetual_buy_without_margin_is_rejected(self, monkeypatch):
+        executor, client = _make_executor(monkeypatch)
+        client.fetch_balance.return_value = {"USDT": {"free": 50}}
+        order = _make_order(qty="2", symbol="XAU/USDT:USDT")
+        order.meta["reference_price"] = "100"
+
+        with pytest.raises(RuntimeError) as info:
+            executor.execute(order, BOT)
+
+        assert "Futuros" in str(info.value)
+        client.create_order.assert_not_called()
+
+    def test_perpetual_hedge_mode_is_rejected(self, monkeypatch):
+        executor, client = _make_executor(monkeypatch)
+        client.fetch_position_mode.return_value = {"hedged": True}
+
+        with pytest.raises(RuntimeError):
+            executor.execute(_make_order(symbol="XAU/USDT:USDT"), BOT)
+
+        client.create_order.assert_not_called()
+
+    def test_perpetual_sell_is_reduce_only_without_preparing(self, monkeypatch):
+        executor, client = _make_executor(monkeypatch)
+        client.create_order.return_value = {"id": "p-2", "status": "closed", "filled": 2, "average": 100}
+
+        executor.execute(_make_order(side="sell", symbol="XAU/USDT:USDT"), BOT)
+
+        assert client.create_order.call_args.kwargs["params"]["reduceOnly"] is True
+        client.set_leverage.assert_not_called()
+
+    def test_amount_is_rounded_to_market_precision(self, monkeypatch):
+        executor, client = _make_executor(monkeypatch)
+        client.amount_to_precision.side_effect = lambda symbol, amount: "0.123"
+        client.create_order.return_value = {"id": "x", "status": "closed", "filled": 0.123, "average": 100}
+        order = _make_order(qty="0.123456")
+
+        result = executor.execute(order, BOT)
+
+        assert client.create_order.call_args.kwargs["amount"] == 0.123
+        assert order.qty == Decimal("0.123")
+        assert result.status == "filled"
+
+    def test_buy_below_exchange_minimum_is_rejected(self, monkeypatch):
+        executor, client = _make_executor(monkeypatch)
+        client.market.return_value = {"limits": {"cost": {"min": 5}}}
+        order = _make_order(qty="0.01")
+        order.meta["reference_price"] = "100"
 
         with pytest.raises(RuntimeError):
             executor.execute(order, BOT)
 
         client.create_order.assert_not_called()
+
+    def test_missing_fee_is_read_from_order_trades(self, monkeypatch):
+        executor, client = _make_executor(monkeypatch)
+        client.has = {"fetchOrderTrades": True}
+        client.create_order.return_value = {"id": "p-3", "status": "closed", "filled": 2, "average": 100, "fee": None}
+        client.fetch_order_trades.return_value = [
+            {"fee": {"cost": 0.04, "currency": "USDT"}},
+            {"fee": {"cost": 0.06, "currency": "USDT"}},
+        ]
+
+        result = executor.execute(_make_order(side="sell", symbol="XAU/USDT:USDT"), BOT)
+
+        assert result.fill.fee == Decimal("0.1")
+        assert result.fill.fee_asset == "USDT"
 
     def test_timeout_raises_uncertain(self, monkeypatch):
         executor, client = _make_executor(monkeypatch)
@@ -585,12 +665,13 @@ class TestPlaceStopLoss:
         with pytest.raises(ExecutionUncertainError):
             executor.place_stop_loss(order, BOT)
 
-    def test_perpetual_is_rejected(self, monkeypatch):
+    def test_perpetual_stop_loss_is_reduce_only(self, monkeypatch):
         executor, client = _make_executor(monkeypatch)
         client.has = {"createStopLossOrder": True}
+        client.create_stop_loss_order.return_value = {"id": "sl-2", "status": "open", "filled": 0}
         order = _make_order(side="sell", type="stop", stop_price="90", symbol="XAU/USDT:USDT")
 
-        with pytest.raises(RuntimeError):
-            executor.place_stop_loss(order, BOT)
+        executor.place_stop_loss(order, BOT)
 
-        client.create_stop_loss_order.assert_not_called()
+        params = client.create_stop_loss_order.call_args.args[6]
+        assert params["reduceOnly"] is True

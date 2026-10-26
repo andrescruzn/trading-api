@@ -69,6 +69,7 @@ from app.modules.market.infrastructure import (
 )
 from app.modules.orders.infrastructure import (
     SqlAlchemyFillRepository,
+    SqlAlchemyFundingRepository,
     SqlAlchemyOrderRepository,
     SqlAlchemyPositionRepository,
 )
@@ -198,6 +199,7 @@ class FundServiceFactory:
             fill_repo=self._fill_repo,
             position_repo=SqlAlchemyPositionRepository(self._session),
             symbol_repo=self._symbol_repo,
+            funding_repo=SqlAlchemyFundingRepository(self._session),
         )
 
     def agent_pools(self) -> AgentPoolsService:

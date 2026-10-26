@@ -18,6 +18,7 @@ from app.modules.bots.domain.bot_entity import Bot
 from app.modules.bots.domain.bot_repository import BotRepository
 from app.modules.bots.services.bots.bot_access import find_accessible_bot
 from app.modules.bots.services.bots.execution_mode_rules import check_execution_mode
+from app.modules.bots.services.bots.live_perpetual_rule import perpetual_taken_by_other
 from app.modules.market.domain.ccxt_exchanges import is_perpetual
 from app.modules.market.domain.symbol_repository import SymbolRepository
 from app.modules.market.domain.timeframe_repository import TimeframeRepository
@@ -33,7 +34,8 @@ class UpdateBotService:
     - El resto de la configuración solo si el bot está 'stopped'.
     - No se puede cambiar la cuenta, símbolo, estrategia ni timeframe
       de un bot activo (podría dejar posiciones huérfanas).
-    - Un agente sobre un perpetuo no puede pasar a live.
+    - Un agente sobre un perpetuo pasa a live solo si ningún otro agente
+      live de la cuenta opera ese perpetuo.
     """
 
     def __init__(
@@ -87,10 +89,14 @@ class UpdateBotService:
                 )
             if mode == "live":
                 symbol = self._symbol_repo.get_by_id(bot.symbol_id)
-                if symbol is not None and is_perpetual(symbol.symbol):
-                    return ServiceResult.fail(
-                        code="BOT_PERPETUAL_LIVE_NOT_SUPPORTED", http_status=422
+                if (
+                    symbol is not None
+                    and is_perpetual(symbol.symbol)
+                    and perpetual_taken_by_other(
+                        self._repo, account_id=account.id, symbol_id=symbol.id, bot_id=bot.id
                     )
+                ):
+                    return ServiceResult.fail(code="BOT_PERPETUAL_LIVE_TAKEN", http_status=409)
 
         if risk_params is not None:
             if not Bot.is_valid_risk_pct(risk_params.get("risk_pct")):

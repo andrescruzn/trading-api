@@ -6,7 +6,8 @@
 # CASO DE USO:
 # - Rendimiento de un agente: operaciones cerradas y sus métricas
 #   (domain/performance.py) más el P&L no realizado de la posición
-#   abierta, valorada al último cierre.
+#   abierta, valorada al último cierre, y el funding de los perpetuos en
+#   live (aparte: no es de ninguna operación en particular).
 #
 # REGLAS:
 # - Un usuario solo ve los agentes de sus cuentas (el admin, cualquiera);
@@ -24,6 +25,7 @@ from app.modules.bots.domain.bot_repository import BotRepository
 from app.modules.bots.services.bots.bot_access import find_accessible_bot
 from app.modules.market.domain.candle_repository import CandleRepository
 from app.modules.orders.domain.fill_repository import FillRepository
+from app.modules.orders.domain.funding_repository import FundingRepository
 from app.modules.orders.domain.performance import Performance, compute_performance
 
 
@@ -32,6 +34,7 @@ class BotPerformance:
     performance: Performance
     last_price: Decimal | None
     unrealized_pnl: Decimal | None
+    funding_total: Decimal = Decimal("0")
 
 
 class GetBotPerformanceService:
@@ -43,7 +46,9 @@ class GetBotPerformanceService:
         bot_repo: BotRepository,
         account_repo: AccountRepository,
         candle_repo: CandleRepository,
+        funding_repo: FundingRepository,
     ):
+        self._funding_repo = funding_repo
         self._fill_repo = fill_repo
         self._bot_repo = bot_repo
         self._account_repo = account_repo
@@ -69,6 +74,9 @@ class GetBotPerformanceService:
 
         return ServiceResult.ok(
             data=BotPerformance(
-                performance=performance, last_price=last_price, unrealized_pnl=unrealized
+                performance=performance,
+                last_price=last_price,
+                unrealized_pnl=unrealized,
+                funding_total=self._funding_repo.total_by_bot(bot.id),
             )
         )

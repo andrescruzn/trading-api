@@ -178,6 +178,27 @@ def verify_fund_deposits() -> None:
         session.close()
 
 
+def sync_funding_payments() -> None:
+    """
+    Guarda el funding de los perpetuos en live (M8): lo que Binance cobra o
+    paga sobre la posición cada pocas horas. Sin agentes así no hace nada.
+    """
+    from app.modules.orders.providers import OrderServiceFactory
+
+    session = SessionLocal()
+    try:
+        report = OrderServiceFactory(session=session).sync_funding().run().data
+        if report.added or report.failed:
+            logger.info(
+                "[Scheduler] Funding — agentes=%d nuevos=%d fallidos=%d",
+                report.checked, report.added, len(report.failed),
+            )
+    except Exception:
+        logger.exception("[Scheduler] Funding ERROR")
+    finally:
+        session.close()
+
+
 # ======================================================================
 # Ciclo principal
 # ======================================================================

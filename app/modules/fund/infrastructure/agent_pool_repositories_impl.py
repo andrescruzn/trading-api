@@ -65,6 +65,7 @@ class SqlAlchemyAgentPoolRepository(SqlAlchemyRepository, AgentPoolRepository):
             created_by_user_id=m.created_by_user_id,
             created_at=ensure_aware_utc(m.created_at),
             updated_at=ensure_aware_utc(m.updated_at),
+            last_funding_id=int(m.last_funding_id or 0),
         )
 
     def get_by_id(self, pool_id: int) -> AgentPool | None:
@@ -88,6 +89,7 @@ class SqlAlchemyAgentPoolRepository(SqlAlchemyRepository, AgentPoolRepository):
             equity=pool.equity,
             units=pool.units,
             last_fill_id=pool.last_fill_id,
+            last_funding_id=pool.last_funding_id,
             created_by_user_id=pool.created_by_user_id,
         )
         self._session.add(m)
@@ -114,6 +116,7 @@ class SqlAlchemyAgentPoolRepository(SqlAlchemyRepository, AgentPoolRepository):
                     "equity": pool.equity,
                     "units": pool.units,
                     "last_fill_id": pool.last_fill_id,
+                    "last_funding_id": pool.last_funding_id,
                     "last_settlement_id": pool.last_settlement_id,
                 },
                 synchronize_session=False,
@@ -156,6 +159,7 @@ class SqlAlchemyAgentSettlementRepository(SqlAlchemyRepository, AgentSettlementR
             redeemed_amount=_decimal(m.redeemed_amount),
             units_redeemed=_decimal(m.units_redeemed),
             fees_total=_decimal(m.fees_total),
+            funding_total=_decimal(m.funding_total),
         )
 
     def create(self, s: AgentSettlement) -> AgentSettlement:
@@ -179,6 +183,7 @@ class SqlAlchemyAgentSettlementRepository(SqlAlchemyRepository, AgentSettlementR
             redeemed_amount=s.redeemed_amount,
             units_redeemed=s.units_redeemed,
             fees_total=s.fees_total,
+            funding_total=s.funding_total,
         )
         self._session.add(m)
         self._session.flush()

@@ -12,7 +12,8 @@
 #   internas. En Binance el P2P y los depósitos suelen caer en Funding, no
 #   en Spot: si no se suman, la conciliación del fondo daría diferencias.
 #   `_EXTRA_BALANCE_TYPES` lista los tipos adicionales que se suman a
-#   `fetch_balance()` por exchange.
+#   `fetch_balance()` por exchange. Desde el 2026-10-26 también Futuros
+#   USDⓈ-M (`future`): el margen de los perpetuos en live vive ahí.
 # - Un tipo adicional que falle (p. ej. permiso de la API key) no tumba la
 #   sincronización: se registra en el log y se suma lo que sí se leyó.
 #   Si falla el saldo principal, sí es error.
@@ -52,7 +53,7 @@ logger = logging.getLogger(__name__)
 
 # Tipos de cuenta que se suman al saldo principal (id ccxt → `type` de fetch_balance)
 _EXTRA_BALANCE_TYPES: dict[str, tuple[str, ...]] = {
-    "binance": ("funding",),
+    "binance": ("funding", "future"),
 }
 
 # Códigos de ExchangeClientError → código de la billetera

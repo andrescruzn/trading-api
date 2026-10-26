@@ -497,9 +497,13 @@ class AnalyzeService:
                 code="AGENT_INVALID_PRICE_RISK", http_status=422
             )
 
-        position_size = float(
-            Decimal(str(capital)) * Decimal(str(effective_risk_pct)) / price_risk
-        )
+        size = Decimal(str(capital)) * Decimal(str(effective_risk_pct)) / price_risk
+        # Sin apalancamiento (spot y perpetuos a 1x): la posición nunca vale
+        # más que el capital. Con un stop muy cerca de la entrada la regla del
+        # 1 % pediría más; se recorta y el riesgo real queda por debajo del 1 %.
+        if d_entry > 0:
+            size = min(size, Decimal(str(capital)) / d_entry)
+        position_size = float(size)
 
         # ----------------------------------------------------------
         # Fase 4: Filtro R/R (Python determinístico)

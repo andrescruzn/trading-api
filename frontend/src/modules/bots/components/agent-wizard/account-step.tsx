@@ -181,8 +181,8 @@ type AccountStepProps = {
 	onChange: (value: string) => void;
 	/** Moneda de cotización del símbolo elegido: base de la cuenta de práctica. */
 	currency: string;
-	/** Por qué no aparecen las cuentas live (perpetuo, solo paper). */
-	hiddenLiveNote?: string;
+	/** El símbolo es un perpetuo: en live opera en la billetera de Futuros. */
+	perpetual?: boolean;
 };
 
 /** Paso 3: con qué dinero opera el agente. Su modo (paper/live) es el de la cuenta. */
@@ -192,13 +192,10 @@ export function AccountStep({
 	value,
 	onChange,
 	currency,
-	hiddenLiveNote,
+	perpetual = false,
 }: AccountStepProps) {
 	const [showPracticeForm, setShowPracticeForm] = useState(false);
 	const selected = accounts.find((account) => String(account.id) === value);
-	const hiddenNote = hiddenLiveNote && (
-		<p className="text-sm text-muted-foreground">{hiddenLiveNote}</p>
-	);
 
 	if (isLoading) {
 		return (
@@ -212,16 +209,14 @@ export function AccountStep({
 	if (accounts.length === 0) {
 		return (
 			<div className="flex flex-col gap-4">
-				{hiddenNote ?? (
-					<p className="text-sm text-muted-foreground">
-						Aún no tienes cuentas. Crea una de práctica para empezar; luego
-						podrás conectar una cuenta real desde{' '}
-						<Link to="/portfolio" className="text-primary hover:underline">
-							Mis cuentas
-						</Link>
-						.
-					</p>
-				)}
+				<p className="text-sm text-muted-foreground">
+					Aún no tienes cuentas. Crea una de práctica para empezar; luego podrás
+					conectar una cuenta real desde{' '}
+					<Link to="/portfolio" className="text-primary hover:underline">
+						Mis cuentas
+					</Link>
+					.
+				</p>
 				<PracticeAccountForm
 					currency={currency}
 					onCreated={(account) => onChange(String(account.id))}
@@ -232,7 +227,6 @@ export function AccountStep({
 
 	return (
 		<div className="flex flex-col gap-4">
-			{hiddenNote}
 			<div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
 				{accounts.map((account) => (
 					<AccountChoice
@@ -272,6 +266,8 @@ export function AccountStep({
 					<AlertDescription>
 						Las órdenes del agente se enviarán al exchange. Te recomendamos
 						probarlo primero con una cuenta de práctica.
+						{perpetual &&
+							' Este símbolo es un perpetuo: opera en la billetera de Futuros de Binance, sin apalancamiento (1x) y solo comprando. Pasa USDT de Spot a Futuros antes de iniciarlo.'}
 					</AlertDescription>
 				</Alert>
 			)}

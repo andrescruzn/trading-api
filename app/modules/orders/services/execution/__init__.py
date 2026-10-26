@@ -12,13 +12,19 @@ from app.modules.orders.services.execution.reconcile_orders_service import (
     ReconcileOrdersService,
     ReconcileReport,
 )
+from app.modules.orders.services.execution.sync_funding_service import (
+    FundingSyncReport,
+    SyncFundingService,
+)
 
 __all__ = [
     "ExecuteSignalService",
+    "FundingSyncReport",
     "NativeStopService",
     "ProtectPositionsService",
     "ProtectionReport",
     "ReconcileOrdersService",
     "ReconcileReport",
     "SignalDecision",
+    "SyncFundingService",
 ]

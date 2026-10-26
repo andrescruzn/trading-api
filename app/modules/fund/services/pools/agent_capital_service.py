@@ -10,7 +10,9 @@
 #
 # REGLAS:
 # - Agente con pool: capital = equity de la última liquidación + flujo de
-#   caja desde entonces + lo abierto a precio de costo (qty × precio medio).
+#   caja desde entonces (con el funding de los perpetuos) + lo abierto a
+#   precio de costo (qty × precio medio). Con 1x, el costo de un perpetuo es
+#   su margen.
 #   Es la equity "a costo": no depende del precio del momento.
 # - Agente sobre la billetera de la plataforma sin pool: capital 0 (no puede
 #   arriesgar el dinero de todos por fuera del fondo).
@@ -19,6 +21,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from decimal import Decimal
 
 from app.modules.accounts.domain.platform_wallet_repository import PlatformWalletRepository
@@ -29,6 +32,7 @@ from app.modules.fund.domain.fund_repositories import AgentPoolRepository
 from app.modules.fund.domain.settlement import CashFlow, cash_flow
 from app.modules.market.domain.symbol_repository import SymbolRepository
 from app.modules.orders.domain.fill_repository import FillRepository
+from app.modules.orders.domain.funding_repository import FundingRepository
 from app.modules.orders.domain.position_repository import PositionRepository
 
 _ZERO = Decimal("0")
@@ -44,7 +48,9 @@ class AgentCapitalService:
         fill_repo: FillRepository,
         position_repo: PositionRepository,
         symbol_repo: SymbolRepository,
+        funding_repo: FundingRepository,
     ):
+        self._funding_repo = funding_repo
         self._pool_repo = pool_repo
         self._wallet_repo = wallet_repo
         self._fill_repo = fill_repo
@@ -72,14 +78,20 @@ class AgentCapitalService:
     # ------------------------------------------------------------------
 
     def flow_since_settlement(self, pool: AgentPool, bot: Bot) -> CashFlow:
-        """Flujo de caja de los fills del bot que aún no entraron a una liquidación."""
+        """Flujo de caja de los fills y el funding del bot que aún no entraron a una liquidación."""
         symbol = self._symbol_repo.get_by_id(bot.symbol_id)
-        return cash_flow(
+        flow = cash_flow(
             self._fill_repo.list_by_bot_after(bot.id, pool.last_fill_id),
             quote=pool.asset,
             base=symbol.base_asset if symbol else None,
             after_fill_id=pool.last_fill_id,
         )
+        funding, last_funding_id = self._funding_repo.total_after(bot.id, pool.last_funding_id)
+        return replace(flow, funding=funding, last_funding_id=last_funding_id)
+
+    def funding_start(self, bot_id: int) -> int:
+        """Último funding del bot hoy: lo anterior a abrirlo al fondo no cuenta."""
+        return self._funding_repo.total_after(bot_id, 0)[1]
 
     def open_cost(self, bot_id: int) -> Decimal:
         """Lo que hay en posiciones abiertas, a precio de costo."""

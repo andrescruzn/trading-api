@@ -93,6 +93,7 @@ from app.modules.bots.infrastructure.signal_subscription_model import SignalSubs
 from app.modules.orders.infrastructure.order_model import OrderModel  # noqa: F401
 from app.modules.orders.infrastructure.fill_model import FillModel  # noqa: F401
 from app.modules.orders.infrastructure.position_model import PositionModel  # noqa: F401
+from app.modules.orders.infrastructure.funding_payment_model import FundingPaymentModel  # noqa: F401
 
 # --------------------------------------------------------------
 # Alerts module models

@@ -166,19 +166,12 @@ export function AgentNewPage() {
 	const symbols = symbolsQuery.data?.filter((item) => item.supports_auto_fetch);
 	const symbol = symbols?.find((item) => String(item.id) === values.symbol_id);
 	// Cuentas propias y activas (un admin ve todas en `/accounts`). Un
-	// perpetuo solo se opera en paper, así que con él no sirven las live. El
-	// backend lo vuelve a validar.
+	// perpetuo en live opera en la billetera de Futuros: el paso de la cuenta
+	// lo explica.
 	const perpetual = isPerpetualSymbol(symbol?.symbol);
-	const ownAccounts = (accountsQuery.data ?? []).filter(
+	const accounts = (accountsQuery.data ?? []).filter(
 		(account) => account.user_id === user?.id && account.status === 'active',
 	);
-	const accounts = ownAccounts.filter(
-		(account) => account.mode !== 'live' || !perpetual,
-	);
-	const hiddenLiveNote =
-		ownAccounts.length === accounts.length
-			? undefined
-			: 'Tus cuentas live no aparecen: los perpetuos solo se operan en paper.';
 
 	const strategy = strategiesQuery.data?.find(
 		(item) => String(item.id) === values.strategy_id,
@@ -326,14 +319,6 @@ export function AgentNewPage() {
 										value={field.value}
 										onChange={(value) => {
 											field.onChange(value);
-											// Una cuenta live depende del símbolo (spot o
-											// perpetuo): con otro hay que volver a elegirla.
-											const chosen = ownAccounts.find(
-												(item) => String(item.id) === values.account_id,
-											);
-											if (chosen?.mode === 'live') {
-												form.setValue('account_id', null);
-											}
 											suggestName(
 												symbols?.find((item) => String(item.id) === value),
 												strategy,
@@ -382,7 +367,7 @@ export function AgentNewPage() {
 										value={field.value}
 										onChange={field.onChange}
 										currency={symbol?.quote_asset ?? 'USDT'}
-										hiddenLiveNote={hiddenLiveNote}
+										perpetual={perpetual}
 									/>
 								)}
 							/>

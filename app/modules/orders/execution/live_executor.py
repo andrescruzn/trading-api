@@ -17,10 +17,24 @@
 # - fetch(order, bot)            → estado actual de la orden en el exchange
 # - cancel(order, bot)           → cancelar una orden abierta
 # - place_stop_loss(order, bot)  → stop loss nativo (si el exchange lo soporta)
+# - fetch_funding(bot, symbol, since) → funding cobrado/pagado de un perpetuo
 #
-# Exchanges soportados: los de CCXT_EXCHANGE_MAP (M2, ccxt_exchanges.py).
-# Solo spot: los perpetuos (`XAU/USDT:USDT`) se rechazan, porque ccxt
-# interpreta `amount` como contratos y no hay apalancamiento ni cortos.
+# Exchange: Binance (CCXT_EXCHANGE_MAP, M2). Spot y perpetuos USDⓈ-M
+# (`XAU/USDT:USDT`: metales, materias primas, ETFs, acciones) desde el
+# 2026-10-26, con estas reglas en los perpetuos:
+# - Solo largos: toda venta y todo stop loss llevan `reduceOnly` (nunca
+#   abren un corto aunque la posición ya se haya cerrado en el exchange).
+# - 1x y margen aislado: antes de la primera compra de cada símbolo se fija
+#   `isolated` y apalancamiento 1 (una pérdida no toca el resto de la
+#   billetera de Futuros). La cuenta debe estar en modo one-way.
+# - El USDT debe estar en la billetera de Futuros (lo pasa un super admin a
+#   mano): antes de comprar se revisa el margen libre.
+# - Binance no devuelve la comisión al crear una orden de futuros: se suma
+#   de los trades de la orden.
+#
+# Cantidades: se redondean a la precisión del mercado (hacia abajo) y se
+# revisan los mínimos de cantidad y de valor. La orden queda con la cantidad
+# que de verdad se envió (`order.qty`), y el llamador la guarda.
 #
 # LIVE_USE_SANDBOX=true usa la testnet del exchange (set_sandbox_mode):
 # permite probar todo el circuito live sin dinero real.
@@ -28,6 +42,7 @@
 
 from __future__ import annotations
 
+import logging
 from decimal import Decimal
 from typing import Any
 
@@ -47,6 +62,11 @@ from app.modules.orders.execution.executor_interface import (
     ExecutionUncertainError,
     ExecutorInterface,
 )
+
+logger = logging.getLogger(__name__)
+
+# Margen extra al revisar el margen libre de Futuros (comisión y redondeos)
+_MARGIN_BUFFER = Decimal("1.01")
 
 
 # Mapeo tipo de orden del dominio → tipo ccxt
@@ -84,6 +104,9 @@ class LiveExecutor(ExecutorInterface):
     - La orden es rechazada por el exchange.
     """
 
+    # (cuenta, símbolo) ya preparados en este proceso: aislado, 1x y one-way
+    _prepared: set[tuple[int, str]] = set()
+
     def __init__(
         self,
         account_repo: AccountRepository,
@@ -110,12 +133,24 @@ class LiveExecutor(ExecutorInterface):
         """
         client = self._build_client(bot)
         symbol_str = self._order_symbol(order)
+        market = self._market(client, symbol_str)
+        perpetual = is_perpetual(symbol_str)
+        # Las compras abren posición: revisan mínimos; vender cierra lo que hay
+        order.qty = self._precise_amount(
+            client, market, symbol_str, order, check_minimums=order.side == "buy"
+        )
 
         # ccxt espera: symbol (str), type (str), side (str), amount (float), price (float|None)
         ccxt_type = _ORDER_TYPE_MAP.get(order.type, order.type)
         ccxt_price = float(order.price) if order.price is not None else None
 
         params: dict = {}
+        if perpetual:
+            if order.side == "buy":
+                self._prepare_perpetual(client, bot, symbol_str)
+                self._check_futures_margin(client, market, order)
+            else:
+                params["reduceOnly"] = True
         if order.stop_price is not None:
             params["stopPrice"] = float(order.stop_price)
         if order.time_in_force is not None:
@@ -135,7 +170,7 @@ class LiveExecutor(ExecutorInterface):
                 params=params,
             )
         )
-        return self._to_result(order, response)
+        return self._to_result(order, self._with_fee(client, symbol_str, response))
 
     def place_stop_loss(self, order: Order, bot: Bot) -> ExecutionResult:
         """
@@ -156,9 +191,14 @@ class LiveExecutor(ExecutorInterface):
             raise RuntimeError(f"{client.id} no soporta stop loss nativo por la API de ccxt.")
 
         symbol_str = self._order_symbol(order)
+        market = self._market(client, symbol_str)
+        order.qty = self._precise_amount(client, market, symbol_str, order, check_minimums=False)
         params: dict = {}
         if order.client_order_id:
             params["clientOrderId"] = order.client_order_id
+        if is_perpetual(symbol_str):
+            # Solo cierra el largo: si la posición ya no está, no abre un corto
+            params["reduceOnly"] = True
 
         response = self._send(
             lambda: client.create_stop_loss_order(
@@ -195,15 +235,17 @@ class LiveExecutor(ExecutorInterface):
 
         try:
             if order.exchange_order_id:
-                return client.fetch_order(order.exchange_order_id, symbol_str)
-            if not order.client_order_id:
+                remote = client.fetch_order(order.exchange_order_id, symbol_str)
+            elif not order.client_order_id:
                 return None
-            try:
-                return client.fetch_order(
-                    None, symbol_str, {"clientOrderId": order.client_order_id}
-                )
-            except (ccxt.ArgumentsRequired, ccxt.NotSupported, ccxt.BadRequest):
-                return self._find_by_client_id(client, symbol_str, order.client_order_id)
+            else:
+                try:
+                    remote = client.fetch_order(
+                        None, symbol_str, {"clientOrderId": order.client_order_id}
+                    )
+                except (ccxt.ArgumentsRequired, ccxt.NotSupported, ccxt.BadRequest):
+                    remote = self._find_by_client_id(client, symbol_str, order.client_order_id)
+            return self._with_fee(client, symbol_str, remote) if remote else remote
         except ccxt.OrderNotFound:
             return None
         except (ccxt.RequestTimeout, ccxt.NetworkError) as e:
@@ -233,6 +275,23 @@ class LiveExecutor(ExecutorInterface):
         except ccxt.ExchangeError as e:
             raise RuntimeError(f"Error del exchange al cancelar la orden: {e}")
 
+    def fetch_funding(self, bot: Bot, symbol: str, since_ms: int | None) -> list[dict[str, Any]]:
+        """
+        Historial de funding del perpetuo en la cuenta del bot desde `since_ms`
+        (`{id, amount, code, timestamp}` de ccxt).
+
+        Raises:
+            ExecutionUncertainError: error de red (se reintenta luego).
+            RuntimeError: configuración o error del exchange.
+        """
+        client = self._build_client(bot)
+        try:
+            return client.fetch_funding_history(symbol, since_ms) or []
+        except (ccxt.RequestTimeout, ccxt.NetworkError) as e:
+            raise ExecutionUncertainError(f"Sin respuesta del exchange: {e}")
+        except ccxt.BaseError as e:
+            raise RuntimeError(f"Error del exchange al leer el funding: {e}")
+
     # ==================================================================
     # Lógica interna
     # ==================================================================
@@ -258,19 +317,135 @@ class LiveExecutor(ExecutorInterface):
 
     @staticmethod
     def _order_symbol(order: Order) -> str:
-        """Símbolo unificado guardado en meta por CreateOrderService (solo spot)."""
+        """Símbolo unificado guardado en meta por CreateOrderService."""
         symbol_str = order.meta.get("symbol")
         if not symbol_str:
             raise RuntimeError(
                 "La orden no tiene el símbolo en meta. "
                 "Asegúrate de que CreateOrderService lo incluya."
             )
-        if is_perpetual(symbol_str):
-            raise RuntimeError(
-                f"'{symbol_str}' es un perpetuo y solo se opera en paper: "
-                "la ejecución live no maneja contratos, apalancamiento ni cortos."
-            )
         return symbol_str
+
+    @staticmethod
+    def _market(client, symbol: str) -> dict[str, Any]:
+        """Mercado de ccxt (precisión, mínimos, tipo); carga los mercados una vez por cliente."""
+        try:
+            client.load_markets()
+            market = client.market(symbol)
+        except ccxt.BadSymbol as e:
+            raise RuntimeError(f"El exchange no tiene el mercado '{symbol}': {e}")
+        except (ccxt.RequestTimeout, ccxt.NetworkError) as e:
+            raise ExecutionUncertainError(f"Sin respuesta del exchange al cargar los mercados: {e}")
+        except ccxt.BaseError as e:
+            raise RuntimeError(f"No se pudieron cargar los mercados del exchange: {e}")
+        contract_size = market.get("contractSize")
+        if market.get("contract") and contract_size not in (None, 1, 1.0):
+            # Un contrato que no vale 1 unidad cambiaría tamaños y P&L: no se opera
+            raise RuntimeError(
+                f"'{symbol}' tiene contratos de {contract_size} unidades; la app solo opera "
+                "perpetuos de 1 unidad por contrato."
+            )
+        return market
+
+    @staticmethod
+    def _precise_amount(
+        client, market: dict[str, Any], symbol: str, order: Order, *, check_minimums: bool
+    ) -> Decimal:
+        """
+        Cantidad redondeada (hacia abajo) a la precisión del mercado. En las
+        compras revisa además el mínimo de cantidad y de valor: una compra
+        que el exchange rechazaría se rechaza aquí con un motivo claro.
+        """
+        try:
+            amount = Decimal(str(client.amount_to_precision(symbol, float(order.qty))))
+        except ccxt.BaseError:
+            amount = Decimal("0")
+        limits = market.get("limits") or {}
+        min_amount = (limits.get("amount") or {}).get("min")
+        if amount <= 0 or (check_minimums and min_amount and amount < Decimal(str(min_amount))):
+            raise RuntimeError(
+                f"La cantidad {order.qty} es menor que el mínimo de {symbol} en el exchange "
+                f"({min_amount or 'precisión del mercado'})."
+            )
+        price = _reference_price(order)
+        min_cost = (limits.get("cost") or {}).get("min")
+        if check_minimums and price and min_cost and amount * price < Decimal(str(min_cost)):
+            raise RuntimeError(
+                f"La orden vale {amount * price:.2f} y el mínimo de {symbol} en el exchange "
+                f"es {min_cost}."
+            )
+        return amount
+
+    def _prepare_perpetual(self, client, bot: Bot, symbol: str) -> None:
+        """Modo one-way, margen aislado y 1x, una vez por cuenta y símbolo."""
+        key = (int(bot.account_id or 0), symbol)
+        if key in self._prepared:
+            return
+        try:
+            mode = client.fetch_position_mode(symbol) or {}
+            if mode.get("hedged"):
+                raise RuntimeError(
+                    "La cuenta de Futuros de Binance está en modo de cobertura (Hedge). "
+                    "Cámbiala a modo unidireccional (One-way) en las preferencias de Futuros."
+                )
+            try:
+                client.set_margin_mode("isolated", symbol)
+            except ccxt.MarginModeAlreadySet:
+                pass
+            client.set_leverage(1, symbol)
+        except (ccxt.RequestTimeout, ccxt.NetworkError) as e:
+            # Nada se envió todavía: es seguro rechazar y reintentar después
+            raise RuntimeError(f"Sin respuesta del exchange al preparar {symbol}: {e}")
+        except ccxt.BaseError as e:
+            if "no need to change" not in str(e).lower():
+                raise RuntimeError(f"No se pudo fijar margen aislado y 1x en {symbol}: {e}")
+        self._prepared.add(key)
+
+    @staticmethod
+    def _check_futures_margin(client, market: dict[str, Any], order: Order) -> None:
+        """Con 1x la compra usa como margen su valor completo: debe estar libre en Futuros."""
+        price = _reference_price(order)
+        if not price:
+            return
+        settle = market.get("settle") or market.get("quote") or "USDT"
+        try:
+            balance = client.fetch_balance({"type": "future"}) or {}
+        except ccxt.BaseError as e:
+            raise RuntimeError(f"No se pudo leer el margen de la billetera de Futuros: {e}")
+        free = Decimal(str((balance.get(settle) or {}).get("free") or 0))
+        needed = order.qty * price * _MARGIN_BUFFER
+        if free < needed:
+            raise RuntimeError(
+                f"Margen insuficiente en la billetera de Futuros de Binance: hay {free:.2f} "
+                f"{settle} libres y la orden necesita {needed:.2f}. Transfiere {settle} de "
+                "Spot a Futuros."
+            )
+
+    @staticmethod
+    def _with_fee(client, symbol: str, response: dict[str, Any]) -> dict[str, Any]:
+        """
+        Completa la comisión cuando la respuesta no la trae (Binance Futuros):
+        suma la de los trades de la orden. Si falla, sigue sin comisión.
+        """
+        if (response.get("fee") or {}).get("cost") is not None or not response.get("filled"):
+            return response
+        if not response.get("id") or not client.has.get("fetchOrderTrades"):
+            return response
+        try:
+            trades = client.fetch_order_trades(response["id"], symbol) or []
+        except ccxt.BaseError as e:
+            logger.warning("[Live] No se pudo leer la comisión de la orden %s: %s", response.get("id"), e)
+            return response
+        cost = Decimal("0")
+        currency = None
+        for trade in trades:
+            fee = trade.get("fee") or {}
+            if fee.get("cost") is not None:
+                cost += Decimal(str(fee["cost"]))
+                currency = currency or fee.get("currency")
+        if currency is None:
+            return response
+        return {**response, "fee": {"cost": float(cost), "currency": currency}}
 
     @staticmethod
     def _send(call) -> dict[str, Any]:
@@ -350,5 +525,14 @@ class LiveExecutor(ExecutorInterface):
             ts=now,
             created_at=now,
         )
+        # `order.qty` ya es la cantidad redondeada que se envió
         status = "filled" if filled >= order.qty else "partially_filled"
         return ExecutionResult(status=status, exchange_order_id=exchange_order_id, fill=fill)
+
+
+def _reference_price(order: Order) -> Decimal | None:
+    """Precio para valorar la orden: límite, stop o el de referencia que guardó el servicio."""
+    for value in (order.price, order.stop_price, order.meta.get("reference_price")):
+        if value:
+            return Decimal(str(value))
+    return None

@@ -116,6 +116,8 @@ type BotPerformance = {
 	open_realized_pnl: number;
 	last_price: number | null;
 	unrealized_pnl: number | null;
+	/** Funding de perpetuos en live (+ recibido, − pagado), aparte de las operaciones. */
+	funding_total: number;
 	equity_curve: { ts: string | null; pnl: number }[];
 	/** La más reciente primero. */
 	closed_trades: ClosedTrade[];

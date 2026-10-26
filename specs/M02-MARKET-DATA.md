@@ -70,7 +70,7 @@ Entregables:
 | **Un solo exchange: Binance** (`PLATFORM_EXCHANGE_NAME`, 2026-10-26). Se conserva la tabla `exchanges` con una fila activa; los demás se desactivan (con sus símbolos) sin borrar historia | Decisión del negocio: todo el dinero vive en la billetera de Binance y se opera con todos sus mercados (spot y perpetuos). Mantener la tabla evita tocar las FK de `symbols` y `accounts` | Borrar la tabla y la columna `exchange_id` (migración grande, sin beneficio) · seguir con varios exchanges |
 | `exchanges` admite `crypto_exchange` / `broker` / `data_vendor` | Mismo modelo para cripto, metales y forex | Una tabla por tipo de activo |
 | Metales, materias primas, ETFs y acciones como **perpetuos TradFi** de Binance (`XAU/USDT:USDT`) | Datos y ejecución en el mismo sitio, 24/7, con el mismo código ccxt: ccxt elige el mercado por el símbolo unificado | Proveedor de datos aparte (yfinance, Twelve Data) + bróker: más código, horarios de mercado y sin ejecución |
-| Perpetuos solo en **paper** (`is_perpetual()` en `domain/ccxt_exchanges.py`) | En live ccxt interpreta `amount` como contratos y harían falta apalancamiento, margen y cortos | Habilitar live con la lógica spot (tamaños de posición erróneos) |
+| ~~Perpetuos solo en paper~~ → desde el 2026-10-26 **también en live**, solo largos a 1x y margen aislado ([M8](M08-ORDERS-EXECUTION.md)); `is_perpetual()` sigue marcando dónde aplica esa lógica | Decisión del negocio: operar todos los mercados de Binance | Mantenerlos en paper |
 | Explorador calculado al vuelo desde `candles` (1d), sin tabla nueva | ~40 símbolos × 250 velas: barato y siempre coherente con las velas | Tabla de métricas precalculadas |
 | `strength` = min(ADX/50, 1) × eficiencia de Kaufman (30 d); ADX < 20 → lateral | Exige fuerza y limpieza del movimiento a la vez; comparable entre activos de precios muy distintos | Solo rendimiento %: premia saltos puntuales |
 | `timeframes` guarda `seconds` y usa PK `SMALLINT` | El scheduler decide si una vela "venció" comparando segundos | Calcular segundos desde el código del timeframe |
@@ -104,7 +104,7 @@ Entregables:
 | Media | Detección y relleno de huecos: el ciclo incremental pide solo 3 velas, así que una caída del servidor de más de 3 timeframes deja velas faltantes | M |
 | Media | La retención por defecto (500 velas) limita el histórico disponible para datasets/backtesting de [M5](M05-STRATEGIES.md); separar retención operativa de histórico | M |
 | Media | Proveedor de datos no-ccxt (yfinance / Twelve Data) para forex e índices reales: capa de proveedores en `FetchCandlesService`, horario de mercado en el scheduler y `vol_rel` con volumen 0 | L |
-| Media | Live de perpetuos: cortos (`positions.qty >= 0`), apalancamiento, `contractSize` y redondeo a `lot_size` | L |
+| Media | Perpetuos en live: cortos (`positions.qty >= 0`) y apalancamiento > 1x ([M8](M08-ORDERS-EXECUTION.md); precisión y `contractSize` ya resueltos el 2026-10-26) | L |
 | Baja | Paginación y filtros en servidor para catálogos grandes | S |
 
 ## Fuera de alcance y pendientes conocidos
@@ -238,7 +238,7 @@ Desde 2026-10-19, después de `run_cycle()` el scheduler corre `run_execution_cy
 - **`SPX/USDT:USDT` no es el S&P 500:** en Binance es la memecoin SPX6900. Para el índice usar `SPY`.
 - **`MATIC/USDT` ya no existe** (renombrado a `POL/USDT`): ccxt responde `BadSymbol`.
 - **Perpetuos y volumen:** los perpetuos TradFi traen volumen real, así que `vol_rel` funciona; un proveedor de forex sin volumen lo dejaría en `NaN`.
-- **Perpetuos en live:** bloqueados en `CreateBotService`, `UpdateBotService` (`BOT_PERPETUAL_LIVE_NOT_SUPPORTED`) y `LiveExecutor`; el asistente oculta las cuentas live si el símbolo es perpetuo.
+- **Perpetuos en live (2026-10-26):** permitidos, solo largos a 1x; uno por cuenta y símbolo (`BOT_PERPETUAL_LIVE_TAKEN`, [M7](M07-BOTS-SIGNALS.md)). Detalle en [M8](M08-ORDERS-EXECUTION.md).
 - **Falta la fila Binance** (BD sin el seed `market_data`): crear una cuenta o un símbolo responde 409 `PLATFORM_EXCHANGE_MISSING`. La migración `9869015f140f` la crea si no existe.
 - Resueltos con la migración a React (2026-10-08): CSP por prefijo web (`_is_web_route`), clases `.page-header`/`.pagination` de `app.css` y el redirect admin por `role_id` de la cookie ya no aplican (ver [M1](M01-AUTH.md)).
 

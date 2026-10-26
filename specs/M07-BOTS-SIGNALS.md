@@ -212,7 +212,7 @@ Nuevos en `SignalRepository`: `exists_for_candle(bot_id, candle_ts)`, `count_cre
 
 Todos los servicios que reciben un `bot_id` aceptan `owner_id` (`None` = admin o scheduler, sin restricción).
 
-`check_execution_mode`: `BOT_INVALID_EXECUTION_MODE` · `BOT_INVALID_APPROVAL_TTL` · `BOT_AUTO_LIVE_DISABLED` · `BOT_TIMEFRAME_TOO_SHORT_FOR_AUTOMATION` (422). `UpdateBotService` lo vuelve a correr en cada `PUT` (con el timeframe del bot) y valida `BOT_MODE_ACCOUNT_MISMATCH` al cambiar `mode`; al pasar a live también `BOT_PERPETUAL_LIVE_NOT_SUPPORTED`, igual que `CreateBotService`.
+`check_execution_mode`: `BOT_INVALID_EXECUTION_MODE` · `BOT_INVALID_APPROVAL_TTL` · `BOT_AUTO_LIVE_DISABLED` · `BOT_TIMEFRAME_TOO_SHORT_FOR_AUTOMATION` (422). `UpdateBotService` lo vuelve a correr en cada `PUT` (con el timeframe del bot) y valida `BOT_MODE_ACCOUNT_MISMATCH` al cambiar `mode`; al pasar a live también `BOT_PERPETUAL_LIVE_TAKEN` (409), igual que `CreateBotService`.
 
 Provider: `app/modules/bots/providers/bot_provider.py` → `BotServiceFactory`
 - Repos propios: `SqlAlchemyBotRepository`, `SqlAlchemySignalRepository`
@@ -285,8 +285,8 @@ Routers registrados en `app/app_factory.py` (dentro de `api_routers`, con `prefi
 
 ## Gotchas críticos
 
-- **Perpetuos solo en paper:** `CreateBotService` y `UpdateBotService` (al pasar a live) devuelven `BOT_PERPETUAL_LIVE_NOT_SUPPORTED` (422) si el símbolo es un perpetuo (`XAU/USDT:USDT`, `is_perpetual()` de M2). El asistente oculta las cuentas live con un perpetuo elegido y acepta `?symbol_id=` (desde Explorar mercados).
-- **Cuentas live en el asistente:** con un perpetuo (solo paper) el asistente (`agent-new.tsx`) oculta las cuentas live y pasa `hiddenLiveNote` a `AccountStep` para explicarlo; al cambiar el símbolo se limpia la cuenta si era live. (La regla "live = mismo exchange" del 2026-10-26 se quitó ese mismo día al quedar solo Binance.)
+- **Perpetuos en live (2026-10-26):** se permiten, pero **uno por cuenta y símbolo** (`BOT_PERPETUAL_LIVE_TAKEN` 409, `live_perpetual_rule.perpetual_taken_by_other`, cuenta cualquier estado): Binance une la posición y el funding del símbolo. El asistente acepta `?symbol_id=` (desde Explorar mercados) y, con una cuenta live y un perpetuo, avisa que opera en la billetera de Futuros a 1x y solo comprando (`AccountStep perpetual`).
+- **Tamaño a 1x:** `AnalyzeService` recorta `position_size` a `capital / entrada` (nunca más nocional que el capital); con un stop muy cerca el riesgo real queda por debajo del 1 %.
 - **Seed `bots`:** dos agentes demo en paper y detenidos para el usuario demo ("Oro — tendencia 4h" con Tendencia Metales y "BTC — tendencia 1h" con EMA Trend Follower, conjunto Tendencia), idempotente por (account_id, name). Quedan en `manual`.
 - **Modo automático sin señales:** un agente `approval`/`auto` no genera nada si está `paused`, si su timeframe es < 15m, si la descarga de velas va atrasada (> 2 timeframes) o si el usuario llegó al tope diario. El log del scheduler (`[Execution]`) dice cuál fue.
 - **`GET /signals/pending` y admin:** por defecto (`mine=true`) el admin también ve solo las suyas; para todas, `?mine=false`.
@@ -338,4 +338,5 @@ Routers registrados en `app/app_factory.py` (dentro de `api_routers`, con `prefi
 - **2026-10-20** — Pestaña **Mercado**: gráfico de precio de cierre (`market/components/price-line-chart.tsx`, SVG propio sin librerías, tipo `PriceLevel` en `market/lib/price-chart.ts`) con las líneas Entrada / SL / TP de la posición abierta; tooltip con apertura, máximo y mínimo; accesible con teclado (`role=slider`). La tabla de velas sigue debajo como vista con todos los valores.
 - **2026-10-23** — Se retira el grupo **Supervisión** del menú: fuera "Todos los agentes" (`/#/admin/agents`, `pages/admin-agents.tsx`, `BotActionsMenu`, `listBotsPage`/`useBotsPageQuery`) y la redirección `/#/admin/bots`. Los agentes se revisan en su detalle; el staff llega a los de otros desde Administración → Fondo → **Agentes del fondo**, y la miga del detalle dice "Administración › Agentes del fondo". `GET /api/bots` (paginado y filtros) sigue igual en el backend.
 - **2026-10-26** — **Live = mismo exchange que la cuenta:** `CreateBotService` y `UpdateBotService` (al pasar a live) devuelven `BOT_EXCHANGE_ACCOUNT_MISMATCH` (422) si el símbolo es de otro exchange que la cuenta. El asistente solo ofrece las cuentas live del exchange del símbolo y explica las ocultas. Respaldo en [M8](M08-ORDERS-EXECUTION.md) para los agentes ya creados (`ORDER_EXCHANGE_MISMATCH` en compras live).
+- **2026-10-26** — **Perpetuos en live**: fuera `BOT_PERPETUAL_LIVE_NOT_SUPPORTED`; un agente live por perpetuo y cuenta (`BOT_PERPETUAL_LIVE_TAKEN`); el tamaño de la posición no supera el capital (1x); el asistente ya no oculta las cuentas live y avisa de la billetera de Futuros.
 - **2026-10-26** — **Solo Binance** ([M2](M02-MARKET-DATA.md)): se quitan `BOT_EXCHANGE_ACCOUNT_MISMATCH` y el filtro de cuentas live por exchange del asistente; el buscador de símbolos busca por símbolo y clase de activo (ya no por exchange).

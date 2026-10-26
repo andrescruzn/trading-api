@@ -213,6 +213,7 @@ def settlement_to_dict(s: AgentSettlement) -> dict[str, Any]:
         "redeemed_amount":    _money(s.redeemed_amount),
         "units_redeemed":     _money(s.units_redeemed),
         "fees_total":         _money(s.fees_total),
+        "funding_total":      _money(s.funding_total),
     }
 
 
@@ -246,6 +247,7 @@ def settlement_preview_to_dict(p: SettlementPreview) -> dict[str, Any]:
         "sells":            _money(p.flow.sells),
         "buys":             _money(p.flow.buys),
         "fees":             _money(p.flow.fees),
+        "funding":          _money(p.flow.funding),
         "unvalued_fees":    {k: str(v) for k, v in p.flow.unvalued_fees.items()},
         "previous_equity":  _money(plan.previous_equity),
         "trading_result":   _money(plan.trading_result),

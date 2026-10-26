@@ -8,7 +8,8 @@
 #   una vez al día refresh_explorer() (velas 1d del explorador) y cada
 #   WALLET_SYNC_INTERVAL_SECONDS sync_platform_wallet() (saldo de la
 #   billetera de la plataforma) seguido de verify_fund_deposits() (depósitos
-#   del fondo contra el exchange).
+#   del fondo contra el exchange) y sync_funding_payments() (funding de los
+#   perpetuos en live).
 # - Expone start() / stop() para integrarse con el lifespan de FastAPI.
 #
 # DISEÑO:
@@ -51,6 +52,7 @@ def _run_loop() -> None:
     from app.modules.scheduler.scheduler_service import (
         refresh_explorer,
         run_cycle,
+        sync_funding_payments,
         sync_platform_wallet,
         verify_fund_deposits,
     )
@@ -90,6 +92,7 @@ def _run_loop() -> None:
             last_wallet_sync = now
             sync_platform_wallet()
             verify_fund_deposits()
+            sync_funding_payments()
 
         try:
             run_cycle()

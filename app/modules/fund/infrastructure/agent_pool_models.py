@@ -68,6 +68,12 @@ class AgentPoolModel(Base):
         comment="Último fill del bot ya contabilizado (lo anterior no cuenta)",
     )
     last_settlement_id = Column(BigInteger, nullable=True)
+    last_funding_id = Column(
+        BigInteger,
+        nullable=False,
+        server_default=text("'0'"),
+        comment="Último funding (perpetuos) ya contabilizado",
+    )
     created_by_user_id = Column(
         BigInteger,
         ForeignKey("users.id", name="fk_agent_pools_created_by", ondelete="SET NULL"),
@@ -133,6 +139,12 @@ class AgentSettlementModel(Base):
         nullable=False,
         server_default=text("'0.000000000000'"),
         comment="Comisiones cobradas en las salidas",
+    )
+    funding_total = Column(
+        DECIMAL(30, 12),
+        nullable=False,
+        server_default=text("'0.000000000000'"),
+        comment="Funding de perpetuos incluido en el resultado",
     )
     unvalued_fees = Column(
         JSON, nullable=False, comment="Comisiones en otra moneda, sin valorar: {asset: monto}"

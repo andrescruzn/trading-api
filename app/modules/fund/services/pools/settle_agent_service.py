@@ -234,6 +234,7 @@ class SettleAgentService:
                     redeemed_amount=plan.redeemed_amount,
                     units_redeemed=plan.units_redeemed,
                     fees_total=plan.fees_total,
+                    funding_total=flow.funding,
                 )
             )
 
@@ -296,6 +297,7 @@ class SettleAgentService:
                 equity=plan.equity_after,
                 units=plan.units_after,
                 last_fill_id=flow.last_fill_id,
+                last_funding_id=flow.last_funding_id,
             )
             if not self._pool_repo.update_settled(pool, expected_last_fill_id):
                 self._pool_repo.rollback()

@@ -150,6 +150,7 @@ class AgentPoolsService:
                     bot_id=bot.id,
                     asset=wallet.base_asset.upper(),
                     last_fill_id=self._fill_repo.max_id_by_bot(bot.id),
+                    last_funding_id=self._capital.funding_start(bot.id),
                     created_by_user_id=int(requester_user_id),
                 )
             )

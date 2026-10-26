@@ -62,10 +62,14 @@ class CashFlow:
     unvalued_fees: dict[str, Decimal]
     last_fill_id: int
     fills_count: int
+    # Perpetuos en live: funding cobrado (+) o pagado (−) desde la última
+    # liquidación, y el último registro contabilizado
+    funding: Decimal = _ZERO
+    last_funding_id: int = 0
 
     @property
     def net(self) -> Decimal:
-        return self.sells - self.buys - self.fees
+        return self.sells - self.buys - self.fees + self.funding
 
 
 def cash_flow(

@@ -17,6 +17,7 @@
 # - fetch(order, bot)            → estado actual de la orden en el exchange
 # - cancel(order, bot)           → cancelar una orden abierta
 # - place_stop_loss(order, bot)  → stop loss nativo (si el exchange lo soporta)
+# - fetch_funding(bot, symbol, since) → funding cobrado/pagado de un perpetuo
 #
 # Exchange: Binance (CCXT_EXCHANGE_MAP, M2). Spot y perpetuos USDⓈ-M
 # (`XAU/USDT:USDT`: metales, materias primas, ETFs, acciones) desde el
@@ -273,6 +274,23 @@ class LiveExecutor(ExecutorInterface):
             raise ExecutionUncertainError(f"Sin respuesta del exchange: {e}")
         except ccxt.ExchangeError as e:
             raise RuntimeError(f"Error del exchange al cancelar la orden: {e}")
+
+    def fetch_funding(self, bot: Bot, symbol: str, since_ms: int | None) -> list[dict[str, Any]]:
+        """
+        Historial de funding del perpetuo en la cuenta del bot desde `since_ms`
+        (`{id, amount, code, timestamp}` de ccxt).
+
+        Raises:
+            ExecutionUncertainError: error de red (se reintenta luego).
+            RuntimeError: configuración o error del exchange.
+        """
+        client = self._build_client(bot)
+        try:
+            return client.fetch_funding_history(symbol, since_ms) or []
+        except (ccxt.RequestTimeout, ccxt.NetworkError) as e:
+            raise ExecutionUncertainError(f"Sin respuesta del exchange: {e}")
+        except ccxt.BaseError as e:
+            raise RuntimeError(f"Error del exchange al leer el funding: {e}")
 
     # ==================================================================
     # Lógica interna

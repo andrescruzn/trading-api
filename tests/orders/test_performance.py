@@ -134,6 +134,7 @@ class TestGetBotPerformanceService:
             bot_repo=MagicMock(),
             account_repo=MagicMock(),
             candle_repo=candle_repo,
+            funding_repo=MagicMock(),
         )
         return svc, candle_repo
 

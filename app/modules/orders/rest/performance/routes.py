@@ -67,6 +67,7 @@ def _bot_performance_to_dict(data: BotPerformance) -> dict[str, Any]:
         "open_realized_pnl": _num(p.open_realized_pnl),
         "last_price":        _num(data.last_price),
         "unrealized_pnl":    _num(data.unrealized_pnl),
+        "funding_total":     _num(data.funding_total),
         "equity_curve":      [{"ts": _iso(ts), "pnl": _num(v)} for ts, v in p.equity_curve],
         "closed_trades": [
             {

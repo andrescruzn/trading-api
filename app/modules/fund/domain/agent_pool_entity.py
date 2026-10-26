@@ -54,18 +54,28 @@ class AgentPool:
     created_by_user_id: int | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
+    # Último funding (perpetuos en live) ya contabilizado; igual que los fills
+    last_funding_id: int = 0
     # Solo en memoria durante una liquidación: la liquidación que había al
     # leer el pool (para el UPDATE condicional)
     previous_settlement_id: int | None = None
 
     def apply_settlement(
-        self, *, settlement_id: int, equity: Decimal, units: Decimal, last_fill_id: int
+        self,
+        *,
+        settlement_id: int,
+        equity: Decimal,
+        units: Decimal,
+        last_fill_id: int,
+        last_funding_id: int | None = None,
     ) -> None:
         self.previous_settlement_id = self.last_settlement_id
         self.last_settlement_id = settlement_id
         self.equity = equity
         self.units = units
         self.last_fill_id = last_fill_id
+        if last_funding_id is not None:
+            self.last_funding_id = last_funding_id
 
     @property
     def nav(self) -> Decimal:
@@ -134,6 +144,8 @@ class AgentSettlement:
     redeemed_amount: Decimal = Decimal("0")
     units_redeemed: Decimal = Decimal("0")
     fees_total: Decimal = Decimal("0")
+    # Funding de perpetuos incluido en `trading_result` (2026-10-26)
+    funding_total: Decimal = Decimal("0")
 
 
 @dataclass

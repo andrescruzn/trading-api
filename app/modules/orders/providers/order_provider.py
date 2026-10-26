@@ -35,6 +35,7 @@ from app.common.security.credentials_cipher import CredentialsCipher
 # Repos propios del módulo
 from app.modules.orders.infrastructure import (
     SqlAlchemyFillRepository,
+    SqlAlchemyFundingRepository,
     SqlAlchemyOrderRepository,
     SqlAlchemyPositionRepository,
 )
@@ -215,6 +216,14 @@ class OrderServiceFactory:
             min_rr_ratio=settings.AGENT_MIN_RR_RATIO,
         )
 
+    def sync_funding(self) -> SyncFundingService:
+        return SyncFundingService(
+            funding_repo=SqlAlchemyFundingRepository(self._session),
+            bot_repo=self._bot_repo,
+            symbol_repo=self._symbol_repo,
+            live_executor=self._live_executor,
+        )
+
     def protect_positions(self) -> ProtectPositionsService:
         return ProtectPositionsService(
             position_repo=self._position_repo,
@@ -245,6 +254,7 @@ class OrderServiceFactory:
             bot_repo=self._bot_repo,
             account_repo=self._account_repo,
             candle_repo=self._candle_repo,
+            funding_repo=SqlAlchemyFundingRepository(self._session),
         )
 
     def strategy_track_record(self) -> ListStrategyTrackRecordService:

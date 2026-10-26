@@ -14,19 +14,19 @@
 | Lo usan | [M6](M06-AI-AGENT.md) (capital disponible), [M7](M07-BOTS-SIGNALS.md) (cuenta del bot), [M8](M08-ORDERS-EXECUTION.md) (credenciales del `LiveExecutor`), [M11](M11-FUND.md) (billetera única del fondo común) |
 | Prefijo API | `/api/accounts` (la página del front es `/#/portfolio`), `/api/wallet` |
 | Frontend | `frontend/src/modules/accounts` |
-| Última revisión | 2026-10-23 |
+| Última revisión | 2026-10-26 |
 
 ## Descripción
 
-**En palabras simples:** Es la billetera. Guarda información sobre tu dinero: cuánto tienes, en qué exchanges, y cómo ha evolucionado tu capital en el tiempo.
+**En palabras simples:** Es la billetera. Guarda información sobre tu dinero: cuánto tienes en Binance y cómo ha evolucionado tu capital en el tiempo.
 
 **Qué hace:**
-- Registra tus **cuentas de trading** (puedes tener varias, en distintos exchanges)
+- Registra tus **cuentas de trading** (puedes tener varias; todas en Binance, el único exchange de la plataforma desde el 2026-10-26)
 - Cada cuenta puede ser **paper** (simulada, sin dinero real) o **live** (dinero real)
 - Guarda los **balances**: cuánto tienes de cada moneda (USDT, BTC, ETH, etc.) — snapshots inmutables
 - Las credenciales de API (api_key/api_secret) se cifran con Fernet antes de guardarlas en la BD
 - Equity curve vía time series de `account_balances`
-- **Billetera de la plataforma (fondo común, 2026-10-23):** toda la plataforma usa una sola cuenta de exchange como billetera. Su saldo se lee solo del exchange cada pocos minutos (Spot + Funding en Binance y Bybit), se valora en USDT y queda como foto (`wallet_snapshots`): total, libre y en órdenes, con el desglose por activo. Solo la ven super admin y socio
+- **Billetera de la plataforma (fondo común, 2026-10-23):** toda la plataforma usa una sola cuenta de Binance como billetera. Su saldo se lee solo del exchange cada pocos minutos (Spot + Funding), se valora en USDT y queda como foto (`wallet_snapshots`): total, libre y en órdenes, con el desglose por activo. Solo la ven super admin y socio
 
 ## Páginas
 
@@ -65,9 +65,10 @@ Entregables:
 | Balances como **snapshots inmutables** (`UNIQUE (account_id, asset, ts)`) | La equity curve se obtiene como serie temporal sin recalcular ni mutar histórico | Un saldo único actualizable por activo |
 | Cuenta `paper` o `live` (`accounts.mode`) y `status` `active`/`suspended` | Mismo modelo para simulación y dinero real; el modo del bot decide el *executor* en [M8](M08-ORDERS-EXECUTION.md) | Tablas separadas por modo |
 | Propiedad: un usuario solo ve/edita sus cuentas; el admin ve todas (`belongs_to` + `is_admin`) | Aislamiento entre usuarios | Filtrar solo en la UI |
-| La cuenta valida el exchange (`EXCHANGE_NOT_FOUND`) y el modo (`ACCOUNT_INVALID_MODE`) al crear | Errores claros con códigos estables | Dejar que fallen los `CHECK` de MySQL |
+| La cuenta valida el modo (`ACCOUNT_INVALID_MODE`) al crear | Errores claros con códigos estables | Dejar que fallen los `CHECK` de MySQL |
+| **Toda cuenta queda en Binance** (2026-10-26): `exchange_id` ya no se envía; `CreateAccountService` lo resuelve con `PLATFORM_EXCHANGE_NAME` (409 `PLATFORM_EXCHANGE_MISSING` si falta la fila) y no se puede cambiar. También las de práctica, que usan precios de Binance | La plataforma opera con un solo exchange ([M2](M02-MARKET-DATA.md)) | Selector de exchange (con cuentas en otros exchanges que nunca podrían operar) |
 | **Una sola billetera** para toda la plataforma: tabla `platform_wallet` con una fila (CHECK `id = 1`) que apunta a una cuenta existente de `accounts` | Fondo común: el dinero de propietarios, socios e inversores está en una sola cuenta; reutilizar `accounts` conserva el cifrado de credenciales y el `LiveExecutor` | Columna `is_platform_wallet` en `accounts` (difícil de garantizar una sola) · tabla de billeteras por usuario |
-| **Saldo leído del exchange** cada `WALLET_SYNC_INTERVAL_SECONDS` (300 s) sumando los tipos de cuenta del exchange (`_EXTRA_BALANCE_TYPES`: Funding en Binance y Bybit); en live también se graba en `account_balances` con la misma hora para todos los activos | El P2P y los depósitos de Binance caen en Funding: sin sumarlo la conciliación del fondo daría diferencias. Grabar `account_balances` mantiene el 1 % de los agentes con el saldo real | Solo `fetch_balance()` (spot) · balances manuales |
+| **Saldo leído del exchange** cada `WALLET_SYNC_INTERVAL_SECONDS` (300 s) sumando los tipos de cuenta del exchange (`_EXTRA_BALANCE_TYPES`: Funding en Binance); en live también se graba en `account_balances` con la misma hora para todos los activos | El P2P y los depósitos de Binance caen en Funding: sin sumarlo la conciliación del fondo daría diferencias. Grabar `account_balances` mantiene el 1 % de los agentes con el saldo real | Solo `fetch_balance()` (spot) · balances manuales |
 | Un activo que tenía saldo y ya no aparece se graba en 0; la moneda base se graba siempre | Si no, su último balance quedaría viejo y el agente seguiría viendo dinero que ya no está | Grabar todos los activos en 0 del exchange (cientos en Binance) |
 | **Precios por ticker público** (`fetch_tickers` de `ACTIVO/USDT`); un activo sin precio no suma y se avisa (`missing_prices`). Un fallo de precios no tumba la sincronización | Sin API key y siempre al día; el total nunca incluye un valor inventado | Velas de M2 (solo existen para los símbolos con agentes) |
 | Cuenta **paper** aceptada como billetera (desarrollo): la foto se arma con los balances manuales y no se escribe `account_balances` | Probar todo el fondo sin dinero real | Exigir live siempre |
@@ -121,7 +122,7 @@ Entregables:
 | `account_balances` | WRITE | Snapshots por `asset` con `free`/`locked`; UNIQUE `(account_id, asset, ts)`, CASCADE al borrar la cuenta. Desde 2026-10-23 también los escribe la sincronización de la billetera (live) |
 | `platform_wallet` | WRITE | Una sola fila (CHECK `id = 1`): `account_id` (UNIQUE, FK `accounts`), `base_asset` (USDT), `last_synced_at`, `last_sync_error` (código del último fallo), `updated_by_user_id` |
 | `wallet_snapshots` | WRITE | Fotos del saldo: `total_value` / `free_value` / `locked_value` (DECIMAL 30,12, en `base_asset`), `source` (`exchange` \| `manual`), `assets` JSON (`[{asset, free, locked, price, value}]`, decimales como texto), `missing_prices` JSON, `ts`; índice `(account_id, ts)` |
-| `exchanges` | READ | Valida `exchange_id` al crear la cuenta |
+| `exchanges` | READ | Resuelve el id de Binance al crear la cuenta |
 
 ### Modelos ORM (`app/modules/accounts/infrastructure/`)
 | Archivo | Clase | Tabla |
@@ -185,7 +186,7 @@ Settings: `WALLET_BASE_ASSET` (USDT), `WALLET_SYNC_INTERVAL_SECONDS` (300, míni
 - API: `api/accounts.api.ts`; hooks `use-accounts-queries.ts` (`useAccountsQuery`, reutilizado por dashboard, agent y bots) y `use-accounts-mutations.ts`; etiquetas `lib/accounts-labels.ts`; badges `components/account-badges.tsx`.
 
 ### Seed
-- `database/seeds/accounts.py` — cuentas paper de ejemplo (Binance y Bybit) con balances en USDT para **cada** usuario demo (Andrés y Dayron), idempotente por (usuario, nombre). El usuario que no exista se omite.
+- `database/seeds/accounts.py` — cuenta paper de ejemplo (Binance) con balances en USDT para **cada** usuario demo (Andrés y Dayron), idempotente por (usuario, nombre). El usuario que no exista se omite.
 - `account_balances` es una serie temporal (UNIQUE incluye `ts`): el balance inicial solo se inserta si el activo no tiene ninguna foto. Con `get_or_create` el seed fallaba (`MultipleResultsFound`) en cuanto alguien registraba un segundo balance.
 
 ## Gotchas críticos
@@ -217,3 +218,4 @@ Settings: `WALLET_BASE_ASSET` (USDT), `WALLET_SYNC_INTERVAL_SECONDS` (300, míni
 - **2026-10-20** — Todas las cuentas: columna **Dueño** (nombre y correo) y filtro por dueño (antes "Usuario #id").
 - **2026-10-23** — **Billetera única de la plataforma (fondo común, F2):** `platform_wallet` + `wallet_snapshots` (migración `e500b821b8ec`), `WalletGateway`/`CcxtWalletGateway` (Spot + Funding, precios por ticker), `SyncWalletService` (live graba `account_balances`; paper usa los manuales), paso del scheduler cada `WALLET_SYNC_INTERVAL_SECONDS`, `/api/wallet` (staff; elegir y sincronizar solo super admin), página Administración → Fondo → Billetera. `exchange_client.py` compartido con el `LiveExecutor`.
 - **2026-10-23** — Se retira el grupo **Supervisión** del menú: fuera la página "Todas las cuentas" (`/#/admin/accounts`, `pages/admin-accounts.tsx`). `GET /api/accounts` sigue igual.
+- **2026-10-26** — **Solo Binance:** las cuentas ya no eligen exchange (sin `exchange_id` en crear/editar, sin selector ni columna Exchange en Mis cuentas); se crean siempre en Binance. La migración `9869015f140f` pasa las existentes a Binance. La billetera suma solo Funding de Binance.

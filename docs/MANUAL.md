@@ -35,31 +35,21 @@ Eso significa: a las 2pm abrió en $95k, subió hasta $96.2k, bajó hasta $94.8k
 ---
 1.2 ¿Qué es un Exchange?
 
-Es la bolsa donde se compran y venden activos. Como Binance, Bybit, Kraken. El sistema puede conectarse a varios.
+Es la bolsa donde se compran y venden activos. La plataforma trabaja con uno solo: **Binance**.
+Ahí está la billetera con el dinero de todos y ahí se operan todos sus mercados: criptomonedas,
+metales, materias primas, ETFs y acciones.
 
 ---
 1.3 ¿Qué es un Symbol (par)?
 
-Es lo que se negocia: BTC/USDT significa "compro Bitcoin pagando con USDT (dólar digital)". Cada symbol pertenece a un exchange.
-
-**¿Por qué hay varios exchanges si el dinero está en uno solo?** Cada exchange guarda su propio
-dinero: con los USDT que tienes en Binance no puedes comprar en Kraken; primero tendrías que
-enviarlos de un exchange al otro. La app usa los exchanges para dos cosas distintas:
-
-- **Leer precios (velas):** de cualquiera de los exchanges del catálogo. No hace falta tener cuenta
-  ni dinero allí.
-- **Comprar y vender de verdad (live):** solo en el exchange de la cuenta del agente, que en el
-  fondo común es la billetera de la plataforma.
-
-Por eso, **un agente live solo puede operar un símbolo del mismo exchange que su cuenta.** Si la
-billetera está en Binance, el agente live analiza el BTC/USDT *de Binance*, no el de Kraken: así la
-entrada, el stop loss y el take profit se calculan con los precios del mercado donde de verdad se
-compra. El asistente de agentes solo muestra las cuentas live que cumplen esta regla. En paper no
-aplica: ahí no se envía nada a ningún exchange.
+Es lo que se negocia: BTC/USDT significa "compro Bitcoin pagando con USDT (dólar digital)". Todos
+los symbols son de Binance: los precios que lee la app y las órdenes que envía salen del mismo
+mercado, así que la entrada, el stop loss y el take profit se calculan con los precios del lugar
+donde de verdad se compra.
 
 1.3.1 ¿Qué mercados puedo operar? (cripto, metales, materias primas, acciones)
 
-Además de cripto, la app trae **perpetuos TradFi** de Binance y Bybit. Un perpetuo es un contrato
+Además de cripto, la app trae **perpetuos TradFi** de Binance. Un perpetuo es un contrato
 que sigue el precio de un activo real sin que lo compres de verdad: `XAU/USDT:USDT` sube y baja
 como el oro, y se paga en USDT. Se reconocen por el `:USDT` al final.
 
@@ -77,7 +67,7 @@ contratos, apalancamiento y posiciones cortas, y la app aún no maneja eso: no t
 agente live sobre un perpetuo.
 
 Forex (EUR/USD, USD/JPY) y los índices "de verdad" no están conectados: necesitan otro proveedor
-de datos y un bróker. Ojo con `SPX/USDT:USDT` en Binance y Bybit: no es el S&P 500, es una memecoin.
+de datos y un bróker. Ojo con `SPX/USDT:USDT` en Binance: no es el S&P 500, es una memecoin.
 
 ---
 1.4 ¿Qué es un Timeframe?
@@ -487,7 +477,7 @@ el riesgo/beneficio mínimo de 2:1.
 
 3.0.2 Módulo 4 — La billetera de la plataforma (fondo común)
 ──────────────────────────────────────────────────────────────
-Toda la plataforma usa UNA sola cuenta de exchange (Binance, Bybit, OKX…) para guardar el dinero
+Toda la plataforma usa UNA sola cuenta de Binance para guardar el dinero
 de todos: propietarios, socios e inversores. Esa cuenta es la "billetera".
 
 Dónde se ve: Administración → Fondo → Billetera (solo super admin y socios; un inversor nunca ve
@@ -501,7 +491,7 @@ Qué muestra:
   Historial    → las lecturas anteriores del saldo.
 
 Cómo se lee el saldo: la app le pregunta al exchange cada 5 minutos. Suma también la wallet
-Funding de Binance y Bybit, que es donde suelen caer el P2P y los depósitos. Si una moneda no
+Funding de Binance, que es donde suelen caer el P2P y los depósitos. Si una moneda no
 tiene precio en USDT, se muestra pero no suma al total, y la página lo avisa.
 
 Para empezar (super admin):
@@ -1170,19 +1160,18 @@ Las protecciones (se aplican a toda orden: manual, aprobada o automática)
   como reales, pero no se mueve dinero de verdad. Sirve para comprobar que todo el circuito live
   funciona (compra, stop loss en el exchange, take profit, sincronización) antes de arriesgar
   capital.
-  1. Crea una cuenta en la testnet del exchange (por ejemplo, la testnet de spot de Binance) y
+  1. Crea una cuenta en la testnet de Binance (la de spot) y
      genera allí una API key y su secret. Las claves de la testnet no sirven en el exchange
      real, ni las reales en la testnet.
   2. El administrador pone LIVE_USE_SANDBOX=true y activa live (TRADING_LIVE_ENABLED=true) en
      el servidor. Ojo: mientras LIVE_USE_SANDBOX esté en true, todas las cuentas live van a la
      testnet.
-  3. En Mis cuentas, crea una cuenta live del mismo exchange con las claves de la testnet.
+  3. En Mis cuentas, crea una cuenta live con las claves de la testnet.
   4. Crea un agente con esa cuenta y opera como siempre. Revisa en la testnet que aparezca el
      stop loss como orden y que la app registre lo que pase.
   5. Para pasar a dinero real, el administrador vuelve a poner LIVE_USE_SANDBOX=false y tú usas
      una cuenta con las claves reales.
-  No todos los exchanges tienen testnet: si el que eliges no la tiene, la orden queda
-  rechazada.
+
 
   Límites que hay que conocer:
   - El take profit (y, en paper, también el stop loss) se revisa una vez por minuto: no es una

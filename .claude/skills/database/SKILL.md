@@ -121,7 +121,7 @@ uv run python -m database.seeds --list               # ver los disponibles
 |---|---|
 | `roles` | user / admin / investor con los IDs de `settings.AUTH_*_ROLE_ID` |
 | `users` | Usuarios admin iniciales (login solo por código, sin contraseña) |
-| `market_data` | 7 exchanges, 14 timeframes, 37 símbolos (cripto spot + perpetuos TradFi `X/USDT:USDT`) |
+| `market_data` | 1 exchange (Binance, el único de la plataforma), 14 timeframes, 31 símbolos (cripto spot + perpetuos TradFi `X/USDT:USDT`) |
 | `strategies` | 9 estrategias de ejemplo (correcciones = versión nueva) |
 | `feature_sets` | 3 conjuntos de indicadores por enfoque: Completo, Tendencia, Rango |
 | `accounts` | 2 cuentas paper con balances por usuario demo (se omite el usuario que no exista) |

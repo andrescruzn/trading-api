@@ -1,7 +1,7 @@
 Paso 1 — Verificar datos base (ya vienen con los seeds)                                                                           
                                          
   Entra a:
-  - /admin/exchanges → debes ver Binance, Bybit, Kraken, etc.
+  - /admin/symbols → debes ver los símbolos de Binance (el único exchange de la plataforma)
   - /admin/symbols → debes ver BTC/USDT, ETH/USDT, XAU/USD, etc.
   - /admin/timeframes → debes ver 1m, 5m, 1h, 4h, 1d, etc.
 

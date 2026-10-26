@@ -97,8 +97,8 @@ export function OpenPoolDialog({
 						/>
 						<FieldDescription>
 							{options.length === 0 && !eligibleQuery.isLoading
-								? 'No hay agentes para abrir: deben operar sobre la billetera de la plataforma, con un par en USDT, y no estar ya en el fondo.'
-								: 'Solo aparecen agentes de la billetera de la plataforma con un par en USDT.'}
+								? 'No hay agentes para abrir: deben ser agentes reales (no demo), con un par en USDT, y no estar ya en el fondo.'
+								: 'Solo aparecen agentes reales con un par en USDT. Los agentes demo no usan el dinero del fondo.'}
 						</FieldDescription>
 					</Field>
 				</DialogBody>

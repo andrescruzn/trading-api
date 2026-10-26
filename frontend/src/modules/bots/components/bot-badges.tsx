@@ -24,7 +24,7 @@ export function BotStatusBadge({ status }: { status: BotStatus }) {
 	);
 }
 
-/** Live va resaltado: opera con dinero real. */
+/** Real va resaltado: opera con el dinero de la billetera de Binance. */
 export function BotModeBadge({ mode }: { mode: BotMode }) {
 	return (
 		<Badge variant={mode === 'live' ? 'destructive' : 'secondary'}>

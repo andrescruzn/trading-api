@@ -14,6 +14,7 @@ import {
 	type BotCatalogs,
 	describeBot,
 	describeBotMarket,
+	describeBotMoney,
 } from '@/modules/bots/lib/bots-labels';
 import { formatDateTime } from '@/modules/shared/lib/format';
 import { Button } from '@/modules/ui/components/button';
@@ -95,6 +96,10 @@ export function AgentCard({ bot, catalogs, className }: AgentCardProps) {
 					<dd className="text-right">
 						<AgentPrice bot={bot} />
 					</dd>
+				</div>
+				<div className="flex items-baseline justify-between gap-3">
+					<dt className="text-muted-foreground">Dinero</dt>
+					<dd className="truncate text-right">{describeBotMoney(bot)}</dd>
 				</div>
 				<div className="flex items-baseline justify-between gap-3">
 					<dt className="text-muted-foreground">Estrategia</dt>

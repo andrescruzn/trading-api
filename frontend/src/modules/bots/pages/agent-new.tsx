@@ -1,20 +1,17 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
-	IconAlertTriangle,
 	IconArrowLeft,
 	IconArrowRight,
 	IconLoader2,
 	IconRocket,
 } from '@tabler/icons-react';
 import { getRouteApi, Link, useNavigate } from '@tanstack/react-router';
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useMemo, useState } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
-import { useAccountsQuery } from '@/modules/accounts/hooks/use-accounts-queries';
 import { usePageBreadcrumb } from '@/modules/app-shell/hooks/use-page-breadcrumb';
-import { useAuth } from '@/modules/auth/hooks/use-auth';
 import type { BotMode } from '@/modules/bots/api/bots.api';
-import { AccountStep } from '@/modules/bots/components/agent-wizard/account-step';
+import { MoneyStep } from '@/modules/bots/components/agent-wizard/money-step';
 import { StrategyStep } from '@/modules/bots/components/agent-wizard/strategy-step';
 import { SymbolStep } from '@/modules/bots/components/agent-wizard/symbol-step';
 import { BotModeBadge } from '@/modules/bots/components/bot-badges';
@@ -36,16 +33,11 @@ import {
 } from '@/modules/market/hooks/use-market-queries';
 import { isPerpetualSymbol } from '@/modules/market/lib/market-labels';
 import { Stepper } from '@/modules/shared/components/stepper';
-import { formatPercent } from '@/modules/shared/lib/format';
+import { formatPercent, formatPrice } from '@/modules/shared/lib/format';
 import { getErrorMessage } from '@/modules/shared/lib/get-error-message';
 import { requiredSelectField } from '@/modules/shared/lib/required-select-field';
 import { useStrategiesQuery } from '@/modules/strategies/hooks/use-strategies-queries';
 import { strategyTypeLabel } from '@/modules/strategies/lib/strategies-labels';
-import {
-	Alert,
-	AlertDescription,
-	AlertTitle,
-} from '@/modules/ui/components/alert';
 import { Button } from '@/modules/ui/components/button';
 import {
 	Card,
@@ -65,11 +57,15 @@ import {
 import { Input } from '@/modules/ui/components/input';
 import { toast } from '@/modules/ui/components/toast';
 
+// Mismo tope que el backend (MAX_DEMO_CAPITAL).
+const MAX_DEMO_CAPITAL = 1_000_000_000;
+
 const agentSchema = z.object({
 	symbol_id: requiredSelectField('Elige qué quieres operar'),
 	strategy_id: requiredSelectField('Elige una estrategia'),
 	feature_set_id: requiredSelectField('Elige un conjunto de indicadores'),
-	account_id: requiredSelectField('Elige la cuenta'),
+	// Solo los agentes demo llevan monto (ver `agentSchemaFor`).
+	demo_capital: z.string(),
 	name: z
 		.string()
 		.trim()
@@ -81,6 +77,20 @@ const agentSchema = z.object({
 
 type AgentFormInput = z.input<typeof agentSchema>;
 type AgentFormValues = z.output<typeof agentSchema>;
+
+/** El demo exige un monto válido; el real opera con la billetera y no lleva monto. */
+function agentSchemaFor(mode: BotMode) {
+	if (mode === 'live') return agentSchema;
+	return agentSchema.extend({
+		demo_capital: z
+			.string()
+			.trim()
+			.refine(
+				(value) => Number(value) > 0 && Number(value) <= MAX_DEMO_CAPITAL,
+				'Escribe un monto mayor que 0 y de hasta 1.000.000.000',
+			),
+	});
+}
 
 const STEPS = [
 	{
@@ -97,8 +107,9 @@ const STEPS = [
 	},
 	{
 		title: '¿Con qué dinero?',
-		description: 'La cuenta define el capital y si opera en paper o en live.',
-		fields: ['account_id'],
+		description:
+			'Un agente real opera la billetera de Binance; uno demo, un monto simulado.',
+		fields: ['demo_capital'],
 	},
 	{
 		title: 'Revisa y crea',
@@ -129,31 +140,34 @@ function SummaryRow({
 const routeApi = getRouteApi('/_app/agents/new');
 
 export function AgentNewPage() {
+	const search = routeApi.useSearch();
+	const mode: BotMode = search.mode ?? 'live';
+	const isDemo = mode === 'paper';
 	usePageBreadcrumb([
-		{ label: 'Inicio', href: '/dashboard' },
-		{ label: 'Nuevo agente' },
+		isDemo
+			? { label: 'Agentes demo', href: '/demo-agents' }
+			: { label: 'Inicio', href: '/dashboard' },
+		{ label: isDemo ? 'Nuevo agente demo' : 'Nuevo agente real' },
 	]);
 	const navigate = useNavigate();
-	const search = routeApi.useSearch();
-	const { user } = useAuth();
 	const symbolsQuery = useSymbolsQuery({ is_active: true });
 	const timeframesQuery = useTimeframesQuery();
 	const strategiesQuery = useStrategiesQuery();
 	const featureSetsQuery = useFeatureSetsQuery();
-	const accountsQuery = useAccountsQuery();
 	const createMutation = useCreateBotMutation();
 	const transitionMutation = useTransitionBotMutation();
 	const [step, setStep] = useState(0);
 	// El nombre sugerido solo se aplica hasta que la persona lo edita.
 	const [nameTouched, setNameTouched] = useState(false);
 
+	const schema = useMemo(() => agentSchemaFor(mode), [mode]);
 	const form = useForm<AgentFormInput, unknown, AgentFormValues>({
-		resolver: zodResolver(agentSchema),
+		resolver: zodResolver(schema),
 		defaultValues: {
 			symbol_id: search.symbol_id ? String(search.symbol_id) : null,
 			strategy_id: null,
 			feature_set_id: null,
-			account_id: null,
+			demo_capital: isDemo ? '10000' : '',
 			name: '',
 			start_now: true,
 			execution_mode: 'manual',
@@ -165,22 +179,15 @@ export function AgentNewPage() {
 	// tendría datos para analizar.
 	const symbols = symbolsQuery.data?.filter((item) => item.supports_auto_fetch);
 	const symbol = symbols?.find((item) => String(item.id) === values.symbol_id);
-	// Cuentas propias y activas (un admin ve todas en `/accounts`). Un
-	// perpetuo en live opera en la billetera de Futuros: el paso de la cuenta
-	// lo explica.
+	// Un perpetuo real opera en la billetera de Futuros: el paso del dinero lo explica.
 	const perpetual = isPerpetualSymbol(symbol?.symbol);
-	const accounts = (accountsQuery.data ?? []).filter(
-		(account) => account.user_id === user?.id && account.status === 'active',
-	);
+	const currency = symbol?.quote_asset ?? 'USDT';
 
 	const strategy = strategiesQuery.data?.find(
 		(item) => String(item.id) === values.strategy_id,
 	);
 	const featureSet = featureSetsQuery.data?.find(
 		(item) => String(item.id) === values.feature_set_id,
-	);
-	const account = accounts.find(
-		(item) => String(item.id) === values.account_id,
 	);
 	const timeframe = strategy
 		? strategyTimeframe(strategy, timeframesQuery.data)
@@ -209,17 +216,16 @@ export function AgentNewPage() {
 	}
 
 	function handleSubmit(formValues: AgentFormValues) {
-		if (!account || !timeframe || riskFraction === null) return;
+		if (!timeframe || riskFraction === null) return;
 		createMutation.mutate(
 			{
 				name: formValues.name,
 				symbol_id: Number(formValues.symbol_id),
 				strategy_id: Number(formValues.strategy_id),
 				feature_set_id: Number(formValues.feature_set_id),
-				account_id: account.id,
 				timeframe_id: timeframe.id,
-				// El modo del agente es siempre el de su cuenta.
-				mode: account.mode as BotMode,
+				mode,
+				demo_capital: isDemo ? Number(formValues.demo_capital) : undefined,
 				risk_params: { risk_pct: riskFraction },
 				execution_mode: formValues.execution_mode,
 			},
@@ -268,7 +274,14 @@ export function AgentNewPage() {
 	const stepperSteps = [
 		{ title: 'Qué operar', summary: symbol?.symbol },
 		{ title: 'Cómo opera', summary: strategy?.name },
-		{ title: 'Con qué dinero', summary: account?.name },
+		{
+			title: 'Con qué dinero',
+			summary: isDemo
+				? values.demo_capital
+					? `${formatPrice(values.demo_capital)} simulados`
+					: undefined
+				: 'Billetera de Binance',
+		},
 		{ title: 'Revisar' },
 	];
 	const current = STEPS[step];
@@ -278,7 +291,9 @@ export function AgentNewPage() {
 	return (
 		<div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
 			<div className="flex flex-col gap-1">
-				<h1 className="text-xl font-semibold">Nuevo agente</h1>
+				<h1 className="text-xl font-semibold">
+					{isDemo ? 'Nuevo agente demo' : 'Nuevo agente real'}
+				</h1>
 				<p className="text-sm text-muted-foreground">
 					Un agente vigila un símbolo, aplica una estrategia y le pide a la IA
 					que confirme cada operación. Solo propone las que cumplen la regla del
@@ -358,16 +373,16 @@ export function AgentNewPage() {
 
 						{step === 2 && (
 							<Controller
-								name="account_id"
+								name="demo_capital"
 								control={form.control}
-								render={({ field }) => (
-									<AccountStep
-										accounts={accounts}
-										isLoading={accountsQuery.isLoading}
-										value={field.value}
-										onChange={field.onChange}
-										currency={symbol?.quote_asset ?? 'USDT'}
+								render={({ field, fieldState }) => (
+									<MoneyStep
+										mode={mode}
+										currency={currency}
 										perpetual={perpetual}
+										capital={field.value}
+										onCapitalChange={field.onChange}
+										capitalError={fieldState.error?.message}
 									/>
 								)}
 							/>
@@ -396,10 +411,12 @@ export function AgentNewPage() {
 													.join(', ')}`
 											: '—'}
 									</SummaryRow>
-									<SummaryRow label="Cuenta">
+									<SummaryRow label="Dinero">
 										<span className="inline-flex items-center gap-2">
-											{account?.name ?? '—'}
-											{account && <BotModeBadge mode={account.mode} />}
+											{isDemo
+												? `${formatPrice(values.demo_capital)} simulados`
+												: 'Billetera de Binance'}
+											<BotModeBadge mode={mode} />
 										</span>
 									</SummaryRow>
 									<SummaryRow label="Riesgo por operación">
@@ -420,7 +437,7 @@ export function AgentNewPage() {
 													<ExecutionModePicker
 														value={field.value}
 														onChange={field.onChange}
-														accountMode={account?.mode}
+														accountMode={mode}
 													/>
 												)}
 											/>
@@ -476,22 +493,13 @@ export function AgentNewPage() {
 											</Field>
 										)}
 									/>
-									{account?.mode === 'live' && (
-										<Alert variant="destructive">
-											<IconAlertTriangle />
-											<AlertTitle>Modo live</AlertTitle>
-											<AlertDescription>
-												Este agente operará con dinero real.
-											</AlertDescription>
-										</Alert>
-									)}
 								</div>
 							</div>
 						)}
 
 						{/* Errores de los campos que no tienen un input propio */}
 						{STEPS[step].fields
-							.filter((name) => name !== 'name')
+							.filter((name) => name !== 'name' && name !== 'demo_capital')
 							.map((name) =>
 								fieldError(name) ? (
 									<p key={name} className="text-sm text-destructive">
@@ -502,7 +510,10 @@ export function AgentNewPage() {
 					</CardContent>
 					<CardFooter className="justify-between gap-2 border-t">
 						{step === 0 ? (
-							<Button variant="ghost" render={<Link to="/dashboard" />}>
+							<Button
+								variant="ghost"
+								render={<Link to={isDemo ? '/demo-agents' : '/dashboard'} />}
+							>
 								Cancelar
 							</Button>
 						) : (

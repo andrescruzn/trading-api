@@ -252,10 +252,10 @@ export function OrderFormDialog({
 							{isLive && (
 								<Alert variant="destructive">
 									<IconAlertTriangle />
-									<AlertTitle>Modo live: dinero real</AlertTitle>
+									<AlertTitle>Agente real: dinero real</AlertTitle>
 									<AlertDescription>
-										Esta orden se envía al exchange con tu dinero. Te pediremos
-										confirmarla.
+										Esta orden se envía a Binance con el dinero del fondo. Te
+										pediremos confirmarla.
 									</AlertDescription>
 								</Alert>
 							)}
@@ -422,7 +422,8 @@ export function OrderFormDialog({
 									</div>
 									{isLive && (
 										<p className="text-sm text-muted-foreground">
-											En live, el stop loss queda como orden en el exchange.
+											En los agentes reales, el stop loss queda como orden en
+											Binance.
 										</p>
 									)}
 								</div>
@@ -458,8 +459,8 @@ export function OrderFormDialog({
 								¿Ejecutar la orden con dinero real?
 							</AlertDialogTitle>
 							<AlertDialogDescription>
-								El bot {botLabel} está en modo live: la orden se envía al
-								exchange y no se puede deshacer.
+								El agente {botLabel} es real: la orden se envía a Binance y no
+								se puede deshacer.
 							</AlertDialogDescription>
 						</AlertDialogHeader>
 						{pendingLive && (

@@ -9,6 +9,7 @@ import { Link } from '@tanstack/react-router';
 import { useCanManage } from '@/modules/auth/hooks/use-can-manage';
 import { useHasRole } from '@/modules/auth/hooks/use-has-role';
 import { STAFF_ROLES } from '@/modules/auth/lib/roles';
+import type { BotMode } from '@/modules/bots/api/bots.api';
 import { Button } from '@/modules/ui/components/button';
 
 const HOW_IT_WORKS = [
@@ -29,14 +30,37 @@ const HOW_IT_WORKS = [
 	},
 ];
 
+/** Lo que cambia entre la bienvenida de agentes reales y la de agentes demo. */
+const COPY: Record<BotMode, { title: string; text: string; cta: string }> = {
+	live: {
+		title: 'Crea tu primer agente real',
+		text: 'Un agente opera por ti sin emociones: aplica una estrategia sobre un símbolo y solo propone operaciones que pasan reglas objetivas. Los agentes reales operan con la billetera de Binance y con el dinero que les asignes desde el fondo.',
+		cta: 'Crear agente real',
+	},
+	paper: {
+		title: 'Crea tu primer agente demo',
+		text: 'Un agente demo hace lo mismo que uno real, pero con dinero simulado: escribes cuánto quieres invertir y ves cómo le iría a la estrategia, sin tocar la billetera ni el fondo.',
+		cta: 'Crear agente demo',
+	},
+};
+
 /**
- * Bienvenida cuando la persona aún no tiene agentes: qué son y cómo crear el
+ * Bienvenida cuando aún no hay agentes de un tipo: qué son y cómo crear el
  * primero. Solo un super admin crea agentes; al socio y al inversor se les
  * dice dónde verlos.
  */
-export function AgentsEmptyState() {
+export function AgentsEmptyState({ mode }: { mode: BotMode }) {
 	const canManage = useCanManage();
 	const isStaff = useHasRole(STAFF_ROLES);
+	const copy = COPY[mode];
+
+	if (!canManage && mode === 'paper') {
+		return (
+			<p className="rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">
+				Aún no hay agentes demo.
+			</p>
+		);
+	}
 
 	if (!canManage) {
 		return (
@@ -71,17 +95,13 @@ export function AgentsEmptyState() {
 						<IconRobot className="size-6" />
 					</span>
 					<h2 className="text-2xl font-semibold tracking-tight">
-						Crea tu primer agente
+						{copy.title}
 					</h2>
-					<p className="text-muted-foreground">
-						Un agente opera por ti sin emociones: aplica una estrategia sobre un
-						símbolo y solo propone operaciones que pasan reglas objetivas.
-						Puedes empezar con una cuenta de práctica, sin dinero real.
-					</p>
+					<p className="text-muted-foreground">{copy.text}</p>
 					<div>
-						<Button render={<Link to="/agents/new" />}>
+						<Button render={<Link to="/agents/new" search={{ mode }} />}>
 							<IconPlus />
-							Crear agente
+							{copy.cta}
 						</Button>
 					</div>
 				</div>

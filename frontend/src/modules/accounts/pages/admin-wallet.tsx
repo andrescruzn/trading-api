@@ -6,13 +6,10 @@ import {
 	IconRefresh,
 	IconWallet,
 } from '@tabler/icons-react';
-import { useState } from 'react';
 import type {
 	WalletAssetLine,
 	WalletSnapshot,
 } from '@/modules/accounts/api/wallet.api';
-import { AccountModeBadge } from '@/modules/accounts/components/account-badges';
-import { WalletAccountDialog } from '@/modules/accounts/components/wallet-account-dialog';
 import { useSyncWalletMutation } from '@/modules/accounts/hooks/use-wallet-mutations';
 import {
 	useWalletQuery,
@@ -39,7 +36,6 @@ import {
 	AlertDescription,
 	AlertTitle,
 } from '@/modules/ui/components/alert';
-import { Button } from '@/modules/ui/components/button';
 import {
 	Card,
 	CardContent,
@@ -130,7 +126,6 @@ export function AdminWalletPage() {
 	const walletQuery = useWalletQuery();
 	const historyQuery = useWalletSnapshotsQuery();
 	const syncMutation = useSyncWalletMutation();
-	const [choosing, setChoosing] = useState(false);
 
 	const overview = walletQuery.data;
 	const wallet = overview?.wallet ?? null;
@@ -154,8 +149,8 @@ export function AdminWalletPage() {
 	return (
 		<div className="flex flex-col gap-6">
 			<PageListHeader
-				title="Billetera de la plataforma"
-				description="El saldo de la cuenta de exchange que guarda el dinero de todos. Se lee sola cada pocos minutos. Solo la ven los super admin y los socios."
+				title="Billetera de Binance"
+				description="El saldo de la billetera de Binance que guarda el dinero de todos. Es la única de la plataforma y se lee sola cada pocos minutos. Solo la ven los super admin y los socios."
 				actions={[
 					{
 						label: syncMutation.isPending
@@ -164,15 +159,6 @@ export function AdminWalletPage() {
 						icon: <IconRefresh />,
 						onClick: sync,
 						disabled: !overview?.configured || syncMutation.isPending,
-						hidden: !canManage,
-					},
-					{
-						label: overview?.configured
-							? 'Cambiar billetera'
-							: 'Elegir billetera',
-						icon: <IconWallet />,
-						variant: 'outline',
-						onClick: () => setChoosing(true),
 						hidden: !canManage,
 					},
 				]}
@@ -186,23 +172,21 @@ export function AdminWalletPage() {
 			) : overview && !overview.configured ? (
 				<Card>
 					<CardHeader>
-						<CardTitle>Aún no hay billetera</CardTitle>
+						<CardTitle>La billetera de Binance aún no está conectada</CardTitle>
 						<CardDescription>
-							Toda la plataforma usa una sola cuenta de exchange para el dinero
-							de propietarios, socios e inversores.{' '}
-							{canManage
-								? 'Elige cuál es para empezar a ver su saldo.'
-								: 'Un super admin debe elegirla.'}
+							Faltan la API key y el secret de Binance en el servidor. Sin ellos
+							no podemos leer el saldo ni operar los agentes reales.
 						</CardDescription>
 					</CardHeader>
-					{canManage && (
-						<CardContent>
-							<Button onClick={() => setChoosing(true)}>
-								<IconWallet />
-								Elegir billetera
-							</Button>
-						</CardContent>
-					)}
+					<CardContent className="text-sm text-muted-foreground">
+						Quien administra el servidor debe poner{' '}
+						<code className="font-mono text-foreground">BINANCE_API_KEY</code> y{' '}
+						<code className="font-mono text-foreground">
+							BINANCE_API_SECRET
+						</code>{' '}
+						en el archivo <code className="font-mono">.env</code> (con permiso
+						de lectura y trading, nunca de retiro) y reiniciar la API.
+					</CardContent>
 				</Card>
 			) : (
 				<>
@@ -213,7 +197,6 @@ export function AdminWalletPage() {
 							</span>
 							<span aria-hidden>·</span>
 							<span>Binance</span>
-							<AccountModeBadge mode={account.mode} />
 						</div>
 					)}
 
@@ -308,12 +291,6 @@ export function AdminWalletPage() {
 					</section>
 				</>
 			)}
-
-			<WalletAccountDialog
-				open={choosing}
-				onOpenChange={setChoosing}
-				currentAccountId={wallet?.account_id ?? null}
-			/>
 		</div>
 	);
 }

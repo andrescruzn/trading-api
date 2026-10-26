@@ -11,7 +11,6 @@ from pydantic import BaseModel, Field
 class CreateAccountRequest(BaseModel):
     name: str = Field(min_length=1, max_length=120, description="Nombre descriptivo de la cuenta")
     mode: Literal["paper", "live"] = Field(description="Modo de operación")
-    exchange_id: Optional[int] = Field(default=None, description="ID del exchange asociado")
     base_currency: str = Field(default="USD", max_length=16, description="Moneda base")
     api_key: Optional[str] = Field(default=None, max_length=512, description="API key del exchange (se cifra)")
     api_secret: Optional[str] = Field(default=None, max_length=1024, description="API secret del exchange (se cifra)")
@@ -23,7 +22,6 @@ class CreateAccountRequest(BaseModel):
 class UpdateAccountRequest(BaseModel):
     name: Optional[str] = Field(default=None, min_length=1, max_length=120)
     status: Optional[Literal["active", "suspended"]] = None
-    exchange_id: Optional[int] = None
     base_currency: Optional[str] = Field(default=None, max_length=16)
     api_key: Optional[str] = Field(default=None, max_length=512, description="Nueva API key (re-cifra las anteriores)")
     api_secret: Optional[str] = Field(default=None, max_length=1024, description="Nuevo API secret")

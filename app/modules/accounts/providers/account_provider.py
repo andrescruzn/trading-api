@@ -56,7 +56,7 @@ class AccountServiceFactory:
         self._wallet_repo = SqlAlchemyPlatformWalletRepository(session)
         self._snapshot_repo = SqlAlchemyWalletSnapshotRepository(session)
 
-        # Repositorio externo (market) para validar exchange_id
+        # Repositorio externo (market): exchange de la plataforma y cliente ccxt
         self._exchange_repo = SqlAlchemyExchangeRepository(session)
 
         # Cipher para credenciales
@@ -82,7 +82,6 @@ class AccountServiceFactory:
     def update_account(self) -> UpdateAccountService:
         return UpdateAccountService(
             account_repo=self._account_repo,
-            exchange_repo=self._exchange_repo,
             cipher=self._cipher,
         )
 

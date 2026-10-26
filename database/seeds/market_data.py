@@ -7,17 +7,17 @@
 # - Catálogos del Módulo 2 (Market Data): exchanges, timeframes y símbolos.
 #
 # NOTAS:
-# - 7 exchanges, 14 timeframes y 37 símbolos. Binance: 18 cripto spot,
-#   PAXG (oro tokenizado) y 12 perpetuos TradFi (metales, materias primas,
-#   ETFs y acciones). Bybit: 4 cripto spot y 2 perpetuos (oro y plata).
+# - 1 exchange (Binance, el único de la plataforma), 14 timeframes y 31
+#   símbolos: 18 cripto spot, PAXG (oro tokenizado) y 12 perpetuos TradFi
+#   (metales, materias primas, ETFs y acciones).
 # - Perpetuos TradFi: símbolo unificado de ccxt `XAU/USDT:USDT` (base/quote
 #   :settle). Cotizan 24/7 y siguen el precio del activo real; ccxt elige
 #   el mercado por el símbolo, así que se descargan con el mismo código que
 #   el spot. Solo en paper: no se ejecutan en live (ver `is_perpetual`).
 # - Ojo: `SPX/USDT:USDT` es la memecoin SPX6900, no el S&P 500.
-# - TradingView queda como exchange (data_vendor) sin símbolos: no hay
-#   proveedor que descargue sus velas. La migración m02 desactiva los
-#   símbolos que se sembraron antes (y MATIC, renombrado a POL).
+# - Los exchanges que se sembraban antes (Bybit, Kraken, Coinbase,
+#   Bitget, OKX, TradingView) los desactiva la migración "m02 solo
+#   binance" junto con sus símbolos.
 # - Los símbolos se enlazan al exchange por nombre, nunca por ID.
 # ======================================================================
 
@@ -25,19 +25,14 @@ from __future__ import annotations
 
 from sqlalchemy.orm import Session
 
+from app.modules.market.domain.ccxt_exchanges import PLATFORM_EXCHANGE_NAME
 from app.modules.market.infrastructure.exchange_model import ExchangeModel
 from app.modules.market.infrastructure.symbol_model import SymbolModel
 from app.modules.market.infrastructure.timeframe_model import TimeframeModel
 from database.seeds._helpers import SeedStats, get_or_create
 
 EXCHANGES: list[tuple[str, str]] = [
-    ("Binance", "crypto_exchange"),
-    ("Bybit", "crypto_exchange"),
-    ("Kraken", "crypto_exchange"),
-    ("Coinbase", "crypto_exchange"),
-    ("Bitget", "crypto_exchange"),
-    ("OKX", "crypto_exchange"),
-    ("TradingView", "data_vendor"),
+    (PLATFORM_EXCHANGE_NAME, "crypto_exchange"),
 ]
 
 
@@ -65,7 +60,7 @@ TIMEFRAMES: list[tuple[str, int]] = [
 
 # exchange → [(symbol, base, quote, asset_class)]
 SYMBOLS: dict[str, list[tuple[str, str, str, str]]] = {
-    "Binance": [
+    PLATFORM_EXCHANGE_NAME: [
         *[
             (f"{base}/USDT", base, "USDT", "crypto")
             for base in (
@@ -92,13 +87,6 @@ SYMBOLS: dict[str, list[tuple[str, str, str, str]]] = {
                 ("AAPL", "stock"),
             ]
         ),
-    ],
-    "Bybit": [
-        *[
-            (f"{base}/USDT", base, "USDT", "crypto")
-            for base in ("BTC", "ETH", "SOL", "XRP")
-        ],
-        *_perpetuals([("XAU", "metal"), ("XAG", "metal")]),
     ],
 }
 

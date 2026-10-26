@@ -24,7 +24,7 @@ import ccxt
 from app.common.config import settings
 from app.common.security.credentials_cipher import CredentialsCipher
 from app.modules.accounts.domain.account_entity import Account
-from app.modules.market.domain.ccxt_exchanges import CCXT_EXCHANGE_MAP, ccxt_id_for
+from app.modules.market.domain.ccxt_exchanges import PLATFORM_EXCHANGE_NAME, ccxt_id_for
 from app.modules.market.domain.exchange_repository import ExchangeRepository
 
 
@@ -56,8 +56,8 @@ def resolve_ccxt_id(account: Account, exchange_repo: ExchangeRepository) -> str:
     if ccxt_id is None:
         raise ExchangeClientError(
             "EXCHANGE_NOT_SUPPORTED",
-            f"El exchange '{exchange_entity.name}' no está soportado para live trading. "
-            f"Exchanges disponibles: {', '.join(CCXT_EXCHANGE_MAP.keys())}.",
+            f"El exchange '{exchange_entity.name}' no está soportado. "
+            f"La plataforma solo opera con {PLATFORM_EXCHANGE_NAME}.",
         )
     return ccxt_id
 

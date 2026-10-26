@@ -4,6 +4,9 @@
 # app/modules/market/domain/ccxt_exchanges.py
 #
 # PROPÓSITO:
+# - La plataforma opera con un solo exchange: Binance (spot y perpetuos
+#   USDⓈ-M, con sus metales, materias primas, ETFs y acciones). Cuentas y
+#   símbolos nuevos se enlazan siempre a él (`PLATFORM_EXCHANGE_NAME`).
 # - Exchanges de los que el sistema sabe descargar velas solo (ccxt).
 #   Lo usan la descarga de velas y la respuesta de símbolos
 #   (`supports_auto_fetch`), para que la UI no ofrezca crear agentes
@@ -17,14 +20,12 @@
 
 from __future__ import annotations
 
+# Nombre (en la tabla `exchanges`) del único exchange de la plataforma
+PLATFORM_EXCHANGE_NAME = "Binance"
+
 # Exchanges que soporta ccxt (nombre DB en minúsculas → id ccxt)
 CCXT_EXCHANGE_MAP: dict[str, str] = {
     "binance": "binance",
-    "bybit": "bybit",
-    "kraken": "kraken",
-    "coinbase": "coinbase",
-    "bitget": "bitget",
-    "okx": "okx",
 }
 
 

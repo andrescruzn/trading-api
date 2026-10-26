@@ -95,9 +95,8 @@ def create_symbol(
     _identity: dict = Depends(super_admin_required),
     factory: MarketServiceFactory = Depends(get_factory),
 ):
-    """Crea un símbolo. Solo admins."""
+    """Crea un símbolo en Binance. Solo admins."""
     result = factory.create_symbol().create(
-        exchange_id=payload.exchange_id,
         symbol=payload.symbol,
         asset_class=payload.asset_class,
         base_asset=payload.base_asset,

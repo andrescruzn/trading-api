@@ -10,8 +10,7 @@
 #   2. Validar parámetros de la orden (side, type, qty, price)
 #   3. Validar la señal vinculada (del mismo bot, aprobada, misma dirección
 #      y sin otra orden activa)
-#   4. Precio de referencia y regla de spot: no vender más de lo que hay;
-#      en live, no comprar si el símbolo es de otro exchange que la cuenta
+#   4. Precio de referencia y regla de spot: no vender más de lo que hay
 #   5. RiskGate: kill switch, live apagado, notional máximo, drawdown
 #   5b. Venta de una posición con SL nativo (live): cancelarlo primero
 #   6. Persistir la Order (status="new") con su client_order_id y COMMIT:
@@ -216,15 +215,6 @@ class CreateOrderService:
         symbol = self._symbol_repo.get_by_id(bot.symbol_id)
         if symbol is None:
             return ServiceResult.fail(code="SYMBOL_NOT_FOUND", http_status=404)
-
-        # Respaldo de la regla de M7 para agentes creados antes de ella: la
-        # orden live va al exchange de la cuenta, así que el símbolo debe ser
-        # de ese exchange. Solo se frenan las compras: vender cierra una
-        # posición que ya existe en la cuenta y no debe quedar atrapada.
-        if bot.mode == "live" and side == "buy":
-            account = self._account_repo.get_by_id(bot.account_id) if bot.account_id else None
-            if account is None or account.exchange_id != symbol.exchange_id:
-                return ServiceResult.fail(code="ORDER_EXCHANGE_MISMATCH", http_status=422)
 
         reference_price = price or stop_price or self._last_close(bot)
         if reference_price is None:

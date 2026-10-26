@@ -17,11 +17,7 @@ from app.modules.market.infrastructure import (
     SqlAlchemyTimeframeRepository,
     SqlAlchemyCandleRepository,
 )
-from app.modules.market.services.exchanges import (
-    ListExchangesService,
-    CreateExchangeService,
-    UpdateExchangeService,
-)
+from app.modules.market.services.exchanges import ListExchangesService
 from app.modules.market.services.symbols import (
     ListSymbolsService,
     CreateSymbolService,
@@ -66,12 +62,6 @@ class MarketServiceFactory:
 
     def list_exchanges(self) -> ListExchangesService:
         return ListExchangesService(repo=self._exchange_repo)
-
-    def create_exchange(self) -> CreateExchangeService:
-        return CreateExchangeService(repo=self._exchange_repo)
-
-    def update_exchange(self) -> UpdateExchangeService:
-        return UpdateExchangeService(repo=self._exchange_repo)
 
     # ------------------------------------------------------------------
     # Symbols

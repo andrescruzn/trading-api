@@ -8,6 +8,7 @@ from app.common.contracts import ServiceResult
 from app.common.security.credentials_cipher import CredentialsCipher
 from app.modules.accounts.domain.account_entity import Account
 from app.modules.accounts.domain.account_repository import AccountRepository
+from app.modules.market.domain.ccxt_exchanges import PLATFORM_EXCHANGE_NAME
 from app.modules.market.domain.exchange_repository import ExchangeRepository
 
 
@@ -17,7 +18,8 @@ class CreateAccountService:
 
     Reglas de negocio:
     - Si se proveen credenciales, se cifran y se almacenan en meta['enc_creds'].
-    - El exchange debe existir si se especifica exchange_id.
+    - Toda cuenta queda en el exchange de la plataforma (Binance), también
+      las de práctica, que usan sus precios.
     - Modo válido: paper | live.
     """
 
@@ -37,7 +39,6 @@ class CreateAccountService:
         name: str,
         mode: str,
         base_currency: str = "USD",
-        exchange_id: Optional[int] = None,
         api_key: Optional[str] = None,
         api_secret: Optional[str] = None,
         credentials_label: Optional[str] = None,
@@ -46,11 +47,9 @@ class CreateAccountService:
         if mode not in Account.VALID_MODES:
             return ServiceResult.fail(code="ACCOUNT_INVALID_MODE", http_status=422)
 
-        # Validar exchange si se especifica
-        if exchange_id is not None:
-            exchange = self._exchange_repo.get_by_id(exchange_id)
-            if exchange is None:
-                return ServiceResult.fail(code="EXCHANGE_NOT_FOUND", http_status=404)
+        exchange = self._exchange_repo.get_by_name(PLATFORM_EXCHANGE_NAME)
+        if exchange is None:
+            return ServiceResult.fail(code="PLATFORM_EXCHANGE_MISSING", http_status=409)
 
         # Construir meta con credenciales cifradas si se proveen
         meta: dict = {}
@@ -63,7 +62,7 @@ class CreateAccountService:
         account = Account(
             id=0,
             user_id=user_id,
-            exchange_id=exchange_id,
+            exchange_id=exchange.id,
             name=name.strip(),
             mode=mode,
             base_currency=base_currency.upper(),

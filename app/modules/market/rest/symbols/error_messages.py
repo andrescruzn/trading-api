@@ -2,7 +2,10 @@
 
 SYMBOL_ERROR_MESSAGES: dict[str, str] = {
     "SYMBOL_NOT_FOUND": "Símbolo no encontrado.",
-    "SYMBOL_ALREADY_EXISTS": "Ya existe ese símbolo en este exchange.",
+    "SYMBOL_ALREADY_EXISTS": "Ese símbolo ya existe.",
     "SYMBOL_INVALID_ASSET_CLASS": "Clase de activo inválida. Opciones: cripto, metal, materia prima, índice, ETF, acción o forex.",
-    "EXCHANGE_NOT_FOUND": "Exchange no encontrado.",
+    "PLATFORM_EXCHANGE_MISSING": (
+        "Falta Binance en el catálogo de exchanges. "
+        "Carga los datos iniciales de mercado y vuelve a intentarlo."
+    ),
 }

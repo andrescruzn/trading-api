@@ -6,13 +6,14 @@ from decimal import Decimal
 from typing import Optional
 
 from app.common.contracts import ServiceResult
+from app.modules.market.domain.ccxt_exchanges import PLATFORM_EXCHANGE_NAME
 from app.modules.market.domain.exchange_repository import ExchangeRepository
 from app.modules.market.domain.symbol_entity import Symbol
 from app.modules.market.domain.symbol_repository import SymbolRepository
 
 
 class CreateSymbolService:
-    """Crea un símbolo nuevo asociado a un exchange existente."""
+    """Crea un símbolo nuevo en el exchange de la plataforma (Binance)."""
 
     def __init__(
         self,
@@ -24,7 +25,6 @@ class CreateSymbolService:
 
     def create(
         self,
-        exchange_id: int,
         symbol: str,
         asset_class: str,
         base_asset: Optional[str] = None,
@@ -32,10 +32,10 @@ class CreateSymbolService:
         tick_size: Optional[Decimal] = None,
         lot_size: Optional[Decimal] = None,
     ) -> ServiceResult[Symbol]:
-        # Validar que el exchange existe
-        exchange = self._exchange_repo.get_by_id(exchange_id)
+        exchange = self._exchange_repo.get_by_name(PLATFORM_EXCHANGE_NAME)
         if exchange is None:
-            return ServiceResult.fail(code="EXCHANGE_NOT_FOUND", http_status=404)
+            return ServiceResult.fail(code="PLATFORM_EXCHANGE_MISSING", http_status=409)
+        exchange_id = exchange.id
 
         # Validar asset_class
         dummy = Symbol(id=0, exchange_id=exchange_id, symbol=symbol, asset_class=asset_class)

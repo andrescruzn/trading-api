@@ -8,7 +8,6 @@ from unittest.mock import MagicMock
 
 from app.modules.accounts.domain.account_entity import Account
 from app.modules.accounts.services.accounts.update_account_service import UpdateAccountService
-from app.modules.market.domain.exchange_entity import Exchange
 
 
 def _make_account(id: int = 1, user_id: int = 10) -> Account:
@@ -16,24 +15,16 @@ def _make_account(id: int = 1, user_id: int = 10) -> Account:
                    status="active", base_currency="USD", meta={})
 
 
-def _make_exchange(id: int = 2) -> Exchange:
-    return Exchange(id=id, name="Bybit", type="crypto_exchange", is_active=True)
-
-
-def _make_service(account=None, exchange=None):
+def _make_service(account=None):
     account_repo = MagicMock()
     account_repo.get_by_id.return_value = account
     account_repo.update.side_effect = lambda a: a   # retorna la entidad modificada
-
-    exchange_repo = MagicMock()
-    exchange_repo.get_by_id.return_value = exchange
 
     cipher = MagicMock()
     cipher.encrypt.return_value = "new_encrypted_token"
 
     svc = UpdateAccountService(
         account_repo=account_repo,
-        exchange_repo=exchange_repo,
         cipher=cipher,
     )
     tx_repo = account_repo  # commit()/rollback() viven en el repositorio
@@ -106,15 +97,6 @@ class TestUpdateAccountService:
         assert result.success is False
         assert result.error.code == "ACCOUNT_INVALID_STATUS"
         assert result.error.http_status == 422
-        tx_repo.commit.assert_not_called()
-
-    def test_fails_if_new_exchange_not_found(self):
-        svc, _, tx_repo, _ = _make_service(account=_make_account(user_id=10), exchange=None)
-
-        result = svc.update(account_id=1, requester_user_id=10, exchange_id=99)
-
-        assert result.success is False
-        assert result.error.code == "EXCHANGE_NOT_FOUND"
         tx_repo.commit.assert_not_called()
 
     def test_normalizes_base_currency_to_uppercase(self):

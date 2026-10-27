@@ -9,8 +9,9 @@
 #
 # NOTAS:
 # - Las filas las escribe AuditMiddleware en las tablas por año
-#   `http_audit_<año>` (app/common/audit). La tabla ORM `audit_logs` no la
-#   escribe nadie hoy, por eso no se lee.
+#   `http_audit_<año>` (app/common/audit): cambios y errores, no las
+#   consultas exitosas. La tabla `audit_logs` es otra cosa: el historial de
+#   los agentes (bots/domain/bot_history.py), y no se lee aquí.
 # - La entidad lleva solo lo útil para auditar: nunca los payloads
 #   completos (pueden traer datos personales o respuestas enteras), solo el
 #   `msg` de la respuesta y, en los eventos de login, el correo con el que

@@ -55,7 +55,9 @@ def make_service(bot: Bot | None = None):
     # update devuelve el mismo bot que recibe
     mock_repo.update.side_effect = lambda b: b
 
-    service = UpdateBotStatusService(repo=mock_repo, account_repo=MagicMock())
+    service = UpdateBotStatusService(
+        repo=mock_repo, account_repo=MagicMock(), history_repo=MagicMock()
+    )
     tx_repo = mock_repo  # commit()/rollback() viven en el repositorio
     return service, mock_repo, tx_repo
 

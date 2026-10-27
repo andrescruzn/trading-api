@@ -53,6 +53,16 @@ def make_test_app(mock_repo: AuditRepository) -> FastAPI:
     async def generic():
         return JSONResponse({"msg": "generic"})
 
+    @app.post("/some/endpoint")
+    async def generic_write():
+        return JSONResponse({"msg": "OK", "errorCode": 201, "data": {"items": [1, 2, 3]}})
+
+    @app.get("/broken")
+    async def broken():
+        return JSONResponse(
+            {"msg": "No existe", "errorCode": 404, "data": {"token": "abc"}}, status_code=404
+        )
+
     return app
 
 
@@ -93,10 +103,23 @@ class TestAuditMiddlewareSkipsExcludedPaths:
 
 class TestAuditMiddlewareInsertsForNormalRequests:
 
-    def test_insert_called_for_normal_request(self, client, mock_repo):
-        client.get("/some/endpoint")
+    def test_insert_called_for_write_request(self, client, mock_repo):
+        client.post("/some/endpoint")
         time.sleep(0.1)
         mock_repo.insert.assert_called_once()
+
+    def test_successful_read_not_audited(self, client, mock_repo):
+        """Las consultas exitosas (polling del front) no se guardan."""
+        client.get("/some/endpoint")
+        client.get("/users/me")
+        time.sleep(0.1)
+        mock_repo.insert.assert_not_called()
+
+    def test_failed_read_is_audited(self, client, mock_repo):
+        client.get("/broken")
+        time.sleep(0.1)
+        mock_repo.insert.assert_called_once()
+        assert mock_repo.insert.call_args.kwargs["status_code"] == 404
 
     def test_insert_called_for_post_request(self, client, mock_repo):
         client.post("/users/login", json={"email": "x@x.com", "password": "secret"})
@@ -139,15 +162,8 @@ class TestAuditMiddlewareEventTypes:
         kwargs = mock_repo.insert.call_args.kwargs
         assert kwargs["event_type"] == "LOGOUT"
 
-    def test_event_type_get_profile(self, client, mock_repo):
-        client.get("/users/me")
-        time.sleep(0.1)
-        mock_repo.insert.assert_called_once()
-        kwargs = mock_repo.insert.call_args.kwargs
-        assert kwargs["event_type"] == "GET_PROFILE"
-
     def test_event_type_fallback_for_generic_endpoint(self, client, mock_repo):
-        client.get("/some/endpoint")
+        client.post("/some/endpoint")
         time.sleep(0.1)
         mock_repo.insert.assert_called_once()
         kwargs = mock_repo.insert.call_args.kwargs
@@ -173,17 +189,31 @@ class TestAuditMiddlewarePayloadSanitization:
         assert req is not None
         assert req.get("email") == "user@x.com"
 
+    def test_success_response_keeps_only_summary(self, client, mock_repo):
+        """En éxito se guarda msg y errorCode, sin el `data`."""
+        client.post("/some/endpoint")
+        time.sleep(0.1)
+        resp = mock_repo.insert.call_args.kwargs["response_payload"]
+        assert resp == {"msg": "OK", "errorCode": 201}
+
+    def test_error_response_kept_and_redacted(self, client, mock_repo):
+        client.get("/broken")
+        time.sleep(0.1)
+        resp = mock_repo.insert.call_args.kwargs["response_payload"]
+        assert resp["msg"] == "No existe"
+        assert resp["data"]["token"] == "***REDACTED***"
+
 
 class TestAuditMiddlewareUserIdExtraction:
 
     def test_user_id_none_without_jwt_cookie(self, client, mock_repo):
-        client.get("/some/endpoint")
+        client.post("/some/endpoint")
         time.sleep(0.1)
         kwargs = mock_repo.insert.call_args.kwargs
         assert kwargs["user_id"] is None
 
     def test_user_id_none_with_invalid_jwt(self, client, mock_repo):
-        client.get("/some/endpoint", cookies={"access_token": "bad.token.here"})
+        client.post("/some/endpoint", cookies={"access_token": "bad.token.here"})
         time.sleep(0.1)
         kwargs = mock_repo.insert.call_args.kwargs
         assert kwargs["user_id"] is None
@@ -197,12 +227,12 @@ class TestAuditMiddlewareResilience:
 
         app = make_test_app(mock_repo)
         with TestClient(app, raise_server_exceptions=True) as c:
-            response = c.get("/some/endpoint")
+            response = c.post("/some/endpoint")
             # El hilo daemon puede fallar silenciosamente sin afectar response
             assert response.status_code == 200
 
     def test_insert_receives_duration_ms(self, client, mock_repo):
-        client.get("/some/endpoint")
+        client.post("/some/endpoint")
         time.sleep(0.1)
         kwargs = mock_repo.insert.call_args.kwargs
         assert "duration_ms" in kwargs
@@ -210,14 +240,14 @@ class TestAuditMiddlewareResilience:
         assert kwargs["duration_ms"] >= 0
 
     def test_insert_receives_method_and_path(self, client, mock_repo):
-        client.get("/some/endpoint")
+        client.post("/some/endpoint")
         time.sleep(0.1)
         kwargs = mock_repo.insert.call_args.kwargs
-        assert kwargs["method"] == "GET"
+        assert kwargs["method"] == "POST"
         assert kwargs["path"] == "/some/endpoint"
 
     def test_insert_receives_status_code(self, client, mock_repo):
-        client.get("/some/endpoint")
+        client.post("/some/endpoint")
         time.sleep(0.1)
         kwargs = mock_repo.insert.call_args.kwargs
         assert kwargs["status_code"] == 200

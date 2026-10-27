@@ -13,6 +13,12 @@
 #             (suelen llevar el token en la ruta: Slack, Discord).
 # - Response: token, access_token, otp_code (dev), enc_creds.
 #
+# RESPUESTAS (summarize_response, la que usa el middleware):
+# - Éxito (< 400): solo `msg` y `errorCode` del envelope; el `data` no aporta
+#   a la auditoría y es lo que más pesa (listas, velas, saldos).
+# - Error (>= 400): el envelope completo redactado, si cabe en
+#   MAX_BODY_BYTES; si no, solo `msg` y `errorCode`.
+#
 # NOTA:
 # - La comparación de claves no distingue mayúsculas (`apiKey` == `apikey`).
 # ======================================================================
@@ -30,6 +36,13 @@ logger = logging.getLogger(__name__)
 # ======================================================================
 
 _REDACTED = "***REDACTED***"
+
+# Límite de body a auditar (10 KB): requests más grandes (p. ej. comprobantes
+# en base64) no se guardan, y las respuestas de error se reducen al resumen.
+MAX_BODY_BYTES = 10 * 1024
+
+# Claves del envelope {msg, errorCode, data} que se guardan como resumen.
+_SUMMARY_KEYS = ("msg", "errorCode")
 
 # Límite de profundidad: un JSON más anidado se corta (evita recursión infinita).
 _MAX_DEPTH = 20
@@ -145,3 +158,23 @@ def sanitize_response(body_bytes: bytes) -> dict | None:
     if data is None:
         return None
     return _redact(data, _RESPONSE_SENSITIVE_FIELDS)
+
+
+def summarize_response(body_bytes: bytes, status_code: int) -> dict | None:
+    """
+    Resume el body de una respuesta para la auditoría.
+
+    - Éxito (< 400) → solo `msg` y `errorCode` del envelope.
+    - Error (>= 400) → el JSON redactado completo si pesa ≤ MAX_BODY_BYTES;
+      si pesa más, solo `msg` y `errorCode`.
+    - Vacío, HTML o no-JSON → None.
+    """
+    data = _parse_object(body_bytes)
+    if data is None:
+        return None
+
+    if status_code >= 400 and len(body_bytes) <= MAX_BODY_BYTES:
+        return _redact(data, _RESPONSE_SENSITIVE_FIELDS)
+
+    summary = {key: data[key] for key in _SUMMARY_KEYS if key in data}
+    return summary or None

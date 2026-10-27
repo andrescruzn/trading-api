@@ -11,7 +11,7 @@
 #   objeto `settings` que importa el módulo del servicio.
 #
 # CUBRE:
-# - Kill switch (TRADING_ENABLED) y live apagado (TRADING_LIVE_ENABLED).
+# - Kill switch (TRADING_ENABLED); no hay interruptor aparte para live.
 # - Notional máximo: min(ORDER_MAX_NOTIONAL, risk_params.max_notional).
 # - Drawdown máximo → BOT_MAX_DRAWDOWN_REACHED y bot en `error`.
 # - Las ventas no se bloquean por notional ni drawdown.
@@ -100,7 +100,6 @@ def _make_service(
 def _default_settings(monkeypatch):
     """Valores conocidos para no depender del .env del entorno."""
     monkeypatch.setattr(risk_module.settings, "TRADING_ENABLED", True)
-    monkeypatch.setattr(risk_module.settings, "TRADING_LIVE_ENABLED", True)
     monkeypatch.setattr(risk_module.settings, "ORDER_MAX_NOTIONAL", 10000.0)
 
 
@@ -131,35 +130,16 @@ class TestKillSwitch:
 
 
 # ======================================================================
-# TestLiveDisabled
+# TestRealAndDemo
 # ======================================================================
 
-class TestLiveDisabled:
+class TestRealAndDemo:
 
-    @pytest.mark.parametrize("side", ["buy", "sell"])
-    def test_live_disabled_blocks_live_bot(self, monkeypatch, side):
-        monkeypatch.setattr(risk_module.settings, "TRADING_LIVE_ENABLED", False)
+    @pytest.mark.parametrize("mode", ["live", "paper"])
+    def test_real_and_demo_agents_pass_without_any_live_switch(self, mode):
         service, *_ = _make_service()
 
-        result = service.check(_make_bot(mode="live"), side, Decimal("1"), Decimal("100"))
-
-        assert result.success is False
-        assert result.error.code == "TRADING_LIVE_DISABLED"
-        assert result.error.http_status == 403
-
-    @pytest.mark.parametrize("side", ["buy", "sell"])
-    def test_live_disabled_does_not_block_paper(self, monkeypatch, side):
-        monkeypatch.setattr(risk_module.settings, "TRADING_LIVE_ENABLED", False)
-        service, *_ = _make_service()
-
-        result = service.check(_make_bot(mode="paper"), side, Decimal("1"), Decimal("100"))
-
-        assert result.success is True
-
-    def test_live_enabled_allows_live_bot(self):
-        service, *_ = _make_service()
-
-        result = service.check(_make_bot(mode="live"), "buy", Decimal("1"), Decimal("100"))
+        result = service.check(_make_bot(mode=mode), "buy", Decimal("1"), Decimal("100"))
 
         assert result.success is True
 

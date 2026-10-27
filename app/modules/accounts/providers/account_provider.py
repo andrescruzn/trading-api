@@ -3,8 +3,13 @@
 # ======================================================================
 # app/modules/accounts/providers/account_provider.py
 #
-# Factory que centraliza la creación de todos los servicios del módulo
-# Accounts & Portfolio. Sigue el mismo patrón que MarketServiceFactory.
+# Factory que centraliza la creación de los servicios del módulo
+# Accounts & Portfolio: hoy, la billetera única de Binance. Las cuentas
+# (`accounts`) son un detalle interno: la de la billetera y las de
+# práctica de cada agente demo; nadie las maneja desde la API.
+#
+# `build_platform_wallet_ensurer(session)` lo usan otros módulos (bots,
+# fondo) para asegurar la billetera sin armar toda la factory.
 # ======================================================================
 
 from __future__ import annotations
@@ -12,7 +17,6 @@ from __future__ import annotations
 from sqlalchemy.orm import Session
 
 from app.common.config import settings
-from app.common.security.credentials_cipher import CredentialsCipher
 from app.modules.accounts.infrastructure import (
     SqlAlchemyAccountRepository,
     SqlAlchemyAccountBalanceRepository,
@@ -20,31 +24,47 @@ from app.modules.accounts.infrastructure import (
     SqlAlchemyWalletSnapshotRepository,
 )
 from app.modules.accounts.infrastructure.ccxt_wallet_gateway import CcxtWalletGateway
-from app.modules.accounts.services.accounts import (
-    ListAccountsService,
-    GetAccountService,
-    CreateAccountService,
-    UpdateAccountService,
-)
-from app.modules.accounts.services.balances import (
-    ListBalancesService,
-    RecordBalanceService,
-)
+from app.modules.accounts.infrastructure.exchange_client import platform_credentials_configured
 from app.modules.accounts.services.wallet import (
+    EnsurePlatformWalletService,
     GetWalletService,
-    SetPlatformWalletService,
     SyncWalletService,
 )
 from app.modules.market.infrastructure import SqlAlchemyExchangeRepository
 
 
+def _first_super_admin_id(session: Session):
+    """Resolver del dueño de la cuenta de la billetera: el primer super admin activo."""
+    # Import diferido: users no debe cargarse al importar accounts
+    from app.modules.users.infrastructure import SqlAlchemyUserRepository
+
+    def resolve() -> int | None:
+        super_admin_role = int(settings.AUTH_SUPER_ADMIN_ROLE_ID)
+        for user in SqlAlchemyUserRepository(session).list_all():
+            if int(user.role_id) == super_admin_role and user.is_active():
+                return int(user.id)
+        return None
+
+    return resolve
+
+
+def build_platform_wallet_ensurer(session: Session) -> EnsurePlatformWalletService:
+    return EnsurePlatformWalletService(
+        wallet_repo=SqlAlchemyPlatformWalletRepository(session),
+        account_repo=SqlAlchemyAccountRepository(session),
+        exchange_repo=SqlAlchemyExchangeRepository(session),
+        owner_resolver=_first_super_admin_id(session),
+        base_asset=settings.WALLET_BASE_ASSET,
+    )
+
+
 class AccountServiceFactory:
     """
-    Factory para todos los servicios del módulo Accounts & Portfolio.
+    Factory para los servicios de la billetera de la plataforma.
 
     Uso en routes:
         factory = AccountServiceFactory(session=db)
-        result = factory.list_accounts().list(user_id=1)
+        result = factory.get_wallet().get()
     """
 
     def __init__(self, session: Session):
@@ -59,64 +79,20 @@ class AccountServiceFactory:
         # Repositorio externo (market): exchange de la plataforma y cliente ccxt
         self._exchange_repo = SqlAlchemyExchangeRepository(session)
 
-        # Cipher para credenciales
-        self._cipher = CredentialsCipher.from_settings()
-
-    # ------------------------------------------------------------------
-    # Accounts
-    # ------------------------------------------------------------------
-
-    def list_accounts(self) -> ListAccountsService:
-        return ListAccountsService(repo=self._account_repo)
-
-    def get_account(self) -> GetAccountService:
-        return GetAccountService(repo=self._account_repo)
-
-    def create_account(self) -> CreateAccountService:
-        return CreateAccountService(
-            account_repo=self._account_repo,
-            exchange_repo=self._exchange_repo,
-            cipher=self._cipher,
-        )
-
-    def update_account(self) -> UpdateAccountService:
-        return UpdateAccountService(
-            account_repo=self._account_repo,
-            cipher=self._cipher,
-        )
-
-    # ------------------------------------------------------------------
-    # Balances
-    # ------------------------------------------------------------------
-
-    def list_balances(self) -> ListBalancesService:
-        return ListBalancesService(
-            account_repo=self._account_repo,
-            balance_repo=self._balance_repo,
-        )
-
-    def record_balance(self) -> RecordBalanceService:
-        return RecordBalanceService(
-            account_repo=self._account_repo,
-            balance_repo=self._balance_repo,
-        )
-
     # ------------------------------------------------------------------
     # Billetera de la plataforma (fondo común)
     # ------------------------------------------------------------------
+
+    def ensure_platform_wallet(self) -> EnsurePlatformWalletService:
+        return build_platform_wallet_ensurer(self._session)
 
     def get_wallet(self) -> GetWalletService:
         return GetWalletService(
             wallet_repo=self._wallet_repo,
             snapshot_repo=self._snapshot_repo,
             account_repo=self._account_repo,
-        )
-
-    def set_platform_wallet(self) -> SetPlatformWalletService:
-        return SetPlatformWalletService(
-            wallet_repo=self._wallet_repo,
-            account_repo=self._account_repo,
-            base_asset=settings.WALLET_BASE_ASSET,
+            ensure=self.ensure_platform_wallet(),
+            credentials_configured=platform_credentials_configured(),
         )
 
     def sync_wallet(self) -> SyncWalletService:
@@ -125,7 +101,9 @@ class AccountServiceFactory:
             snapshot_repo=self._snapshot_repo,
             account_repo=self._account_repo,
             balance_repo=self._balance_repo,
-            gateway=CcxtWalletGateway(exchange_repo=self._exchange_repo, cipher=self._cipher),
+            gateway=CcxtWalletGateway(exchange_repo=self._exchange_repo),
+            ensure=self.ensure_platform_wallet(),
+            credentials_configured=platform_credentials_configured(),
         )
 
 

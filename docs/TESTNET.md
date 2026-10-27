@@ -25,15 +25,16 @@ Configura el `.env` del backend y reinicia la API:
 
 ```
 LIVE_USE_SANDBOX=true
-TRADING_LIVE_ENABLED=true
+BINANCE_API_KEY=...           # claves de la testnet
+BINANCE_API_SECRET=...
 ORDER_MAX_NOTIONAL=200        # tope bajo mientras se prueba
 ORDER_NATIVE_STOP_LOSS=true
 ```
 
 | # | Paso | Qué comprobar |
 |---|---|---|
-| 1 | Crear una cuenta **live** con las claves de testnet (Mis cuentas) | Se guarda; las credenciales no se muestran |
-| 2 | Crear un agente live con esa cuenta e iniciarlo; en Mercado, "Actualizar datos" | Aparecen velas e indicadores |
+| 1 | Abrir Administración → Fondo → Billetera y pulsar **Sincronizar ahora** | Muestra el saldo de la testnet (no hay que crear ni elegir cuentas) |
+| 2 | Crear un **agente real** (Inicio → Crear agente real), abrirlo al fondo con dinero asignado e iniciarlo; en Mercado, "Actualizar datos" | Aparecen velas e indicadores |
 | 3 | Orden manual: compra a mercado pequeña con stop loss y take profit | Orden `filled`; en Posiciones, "Protección automática" y "El stop loss está como orden en el exchange"; en Órdenes, una orden stop `sent` |
 | 4 | En la testnet, ver la orden stop abierta | Mismo precio y cantidad |
 | 5 | Cancelar esa orden stop desde la app | Queda `canceled`; la posición conserva el SL (lo vigila el scheduler) |
@@ -45,4 +46,4 @@ ORDER_NATIVE_STOP_LOSS=true
 | 11 | Apagar la API 2 ciclos con una límite abierta que se ejecute en la testnet; encenderla | La reconciliación registra el fill tardío |
 | 12 | `TRADING_ENABLED=false` y crear una orden | Rechazada: "El envío de órdenes está detenido…" |
 
-Al terminar, deja `LIVE_USE_SANDBOX=false` y `TRADING_LIVE_ENABLED=false` hasta decidir el paso a producción, y anota en `specs/M08-ORDERS-EXECUTION.md` (Avance → Tests) qué exchange se probó y con qué resultado.
+Al terminar, deja `LIVE_USE_SANDBOX=false` y vacía `BINANCE_API_KEY` / `BINANCE_API_SECRET` (o pon las de producción) hasta decidir el paso a producción, y anota en `specs/M08-ORDERS-EXECUTION.md` (Avance → Tests) qué exchange se probó y con qué resultado.

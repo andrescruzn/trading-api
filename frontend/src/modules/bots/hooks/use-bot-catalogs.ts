@@ -1,4 +1,3 @@
-import { useAccountsQuery } from '@/modules/accounts/hooks/use-accounts-queries';
 import type { BotCatalogs } from '@/modules/bots/lib/bots-labels';
 import {
 	useSymbolsQuery,
@@ -16,18 +15,16 @@ function toNameMap<T extends { id: number }>(
 }
 
 /**
- * Mapas `id → nombre` de los catálogos que referencia un bot (cuenta,
- * símbolo, timeframe, estrategia), para mostrar nombres en vez de IDs.
+ * Mapas `id → nombre` de los catálogos que referencia un bot (símbolo,
+ * timeframe, estrategia), para mostrar nombres en vez de IDs.
  * Reutiliza las queries cacheadas de cada módulo.
  */
 function useBotCatalogs() {
-	const accountsQuery = useAccountsQuery();
 	const symbolsQuery = useSymbolsQuery();
 	const timeframesQuery = useTimeframesQuery();
 	const strategiesQuery = useStrategiesQuery();
 
 	const catalogs: BotCatalogs = {
-		accounts: toNameMap(accountsQuery.data, (account) => account.name),
 		symbols: toNameMap(symbolsQuery.data, (symbol) => symbol.symbol),
 		timeframes: toNameMap(timeframesQuery.data, (timeframe) => timeframe.code),
 		strategies: toNameMap(
@@ -36,7 +33,7 @@ function useBotCatalogs() {
 		),
 	};
 
-	return { accountsQuery, catalogs };
+	return { catalogs };
 }
 
 export { useBotCatalogs };

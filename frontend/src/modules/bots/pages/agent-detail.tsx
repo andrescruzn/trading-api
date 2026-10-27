@@ -11,8 +11,6 @@ import { getRouteApi, Link } from '@tanstack/react-router';
 import { type ReactNode, useState } from 'react';
 import { usePageBreadcrumb } from '@/modules/app-shell/hooks/use-page-breadcrumb';
 import { useCanManage } from '@/modules/auth/hooks/use-can-manage';
-import { useHasRole } from '@/modules/auth/hooks/use-has-role';
-import { STAFF_ROLES } from '@/modules/auth/lib/roles';
 import type { Bot, Signal } from '@/modules/bots/api/bots.api';
 import { AgentControls } from '@/modules/bots/components/agent-controls';
 import { AgentMarketTab } from '@/modules/bots/components/agent-market-tab';
@@ -30,13 +28,11 @@ import { SignalDetailSheet } from '@/modules/bots/components/signal-detail-sheet
 import { SignalsTable } from '@/modules/bots/components/signals-table';
 import { useBotCatalogs } from '@/modules/bots/hooks/use-bot-catalogs';
 import { useUpdateBotMutation } from '@/modules/bots/hooks/use-bots-mutations';
-import {
-	useBotQuery,
-	useMyBotsQuery,
-} from '@/modules/bots/hooks/use-bots-queries';
+import { useBotQuery } from '@/modules/bots/hooks/use-bots-queries';
 import {
 	describeBot,
 	describeBotMarket,
+	describeBotMoney,
 	getRiskPct,
 } from '@/modules/bots/lib/bots-labels';
 import {
@@ -347,7 +343,7 @@ function ConfigItem({
 	);
 }
 
-function ConfigTab({ bot, accountName }: { bot: Bot; accountName: string }) {
+function ConfigTab({ bot }: { bot: Bot }) {
 	const strategiesQuery = useStrategiesQuery();
 	const featureSetsQuery = useFeatureSetsQuery();
 	const strategy = strategiesQuery.data?.find(
@@ -390,9 +386,9 @@ function ConfigTab({ bot, accountName }: { bot: Bot; accountName: string }) {
 								<ConfigItem label="Riesgo por operación">
 									{formatPercent(getRiskPct(bot), 1)} del capital
 								</ConfigItem>
-								<ConfigItem label="Cuenta">
+								<ConfigItem label="Dinero">
 									<span className="inline-flex items-center gap-2">
-										{accountName}
+										{describeBotMoney(bot)}
 										<BotModeBadge mode={bot.mode} />
 									</span>
 								</ConfigItem>
@@ -471,25 +467,12 @@ export function AgentDetailPage() {
 	const [selectedSignal, setSelectedSignal] = useState<Signal | null>(null);
 	const bot = botQuery.data;
 
-	// El staff (super admin y socio) abre agentes de otros desde "Agentes del
-	// fondo": la miga repite la ruta de esa vista (Administración › Agentes del
-	// fondo) y lleva de vuelta a la lista en vez de al inicio. Los agentes
-	// propios siguen colgando de Inicio.
-	const isAdmin = useHasRole(STAFF_ROLES);
-	const myBotsQuery = useMyBotsQuery({ enabled: isAdmin });
-	const isOthersAgent =
-		isAdmin &&
-		!!bot &&
-		!!myBotsQuery.data &&
-		!myBotsQuery.data.some((item) => item.id === bot.id);
-
+	// Los agentes reales cuelgan de Inicio; los de dinero simulado, de
+	// "Agentes demo".
 	usePageBreadcrumb([
-		...(isOthersAgent
-			? [
-					{ label: 'Administración' },
-					{ label: 'Agentes del fondo', href: '/admin/fund-agents' },
-				]
-			: [{ label: 'Inicio', href: '/dashboard' }]),
+		bot?.mode === 'paper'
+			? { label: 'Agentes demo', href: '/demo-agents' }
+			: { label: 'Inicio', href: '/dashboard' },
 		{ label: bot ? describeBot(bot) : 'Agente' },
 	]);
 
@@ -518,8 +501,6 @@ export function AgentDetailPage() {
 		);
 	}
 
-	const accountName =
-		catalogs.accounts.get(bot.account_id) ?? `Cuenta #${bot.account_id}`;
 	const strategyName =
 		catalogs.strategies.get(bot.strategy_id) ??
 		`Estrategia #${bot.strategy_id}`;
@@ -542,7 +523,7 @@ export function AgentDetailPage() {
 						<span aria-hidden>·</span>
 						<span>{strategyName}</span>
 						<span aria-hidden>·</span>
-						<span>{accountName}</span>
+						<span>{describeBotMoney(bot)}</span>
 					</div>
 				</div>
 				<div className="flex flex-wrap items-center gap-2">
@@ -578,7 +559,7 @@ export function AgentDetailPage() {
 					<AgentMarketTab bot={bot} />
 				</TabsContent>
 				<TabsContent value="config" className="pt-2">
-					<ConfigTab bot={bot} accountName={accountName} />
+					<ConfigTab bot={bot} />
 				</TabsContent>
 			</Tabs>
 

@@ -28,6 +28,11 @@ def _accounts(*ids: int) -> list[SimpleNamespace]:
     return [SimpleNamespace(id=i) for i in ids]
 
 
+# Agentes reales: el listado solo completa `demo_capital` en los demo
+B1 = SimpleNamespace(id=1, mode="live", account_id=1)
+B2 = SimpleNamespace(id=2, mode="live", account_id=1)
+
+
 def _chainable_query(session: MagicMock) -> MagicMock:
     query = session.query.return_value
     for method in ("filter", "order_by", "offset", "limit"):
@@ -52,12 +57,12 @@ def _bots_service(total: int = 0, items: list | None = None, accounts_by_user: d
 
 class TestListBotsPage:
     def test_admin_page_with_filters(self):
-        service, repo = _bots_service(total=30, items=["b1"])
+        service, repo = _bots_service(total=30, items=[B1])
 
         result = service.list_page(page=PageRequest.of(2, 10), status="running", mode="paper")
 
         assert result.success
-        assert result.data.items == ["b1"]
+        assert result.data.items == [B1]
         assert (result.data.total, result.data.total_pages) == (30, 3)
         criteria = BotCriteria(account_ids=None, status="running", mode="paper")
         repo.count.assert_called_once_with(criteria)
@@ -105,11 +110,11 @@ class TestListBotsPage:
 
 class TestListBotsSimple:
     def test_admin_list_has_no_limit(self):
-        service, repo = _bots_service(items=["b1", "b2"])
+        service, repo = _bots_service(items=[B1, B2])
 
         result = service.list()
 
-        assert result.data == ["b1", "b2"]
+        assert result.data == [B1, B2]
         repo.search.assert_called_once_with(BotCriteria())
         repo.count.assert_not_called()
 

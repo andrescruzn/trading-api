@@ -1,6 +1,7 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import {
 	type BotFilters,
+	type BotMode,
 	getBot,
 	listBots,
 	listPendingSignals,
@@ -42,6 +43,14 @@ function useBotsQuery(
  */
 function useMyBotsQuery(options: { enabled?: boolean } = {}) {
 	return useBotsQuery({ mine: true }, options);
+}
+
+/**
+ * Agentes reales (`live`) o demo (`paper`): el staff ve los de todo el
+ * sistema (los crean los super admin); el resto, solo los suyos.
+ */
+function useBotsByModeQuery(mode: BotMode) {
+	return useBotsQuery({ mode });
 }
 
 function useBotQuery(id: number | null) {
@@ -94,6 +103,7 @@ export {
 	SHARED_BOTS_QUERY_KEY,
 	SIGNALS_QUERY_KEY,
 	useBotQuery,
+	useBotsByModeQuery,
 	useBotsQuery,
 	useMyBotsQuery,
 	usePendingSignalsQuery,

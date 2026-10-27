@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 
 from app.common.config import settings
 from app.common.security.credentials_cipher import CredentialsCipher
+from app.modules.accounts.providers import build_platform_wallet_ensurer
 from app.modules.accounts.infrastructure import (
     SqlAlchemyAccountRepository,
     SqlAlchemyPlatformWalletRepository,
@@ -89,6 +90,7 @@ class FundServiceFactory:
         self._wallet_resolver = WalletContextResolver(
             wallet_repo=self._wallet_repo,
             account_repo=SqlAlchemyAccountRepository(session),
+            ensure_wallet=build_platform_wallet_ensurer(session).ensure,
         )
         # F4: capital de los agentes
         self._pool_repo = SqlAlchemyAgentPoolRepository(session)
@@ -120,7 +122,6 @@ class FundServiceFactory:
         # Solo se arma cuando el caso de uso habla con el exchange
         return CcxtWalletGateway(
             exchange_repo=SqlAlchemyExchangeRepository(self._session),
-            cipher=CredentialsCipher.from_settings(),
         )
 
     # ------------------------------------------------------------------

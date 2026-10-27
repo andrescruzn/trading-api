@@ -1,12 +1,9 @@
-import type {
-	AccountMode,
-	AccountStatus,
-} from '@/modules/accounts/api/accounts.api';
 import { api } from '@/modules/shared/lib/api-client';
 
 // ======================================================================
 // Tipos (reflejan el JSON del backend tal cual, en snake_case)
-// Billetera de la plataforma: la única cuenta de exchange del fondo común.
+// Billetera de la plataforma: la única, la de Binance. Nadie la elige: la
+// app la arma sola y sus credenciales viven en el .env del servidor.
 // Solo la ven super admin y socio; el inversor nunca ve su saldo total.
 // ======================================================================
 
@@ -50,12 +47,13 @@ type PlatformWallet = {
 type WalletAccount = {
 	id: number;
 	name: string;
-	mode: AccountMode;
-	status: AccountStatus;
+	mode: 'paper' | 'live';
+	status: 'active' | 'suspended';
 	exchange_id: number | null;
 };
 
 type WalletOverview = {
+	/** `false` = faltan las credenciales de Binance en el servidor. */
 	configured: boolean;
 	wallet: PlatformWallet | null;
 	account: WalletAccount | null;
@@ -68,11 +66,6 @@ type WalletOverview = {
 
 function getWallet() {
 	return api.get<WalletOverview>('/wallet');
-}
-
-/** Solo super admin. */
-function setPlatformWallet(accountId: number) {
-	return api.put<WalletOverview>('/wallet', { account_id: accountId });
 }
 
 /** Solo super admin: lee el saldo del exchange ahora. */
@@ -92,4 +85,4 @@ export type {
 	WalletSnapshot,
 	WalletSnapshotSource,
 };
-export { getWallet, listWalletSnapshots, setPlatformWallet, syncWallet };
+export { getWallet, listWalletSnapshots, syncWallet };

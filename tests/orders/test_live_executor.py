@@ -79,7 +79,6 @@ def _make_executor(monkeypatch, client: MagicMock | None = None):
     executor = LiveExecutor(
         account_repo=MagicMock(),
         exchange_repo=MagicMock(),
-        cipher=MagicMock(),
     )
     return executor, client
 

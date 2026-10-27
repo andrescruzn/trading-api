@@ -7,8 +7,8 @@ import {
 	IconFlask,
 	IconHome,
 	IconSettings,
+	IconTestPipe,
 	IconTrophy,
-	IconWallet,
 } from '@tabler/icons-react';
 import { useRouterState } from '@tanstack/react-router';
 import type * as React from 'react';
@@ -34,7 +34,9 @@ import {
 const navSections: NavSectionData[] = [
 	{
 		label: 'General',
-		// El inicio es la lista de agentes: queda marcado también dentro de uno.
+		// El inicio es la lista de agentes reales (billetera de Binance): queda
+		// marcado también dentro de uno. Los de dinero simulado van aparte y
+		// conviven con los reales.
 		items: [
 			{
 				title: 'Inicio',
@@ -42,20 +44,17 @@ const navSections: NavSectionData[] = [
 				url: '/dashboard',
 				activePaths: ['/agents'],
 			},
+			{
+				title: 'Agentes demo',
+				icon: IconTestPipe,
+				url: '/demo-agents',
+				role: STAFF_ROLES,
+			},
 		],
 	},
 	{
 		label: 'Operar',
-		items: [
-			{ title: 'Alertas', icon: IconBell, url: '/alerts' },
-			// Solo los super admin tienen cuentas de exchange (las operan ellos).
-			{
-				title: 'Mis cuentas',
-				icon: IconWallet,
-				url: '/portfolio',
-				role: MANAGER_ROLES,
-			},
-		],
+		items: [{ title: 'Alertas', icon: IconBell, url: '/alerts' }],
 	},
 	{
 		label: 'Explorar',
@@ -81,8 +80,9 @@ const navSections: NavSectionData[] = [
 		role: STAFF_ROLES,
 		items: [
 			{
-				// El fondo común: resumen y conciliación, la billetera única,
-				// depósitos, retiros y comisiones. El socio lo ve en solo lectura.
+				// El fondo común: resumen y conciliación, el saldo de la billetera
+				// de Binance (la única: nadie la elige), depósitos, retiros y
+				// comisiones. El socio lo ve en solo lectura.
 				title: 'Fondo',
 				icon: IconCoins,
 				items: [

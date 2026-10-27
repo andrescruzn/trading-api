@@ -17,6 +17,7 @@ from app.common.contracts import Page, PageRequest, ServiceResult
 from app.modules.accounts.domain.account_repository import AccountRepository
 from app.modules.bots.domain.bot_entity import Bot
 from app.modules.bots.domain.bot_repository import BotCriteria, BotRepository
+from app.modules.bots.services.bots.demo_capital import attach_demo_capital
 
 
 class ListBotsService:
@@ -50,7 +51,9 @@ class ListBotsService:
             return ServiceResult.fail(
                 code=criteria.error.code, http_status=criteria.error.http_status
             )
-        return ServiceResult.ok(data=self._repo.search(criteria.data))
+        return ServiceResult.ok(
+            data=attach_demo_capital(self._repo.search(criteria.data), self._account_repo)
+        )
 
     def list_page(
         self,
@@ -72,6 +75,7 @@ class ListBotsService:
             if total > page.offset
             else []
         )
+        attach_demo_capital(items, self._account_repo)
         return ServiceResult.ok(
             data=Page(items=items, total=total, page=page.page, page_size=page.page_size)
         )

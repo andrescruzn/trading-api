@@ -45,7 +45,7 @@ frontend/
 
 Un módulo del front por módulo de backend (M2 → `market`, M3 → `features`, M4 → `accounts`, M5 → `strategies`, M7 → `bots`, M8 → `orders`, M9 → `alerts`, M11 → `fund`; M10 se retiró). M6 no tiene módulo propio: se usa desde `bots` ("Analizar ahora").
 
-**Bots = agentes.** En pantalla un bot se llama siempre **agente** (rutas `/agents`, `/agents/new`, `/agents/$agentId`); el código, los tipos y la API conservan `bot`. El LLM se nombra "la IA". Excepción: el bot de Telegram. En pantallas de usuario los agentes se piden con `useMyBotsQuery()` (`?mine=true`); `useBotsQuery()` sin filtros a un admin le devuelve los de todo el sistema. Un módulo puede importar `api`/`hooks`/`lib` de otro (p. ej. `bots` usa `useSymbolsQuery` de `market`); nunca sus `pages`.
+**Bots = agentes.** En pantalla un bot se llama siempre **agente** (rutas `/agents`, `/agents/new`, `/agents/$agentId`); el código, los tipos y la API conservan `bot`. El LLM se nombra "la IA". Excepción: el bot de Telegram. Hay agentes **reales** (`mode=live`, billetera de Binance) y **demo** (`mode=paper`, dinero simulado): Inicio y Agentes demo los piden con `useBotsByModeQuery(mode)`; `useMyBotsQuery()` (`?mine=true`) da solo los del usuario y `useBotsQuery()` sin filtros a un admin le devuelve los de todo el sistema. En pantalla: "Real" / "Demo", nunca Live / Paper. Un módulo puede importar `api`/`hooks`/`lib` de otro (p. ej. `bots` usa `useSymbolsQuery` de `market`); nunca sus `pages`.
 
 ## Rutas
 

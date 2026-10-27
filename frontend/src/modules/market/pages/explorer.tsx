@@ -248,8 +248,9 @@ export function ExplorerPage() {
 						es el movimiento: 100 % sería una línea recta. Una tendencia sin
 						fuerza (ADX menor que 20) cuenta como lateral. Los mercados bajistas
 						quedan al final porque la app solo abre compras. Los perpetuos
-						siguen el precio del oro, el petróleo o una acción, y por ahora solo
-						se operan en modo paper.
+						siguen el precio del oro, el petróleo o una acción; un agente real
+						los opera en Futuros de Binance, solo comprando y sin
+						apalancamiento.
 					</p>
 					<p>
 						Una tendencia fuerte en el pasado no garantiza que continúe: el

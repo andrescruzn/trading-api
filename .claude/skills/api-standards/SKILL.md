@@ -90,7 +90,7 @@ Reglas:
 - La API es headless: ninguna ruta devuelve HTML ni redirige; el frontend (`frontend/`, skill `frontend`) muestra el `msg` tal cual.
 - Sustantivos en plural y kebab-case: `/api/fund/payout-methods`, `/api/model-runs`.
 - Sin verbos, salvo acciones no-CRUD justificadas: `POST /api/signals/generate`, `POST /api/bots/{id}/start`.
-- Sub-recursos máximo 2 niveles: `/api/accounts/{id}/balances`.
+- Sub-recursos máximo 2 niveles: `/api/bots/{id}/subscription`.
 - `tags=[...]` en el `APIRouter` para agrupar en Swagger (`/docs`).
 
 ## Prohibido

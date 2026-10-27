@@ -18,6 +18,9 @@
 #   TESTNET_SYMBOL=BTC/USDT TESTNET_QTY=0.001 \
 #   uv run python -m scripts.testnet_check --yes
 #
+# - Las claves TESTNET_* se pasan a BINANCE_API_KEY / BINANCE_API_SECRET
+#   solo dentro de este proceso (es lo que lee el cliente de la billetera).
+#
 # SEGURIDAD:
 # - Fuerza LIVE_USE_SANDBOX y se niega a seguir si el cliente no quedó en
 #   modo sandbox. Las claves deben ser de la testnet (las de producción no
@@ -36,16 +39,6 @@ from app.common.config import settings
 from app.modules.orders.domain.order_entity import Order
 from app.modules.orders.execution.executor_interface import ExecutionUncertainError
 from app.modules.orders.execution.live_executor import LiveExecutor
-
-
-class _EnvCipher:
-    """Devuelve las claves de las variables de entorno (sin cifrado: no hay BD)."""
-
-    def decrypt(self, _token: str) -> dict[str, str]:
-        return {
-            "api_key": os.environ["TESTNET_API_KEY"],
-            "api_secret": os.environ["TESTNET_API_SECRET"],
-        }
 
 
 class _Repo:
@@ -93,11 +86,13 @@ def main() -> int:
         return 2
 
     settings.LIVE_USE_SANDBOX = True
+    settings.BINANCE_API_KEY = os.environ["TESTNET_API_KEY"]
+    settings.BINANCE_API_SECRET = os.environ["TESTNET_API_SECRET"]
     qty = Decimal(os.environ["TESTNET_QTY"])
-    account = SimpleNamespace(meta={"enc_creds": "env"}, exchange_id=1)
+    account = SimpleNamespace(meta={}, exchange_id=1)
     exchange = SimpleNamespace(name=os.environ["TESTNET_EXCHANGE"])
     bot = SimpleNamespace(id=0, account_id=1)
-    live = LiveExecutor(account_repo=_Repo(account), exchange_repo=_Repo(exchange), cipher=_EnvCipher())
+    live = LiveExecutor(account_repo=_Repo(account), exchange_repo=_Repo(exchange))
 
     client = live._build_client(bot)
     if not getattr(client, "isSandboxModeEnabled", False):

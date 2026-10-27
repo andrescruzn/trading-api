@@ -152,9 +152,8 @@ export function SignalDecisionActions({
 							¿Enviar la orden con dinero real?
 						</AlertDialogTitle>
 						<AlertDialogDescription>
-							El agente opera en modo live. La orden sale al exchange con el
-							precio actual si todavía cumple el stop loss y el riesgo/beneficio
-							mínimo de 2:1.
+							Es un agente real. La orden sale a Binance con el precio actual si
+							todavía cumple el stop loss y el riesgo/beneficio mínimo de 2:1.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>

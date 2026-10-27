@@ -9,13 +9,14 @@
 #   (cada WALLET_SYNC_INTERVAL_SECONDS) y "Sincronizar ahora".
 #
 # REGLAS:
-# - Cuenta live: el saldo viene del exchange y se graba también en
-#   `account_balances` (misma hora para todos los activos), así el 1 % de
-#   los agentes usa el saldo real. Un activo que tenía saldo y ya no
-#   aparece se graba en 0 para que su último balance no quede viejo; la
-#   moneda base siempre se graba.
-# - Cuenta paper (desarrollo): la foto se arma con los últimos balances
-#   registrados a mano; no se escribe `account_balances`.
+# - La billetera es siempre la cuenta live de Binance (se asegura con
+#   EnsurePlatformWalletService). Sin credenciales en el `.env` devuelve
+#   WALLET_NOT_CONFIGURED y no toca nada.
+# - El saldo viene del exchange y se graba también en `account_balances`
+#   (misma hora para todos los activos), así el 1 % de los agentes reales
+#   usa el saldo real. Un activo que tenía saldo y ya no aparece se graba
+#   en 0 para que su último balance no quede viejo; la moneda base siempre
+#   se graba.
 # - Los precios fallan sin tumbar la sincronización: los activos sin precio
 #   quedan en `missing_prices` y no suman al total.
 # - Si falla la lectura del saldo, se guarda el código en la billetera
@@ -45,15 +46,17 @@ from app.modules.accounts.domain.wallet_snapshot_entity import (
     WalletSnapshot,
     value_wallet,
 )
+from app.modules.accounts.services.wallet.ensure_platform_wallet_service import (
+    EnsurePlatformWalletService,
+)
 
 logger = logging.getLogger(__name__)
 
 # Errores de configuración de la cuenta (422) vs. del exchange (502/503)
 _GATEWAY_HTTP_STATUS: dict[str, int] = {
     "WALLET_ACCOUNT_NO_EXCHANGE": 422,
-    "WALLET_ACCOUNT_NO_CREDENTIALS": 422,
+    "WALLET_CREDENTIALS_MISSING": 422,
     "WALLET_EXCHANGE_NOT_SUPPORTED": 422,
-    "WALLET_CREDENTIALS_UNREADABLE": 422,
     "WALLET_EXCHANGE_AUTH_FAILED": 502,
     "WALLET_EXCHANGE_UNAVAILABLE": 503,
 }
@@ -69,14 +72,20 @@ class SyncWalletService:
         account_repo: AccountRepository,
         balance_repo: AccountBalanceRepository,
         gateway: WalletGateway,
+        ensure: EnsurePlatformWalletService,
+        credentials_configured: bool,
     ):
         self._wallet_repo = wallet_repo
         self._snapshot_repo = snapshot_repo
         self._account_repo = account_repo
         self._balance_repo = balance_repo
         self._gateway = gateway
+        self._ensure = ensure
+        self._credentials_configured = credentials_configured
 
     def sync(self) -> ServiceResult[WalletSnapshot]:
+        if not self._credentials_configured or self._ensure.ensure() is None:
+            return ServiceResult.fail(code="WALLET_NOT_CONFIGURED", http_status=404)
         wallet = self._wallet_repo.get()
         if wallet is None:
             return ServiceResult.fail(code="WALLET_NOT_CONFIGURED", http_status=404)
@@ -90,16 +99,11 @@ class SyncWalletService:
         now = utc_now()
         previous = self._balance_repo.list_latest_by_account(account.id)
 
-        if account.mode == "live":
-            try:
-                balances = self._gateway.fetch_balances(account)
-            except WalletGatewayError as exc:
-                logger.warning("[Wallet] Sincronización fallida (%s): %s", exc.code, exc)
-                return self._fail(wallet, exc.code, _GATEWAY_HTTP_STATUS.get(exc.code, 502))
-            source = "exchange"
-        else:
-            balances = [AssetBalance(b.asset.upper(), b.free, b.locked) for b in previous]
-            source = "manual"
+        try:
+            balances = self._gateway.fetch_balances(account)
+        except WalletGatewayError as exc:
+            logger.warning("[Wallet] Sincronización fallida (%s): %s", exc.code, exc)
+            return self._fail(wallet, exc.code, _GATEWAY_HTTP_STATUS.get(exc.code, 502))
 
         base = wallet.base_asset.upper()
         snapshot = value_wallet(
@@ -107,13 +111,12 @@ class SyncWalletService:
             base_asset=base,
             balances=balances,
             prices=self._prices(account, balances, base),
-            source=source,
+            source="exchange",
             ts=now,
         )
 
         try:
-            if source == "exchange":
-                self._record_balances(account.id, balances, previous, base, now)
+            self._record_balances(account.id, balances, previous, base, now)
             saved = self._snapshot_repo.record(snapshot)
             wallet.mark_synced(now)
             self._wallet_repo.save(wallet)

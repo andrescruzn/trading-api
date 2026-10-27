@@ -16,9 +16,9 @@ import { cn } from '@/modules/ui/lib/utils';
 const ALL = 'all';
 
 const MODE_OPTIONS = [
-	{ value: ALL, label: 'Paper y live' },
-	{ value: 'paper', label: 'Solo paper' },
-	{ value: 'live', label: 'Solo live' },
+	{ value: ALL, label: 'Reales y demo' },
+	{ value: 'live', label: 'Solo reales' },
+	{ value: 'paper', label: 'Solo demo' },
 ];
 
 function SignedPercent({ value }: { value: number | null }) {
@@ -46,10 +46,10 @@ const columns: DataTableColumn<StrategyTrackRecord>[] = [
 	},
 	{
 		id: 'mode',
-		header: 'Modo',
+		header: 'Tipo',
 		cell: (row) => (
 			<Badge variant={row.mode === 'live' ? 'destructive' : 'secondary'}>
-				{row.mode === 'live' ? 'Live' : 'Paper'}
+				{row.mode === 'live' ? 'Real' : 'Demo'}
 			</Badge>
 		),
 	},

@@ -38,9 +38,9 @@ from database.seeds import (
 )
 from database.seeds._helpers import SeedStats
 
-# Orden de dependencias: users necesita roles; accounts necesita exchanges
-# (market_data) y usuarios; bots necesita cuentas, estrategias y conjuntos;
-# alerts necesita bots.
+# Orden de dependencias: users necesita roles; accounts (billetera de
+# Binance) necesita exchanges (market_data) y un super admin; bots (agentes
+# demo) necesita usuarios, estrategias y conjuntos; alerts necesita bots.
 SEEDS: dict[str, Callable[[Session], SeedStats]] = {
     "roles": roles.run,
     "users": users.run,

@@ -31,4 +31,10 @@ function ManagerGuard({ children }: { children: ReactNode }) {
 	return allowed ? children : <Navigate to="/dashboard" />;
 }
 
-export { AdminGuardLayout, ManagerGuard };
+/** Página suelta de supervisión: super admin y socio (este, en solo lectura). */
+function StaffGuard({ children }: { children: ReactNode }) {
+	const allowed = useHasRole(STAFF_ROLES);
+	return allowed ? children : <Navigate to="/dashboard" />;
+}
+
+export { AdminGuardLayout, ManagerGuard, StaffGuard };

@@ -124,8 +124,8 @@ uv run python -m database.seeds --list               # ver los disponibles
 | `market_data` | 1 exchange (Binance, el único de la plataforma), 14 timeframes, 31 símbolos (cripto spot + perpetuos TradFi `X/USDT:USDT`) |
 | `strategies` | 9 estrategias de ejemplo (correcciones = versión nueva) |
 | `feature_sets` | 3 conjuntos de indicadores por enfoque: Completo, Tendencia, Rango |
-| `accounts` | 2 cuentas paper con balances por usuario demo (se omite el usuario que no exista) |
-| `bots` | 2 agentes demo en paper y detenidos (oro 4h, BTC 1h) |
+| `accounts` | La billetera de Binance (cuenta live + `platform_wallet`), vía `build_platform_wallet_ensurer`; necesita `market_data` y un super admin |
+| `bots` | 2 agentes demo (paper) detenidos (oro 4h, BTC 1h), cada uno con su cuenta de práctica y 10.000 USDT |
 | `alerts` | 3 reglas de alerta demo sobre esos agentes (solo canal de escritorio) |
 
 Reglas para un seed nuevo:

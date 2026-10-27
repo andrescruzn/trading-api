@@ -135,6 +135,7 @@ Hash routing: la URL real es `/#/<ruta>`.
 | Conciliación con el capital de los agentes **a costo** y la billetera **a mercado** | Es exacta cuando los agentes están liquidados y sin posiciones; la diferencia restante explica lo abierto | Marcar a mercado las posiciones de cada agente |
 | M10 se borra **sin migrar datos** (decisión del usuario: BD de desarrollo) | El fondo común cubre inversores, comisiones y aportes | Migrar a asientos de apertura |
 | El socio puede pedir salidas y retiros **suyos** y gestionar sus medios de pago (`read_only_policy.py`) | Solo lectura sobre el sistema, pero también es participante | Socio sin dinero propio |
+| **Solo agentes reales en el fondo** (2026-10-26): un agente demo (`paper`) tiene su propia cuenta de práctica, así que nunca cumple `bot.account_id == billetera` y no aparece al abrir un agente al fondo. La billetera se asegura sola al resolverla (`WalletContextResolver` recibe `ensure_wallet`) | Los demo simulan con un monto propio y no deben tocar el dinero de nadie | Exigir `mode == live` aparte (equivalente: todo real está sobre la billetera) |
 
 ## Avance
 
@@ -152,6 +153,7 @@ Hash routing: la URL real es `/#/<ruta>`.
 
 | Prioridad | Mejora | Esfuerzo |
 |---|---|---|
+| Baja | Quitar las ramas de "billetera de práctica" (`WalletContext.is_live` falso: redes escritas a mano, depósitos y retiros confirmados sin el exchange) en depósitos, redes y retiros, y el `is_live` de sus respuestas y del front: desde el 2026-10-26 la billetera siempre es live y nunca se activan | S |
 | Alta | Aviso automático y bloqueo de pagos de retiros cuando la conciliación es negativa (R8) | S |
 | Alta | Exigir API key de la billetera sin permiso de retiro y con lista blanca de IP (R3) | S |
 | Alta | Tests unitarios de `tiered_fee`, `split_commission`, `plan_settlement` con salidas, `WithdrawalService`, `VerifyDepositsService`, `DepositCreditor`, `normalize_txid` | M |
@@ -159,7 +161,7 @@ Hash routing: la URL real es `/#/<ruta>`.
 | Media | Avisar a los dos super admin de cada cambio de la tabla de comisión o del reparto (R4) | S |
 | Media | Test que compruebe el 403 del socio en todas las rutas de escritura (R13) | S |
 | Baja | Calendario de liquidaciones (p. ej. el día 1 de cada mes) visible para los inversores (R6) | S |
-| Media | Prueba de punta a punta en paper y luego en testnet (plan: invitar, depositar, asignar, operar, liquidar con salida, pagar, conciliar ≈ 0, revisar socio e inversor) | M |
+| Media | Prueba de punta a punta en la testnet de Binance (`LIVE_USE_SANDBOX=true`; desde el 2026-10-26 la billetera ya no puede ser paper) (plan: invitar, depositar, asignar, operar, liquidar con salida, pagar, conciliar ≈ 0, revisar socio e inversor) | M |
 | Media | Conciliación con las posiciones abiertas a precio de mercado (hoy a costo) | M |
 | Baja | Preferencias de avisos por persona (canal y tipos) | S |
 | Baja | Registrar direcciones de origen por persona para detectar envíos de terceros | M |
@@ -327,7 +329,7 @@ Riesgos del negocio y de la operación del fondo (los problemas técnicos puntua
 Lista de verificación (todo debe estar en ✅ antes del primer depósito de un inversor):
 
 - [ ] **Abogado**: validar la figura legal y firmar contrato con cada inversor (R1).
-- [ ] **Prueba de punta a punta en paper**: invitar socio e inversor → depósito confirmado → asignar a un agente → operar → pausar sin posiciones → liquidar con una salida pedida → comprobar comisión, reparto y neto → pagar el retiro con comprobante → conciliación ≈ 0 → entrar como socio (sin botones, la API responde 403) y como inversor (no ve el total de la billetera).
+- [ ] **Prueba de punta a punta en la testnet de Binance**: invitar socio e inversor → depósito confirmado → asignar a un agente → operar → pausar sin posiciones → liquidar con una salida pedida → comprobar comisión, reparto y neto → pagar el retiro con comprobante → conciliación ≈ 0 → entrar como socio (sin botones, la API responde 403) y como inversor (no ve el total de la billetera).
 - [ ] **Testnet** de la billetera y de las órdenes (`docs/TESTNET.md`, `scripts/testnet_check.py`): saldo Spot + Funding, depósitos y órdenes reales de prueba.
 - [ ] **API key de la billetera** sin permiso de retiro, con lista blanca de IP y lectura de Funding (R3).
 - [ ] **"Pagar comisiones con BNB" desactivado** en la billetera (R10).
@@ -337,7 +339,7 @@ Lista de verificación (todo debe estar en ✅ antes del primer depósito de un 
 - [ ] **Calendario de liquidaciones** acordado y comunicado a los inversores (R6).
 - [ ] **Tope de dinero en el exchange** y plan si el exchange falla (R2).
 - [ ] **Respaldos de MySQL** automáticos y probados (el libro mayor y los comprobantes viven ahí).
-- [ ] **Historial en paper** de 3 a 6 meses de los agentes que recibirán dinero (R18).
+- [ ] **Historial como agente demo** de 3 a 6 meses de las estrategias que recibirán dinero (R18).
 
 ## Historial
 
@@ -351,3 +353,4 @@ Lista de verificación (todo debe estar en ✅ antes del primer depósito de un 
 - **2026-10-26** — **Funding de perpetuos** en el flujo de caja del agente (`agent_pools.last_funding_id`, `agent_settlements.funding_total`, fila "De eso, funding de futuros" en la vista previa); la billetera suma Futuros ([M4](M04-ACCOUNTS-PORTFOLIO.md)). Migración `b7d4e2a91c63` ([M8](M08-ORDERS-EXECUTION.md)).
 - **2026-10-26** — **Retiros entre billeteras** (decisión legal: sin bancos): direcciones cripto como medio de pago (red de las de depósito, validación por forma, memo), mínimo y comisión de red de Binance al pedir, `POST /withdrawals/{id}/lookup` y pago con txid comprobado contra el historial de retiros de Binance (completado, misma dirección y red; si no aparece, con nota), comisión de red a cargo de la persona, aviso con recibido, comisión, red, dirección, txid y explorador; `normalize_txid` acepta `Internal transfer N`. Migración `3e1b7c9d2a54`.
 - **2026-10-23** — Fix: Comisiones y Mi saldo se caían si aún no había tabla de comisión (`data: []` tomado como tabla); `getFeeSchedule` normaliza `[]` a `null`.
+- **2026-10-26** — **Billetera única de Binance y agentes demo:** `WalletContextResolver` asegura la billetera ([M4](M04-ACCOUNTS-PORTFOLIO.md)) antes de resolverla y el gateway ya no recibe `CredentialsCipher` (las credenciales están en el `.env`). Solo los agentes reales pueden abrirse al fondo; los demo ([M7](M07-BOTS-SIGNALS.md)) operan dinero simulado. Las ramas de billetera de práctica quedan sin uso (ver Posibles mejoras).

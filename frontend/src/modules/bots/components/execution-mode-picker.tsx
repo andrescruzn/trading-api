@@ -49,8 +49,7 @@ export function ExecutionModePicker({
 					footer={
 						mode === 'auto' && accountMode === 'live' ? (
 							<span className="text-xs text-destructive">
-								Envía órdenes con dinero real sin pedirte confirmación. El
-								administrador debe tenerlo habilitado.
+								Envía órdenes con dinero real sin pedirte confirmación.
 							</span>
 						) : undefined
 					}

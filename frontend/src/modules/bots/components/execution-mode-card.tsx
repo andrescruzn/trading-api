@@ -99,7 +99,7 @@ export function ExecutionModeCard({ bot }: { bot: Bot }) {
 						<AlertDialogDescription>
 							{bot.mode === 'live'
 								? 'El agente enviará órdenes con dinero real sin pedirte confirmación. '
-								: 'El agente enviará órdenes paper sin pedirte confirmación. '}
+								: 'El agente enviará órdenes con dinero simulado sin pedirte confirmación. '}
 							Cada posición se cierra sola al tocar su stop loss o su take
 							profit. Puedes volver a Con aprobación en cualquier momento.
 						</AlertDialogDescription>

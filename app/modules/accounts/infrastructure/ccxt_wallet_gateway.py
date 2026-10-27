@@ -31,7 +31,6 @@ from typing import Any
 
 import ccxt
 
-from app.common.security.credentials_cipher import CredentialsCipher
 from app.modules.accounts.domain.account_entity import Account
 from app.modules.accounts.domain.wallet_gateway import (
     DepositAddress,
@@ -61,9 +60,7 @@ _CLIENT_ERROR_CODES: dict[str, str] = {
     "ACCOUNT_NO_EXCHANGE": "WALLET_ACCOUNT_NO_EXCHANGE",
     "EXCHANGE_NOT_FOUND": "WALLET_ACCOUNT_NO_EXCHANGE",
     "EXCHANGE_NOT_SUPPORTED": "WALLET_EXCHANGE_NOT_SUPPORTED",
-    "ACCOUNT_NO_CREDENTIALS": "WALLET_ACCOUNT_NO_CREDENTIALS",
-    "ACCOUNT_CREDENTIALS_INCOMPLETE": "WALLET_ACCOUNT_NO_CREDENTIALS",
-    "ACCOUNT_CREDENTIALS_UNREADABLE": "WALLET_CREDENTIALS_UNREADABLE",
+    "EXCHANGE_CREDENTIALS_MISSING": "WALLET_CREDENTIALS_MISSING",
 }
 
 
@@ -105,9 +102,8 @@ def _translate_ccxt_error(exc: Exception) -> WalletGatewayError:
 class CcxtWalletGateway:
     """WalletGateway sobre ccxt para los exchanges de CCXT_EXCHANGE_MAP."""
 
-    def __init__(self, exchange_repo: ExchangeRepository, cipher: CredentialsCipher):
+    def __init__(self, exchange_repo: ExchangeRepository):
         self._exchange_repo = exchange_repo
-        self._cipher = cipher
 
     # ==================================================================
     # Saldo
@@ -312,7 +308,7 @@ class CcxtWalletGateway:
     def _client(self, account: Account, *, authenticated: bool):
         try:
             if authenticated:
-                return build_authenticated_client(account, self._exchange_repo, self._cipher)
+                return build_authenticated_client(account, self._exchange_repo)
             return build_public_client(account, self._exchange_repo)
         except ExchangeClientError as exc:
             raise WalletGatewayError(

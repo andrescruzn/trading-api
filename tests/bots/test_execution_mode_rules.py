@@ -5,8 +5,8 @@
 #
 # Reglas del modo de ejecución de un agente (check_execution_mode),
 # compartidas por crear y editar: modo válido, minutos para aprobar
-# (1–1440), `auto` en live solo con TRADING_LIVE_AUTO_ENABLED y
-# timeframe mínimo para señales automáticas.
+# (1–1440), `auto` permitido también en agentes reales (sin variable de
+# entorno que lo apague) y timeframe mínimo para señales automáticas.
 # ======================================================================
 
 from __future__ import annotations
@@ -24,7 +24,6 @@ MIN_SECONDS = 900  # 15m
 @pytest.fixture(autouse=True)
 def _settings(monkeypatch):
     monkeypatch.setattr(settings, "SIGNALS_AUTO_MIN_TIMEFRAME_SECONDS", MIN_SECONDS)
-    monkeypatch.setattr(settings, "TRADING_LIVE_AUTO_ENABLED", False)
 
 
 def _bot(execution_mode="manual", mode="paper", approval_ttl_minutes=None) -> Bot:
@@ -60,17 +59,8 @@ class TestCheckExecutionMode:
     def test_approval_ttl_limits_are_inclusive(self, ttl):
         assert check_execution_mode(_bot("approval", approval_ttl_minutes=ttl), 3600).success is True
 
-    def test_auto_in_live_is_blocked_by_default(self):
-        _assert_failed(check_execution_mode(_bot("auto", mode="live"), 3600), "BOT_AUTO_LIVE_DISABLED")
-
-    def test_auto_in_live_is_allowed_when_admin_enables_it(self, monkeypatch):
-        monkeypatch.setattr(settings, "TRADING_LIVE_AUTO_ENABLED", True)
-
-        assert check_execution_mode(_bot("auto", mode="live"), 3600).success is True
-
-    @pytest.mark.parametrize("execution_mode", ["manual", "approval"])
-    def test_live_with_a_person_in_the_loop_is_allowed(self, execution_mode):
-        # Con aprobación una persona decide cada orden: no necesita el permiso del admin
+    @pytest.mark.parametrize("execution_mode", ["manual", "approval", "auto"])
+    def test_real_agents_accept_every_execution_mode(self, execution_mode):
         assert check_execution_mode(_bot(execution_mode, mode="live"), 3600).success is True
 
     @pytest.mark.parametrize("execution_mode", ["approval", "auto"])
@@ -89,5 +79,8 @@ class TestCheckExecutionMode:
     def test_unknown_timeframe_skips_the_minimum_check(self):
         assert check_execution_mode(_bot("auto"), None).success is True
 
-    def test_live_auto_check_comes_before_the_timeframe_check(self):
-        _assert_failed(check_execution_mode(_bot("auto", mode="live"), 60), "BOT_AUTO_LIVE_DISABLED")
+    def test_real_auto_agent_still_needs_the_minimum_timeframe(self):
+        _assert_failed(
+            check_execution_mode(_bot("auto", mode="live"), 60),
+            "BOT_TIMEFRAME_TOO_SHORT_FOR_AUTOMATION",
+        )

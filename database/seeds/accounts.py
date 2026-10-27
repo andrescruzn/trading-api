@@ -4,97 +4,37 @@
 # database/seeds/accounts.py
 #
 # PROPÓSITO:
-# - Cuenta paper de ejemplo del Módulo 4 (Binance, el único exchange de
-#   la plataforma) con balances iniciales, para desarrollo y pruebas. Una
-#   por usuario demo: sin cuenta propia un usuario no puede crear agentes.
+# - Billetera única de la plataforma (Módulo 4): la cuenta live
+#   "Billetera Binance" y la fila de `platform_wallet`. Es lo mismo que
+#   hace la app sola la primera vez que alguien la necesita; el seed solo
+#   la deja lista desde el principio.
 #
 # NOTAS:
-# - Requiere los usuarios de DEMO_USER_EMAILS (seed `users` o registrados
-#   desde la web) y el seed `market_data`. El usuario que falte se omite.
-# - Clave natural: cuenta = (user_id, name); balance = (account_id, asset).
-# - `account_balances` es una serie temporal (UNIQUE incluye `ts`): un
-#   activo puede tener varias fotos. El balance inicial solo se inserta si
-#   el activo no tiene ninguna; `get_or_create` no sirve aquí porque
-#   espera una sola fila y fallaría con MultipleResultsFound.
+# - Requiere el seed `market_data` (exchange Binance) y al menos un super
+#   admin activo (seed `users`). Si falta algo, se omite con una nota.
+# - Las credenciales no se siembran: van en el `.env` (BINANCE_API_KEY /
+#   BINANCE_API_SECRET).
+# - Ya no hay cuentas de práctica por usuario: cada agente demo crea la
+#   suya (seed `bots`).
 # ======================================================================
 
 from __future__ import annotations
 
-from decimal import Decimal
-
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.modules.accounts.infrastructure.account_balance_model import AccountBalanceModel
-from app.modules.accounts.infrastructure.account_model import AccountModel
-from app.modules.market.infrastructure.exchange_model import ExchangeModel
-from app.modules.users.infrastructure.user_model import UserModel
-from database.seeds._helpers import SeedStats, get_or_create
-
-DEMO_USER_EMAILS: tuple[str, ...] = (
-    "andrescruznovoa@gmail.com",
-    "dayrondaza05@gmail.com",
-)
-
-# (exchange, nombre de la cuenta, nota, [(asset, free)])
-ACCOUNTS: list[tuple[str, str, str, list[tuple[str, Decimal]]]] = [
-    (
-        "Binance",
-        "Binance Paper — Demo",
-        "Cuenta de simulación para desarrollo",
-        [("USDT", Decimal("10000")), ("BTC", Decimal("0.25"))],
-    ),
-]
+from app.modules.accounts.infrastructure import SqlAlchemyPlatformWalletRepository
+from app.modules.accounts.providers import build_platform_wallet_ensurer
+from database.seeds._helpers import SeedStats
 
 
 def run(session: Session) -> SeedStats:
     stats = SeedStats()
 
-    for email in DEMO_USER_EMAILS:
-        user = session.execute(select(UserModel).filter_by(email=email)).scalar_one_or_none()
-        if user is None:
-            stats.notes.append(f"omitido: no existe el usuario {email}")
-            continue
-        _seed_user_accounts(session, user.id, stats)
+    existed = SqlAlchemyPlatformWalletRepository(session).get() is not None
+    account = build_platform_wallet_ensurer(session).ensure()
+    if account is None:
+        stats.notes.append("omitida la billetera: falta el exchange Binance o un super admin activo")
+        return stats
 
+    stats.track("platform_wallet", created=not existed)
     return stats
-
-
-def _seed_user_accounts(session: Session, user_id: int, stats: SeedStats) -> None:
-    for exchange_name, account_name, note, balances in ACCOUNTS:
-        exchange = session.execute(
-            select(ExchangeModel).filter_by(name=exchange_name)
-        ).scalar_one_or_none()
-        if exchange is None:
-            stats.notes.append(f"omitida '{account_name}': falta el exchange {exchange_name}")
-            continue
-
-        account = get_or_create(
-            session,
-            AccountModel,
-            lookup={"user_id": user_id, "name": account_name},
-            values={
-                "exchange_id": exchange.id,
-                "mode": "paper",
-                "base_currency": "USDT",
-                "status": "active",
-                "credentials_ref": None,
-                "meta": {"note": note},
-            },
-            stats=stats,
-        )
-
-        for asset, free in balances:
-            has_balance = session.execute(
-                select(AccountBalanceModel.id)
-                .filter_by(account_id=account.id, asset=asset)
-                .limit(1)
-            ).first() is not None
-            if not has_balance:
-                session.add(
-                    AccountBalanceModel(
-                        account_id=account.id, asset=asset, free=free, locked=Decimal("0")
-                    )
-                )
-                session.flush()
-            stats.track(AccountBalanceModel.__tablename__, created=not has_balance)

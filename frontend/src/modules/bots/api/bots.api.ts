@@ -5,6 +5,7 @@ import type { PageParams, Paginated } from '@/modules/shared/types/api';
 // Tipos (reflejan el JSON del backend tal cual, en snake_case)
 // ======================================================================
 
+/** `live` = agente real (billetera de Binance) · `paper` = agente demo (dinero simulado). */
 type BotMode = 'paper' | 'live';
 type BotStatus = 'running' | 'stopped' | 'paused' | 'error';
 type BotTransition = 'start' | 'pause' | 'stop';
@@ -38,6 +39,8 @@ type Bot = {
 	approval_ttl_minutes: number | null;
 	/** Otros usuarios pueden seguir sus señales aprobadas (llegan por Telegram). */
 	share_signals: boolean;
+	/** Solo agentes demo: monto simulado con el que se creó (DECIMAL como texto). */
+	demo_capital: string | null;
 };
 
 type BotRiskParams = {
@@ -51,9 +54,11 @@ type BotInput = {
 	strategy_id: number;
 	symbol_id: number;
 	timeframe_id: number;
-	account_id: number;
 	feature_set_id: number;
+	/** Real: opera la billetera de Binance. Demo: exige `demo_capital`. */
 	mode: BotMode;
+	/** Solo demo: monto simulado a invertir, en la moneda de cotización. */
+	demo_capital?: number;
 	risk_params: BotRiskParams;
 	execution_mode?: BotExecutionMode;
 	approval_ttl_minutes?: number | null;
@@ -61,11 +66,10 @@ type BotInput = {
 
 /**
  * Renombrar, cambiar el modo de ejecución y compartir señales se puede en
- * cualquier estado; modo paper/live y riesgo solo con el bot detenido.
+ * cualquier estado; el riesgo solo con el bot detenido. Real o demo no cambia.
  */
 type BotUpdate = {
 	name?: string;
-	mode?: BotMode;
 	risk_params?: BotRiskParams;
 	execution_mode?: BotExecutionMode;
 	approval_ttl_minutes?: number | null;
@@ -102,6 +106,8 @@ type BotSubscription = {
 
 type BotFilters = {
 	account_id?: number;
+	/** Real (`live`) o demo (`paper`). */
+	mode?: BotMode;
 	/** Solo los bots de mis cuentas (para admin, que sin filtro ve todos). */
 	mine?: boolean;
 };

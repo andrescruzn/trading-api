@@ -33,7 +33,7 @@ from app.modules.market.rest import (
     explorer_router,
 )
 from app.modules.features.rest import feature_sets_router, candle_features_router
-from app.modules.accounts.rest import accounts_router, balances_router, wallet_router
+from app.modules.accounts.rest import wallet_router
 from app.modules.fund.rest import (
     fund_deposits_router,
     fund_fees_router,
@@ -147,8 +147,8 @@ def create_app() -> FastAPI:
         exchanges_router, symbols_router, timeframes_router, candles_router, explorer_router,
         # Feature Engineering
         feature_sets_router, candle_features_router,
-        # Accounts & Portfolio
-        accounts_router, balances_router, wallet_router,
+        # Accounts & Portfolio (billetera única de Binance)
+        wallet_router,
         fund_settings_router, fund_deposits_router, fund_ledger_router, fund_pools_router,
         fund_fees_router, fund_payouts_router, fund_overview_router,
         # Strategies

@@ -10,7 +10,11 @@ import type {
 	SignalRejectionReason,
 } from '@/modules/bots/api/bots.api';
 import type { SelectOption } from '@/modules/shared/components/option-select';
-import { formatNumber, toNumber } from '@/modules/shared/lib/format';
+import {
+	formatNumber,
+	formatPrice,
+	toNumber,
+} from '@/modules/shared/lib/format';
 
 type BadgeVariant = 'default' | 'secondary' | 'outline' | 'destructive';
 
@@ -28,9 +32,10 @@ const BOT_STATUS_VARIANTS: Record<BotStatus, BadgeVariant> = {
 	error: 'destructive',
 };
 
+/** Real opera con la billetera de Binance; demo, con dinero simulado. */
 const BOT_MODE_LABELS: Record<BotMode, string> = {
-	paper: 'Paper',
-	live: 'Live',
+	paper: 'Demo',
+	live: 'Real',
 };
 
 const BOT_STATUS_OPTIONS: SelectOption[] = Object.entries(
@@ -40,12 +45,6 @@ const BOT_STATUS_OPTIONS: SelectOption[] = Object.entries(
 const BOT_MODE_OPTIONS: SelectOption[] = Object.entries(BOT_MODE_LABELS).map(
 	([value, label]) => ({ value, label }),
 );
-
-/** Opciones del formulario: aclaran qué implica cada modo. */
-const BOT_MODE_FORM_OPTIONS: SelectOption[] = [
-	{ value: 'paper', label: 'Paper (simulado, sin dinero real)' },
-	{ value: 'live', label: 'Live (dinero real)' },
-];
 
 const EXECUTION_MODE_LABELS: Record<BotExecutionMode, string> = {
 	manual: 'Manual',
@@ -160,11 +159,21 @@ function formatRiskReward(value: number | string | null | undefined): string {
 
 /** Nombres para mostrar en vez de IDs (ver `useBotCatalogs`). */
 type BotCatalogs = {
-	accounts: Map<number, string>;
 	symbols: Map<number, string>;
 	timeframes: Map<number, string>;
 	strategies: Map<number, string>;
 };
+
+/**
+ * Con qué dinero opera el agente: el real, con la billetera de Binance del
+ * fondo; el demo, con el monto simulado que se escribió al crearlo.
+ */
+function describeBotMoney(bot: Pick<Bot, 'mode' | 'demo_capital'>): string {
+	if (bot.mode === 'live') return 'Billetera de Binance';
+	return bot.demo_capital
+		? `Dinero simulado · ${formatPrice(bot.demo_capital)}`
+		: 'Dinero simulado';
+}
 
 /** Nombre visible del agente (en la UI los bots se llaman agentes). */
 function describeBot(bot: Pick<Bot, 'id' | 'name'>): string {
@@ -180,7 +189,6 @@ function describeBotMarket(bot: Bot, catalogs: BotCatalogs): string {
 
 export type { BadgeVariant, BotCatalogs };
 export {
-	BOT_MODE_FORM_OPTIONS,
 	BOT_MODE_LABELS,
 	BOT_MODE_OPTIONS,
 	BOT_STATUS_LABELS,
@@ -190,6 +198,7 @@ export {
 	DECISION_CHANNEL_LABELS,
 	describeBot,
 	describeBotMarket,
+	describeBotMoney,
 	EXECUTION_MODE_DESCRIPTIONS,
 	EXECUTION_MODE_LABELS,
 	EXECUTION_MODE_OPTIONS,

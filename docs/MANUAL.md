@@ -219,12 +219,15 @@ Cada estrategia funciona mejor en un régimen específico.
 Un agente es una estrategia funcionando sola sobre un símbolo. Es lo primero que se crea para operar
 y lo que se ve en el inicio de la app.
 
-Agente = Nombre + Símbolo + Estrategia + Conjunto de indicadores + Cuenta
+Agente = Nombre + Símbolo + Estrategia + Conjunto de indicadores + Dinero
 
-El timeframe y el riesgo por operación los pone la estrategia; el modo (paper o live) lo pone la cuenta.
+El timeframe y el riesgo por operación los pone la estrategia. El dinero depende del tipo de agente:
+  - Agente real: opera con la billetera de Binance, con lo que se le asigna desde el fondo.
+  - Agente demo: opera con dinero simulado; al crearlo solo escribes cuánto quieres invertir.
+Los dos tipos conviven: los reales se ven en el Inicio y los demo en "Agentes demo".
 
-Ejemplo: el agente "BTC/USDT · EMA Trend Follower" vigila BTC/USDT en velas de 1h con la estrategia
-EMA Trend Follower y el conjunto Tendencia, usando la cuenta de práctica de Andrés y arriesgando como
+Ejemplo: el agente demo "BTC/USDT · EMA Trend Follower" vigila BTC/USDT en velas de 1h con la
+estrategia EMA Trend Follower y el conjunto Tendencia, con 10.000 USDT simulados y arriesgando como
 máximo el 1 % del capital por operación.
 
 Mientras un agente está activo, el sistema descarga solo las velas de su símbolo y calcula sus
@@ -516,11 +519,14 @@ Funding de Binance, que es donde suelen caer el P2P y los depósitos, y la de Fu
 el margen de los agentes que operan perpetuos (oro, acciones…). Si una moneda no
 tiene precio en USDT, se muestra pero no suma al total, y la página lo avisa.
 
-Para empezar (super admin):
-  1. En Mis cuentas, crea una cuenta live del exchange con una API key de SOLO LECTURA (sin
-     permiso de retiro: los retiros se hacen a mano desde el exchange).
-  2. En Billetera, pulsa "Elegir billetera" y elige esa cuenta.
-  3. Pulsa "Sincronizar ahora" para ver el saldo de inmediato.
+Solo hay una billetera, la de Binance: nadie la crea ni la elige en la app.
+
+Para empezar (quien administra el servidor):
+  1. En Binance, crea una API key con permiso de lectura y de trading, NUNCA de retiro (los
+     retiros se hacen a mano desde Binance).
+  2. Ponla en el archivo .env del servidor (BINANCE_API_KEY y BINANCE_API_SECRET) y reinicia la
+     API. Mientras falte, la página Billetera dice "La billetera de Binance aún no está conectada".
+  3. En Billetera, pulsa "Sincronizar ahora" para ver el saldo de inmediato.
 
   Ejemplo: la billetera tiene 1.000 USDT libres, 200 USDT en una orden y 0,01 BTC a 60.000.
   Saldo total = 1.000 + 200 + 600 = 1.800 USDT · Saldo libre = 1.600 · En órdenes = 200.
@@ -859,9 +865,18 @@ métricas (accuracy, F1, etc.) y parámetros usados. Permite comparar versiones 
 3.4 Módulo 7 — Agentes y Señales (Bots & Signals)
 
 Un agente es la pieza que automatiza todo y el punto de entrada de la app. Une un símbolo, una
-estrategia, un conjunto de indicadores y una cuenta en una sola unidad que analiza el mercado.
+estrategia, un conjunto de indicadores y su dinero en una sola unidad que analiza el mercado.
 
-Cómo crear un agente ("Crear agente" en el inicio):
+Hay dos tipos de agente, y conviven a la par:
+  - Agentes reales (menú Inicio): operan con la billetera de Binance. Su dinero es el que les
+    asignas desde Administración → Fondo → Agentes del fondo; sin asignación no generan señales.
+  - Agentes demo (menú "Agentes demo"): operan con dinero simulado. Solo escribes cuánto quieres
+    invertir; no sale de ninguna billetera ni del fondo. Sirven para ver cómo le iría a una
+    estrategia antes de ponerle dinero real.
+Un agente demo no se puede convertir en real ni al revés: si una estrategia funciona en demo, se
+crea un agente real nuevo con ella.
+
+Cómo crear un agente ("Crear agente real" en el inicio o "Crear agente demo" en Agentes demo):
 
   Paso 1 — ¿Qué quieres operar?
     Eliges el símbolo (por ejemplo BTC/USDT). Solo aparecen los que el sistema puede descargar solo.
@@ -871,8 +886,9 @@ Cómo crear un agente ("Crear agente" en el inicio):
     recomendado ya marcado. El timeframe y el riesgo vienen de la estrategia.
 
   Paso 3 — ¿Con qué dinero?
-    Eliges una de tus cuentas; ves su saldo. Si no tienes ninguna, ahí mismo creas una cuenta de
-    práctica (paper) con un capital inicial, por ejemplo 10.000 USDT.
+    Agente real: se explica que opera con la billetera de Binance (y, si el símbolo es un
+    perpetuo, que usa la billetera de Futuros). Agente demo: escribes el monto a invertir, por
+    ejemplo 10.000 USDT, y ves cuánto arriesgaría cada operación con la regla del 1 %.
 
   Paso 4 — Revisa y crea
     El sistema propone un nombre ("BTC/USDT · EMA Trend Follower") que puedes cambiar. Eliges
@@ -880,7 +896,7 @@ Cómo crear un agente ("Crear agente" en el inicio):
     o Automático (ver 3.6). Con "Iniciarlo al crear" marcado, el agente empieza a trabajar de
     inmediato.
 
-Ejemplo con números: cuenta de práctica de 10.000 USDT y estrategia con riesgo de 1 % → cada
+Ejemplo con números: agente demo con 10.000 USDT y estrategia con riesgo de 1 % → cada
 operación puede perder como máximo 100 USDT. Si la IA propone entrada en 95.500 y stop loss en
 94.250, el tamaño de la posición es 100 / 1.250 = 0,08 BTC.
 
@@ -926,8 +942,8 @@ Transiciones válidas:
   Error    → Detenido         (resetear tras error)
 
 Reglas que el sistema hace cumplir al crear un agente:
-  - La cuenta tiene que ser tuya y estar activa.
-  - El modo del agente es el de la cuenta (paper con paper, live con live).
+  - Un agente demo necesita un monto mayor que 0; un agente real no lleva monto.
+  - El tipo (real o demo) no se cambia después.
   - El conjunto de indicadores tiene que calcular todo lo que pide la estrategia.
   - Nunca más del 1 % del capital por operación.
 
@@ -1145,8 +1161,8 @@ Las protecciones (se aplican a toda orden: manual, aprobada o automática)
   - Interruptor general: el administrador puede detener el envío de todas las órdenes de golpe.
     Mientras esté apagado no sale ninguna, ni siquiera los cierres por stop loss o take profit
     (en live, el stop loss que ya está puesto en el exchange sí se ejecuta).
-  - Live apagado por defecto: hasta que el administrador lo active, solo se ejecutan órdenes
-    paper.
+  - No hay un interruptor aparte para lo real: los agentes reales y los demo funcionan a la
+    vez. El único freno general es el interruptor de arriba, que detiene a todos.
   - Máximo por orden: una compra no puede valer más de un tope (por defecto $10.000; cada agente
     puede fijar uno menor). Si lo supera: "La orden supera el valor máximo permitido por
     operación".
@@ -1206,14 +1222,13 @@ Las protecciones (se aplican a toda orden: manual, aprobada o automática)
   1. Crea una cuenta en la testnet de Binance (la de spot) y
      genera allí una API key y su secret. Las claves de la testnet no sirven en el exchange
      real, ni las reales en la testnet.
-  2. El administrador pone LIVE_USE_SANDBOX=true y activa live (TRADING_LIVE_ENABLED=true) en
-     el servidor. Ojo: mientras LIVE_USE_SANDBOX esté en true, todas las cuentas live van a la
-     testnet.
-  3. En Mis cuentas, crea una cuenta live con las claves de la testnet.
-  4. Crea un agente con esa cuenta y opera como siempre. Revisa en la testnet que aparezca el
-     stop loss como orden y que la app registre lo que pase.
-  5. Para pasar a dinero real, el administrador vuelve a poner LIVE_USE_SANDBOX=false y tú usas
-     una cuenta con las claves reales.
+  2. El administrador pone LIVE_USE_SANDBOX=true y las claves de la testnet en BINANCE_API_KEY y
+     BINANCE_API_SECRET del servidor. Ojo: mientras LIVE_USE_SANDBOX esté en true, todos los
+     agentes reales van a la testnet.
+  3. Crea un agente real y opera como siempre. Revisa en la testnet que aparezca el stop loss
+     como orden y que la app registre lo que pase.
+  4. Para pasar a dinero real, el administrador vuelve a poner LIVE_USE_SANDBOX=false y cambia
+     las claves por las reales.
 
 
   Límites que hay que conocer:

@@ -447,10 +447,17 @@ quedan en pausa: no abren operaciones nuevas, pero sus posiciones abiertas sigue
 su stop loss y take profit. Si reactivas la cuenta, los agentes siguen en pausa hasta que la
 persona los reanude. Nadie puede bloquearse a sí mismo.
 
-"Auditoría" (Configuración) muestra cada petición que llegó a la app: quién la hizo, cuándo, qué
-ruta, si fue una consulta o un cambio y si falló. Sirve para responder preguntas como "¿quién
+"Auditoría" (Configuración) muestra los cambios que se hicieron en la app y todo lo que falló:
+quién lo hizo, cuándo, qué ruta y con qué resultado. Sirve para responder preguntas como "¿quién
 cambió este rol?" o "¿quién intentó entrar con este correo?". Se filtra por persona, tipo de
 evento, fechas, ruta o solo errores; nunca muestra contraseñas, códigos ni claves.
+
+Las consultas que salen bien (abrir una página, refrescar un saldo) no se guardan: la app consulta
+sola cada 30 o 60 segundos y llenaban la auditoría de filas sin valor. Lo importante del negocio ya
+queda en su propio sitio: cada señal guarda qué decidió la IA y quién la aprobó; cada movimiento
+del fondo queda en el libro mayor, que nunca se edita; cada depósito y retiro guarda quién lo
+resolvió; y cada agente tiene su pestaña Historial. Los registros de más de 180 días se pueden
+borrar con un script de mantenimiento (lo corre un administrador técnico).
 
 Las listas grandes (el historial de alertas y las pestañas Señales y Órdenes de un agente) se
 cargan por páginas: abren rápido aunque haya miles de registros.
@@ -906,7 +913,12 @@ La página de cada agente:
   - "Preparando datos": aparece mientras se descargan las primeras velas y se calculan los
     indicadores (uno o dos minutos). La página se actualiza sola.
   - Pestañas: Señales, Órdenes (con "Nueva orden"), Posiciones (con las ejecuciones debajo),
-    Mercado y Configuración (reglas de la estrategia y qué mide cada indicador).
+    Mercado, Configuración (reglas de la estrategia y qué mide cada indicador) e Historial.
+  - Historial: quién creó el agente, quién lo inició, pausó o detuvo y qué cambió en su
+    configuración, con el antes y el después. Ejemplo: "Ana · Cambió el riesgo por operación de
+    1 % a 0,5 %". Cuando el cambio lo hizo la app sola, dice "Sistema": por ejemplo, si el agente
+    llegó a su pérdida máxima permitida y se detuvo por error, o si se pausó porque se desactivó
+    la cuenta de su dueño.
   - Nueva orden: en una compra a mercado puedes poner stop loss y take profit; la app cierra la
     posición sola si el precio llega a alguno (en live, el stop loss queda en el exchange). Con
     los dos, el take profit debe estar al menos el doble de lejos que el stop loss, la misma

@@ -21,6 +21,8 @@ from app.modules.accounts.domain.account_balance_repository import AccountBalanc
 from app.modules.accounts.domain.account_entity import Account
 from app.modules.accounts.domain.account_repository import AccountRepository
 from app.modules.bots.domain.bot_entity import Bot
+from app.modules.bots.domain.bot_history import BOT_CREATED
+from app.modules.bots.domain.bot_history_repository import BotHistoryRepository
 from app.modules.bots.domain.bot_repository import BotRepository
 from app.modules.bots.services.bots.demo_capital import DEMO_CAPITAL_META_KEY
 from app.modules.bots.services.bots.execution_mode_rules import check_execution_mode
@@ -54,6 +56,7 @@ class CreateBotService:
       reglas de la estrategia.
     - Regla del 1 %: risk_pct en risk_params debe ser > 0 y <= 0.01.
     - El bot siempre inicia en estado 'stopped'.
+    - Queda en su historial quién lo creó (BOT_CREATED), en el mismo commit.
     """
 
     def __init__(
@@ -66,6 +69,7 @@ class CreateBotService:
         timeframe_repo: TimeframeRepository,
         feature_set_repo: FeatureSetRepository,
         ensure_wallet: Callable[[], Account | None],
+        history_repo: BotHistoryRepository,
     ):
         self._repo = repo
         self._account_repo = account_repo
@@ -75,6 +79,7 @@ class CreateBotService:
         self._timeframe_repo = timeframe_repo
         self._feature_set_repo = feature_set_repo
         self._ensure_wallet = ensure_wallet
+        self._history_repo = history_repo
 
     def create(
         self,
@@ -166,6 +171,16 @@ class CreateBotService:
                     name, symbol.quote_asset, demo_capital, requester_user_id
                 ).id
             created = self._repo.create(bot)
+            self._history_repo.record(
+                bot_id=created.id,
+                event_type=BOT_CREATED,
+                user_id=requester_user_id,
+                data={
+                    "mode": mode,
+                    "execution_mode": execution_mode,
+                    "risk_pct": risk_params.get("risk_pct"),
+                },
+            )
             self._repo.commit()
         except Exception:
             self._repo.rollback()

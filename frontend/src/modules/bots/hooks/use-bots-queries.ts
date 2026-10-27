@@ -3,6 +3,7 @@ import {
 	type BotFilters,
 	type BotMode,
 	getBot,
+	listBotHistory,
 	listBots,
 	listPendingSignals,
 	listSharedBots,
@@ -61,6 +62,18 @@ function useBotQuery(id: number | null) {
 	});
 }
 
+/**
+ * Historial del agente, página a página. Bajo BOTS_QUERY_KEY: iniciar,
+ * pausar o editar el agente lo refresca solo.
+ */
+function useBotHistoryQuery(botId: number, page: PageParams) {
+	return useQuery({
+		queryKey: [...BOTS_QUERY_KEY, 'history', botId, page],
+		queryFn: () => listBotHistory(botId, page),
+		placeholderData: keepPreviousData,
+	});
+}
+
 /** Últimas señales del bot; solo consulta cuando hay bot elegido. */
 function useSignalsQuery(botId: number | null, limit = 50) {
 	return useQuery({
@@ -102,6 +115,7 @@ export {
 	PENDING_SIGNALS_QUERY_KEY,
 	SHARED_BOTS_QUERY_KEY,
 	SIGNALS_QUERY_KEY,
+	useBotHistoryQuery,
 	useBotQuery,
 	useBotsByModeQuery,
 	useBotsQuery,

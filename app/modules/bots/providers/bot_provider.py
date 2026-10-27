@@ -25,6 +25,7 @@ from app.modules.agent.services.agent import AnalyzeService
 
 # Repos propios
 from app.modules.bots.infrastructure import (
+    SqlAlchemyBotHistoryRepository,
     SqlAlchemyBotRepository,
     SqlAlchemySignalRepository,
     SqlAlchemySignalSubscriptionRepository,
@@ -34,6 +35,7 @@ from app.modules.bots.infrastructure import (
 from app.modules.bots.services.bots import (
     CreateBotService,
     GetBotService,
+    ListBotHistoryService,
     ListBotsService,
     SyncBotMarketDataService,
     UpdateBotService,
@@ -93,6 +95,7 @@ class BotServiceFactory:
         self._bot_repo = SqlAlchemyBotRepository(session)
         self._signal_repo = SqlAlchemySignalRepository(session)
         self._subscription_repo = SqlAlchemySignalSubscriptionRepository(session)
+        self._history_repo = SqlAlchemyBotHistoryRepository(session)
 
         # Repos de otros módulos (borrowing) — necesarios para AnalyzeService
         self._strategy_repo = SqlAlchemyStrategyRepository(session)
@@ -155,6 +158,7 @@ class BotServiceFactory:
             timeframe_repo=self._timeframe_repo,
             feature_set_repo=self._feature_set_repo,
             ensure_wallet=build_platform_wallet_ensurer(self._session).ensure,
+            history_repo=self._history_repo,
         )
 
     def update_bot(self) -> UpdateBotService:
@@ -162,10 +166,22 @@ class BotServiceFactory:
             repo=self._bot_repo,
             account_repo=self._account_repo,
             timeframe_repo=self._timeframe_repo,
+            history_repo=self._history_repo,
         )
 
     def update_bot_status(self) -> UpdateBotStatusService:
-        return UpdateBotStatusService(repo=self._bot_repo, account_repo=self._account_repo)
+        return UpdateBotStatusService(
+            repo=self._bot_repo,
+            account_repo=self._account_repo,
+            history_repo=self._history_repo,
+        )
+
+    def list_bot_history(self) -> ListBotHistoryService:
+        return ListBotHistoryService(
+            repo=self._bot_repo,
+            account_repo=self._account_repo,
+            history_repo=self._history_repo,
+        )
 
     def sync_bot_market_data(self) -> SyncBotMarketDataService:
         return SyncBotMarketDataService(

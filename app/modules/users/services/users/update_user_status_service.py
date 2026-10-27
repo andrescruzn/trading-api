@@ -21,7 +21,8 @@
 #   commit: sin señales ni órdenes nuevas mientras nadie puede supervisarlos.
 #   `paused` (no `stopped`) para que el scheduler siga bajando velas y el
 #   SL/TP de las posiciones abiertas siga vigilado. Al reactivar la cuenta
-#   no se reanudan solos: la persona decide.
+#   no se reanudan solos: la persona decide. Cada pausa queda en el
+#   historial del agente con el admin que desactivó la cuenta.
 # ======================================================================
 
 from __future__ import annotations
@@ -29,11 +30,17 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from app.common.contracts import ServiceResult
+from app.modules.bots.domain.bot_history import (
+    BOT_STATUS_CHANGED,
+    REASON_OWNER_DISABLED,
+    status_change_data,
+)
 from app.modules.users.domain import UserRepository
 from app.modules.users.services.users.list_users_service import UserSummaryPayload
 
 if TYPE_CHECKING:
     from app.modules.accounts.domain.account_repository import AccountRepository
+    from app.modules.bots.domain.bot_history_repository import BotHistoryRepository
     from app.modules.bots.domain.bot_repository import BotRepository
 
 # Valores permitidos por el CHECK `chk_users_status` de la tabla `users`.
@@ -52,11 +59,13 @@ class UpdateUserStatusService:
         repo: UserRepository,
         bot_repo: "BotRepository | None" = None,
         account_repo: "AccountRepository | None" = None,
+        history_repo: "BotHistoryRepository | None" = None,
         protected_role_id: int | None = None,
     ):
         self._repo = repo
         self._bot_repo = bot_repo
         self._account_repo = account_repo
+        self._history_repo = history_repo
         self._protected_role_id = protected_role_id
 
     def update(
@@ -93,7 +102,7 @@ class UpdateUserStatusService:
             try:
                 user = self._repo.update(user)
                 if new_status != "active":
-                    self._pause_running_bots(user.id)
+                    self._pause_running_bots(user.id, int(requester_user_id))
                 self._repo.commit()
             except Exception:
                 self._repo.rollback()
@@ -112,7 +121,7 @@ class UpdateUserStatusService:
             )
         )
 
-    def _pause_running_bots(self, user_id: int) -> int:
+    def _pause_running_bots(self, user_id: int, requester_user_id: int) -> int:
         """Pausa los agentes `running` de las cuentas del usuario (sin commit)."""
         if self._bot_repo is None or self._account_repo is None:
             return 0
@@ -124,5 +133,12 @@ class UpdateUserStatusService:
             if bot.status == "running" and bot.can_transition_to("paused"):
                 bot.status = "paused"
                 self._bot_repo.update(bot)
+                if self._history_repo is not None:
+                    self._history_repo.record(
+                        bot_id=bot.id,
+                        event_type=BOT_STATUS_CHANGED,
+                        user_id=requester_user_id,
+                        data=status_change_data("running", "paused", REASON_OWNER_DISABLED),
+                    )
                 paused += 1
         return paused

@@ -6,11 +6,12 @@
 # Modelo SQLAlchemy para la tabla `audit_logs`.
 #
 # NOTAS:
-# - Auditoría de eventos de negocio (usuario / bot). Distinta de las tablas
-#   `http_audit_YYYY`, que registran cada request HTTP y se crean en runtime
-#   (ver audit_table_factory.py).
-# - Hoy ningún servicio escribe en esta tabla; el modelo existe para que el
-#   esquema completo lo gestione Alembic.
+# - Auditoría de eventos de negocio. Distinta de las tablas
+#   `http_audit_YYYY`, que registran los requests HTTP de cambios y errores
+#   y se crean en runtime (ver audit_table_factory.py).
+# - Hoy la usa el historial de los agentes (`bot_id` siempre informado):
+#   app/modules/bots/domain/bot_history.py y
+#   app/modules/bots/infrastructure/bot_history_repository_impl.py.
 # ======================================================================
 
 from sqlalchemy import BigInteger, CheckConstraint, Column, ForeignKey, Index, JSON, String, text

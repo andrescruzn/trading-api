@@ -9,6 +9,8 @@
 # - GET  /bots/shared       → agentes que comparten sus señales (vista pública)
 # - POST /bots              → crear bot
 # - GET  /bots/{id}         → detalle de un bot
+# - GET  /bots/{id}/history → historial del agente (quién lo creó, editó,
+#                              arrancó, pausó o detuvo), paginado
 # - PUT  /bots/{id}         → renombrar (siempre) o actualizar config (si stopped)
 # - POST /bots/{id}/start   → iniciar bot  (stopped  → running)
 # - POST /bots/{id}/stop    → detener bot  (running/paused → stopped)
@@ -49,6 +51,7 @@ from app.common.security.rate_limiter import check_user_rate_limit, market_sync_
 from app.common.utils import to_iso_utc
 from app.extensions.db import get_db
 from app.modules.bots.domain.bot_entity import Bot
+from app.modules.bots.domain.bot_history import BotHistoryEntry
 from app.modules.bots.providers import BotServiceFactory, get_bot_factory
 from app.modules.bots.services.subscriptions import SharedBot, SubscriptionState
 
@@ -89,6 +92,17 @@ def _bot_to_dict(b: Bot) -> dict[str, Any]:
         "started_at":     to_iso_utc(b.started_at),
         "stopped_at":     to_iso_utc(b.stopped_at),
         "created_at":     to_iso_utc(b.created_at),
+    }
+
+
+def _history_to_dict(e: BotHistoryEntry) -> dict[str, Any]:
+    return {
+        "id":         e.id,
+        "event_type": e.event_type,
+        "ts":         to_iso_utc(e.ts),
+        "data":       e.data,
+        "user_id":    e.user_id,
+        "user_name":  e.user_name,
     }
 
 
@@ -242,6 +256,36 @@ def get_bot(
 
 
 # ======================================================================
+# GET /bots/{bot_id}/history
+# ======================================================================
+
+@router.get("/{bot_id}/history", status_code=200)
+def list_bot_history(
+    bot_id: int,
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=DEFAULT_PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE),
+    identity: dict = Depends(token_required_actual),
+    factory: BotServiceFactory = Depends(get_factory),
+):
+    """Historial del agente, el más reciente primero. `user_name` null = el sistema."""
+    result = factory.list_bot_history().list(
+        bot_id=bot_id,
+        page=PageRequest.of(page, page_size),
+        owner_id=read_scope(identity),
+    )
+
+    if not result.success:
+        return build_error_response(result, BOT_ERROR_MESSAGES)
+
+    return build_paginated_response(
+        items=[_history_to_dict(e) for e in result.data.items],
+        total=result.data.total,
+        page=result.data.page,
+        page_size=result.data.page_size,
+    )
+
+
+# ======================================================================
 # PUT /bots/{bot_id}
 # ======================================================================
 
@@ -266,6 +310,7 @@ def update_bot(
         clear_approval_ttl="approval_ttl_minutes" in payload.model_fields_set
         and payload.approval_ttl_minutes is None,
         share_signals=payload.share_signals,
+        actor_user_id=int(identity["user_id"]),
     )
 
     if not result.success:
@@ -289,7 +334,8 @@ def start_bot(
 ):
     """Inicia un bot (stopped → running)."""
     result = factory.update_bot_status().transition(
-        bot_id=bot_id, new_status="running", owner_id=write_scope(identity)
+        bot_id=bot_id, new_status="running", owner_id=write_scope(identity),
+        actor_user_id=int(identity["user_id"]),
     )
 
     if not result.success:
@@ -310,7 +356,8 @@ def stop_bot(
 ):
     """Detiene un bot (running/paused → stopped)."""
     result = factory.update_bot_status().transition(
-        bot_id=bot_id, new_status="stopped", owner_id=write_scope(identity)
+        bot_id=bot_id, new_status="stopped", owner_id=write_scope(identity),
+        actor_user_id=int(identity["user_id"]),
     )
 
     if not result.success:
@@ -331,7 +378,8 @@ def pause_bot(
 ):
     """Pausa un bot (running → paused)."""
     result = factory.update_bot_status().transition(
-        bot_id=bot_id, new_status="paused", owner_id=write_scope(identity)
+        bot_id=bot_id, new_status="paused", owner_id=write_scope(identity),
+        actor_user_id=int(identity["user_id"]),
     )
 
     if not result.success:

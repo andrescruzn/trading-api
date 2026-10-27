@@ -16,7 +16,8 @@
 #    a. Notional máximo: qty × precio ≤ min(ORDER_MAX_NOTIONAL,
 #       risk_params.max_notional).
 #    b. Drawdown máximo del bot: si la pérdida realizada acumulada supera
-#       max_drawdown_pct del capital, el bot pasa a `error` y no abre más.
+#       max_drawdown_pct del capital, el bot pasa a `error` y no abre más
+#       (queda en su historial como cambio del sistema).
 #    Las ventas (cerrar o reducir) no se bloquean por estas reglas: reducir
 #    riesgo siempre debe poder hacerse mientras el kill switch esté abierto.
 # ======================================================================
@@ -30,6 +31,12 @@ from app.common.contracts import ServiceResult
 from app.modules.accounts.domain.account_balance_repository import AccountBalanceRepository
 from app.modules.accounts.domain.account_repository import AccountRepository
 from app.modules.bots.domain.bot_entity import Bot
+from app.modules.bots.domain.bot_history import (
+    BOT_STATUS_CHANGED,
+    REASON_MAX_DRAWDOWN,
+    status_change_data,
+)
+from app.modules.bots.domain.bot_history_repository import BotHistoryRepository
 from app.modules.bots.domain.bot_repository import BotRepository
 from app.modules.bots.domain.fund_capital_port import FundCapitalPort
 from app.modules.orders.domain.position_repository import PositionRepository
@@ -45,12 +52,14 @@ class RiskGateService:
         balance_repo: AccountBalanceRepository,
         position_repo: PositionRepository,
         fund_capital: FundCapitalPort | None = None,
+        history_repo: BotHistoryRepository | None = None,
     ):
         self._bot_repo = bot_repo
         self._account_repo = account_repo
         self._balance_repo = balance_repo
         self._position_repo = position_repo
         self._fund_capital = fund_capital
+        self._history_repo = history_repo
 
     def check(
         self,
@@ -86,8 +95,16 @@ class RiskGateService:
         # --------------------------------------------------------------
         if bot.max_drawdown_pct and self._drawdown_reached(bot):
             if bot.can_transition_to("error"):
+                old_status = bot.status
                 bot.status = "error"
                 self._bot_repo.update(bot)
+                if self._history_repo is not None:
+                    # Sin user_id: lo decidió el sistema
+                    self._history_repo.record(
+                        bot_id=bot.id,
+                        event_type=BOT_STATUS_CHANGED,
+                        data=status_change_data(old_status, "error", REASON_MAX_DRAWDOWN),
+                    )
                 self._bot_repo.commit()
             return ServiceResult.fail(
                 code="BOT_MAX_DRAWDOWN_REACHED",

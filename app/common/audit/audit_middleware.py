@@ -4,18 +4,21 @@
 # app/common/audit/audit_middleware.py
 #
 # PROPÓSITO:
-# - Capturar todos los requests HTTP y registrarlos en auditoría.
+# - Registrar en auditoría los cambios (POST/PUT/PATCH/DELETE) y cualquier
+#   respuesta con error (>= 400), incluidas las consultas fallidas.
+# - Las consultas exitosas (GET/HEAD/OPTIONS < 400) NO se guardan: el front
+#   consulta cada 30–60 s y llenaban la tabla sin valor de auditoría.
 # - Non-blocking: el insert se lanza en un hilo daemon.
 #
 # FLUJO:
 #   1. Skip rutas excluidas (/health, /docs, /redoc, /openapi.json, /favicon)
 #   2. Leer request body (ya buffereado por BaseHTTPMiddleware)
-#   3. Ejecutar request → capturar response body
-#   4. Extraer user_id del JWT (silencioso si falla)
-#   5. Resolver event_type según method+path+payload
-#   6. Sanitizar payloads (redactar campos sensibles)
-#   7. Lanzar hilo daemon NON-BLOCKING → insert en BD
-#   8. Retornar response reconstruida al cliente
+#   3. Ejecutar request; si es una consulta exitosa, devolverla tal cual
+#   4. Capturar response body y reconstruir la respuesta
+#   5. Extraer user_id del JWT (silencioso si falla)
+#   6. Sanitizar el request y resumir la respuesta (summarize_response)
+#   7. Resolver event_type según method+path
+#   8. Lanzar hilo daemon NON-BLOCKING → insert en BD
 # ======================================================================
 
 from __future__ import annotations
@@ -30,7 +33,11 @@ from starlette.requests import Request
 from starlette.responses import Response
 
 from app.common.audit.audit_repository import AuditRepository
-from app.common.audit.audit_sanitizer import sanitize_request, sanitize_response
+from app.common.audit.audit_sanitizer import (
+    MAX_BODY_BYTES,
+    sanitize_request,
+    summarize_response,
+)
 from app.common.config import settings
 from app.common.security.jwt.jwt_utils import decode_access_token
 from app.common.security.rate_limiter import client_ip
@@ -48,8 +55,8 @@ _SKIP_PREFIXES = (
     f"{settings.API_PREFIX}/telegram/webhook",
 )
 
-# Límite de body a auditar (10 KB) — evita memoria excesiva con uploads
-_MAX_BODY_BYTES = 10 * 1024
+# Consultas: solo se auditan si fallan (status >= 400).
+_READ_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
 
 # ======================================================================
 # Mapeo de event_type
@@ -117,7 +124,8 @@ class AuditMiddleware(BaseHTTPMiddleware):
     """
     Middleware de auditoría HTTP dinámica por año.
 
-    Registra cada request en http_audit_{year} de forma non-blocking.
+    Registra cambios y errores en http_audit_{year} de forma non-blocking;
+    las consultas exitosas no se guardan.
     """
 
     def __init__(self, app, repository: AuditRepository) -> None:
@@ -138,7 +146,7 @@ class AuditMiddleware(BaseHTTPMiddleware):
         body_bytes: bytes = await request.body()
 
         # No auditar body de requests muy grandes (ej: uploads)
-        req_body_to_audit = body_bytes if len(body_bytes) <= _MAX_BODY_BYTES else b""
+        req_body_to_audit = body_bytes if len(body_bytes) <= MAX_BODY_BYTES else b""
 
         # ------------------------------------------------------------------
         # 3. Extraer metadatos del request
@@ -154,6 +162,10 @@ class AuditMiddleware(BaseHTTPMiddleware):
         start_time = time.perf_counter()
         response: Response = await call_next(request)
         duration_ms = int((time.perf_counter() - start_time) * 1000)
+
+        # Consulta exitosa: no se audita ni se toca la respuesta
+        if method in _READ_METHODS and response.status_code < 400:
+            return response
 
         # ------------------------------------------------------------------
         # 5. Capturar response body y reconstruir la respuesta
@@ -177,10 +189,10 @@ class AuditMiddleware(BaseHTTPMiddleware):
         user_id = _extract_user_id(request)
 
         # ------------------------------------------------------------------
-        # 7. Sanitizar payloads
+        # 7. Sanitizar el request y resumir la respuesta
         # ------------------------------------------------------------------
         req_payload = sanitize_request(req_body_to_audit)
-        resp_payload = sanitize_response(response_body)
+        resp_payload = summarize_response(response_body, response.status_code)
 
         # ------------------------------------------------------------------
         # 8. Resolver event_type

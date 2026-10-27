@@ -97,6 +97,25 @@ type SharedBot = {
 	is_mine: boolean;
 };
 
+/**
+ * Evento del historial de un agente (GET /bots/{id}/history).
+ * - BOT_CREATED: `data = {mode, execution_mode, risk_pct}`
+ * - BOT_UPDATED: `data = {changes: {campo: [antes, después]}}`
+ * - BOT_STATUS_CHANGED: `data = {from, to, reason?}`; `reason` solo cuando
+ *   lo cambió el sistema (drawdown máximo, cuenta del dueño desactivada).
+ */
+type BotHistoryEventType = 'BOT_CREATED' | 'BOT_UPDATED' | 'BOT_STATUS_CHANGED';
+
+type BotHistoryEntry = {
+	id: number;
+	event_type: BotHistoryEventType;
+	ts: string | null;
+	data: Record<string, unknown>;
+	user_id: number | null;
+	/** Quién actuó; `null` = el sistema. */
+	user_name: string | null;
+};
+
 /** Respuesta de seguir / dejar de seguir un agente. */
 type BotSubscription = {
 	bot_id: number;
@@ -248,6 +267,11 @@ function transitionBot(id: number, transition: BotTransition) {
 	return api.post<Bot>(`/bots/${id}/${transition}`);
 }
 
+/** Quién creó, editó, inició, pausó o detuvo el agente (el más reciente primero). */
+function listBotHistory(id: number, page: PageParams) {
+	return api.get<Paginated<BotHistoryEntry>>(`/bots/${id}/history`, page);
+}
+
 /** Sin conjunto de indicadores, `rows_calculated` llega en null. */
 type BotMarketSyncResult = {
 	rows_fetched: number;
@@ -315,6 +339,8 @@ export type {
 	Bot,
 	BotExecutionMode,
 	BotFilters,
+	BotHistoryEntry,
+	BotHistoryEventType,
 	BotInput,
 	BotMarketSyncResult,
 	BotMode,
@@ -341,6 +367,7 @@ export {
 	createBot,
 	generateSignal,
 	getBot,
+	listBotHistory,
 	listBots,
 	listPendingSignals,
 	listSharedBots,

@@ -64,7 +64,11 @@ from app.modules.orders.execution.paper_executor import PaperExecutor
 from app.modules.orders.execution.live_executor import LiveExecutor
 
 # Repos borrowed de otros módulos
-from app.modules.bots.infrastructure import SqlAlchemyBotRepository, SqlAlchemySignalRepository
+from app.modules.bots.infrastructure import (
+    SqlAlchemyBotHistoryRepository,
+    SqlAlchemyBotRepository,
+    SqlAlchemySignalRepository,
+)
 from app.modules.market.infrastructure import (
     SqlAlchemyCandleRepository,
     SqlAlchemySymbolRepository,
@@ -144,6 +148,7 @@ class OrderServiceFactory:
             position_repo=self._position_repo,
             # Fondo común: drawdown desde la última liquidación del agente
             fund_capital=build_fund_capital(self._session),
+            history_repo=SqlAlchemyBotHistoryRepository(self._session),
         )
 
     def create_order(self) -> CreateOrderService:

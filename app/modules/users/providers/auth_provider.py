@@ -197,13 +197,17 @@ class AuthServiceFactory:
         """Activar, bloquear o desactivar una cuenta (super admin)."""
         # Import diferido: accounts y bots importan piezas de users (guards)
         from app.modules.accounts.infrastructure import SqlAlchemyAccountRepository
-        from app.modules.bots.infrastructure import SqlAlchemyBotRepository
+        from app.modules.bots.infrastructure import (
+            SqlAlchemyBotHistoryRepository,
+            SqlAlchemyBotRepository,
+        )
 
         # Misma sesión: el estado y la pausa de sus agentes van en un solo commit
         return UpdateUserStatusService(
             repo=self._repo,
             bot_repo=SqlAlchemyBotRepository(self._session),
             account_repo=SqlAlchemyAccountRepository(self._session),
+            history_repo=SqlAlchemyBotHistoryRepository(self._session),
             protected_role_id=self._config.AUTH_SUPER_ADMIN_ROLE_ID,
         )
 

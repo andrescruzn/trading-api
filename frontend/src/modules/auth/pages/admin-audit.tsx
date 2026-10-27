@@ -44,7 +44,7 @@ const EVENT_TYPE_FILTER_OPTIONS = [
 ];
 
 const KIND_FILTER_OPTIONS = [
-	{ value: ALL, label: 'Consultas y cambios' },
+	{ value: ALL, label: 'Cambios y errores' },
 	...AUDIT_KIND_OPTIONS,
 ];
 
@@ -182,7 +182,7 @@ export function AdminAuditPage() {
 		<div className="flex flex-col gap-6">
 			<PageListHeader
 				title="Auditoría"
-				description="Cada acción en la app queda registrada: quién la hizo, cuándo y con qué resultado. Los códigos de entrada y las claves de API nunca se guardan."
+				description="Aquí quedan los cambios hechos en la app y las acciones que fallaron: quién, cuándo y con qué resultado. Las consultas que salen bien no se guardan, ni los códigos de entrada ni las claves de API."
 				actions={[
 					{
 						label: 'Actualizar',

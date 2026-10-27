@@ -16,7 +16,8 @@ const AUDIT_EVENT_TYPE_OPTIONS: SelectOption[] = (
 
 const AUDIT_KIND_LABELS: Record<AuditKind, string> = {
 	write: 'Solo cambios',
-	read: 'Solo consultas',
+	// Las consultas que salen bien no se guardan: solo quedan las fallidas.
+	read: 'Solo consultas con error',
 };
 
 const AUDIT_KIND_OPTIONS: SelectOption[] = (

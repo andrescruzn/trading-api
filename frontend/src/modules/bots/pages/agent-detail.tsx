@@ -13,6 +13,7 @@ import { usePageBreadcrumb } from '@/modules/app-shell/hooks/use-page-breadcrumb
 import { useCanManage } from '@/modules/auth/hooks/use-can-manage';
 import type { Bot, Signal } from '@/modules/bots/api/bots.api';
 import { AgentControls } from '@/modules/bots/components/agent-controls';
+import { AgentHistoryTab } from '@/modules/bots/components/agent-history-tab';
 import { AgentMarketTab } from '@/modules/bots/components/agent-market-tab';
 import { AgentPerformanceTab } from '@/modules/bots/components/agent-performance-tab';
 import { AnalyzeNowButton } from '@/modules/bots/components/analyze-now-button';
@@ -542,6 +543,7 @@ export function AgentDetailPage() {
 					<TabsTrigger value="performance">Rendimiento</TabsTrigger>
 					<TabsTrigger value="market">Mercado</TabsTrigger>
 					<TabsTrigger value="config">Configuración</TabsTrigger>
+					<TabsTrigger value="history">Historial</TabsTrigger>
 				</TabsList>
 				<TabsContent value="signals" className="pt-2">
 					<SignalsTable botId={bot.id} onSelect={setSelectedSignal} />
@@ -560,6 +562,9 @@ export function AgentDetailPage() {
 				</TabsContent>
 				<TabsContent value="config" className="pt-2">
 					<ConfigTab bot={bot} />
+				</TabsContent>
+				<TabsContent value="history" className="pt-2">
+					<AgentHistoryTab botId={bot.id} />
 				</TabsContent>
 			</Tabs>
 

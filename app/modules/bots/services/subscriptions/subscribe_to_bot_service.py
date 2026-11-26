@@ -11,7 +11,10 @@
 #   clic no es un error para la persona).
 # - Agente inexistente o que no comparte → BOT_NOT_FOUND (404): no se
 #   revela qué agentes privados existen.
-# - Exige Telegram vinculado: es el único canal por el que llegan.
+# - Exige un canal por el que lleguen (Administración → Notificaciones):
+#   con el correo activo basta (todos tienen correo); si no, Telegram
+#   activo y vinculado (SUBSCRIPTION_TELEGRAM_REQUIRED). Sin ningún canal
+#   activo → SUBSCRIPTION_NO_CHANNEL (503).
 # ======================================================================
 
 from __future__ import annotations
@@ -26,6 +29,7 @@ from app.modules.bots.domain.signal_subscription_repository import (
     SignalSubscriptionRepository,
 )
 from app.modules.bots.services.bots.bot_access import bot_owner_id
+from app.modules.notifications.domain import NotificationSettingsReader
 from app.modules.users.domain import UserRepository
 
 
@@ -45,7 +49,7 @@ class SubscribeToBotService:
     Reglas de negocio:
     - Solo agentes con share_signals = True.
     - Nadie sigue su propio agente (SUBSCRIPTION_OWN_BOT).
-    - Hace falta Telegram vinculado (SUBSCRIPTION_TELEGRAM_REQUIRED).
+    - Hace falta un canal: correo activo, o Telegram activo y vinculado.
     """
 
     def __init__(
@@ -54,11 +58,15 @@ class SubscribeToBotService:
         subscription_repo: SignalSubscriptionRepository,
         account_repo: AccountRepository,
         user_repo: UserRepository,
+        notification_settings: NotificationSettingsReader,
+        smtp_configured: bool,
     ):
         self._bot_repo = bot_repo
         self._subscription_repo = subscription_repo
         self._account_repo = account_repo
         self._user_repo = user_repo
+        self._notification_settings = notification_settings
+        self._smtp_configured = smtp_configured
 
     def subscribe(self, bot_id: int, user_id: int) -> ServiceResult[SubscriptionState]:
         bot = self._bot_repo.get_by_id(bot_id)
@@ -69,9 +77,16 @@ class SubscribeToBotService:
             return ServiceResult.fail(code="SUBSCRIPTION_OWN_BOT", http_status=422)
 
         if not self._subscription_repo.exists(bot_id, user_id):
-            user = self._user_repo.get_by_id(user_id)
-            if user is None or user.telegram_chat_id is None:
-                return ServiceResult.fail(code="SUBSCRIPTION_TELEGRAM_REQUIRED", http_status=422)
+            config = self._notification_settings.get()
+            email_ok = config.email_active and self._smtp_configured
+            if not email_ok:
+                if not config.telegram_active:
+                    return ServiceResult.fail(code="SUBSCRIPTION_NO_CHANNEL", http_status=503)
+                user = self._user_repo.get_by_id(user_id)
+                if user is None or user.telegram_chat_id is None:
+                    return ServiceResult.fail(
+                        code="SUBSCRIPTION_TELEGRAM_REQUIRED", http_status=422
+                    )
 
             self._subscription_repo.create(
                 SignalSubscription(id=0, bot_id=bot_id, user_id=user_id)

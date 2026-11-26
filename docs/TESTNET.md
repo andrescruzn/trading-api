@@ -34,7 +34,7 @@ ORDER_NATIVE_STOP_LOSS=true
 | # | Paso | Qué comprobar |
 |---|---|---|
 | 1 | Abrir Administración → Fondo → Billetera y pulsar **Sincronizar ahora** | Muestra el saldo de la testnet (no hay que crear ni elegir cuentas) |
-| 2 | Crear un **agente real** (Inicio → Crear agente real), abrirlo al fondo con dinero asignado e iniciarlo; en Mercado, "Actualizar datos" | Aparecen velas e indicadores |
+| 2 | Crear un **agente real** (Inicio → Crear agente), abrirlo al fondo con dinero asignado e iniciarlo; en Mercado, "Actualizar datos" | Aparecen velas e indicadores |
 | 3 | Orden manual: compra a mercado pequeña con stop loss y take profit | Orden `filled`; en Posiciones, "Protección automática" y "El stop loss está como orden en el exchange"; en Órdenes, una orden stop `sent` |
 | 4 | En la testnet, ver la orden stop abierta | Mismo precio y cantidad |
 | 5 | Cancelar esa orden stop desde la app | Queda `canceled`; la posición conserva el SL (lo vigila el scheduler) |

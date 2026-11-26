@@ -461,10 +461,10 @@ BUILD_TELEGRAM = "app.modules.alerts.providers.telegram_provider.build_telegram_
 
 class TestPollTelegram:
 
-    @pytest.mark.parametrize("mode, token", [("off", "tkn"), ("webhook", "tkn"), ("polling", "")])
-    def test_does_nothing_unless_polling_with_token(self, sessions, monkeypatch, mode, token):
-        monkeypatch.setattr(settings, "TELEGRAM_UPDATES_MODE", mode)
-        monkeypatch.setattr(settings, "TELEGRAM_BOT_TOKEN", token)
+    @pytest.mark.parametrize("token", [None, ""])
+    def test_does_nothing_unless_polling_with_token(self, sessions, monkeypatch, token):
+        # _telegram_polling_token devuelve None fuera de polling o con Telegram inactivo
+        monkeypatch.setattr(execution_cycle, "_telegram_polling_token", lambda: token)
 
         with patch(POLLER) as fetch:
             execution_cycle._poll_telegram()
@@ -473,8 +473,7 @@ class TestPollTelegram:
         assert sessions.created == []
 
     def test_each_update_is_handled_in_its_own_session(self, sessions, monkeypatch):
-        monkeypatch.setattr(settings, "TELEGRAM_UPDATES_MODE", "polling")
-        monkeypatch.setattr(settings, "TELEGRAM_BOT_TOKEN", "tkn")
+        monkeypatch.setattr(execution_cycle, "_telegram_polling_token", lambda: "tkn")
         service = MagicMock()
         updates = [{"update_id": 1}, {"update_id": 2}]
 
@@ -487,8 +486,7 @@ class TestPollTelegram:
         assert all(s.close.called for s in sessions.created)
 
     def test_failing_update_rolls_back_and_the_next_one_is_processed(self, sessions, monkeypatch):
-        monkeypatch.setattr(settings, "TELEGRAM_UPDATES_MODE", "polling")
-        monkeypatch.setattr(settings, "TELEGRAM_BOT_TOKEN", "tkn")
+        monkeypatch.setattr(execution_cycle, "_telegram_polling_token", lambda: "tkn")
         service = MagicMock()
         service.handle.side_effect = [RuntimeError("callback roto"), None]
 
@@ -501,8 +499,7 @@ class TestPollTelegram:
         sessions.created[1].rollback.assert_not_called()
 
     def test_without_service_updates_are_skipped(self, sessions, monkeypatch):
-        monkeypatch.setattr(settings, "TELEGRAM_UPDATES_MODE", "polling")
-        monkeypatch.setattr(settings, "TELEGRAM_BOT_TOKEN", "tkn")
+        monkeypatch.setattr(execution_cycle, "_telegram_polling_token", lambda: "tkn")
 
         with patch(POLLER, return_value=[{"update_id": 1}]), patch(BUILD_TELEGRAM, return_value=None):
             execution_cycle._poll_telegram()

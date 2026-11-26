@@ -5,11 +5,12 @@
 #
 # PROPÓSITO:
 # - Implementa FundNotifier (módulo fund): cada evento se vuelve un aviso
-#   en la campana (alert_events sin regla) y, si están configurados, un
-#   correo y un mensaje de Telegram al chat DE ESA PERSONA.
+#   en la campana (alert_events sin regla) y, si están activos en
+#   Administración → Notificaciones, un correo y un mensaje de Telegram
+#   al chat DE ESA PERSONA.
 #
 # REGLAS:
-# - Nunca al chat general (TELEGRAM_DEFAULT_CHAT_ID): un aviso del fondo
+# - Nunca al chat por defecto: un aviso del fondo
 #   trae montos de una persona. Sin chat vinculado, no hay Telegram.
 # - Se llama después del commit del fondo; guarda la campana con su
 #   propio commit y manda correo y Telegram en segundo plano.
@@ -29,6 +30,7 @@ from app.modules.alerts.domain.alert_event_entity import AlertEvent
 from app.modules.alerts.domain.alert_event_repository import AlertEventRepository
 from app.modules.fund.domain.fund_notifier import FundEvent
 from app.modules.mailer.domain.mail_template import FUND_NOTICE_TEMPLATE
+from app.modules.notifications.domain import NotificationSettings, NotificationSettingsReader
 from app.modules.users.domain.user_entity import User
 from app.modules.users.domain.user_repository import UserRepository
 
@@ -45,12 +47,14 @@ class FundNoticeService:
         mailer: Any | None,
         settings: Any,
         super_admin_role_id: int,
+        notification_settings: NotificationSettingsReader,
     ):
         self._event_repo = event_repo
         self._user_repo = user_repo
         self._mailer = mailer
         self._settings = settings
         self._super_admin_role_id = int(super_admin_role_id)
+        self._notification_settings = notification_settings
 
     def notify(self, events: list[FundEvent]) -> None:
         if not events:
@@ -61,10 +65,18 @@ class FundNoticeService:
             self._event_repo.rollback()
             logger.exception("[Fund] No se pudieron guardar los avisos")
             return
+        if not deliveries:
+            return
+        try:
+            config = self._notification_settings.get()
+        except Exception:
+            logger.exception("[Fund] No se pudo leer la configuración de notificaciones")
+            return
         for user, notice in deliveries:
             try:
-                self._send_email(user, notice)
-                self._send_telegram(user, notice)
+                if config.email_active:
+                    self._send_email(user, notice)
+                self._send_telegram(config, user, notice)
             except Exception:
                 logger.exception("[Fund] No se pudo enviar el aviso al usuario %s", user.id)
 
@@ -130,8 +142,8 @@ class FundNoticeService:
             subject_override=notice.title,
         )
 
-    def _send_telegram(self, user: User, notice: FundNotice) -> None:
-        token = self._settings.TELEGRAM_BOT_TOKEN
+    def _send_telegram(self, config: NotificationSettings, user: User, notice: FundNotice) -> None:
+        token = config.telegram_token
         if not token or user.telegram_chat_id is None:
             return
         text = f"<b>{escape(notice.title)}</b>\n{escape(notice.message)}"

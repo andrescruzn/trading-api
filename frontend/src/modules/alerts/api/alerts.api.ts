@@ -81,8 +81,6 @@ type AlertEventFilters = {
 	user_id?: number;
 };
 
-type TelegramTestResult = { ok: boolean };
-
 // ======================================================================
 // Reglas de alerta
 // ======================================================================
@@ -115,15 +113,6 @@ function listAlertEventsPage(filters: AlertEventFilters, page: PageParams) {
 	});
 }
 
-// ======================================================================
-// Telegram (solo admin)
-// ======================================================================
-
-/** Envía un mensaje de prueba al chat configurado en el servidor. */
-function sendTelegramTest() {
-	return api.post<TelegramTestResult>('/alerts/test-telegram');
-}
-
 export type {
 	AlertChannels,
 	AlertDeliveryStatus,
@@ -138,12 +127,10 @@ export type {
 	PnlPeriod,
 	PriceOperator,
 	SignalActionFilter,
-	TelegramTestResult,
 };
 export {
 	createAlertRule,
 	listAlertEventsPage,
 	listAlertRules,
-	sendTelegramTest,
 	updateAlertRule,
 };

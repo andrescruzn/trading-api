@@ -28,15 +28,27 @@ import { toast } from '@/modules/ui/components/toast';
 
 const NUMERIC = 'text-right font-mono';
 
+/** "por correo", "por Telegram" o "por correo y Telegram". */
+function channelsText(email: boolean, telegram: boolean): string {
+	if (email && telegram) return 'por correo y Telegram';
+	return email ? 'por correo' : 'por Telegram';
+}
+
 /**
  * Agentes de otras personas que comparten sus señales. Quien sigue uno
- * recibe por Telegram sus compras y ventas aprobadas; no se ejecuta nada en
- * su cuenta. Sin Telegram conectado no hay por dónde enviarlas, así que el
- * botón abre el diálogo para conectarlo.
+ * recibe sus compras y ventas aprobadas por correo (si el administrador lo
+ * activó en Notificaciones) y por Telegram (si lo conectó); no se ejecuta
+ * nada en su cuenta. Sin ningún canal, el botón abre el diálogo para
+ * conectar Telegram.
  */
 export function SharedAgentsSection() {
 	const { user } = useAuth();
-	const telegramLinked = !!user?.telegram_linked;
+	const emailOn = !!user?.email_notifications;
+	const telegramAvailable = !!user?.telegram_available;
+	const telegramOn = telegramAvailable && !!user?.telegram_linked;
+	const canReceive = emailOn || telegramOn;
+	// Sin canal y sin Telegram para conectar: nadie puede recibir señales
+	const noChannel = !canReceive && !telegramAvailable;
 	const sharedQuery = useSharedBotsQuery();
 	const subscribe = useSubscribeToBotMutation();
 	const unsubscribe = useUnsubscribeFromBotMutation();
@@ -50,7 +62,7 @@ export function SharedAgentsSection() {
 	const canFollowSomeone = !!sharedQuery.data?.some((row) => !row.is_mine);
 
 	function follow(row: SharedBot) {
-		if (!telegramLinked) {
+		if (!canReceive) {
 			setTelegramOpen(true);
 			return;
 		}
@@ -58,7 +70,7 @@ export function SharedAgentsSection() {
 			onSuccess: () =>
 				toast.add({
 					title: 'Agente seguido',
-					description: 'Sus señales aprobadas te llegarán por Telegram.',
+					description: `Sus señales aprobadas te llegarán ${channelsText(emailOn, telegramOn)}.`,
 					type: 'success',
 				}),
 			onError: (error) =>
@@ -137,9 +149,13 @@ export function SharedAgentsSection() {
 					);
 				}
 				return (
-					<Button size="sm" disabled={busy} onClick={() => follow(row)}>
-						{!telegramLinked && <IconBrandTelegram />}
-						{telegramLinked ? 'Suscribirme' : 'Conectar Telegram'}
+					<Button
+						size="sm"
+						disabled={busy || noChannel}
+						onClick={() => follow(row)}
+					>
+						{!canReceive && !noChannel && <IconBrandTelegram />}
+						{canReceive || noChannel ? 'Suscribirme' : 'Conectar Telegram'}
 					</Button>
 				);
 			},
@@ -153,19 +169,30 @@ export function SharedAgentsSection() {
 					Agentes que comparten sus señales
 				</h2>
 				<p className="text-sm text-muted-foreground">
-					Sigue un agente para recibir por Telegram sus compras y ventas
-					aprobadas, con entrada, stop loss, take profit y R/R. Es solo
+					Sigue un agente para recibir{' '}
+					{canReceive ? `${channelsText(emailOn, telegramOn)} ` : ''}sus compras
+					y ventas aprobadas, con entrada, stop loss, take profit y R/R. Es solo
 					información: no se abre ninguna orden en tu cuenta y no se muestra a
 					quién pertenece el agente.
 				</p>
 			</div>
-			{!telegramLinked && canFollowSomeone && (
+			{noChannel && canFollowSomeone && (
+				<Alert>
+					<IconBrandTelegram />
+					<AlertTitle>Por ahora no se pueden seguir agentes</AlertTitle>
+					<AlertDescription>
+						No hay un canal activo para enviarte las señales. El administrador
+						debe activar el correo o Telegram en Notificaciones.
+					</AlertDescription>
+				</Alert>
+			)}
+			{!canReceive && !noChannel && canFollowSomeone && (
 				<Alert>
 					<IconBrandTelegram />
 					<AlertTitle>Conecta Telegram para seguir agentes</AlertTitle>
 					<AlertDescription className="flex flex-col items-start gap-2">
 						<p>
-							Las señales compartidas solo llegan por Telegram. También puedes
+							Las señales compartidas te llegan por Telegram. También puedes
 							conectarlo desde el menú de tu usuario → Conectar Telegram.
 						</p>
 						<Button

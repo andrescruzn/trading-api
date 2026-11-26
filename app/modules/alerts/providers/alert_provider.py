@@ -32,6 +32,7 @@ from app.modules.alerts.services.notifications import (
     MarkNotificationsSeenService,
 )
 from app.modules.mailer.providers.mailer_provider import build_mailer
+from app.modules.notifications.providers import build_notification_settings_reader
 from app.modules.market.infrastructure import (
     SqlAlchemyCandleRepository,
     SqlAlchemySymbolRepository,
@@ -65,6 +66,8 @@ class AlertServiceFactory:
             user_email=user_email,
             # Dueño de la regla: su chat de Telegram y, sin request, su correo
             user_repo=SqlAlchemyUserRepository(session),
+            # Telegram y correo encendidos / apagados en Notificaciones
+            notification_settings=build_notification_settings_reader(session),
         )
 
     # ------------------------------------------------------------------

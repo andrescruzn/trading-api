@@ -15,7 +15,10 @@ from sqlalchemy.orm import Session
 from app.common.config import settings
 from app.modules.alerts.infrastructure import SqlAlchemyAlertEventRepository
 from app.modules.alerts.services.notifications.fund_notice_service import FundNoticeService
-from app.modules.mailer.providers.mailer_provider import build_mailer
+from app.modules.notifications.providers import (
+    build_notification_mailer,
+    build_notification_settings_reader,
+)
 from app.modules.users.infrastructure import SqlAlchemyUserRepository
 
 
@@ -23,7 +26,8 @@ def build_fund_notifier(session: Session) -> FundNoticeService:
     return FundNoticeService(
         event_repo=SqlAlchemyAlertEventRepository(session),
         user_repo=SqlAlchemyUserRepository(session),
-        mailer=build_mailer(settings) if settings.SMTP_HOST else None,
+        mailer=build_notification_mailer(),
         settings=settings,
         super_admin_role_id=settings.AUTH_SUPER_ADMIN_ROLE_ID,
+        notification_settings=build_notification_settings_reader(session),
     )

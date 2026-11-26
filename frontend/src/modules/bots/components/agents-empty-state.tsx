@@ -33,9 +33,9 @@ const HOW_IT_WORKS = [
 /** Lo que cambia entre la bienvenida de agentes reales y la de agentes demo. */
 const COPY: Record<BotMode, { title: string; text: string; cta: string }> = {
 	live: {
-		title: 'Crea tu primer agente real',
+		title: 'Crea tu primer agente',
 		text: 'Un agente opera por ti sin emociones: aplica una estrategia sobre un símbolo y solo propone operaciones que pasan reglas objetivas. Los agentes reales operan con la billetera de Binance y con el dinero que les asignes desde el fondo.',
-		cta: 'Crear agente real',
+		cta: 'Crear agente',
 	},
 	paper: {
 		title: 'Crea tu primer agente demo',

@@ -26,7 +26,7 @@ function subscribersText(count: number) {
 
 /**
  * Activa "Compartir señales": otros usuarios pueden seguir el agente y
- * recibir por Telegram sus compras y ventas aprobadas. Se cambia en
+ * recibir por correo o Telegram sus compras y ventas aprobadas. Se cambia en
  * cualquier estado. Al apagarlo las suscripciones se conservan, pero no se
  * envía nada hasta que se vuelva a compartir.
  */
@@ -65,9 +65,9 @@ export function ShareSignalsCard({ bot }: { bot: Bot }) {
 				<CardTitle>Compartir señales</CardTitle>
 				<CardDescription>
 					Otras personas de Trading App podrán seguir este agente y recibir por
-					Telegram sus compras y ventas aprobadas: símbolo, entrada, stop loss,
-					take profit y R/R. No verán tu cuenta, tus montos ni el nombre del
-					agente, y en sus cuentas no se ejecuta nada.
+					correo o Telegram sus compras y ventas aprobadas: símbolo, entrada,
+					stop loss, take profit y R/R. No verán tu cuenta, tus montos ni el
+					nombre del agente, y en sus cuentas no se ejecuta nada.
 				</CardDescription>
 			</CardHeader>
 			<CardContent>

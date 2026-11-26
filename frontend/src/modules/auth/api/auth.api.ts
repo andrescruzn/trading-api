@@ -14,6 +14,10 @@ type CurrentUser = {
 	created_at: string | null;
 	/** Tiene un chat de Telegram vinculado (señales por aprobar con botones). */
 	telegram_linked: boolean;
+	/** El bot de Telegram está activo en Notificaciones (se puede conectar). */
+	telegram_available: boolean;
+	/** Los avisos por correo están activos (y el servidor tiene SMTP). */
+	email_notifications: boolean;
 };
 
 /** Enlace de un solo uso para vincular Telegram (vence en 10 minutos). */

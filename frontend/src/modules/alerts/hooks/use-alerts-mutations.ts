@@ -3,7 +3,6 @@ import {
 	type AlertRuleInput,
 	type AlertRuleUpdate,
 	createAlertRule,
-	sendTelegramTest,
 	updateAlertRule,
 } from '@/modules/alerts/api/alerts.api';
 import { ALERT_RULES_QUERY_KEY } from '@/modules/alerts/hooks/use-alerts-queries';
@@ -27,12 +26,4 @@ function useUpdateAlertRuleMutation() {
 	});
 }
 
-function useSendTelegramTestMutation() {
-	return useMutation({ mutationFn: sendTelegramTest });
-}
-
-export {
-	useCreateAlertRuleMutation,
-	useSendTelegramTestMutation,
-	useUpdateAlertRuleMutation,
-};
+export { useCreateAlertRuleMutation, useUpdateAlertRuleMutation };

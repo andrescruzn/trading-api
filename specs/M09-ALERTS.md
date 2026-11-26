@@ -10,11 +10,11 @@
 | Avance (alcance original) | 100 % — 10/10 entregables (+ 3 de 2026-10-19: guarda SSRF, endurecimiento de Telegram, Telegram por usuario; + 1 de 2026-10-20: alertas que funcionan solas) |
 | Madurez (estimada) | 71 % — ver [Avance](#avance) |
 | Tablas | `alert_rules`, `alert_events` (R/W); `bots`, `signals`, `orders`, `accounts`, `signal_subscriptions` (R, vía hooks y propiedad); `users` (R: `telegram_chat_id`; R/W: `notifications_seen_at`) |
-| Depende de | [M1](M01-AUTH.md) (vínculo del chat de Telegram), [M7](M07-BOTS-SIGNALS.md) y [M8](M08-ORDERS-EXECUTION.md) (hooks; Telegram aprueba/rechaza vía `ExecuteSignalService`); mailer para el canal email |
+| Depende de | [M12](M12-NOTIFICATIONS.md) (configuración de Telegram y correo), [M1](M01-AUTH.md) (vínculo del chat de Telegram), [M7](M07-BOTS-SIGNALS.md) y [M8](M08-ORDERS-EXECUTION.md) (hooks; Telegram aprueba/rechaza vía `ExecuteSignalService`); mailer para el canal email |
 | Lo usan | Es un consumidor: lo invocan [M7](M07-BOTS-SIGNALS.md) (alertas + aviso de señal pendiente + señales compartidas), [M8](M08-ORDERS-EXECUTION.md) y el scheduler (reglas de precio, PnL y drawdown en cada ciclo + polling de Telegram) |
 | Prefijo API | `/api/alert-rules`, `/api/alert-events`, `/api/alerts`, `/api/telegram/webhook`, `/api/notifications` |
-| Frontend | `frontend/src/modules/alerts` (el vínculo de Telegram vive en `app-shell`, ver [M1](M01-AUTH.md)) |
-| Última revisión | 2026-10-23 |
+| Frontend | `frontend/src/modules/alerts` (el vínculo de Telegram vive en `app-shell`, ver [M1](M01-AUTH.md); la configuración de canales, en [M12](M12-NOTIFICATIONS.md)) |
+| Última revisión | 2026-11-26 |
 
 ## Descripción
 
@@ -30,11 +30,12 @@
 - Envía las alertas por **4 canales**: Email (SMTP), Telegram (Bot API), Webhook (HTTP POST a una URL externa **pública y https**) y Desktop (notificaciones nativas macOS/Windows/Linux con plyer)
 - Las alertas se **disparan automáticamente** cuando se genera una señal (M7) o se crea una orden (M8), también si la orden fue rechazada
 - Las reglas de **precio, PnL y drawdown se revisan solas** en cada ciclo del scheduler (cada minuto por defecto); mientras la condición siga, el aviso se repite como máximo cada `ALERT_REPEAT_MINUTES` (60 min), no en cada ciclo
-- Por **Telegram**, las alertas llegan al chat que vinculó el dueño de la regla (si no vinculó ninguno, al chat del sistema); por **correo**, a su email
+- Por **Telegram**, las alertas llegan al chat que vinculó el dueño de la regla (si no vinculó ninguno, al chat por defecto); por **correo**, a su email. Cada canal se enciende o apaga en Administración → Notificaciones ([M12](M12-NOTIFICATIONS.md))
 - Guarda un historial de todos los eventos de alerta disparados con estado de entrega
 - El despacho es **fire-and-forget**: si falla una alerta, no afecta la operación de trading
 - **Telegram por usuario:** cada persona vincula su chat privado; cuando un agente en modo Con aprobación tiene una señal pendiente, le llega un mensaje con los precios y botones **Aprobar** / **Descartar**. La respuesta se procesa por webhook (producción) o polling (desarrollo).
 - **Señales compartidas** (2026-10-20): si un agente comparte sus señales ([M7](M07-BOTS-SIGNALS.md)), quienes lo siguen reciben por Telegram sus BUY/SELL aprobadas — solo información, sin botones.
+- **También por correo** (2026-11-26): con el correo activo en [M12](M12-NOTIFICATIONS.md), la señal por aprobar (con botón a la app, sin decidir desde el correo) y las señales compartidas llegan además por email.
 
 ## Páginas
 
@@ -44,8 +45,8 @@ Hash routing: la URL real es `/#/<ruta>`.
 - `/#/alerts` — Panel del usuario: reglas configuradas (crear/editar en diálogo, activar/desactivar) + historial de alertas recibidas
 - Menú de usuario → **Conectar Telegram** (diálogo, [M1](M01-AUTH.md)): genera el enlace de vinculación con el bot
 
-**Páginas — Administrador (solo admin):**
-- `/#/admin/telegram` — "Telegram" (Administración → Configuración): ver la configuración y probar la conexión con Telegram Bot
+**Páginas — Administrador:**
+- La configuración y la prueba de Telegram y correo están en `/#/admin/notifications` ([M12](M12-NOTIFICATIONS.md)); `/#/admin/telegram` redirige ahí desde 2026-11-26.
 
 ## Entregables
 
@@ -57,9 +58,9 @@ Entregables:
 - ✅ Channels (Strategy Pattern): EmailChannel, TelegramChannel, WebhookChannel, DesktopChannel
 - ✅ Services: FireAlertService, EvaluateAlertsService, CRUD alert_rules, list alert_events
 - ✅ Provider: AlertServiceFactory + get_alert_factory() + build_evaluate_alerts_service()
-- ✅ REST: GET/POST/PUT/DELETE /api/alert-rules, GET /api/alert-events, POST /api/alerts/evaluate, POST /api/alerts/test-telegram
+- ✅ REST: GET/POST/PUT/DELETE /api/alert-rules, GET /api/alert-events, POST /api/alerts/evaluate (`POST /api/alerts/test-telegram` se retiró el 2026-11-26: ver [M12](M12-NOTIFICATIONS.md))
 - ✅ Hooks fire-and-forget en M7 (GenerateSignalService) y M8 (CreateOrderService)
-- ✅ Web UI: `/#/alerts` (usuario), `/#/admin/telegram` (config Telegram) — en React desde 2026-10-08 (`/#/admin/alerts` se retiró el 2026-10-23)
+- ✅ Web UI: `/#/alerts` (usuario) — en React desde 2026-10-08 (`/#/admin/alerts` se retiró el 2026-10-23; la config de Telegram pasó a `/#/admin/notifications`, [M12](M12-NOTIFICATIONS.md), el 2026-11-26)
 - ✅ Sidebar (`app-sidebar.tsx`) con links de Alertas y Telegram
 - ✅ ALERT_TEMPLATE agregado al catálogo de mail templates
 - httpx ya instalado (v0.28.1); plyer se instala opcionalmente para desktop notifications
@@ -86,7 +87,7 @@ Entregables:
 | Webhook con `follow_redirects=False`, timeout 5 s y **la URL nunca en los logs** (se loguea el `rule.id`) | Un 302 hacia una IP interna no se sigue; las URLs de Slack/Discord llevan el token en la ruta | Seguir redirects y loguear la URL |
 | Telegram con `parse_mode=HTML` y `html.escape` en todo texto variable | Un nombre de regla con `*` o `<` rompía el Markdown anterior | `parse_mode=Markdown` sin escapar |
 | `telegram_api(token, method, payload)` único para la Bot API: loguea método, status y `description` (≤ 200), nunca la URL ni el texto de la excepción | El token va en la URL y httpx lo incluye en sus excepciones | Un `httpx.post` por canal |
-| Telegram de **alertas** al chat vinculado del **dueño de la regla** (`users.telegram_chat_id`); sin vínculo (o si falla la lectura del usuario) cae en `TELEGRAM_DEFAULT_CHAT_ID` | Cada quien recibe sus avisos en su chat; el respaldo mantiene el comportamiento anterior para quien no vinculó | Solo el chat del sistema (antes) / no enviar sin vínculo |
+| Telegram de **alertas** al chat vinculado del **dueño de la regla** (`users.telegram_chat_id`); sin vínculo (o si falla la lectura del usuario) cae en el chat por defecto de [M12](M12-NOTIFICATIONS.md) | Cada quien recibe sus avisos en su chat; el respaldo mantiene el comportamiento anterior para quien no vinculó | Solo el chat del sistema (antes) / no enviar sin vínculo |
 | Correo de alertas: el del request si lo hay; si no (hooks, scheduler, endpoint admin), el del **dueño de la regla** | Antes los hooks no tenían correo y el canal email nunca enviaba | Pasar el correo desde cada hook |
 | Reglas `price`/`pnl`/`drawdown` evaluadas en el **ciclo de ejecución** del scheduler (`_evaluate_alert_rules`, sesión propia, después de proteger posiciones), con los datos ya guardados | No llama a exchanges ni a la IA; tras los cierres por SL/TP el PnL ya está al día | Endpoint manual (antes) / job aparte |
 | **Antispam por cooldown** con el último `alert_events` de la regla: si tiene menos de `ALERT_REPEAT_MINUTES` (60), la regla ni se evalúa | Sin columnas nuevas; mientras la condición siga, es un recordatorio cada N minutos | Transición falso→verdadero (exige guardar el estado "falso") |
@@ -101,8 +102,8 @@ Entregables:
 | `TelegramUpdateService` solo entiende `/start <código>` y los `callback_data` con formato fijo, solo en **chats privados**; la identidad sale del chat vinculado y la señal debe ser de un agente de ese usuario (también si es admin) | El texto de la persona nunca se interpreta; desde Telegram cada quien decide lo suyo | Comandos libres |
 | Tras decidir, se responde con `answerCallbackQuery` y se reescribe el mensaje original con el resultado (`editMessageText`) | Queda claro en el chat qué pasó con la señal | Mandar un mensaje nuevo |
 | Textos del bot en `telegram_messages.py` (`DECISION_MESSAGES`, `LINK_MESSAGES`, botones), con números `es-CO` y hora de Bogotá | Igual que `error_messages.py`: los servicios devuelven códigos | Textos dentro de los servicios |
-| Tres modos de recibir respuestas (`TELEGRAM_UPDATES_MODE`): `off` · `polling` (el scheduler líder llama `getUpdates`; desarrollo) · `webhook` (Telegram llama `POST /api/telegram/webhook`; producción) | En desarrollo Telegram no puede llamar a localhost | Solo webhook |
-| Webhook protegido con `X-Telegram-Bot-Api-Secret-Token` comparado en tiempo constante con `TELEGRAM_WEBHOOK_SECRET`; sin secreto o con otro modo → 404; con secreto correcto → siempre 200 | Solo Telegram puede llamarlo; con otro código Telegram reintenta el mismo update | Endpoint abierto |
+| Tres modos de recibir respuestas (`telegram_updates_mode` en [M12](M12-NOTIFICATIONS.md); antes `TELEGRAM_UPDATES_MODE`): `off` · `polling` (el scheduler líder llama `getUpdates`; desarrollo) · `webhook` (Telegram llama `POST /api/telegram/webhook`; producción) | En desarrollo Telegram no puede llamar a localhost | Solo webhook |
+| Webhook protegido con `X-Telegram-Bot-Api-Secret-Token` comparado en tiempo constante con el secreto guardado (cifrado) en `notification_settings`; sin secreto o con otro modo → 404; con secreto correcto → siempre 200 | Solo Telegram puede llamarlo; con otro código Telegram reintenta el mismo update | Endpoint abierto |
 | `/api/telegram/webhook` **excluido de la auditoría HTTP** | El cuerpo de `/start` lleva el código de vinculación y mensajes de terceros | Auditarlo con redacción |
 | `SharedSignalNotifier`: mensaje **sin botones**, sin tamaño de posición, cuenta ni nombre del agente (acción, símbolo, timeframe, entrada, SL, TP, R/R y estrategia); omite al dueño y a quien no tiene chat; nunca lanza (log por suscriptor y por llamada) | Quien sigue no decide ni ejecuta nada; el tamaño revela el capital del dueño y el nombre puede identificarlo; un chat roto no corta el reparto | Reutilizar `pending_signal_text` |
 | `telegram_provider.py` no se exporta en `providers/__init__.py` y hace imports diferidos de los providers de orders y users | `orders → alerts` (hooks) importa este paquete: un import a nivel de módulo crearía un ciclo | Reorganizar los paquetes |
@@ -196,7 +197,7 @@ Entregables:
 
 Providers:
 - `app/modules/alerts/providers/alert_provider.py` → `AlertServiceFactory` (`evaluate_periodic_alerts()` con imports diferidos de bots/orders), `get_alert_factory()`, `build_evaluate_alerts_service()`, `build_periodic_alerts_service(session)` (scheduler)
-- `app/modules/alerts/providers/telegram_provider.py` → `build_signal_approval_notifier(session)` y `build_shared_signal_notifier(session)` (los usa `BotServiceFactory.generate_signal()`), `build_telegram_update_service(session)` (`None` sin `TELEGRAM_BOT_TOKEN`; lo usan el webhook y el polling)
+- `app/modules/alerts/providers/telegram_provider.py` → `build_signal_approval_notifier(session)` y `build_shared_signal_notifier(session)` (los usa `BotServiceFactory.generate_signal()`), `build_telegram_update_service(session)` (`None` si Telegram no está activo en [M12](M12-NOTIFICATIONS.md); lo usan el webhook y el polling)
 
 ### Endpoints REST
 | Método | Ruta | Auth | Nota |
@@ -208,29 +209,20 @@ Providers:
 | DELETE | `/api/alert-rules/{id}` | token | Soft delete (is_active=False) |
 | GET | `/api/alert-events` | token | Historial de eventos, el más reciente primero (`ts`, `id` desc). Usuario: los suyos; admin: todos o los del dueño `user_id` (ignorado para usuarios). `from_ts` aplica a los dos roles (antes el admin lo ignoraba). Paginación opt-in: con `page` (≥ 1) y `page_size` (1–100, 20 por defecto) `data` pasa a ser `{items, pagination: {total, page, page_size, total_pages}}` (`build_paginated_response`); sin `page`, la lista de siempre hasta `limit` (1–500) |
 | POST | `/api/alerts/evaluate` | admin | Reglas `price` de un símbolo con el precio dado (`{symbol_id, current_price}`), mismo antispam → `{fired, checked, cooldown}` |
-| POST | `/api/alerts/test-telegram` | admin | Test de conexión Telegram |
-| POST | `/api/telegram/webhook` | cabecera `X-Telegram-Bot-Api-Secret-Token` | Updates del bot (solo con `TELEGRAM_UPDATES_MODE=webhook`); fuera de Swagger (`include_in_schema=False`) y de la auditoría |
+| POST | `/api/telegram/webhook` | cabecera `X-Telegram-Bot-Api-Secret-Token` | Updates del bot (solo con Telegram activo y modo `webhook`); fuera de Swagger (`include_in_schema=False`) y de la auditoría |
 | GET | `/api/notifications?limit=20` | token | Campana: `{items: [{id, ts, title, message, severity, bot_id, is_new}], unread_count, seen_at}`; solo eventos propios (también para un admin); `limit` 1–50; `ts` en UTC con offset |
 | POST | `/api/notifications/seen` | token | `users.notifications_seen_at = utc_now()` → `{seen_at}` |
 
 Los routers declaran `prefix="/alert-rules"`, `"/alert-events"`, `"/alerts"`, `"/telegram"`; el `/api` lo añade `app_factory.py` (`settings.API_PREFIX`).
 
-**Registro del webhook** (una vez, lo hace el administrador; está en la cabecera de `rest/telegram_webhook/routes.py`):
-```bash
-curl -X POST "https://api.telegram.org/bot<TOKEN>/setWebhook" \
-  -d "url=https://<api>/api/telegram/webhook" \
-  -d "secret_token=<TELEGRAM_WEBHOOK_SECRET>" \
-  -d 'allowed_updates=["message","callback_query"]'
-```
-Para volver a polling hay que borrar el webhook (`deleteWebhook`): `getUpdates` no funciona con un webhook registrado.
+**Registro del webhook:** lo hace el servidor al guardar el modo `webhook` en Administración → Notificaciones (genera el secreto y llama `setWebhook`); al pasar a `polling` se borra con `deleteWebhook`. Ver [M12](M12-NOTIFICATIONS.md).
 
 ### Frontend (`frontend/src/modules/alerts/`)
 | Ruta | Archivo de ruta | Página / componentes |
 |-----|----------|----|
 | `/#/alerts` | `routes/_app/alerts.lazy.tsx` | `pages/alerts.tsx` (`AlertsPage`) + `components/alert-rule-form-dialog.tsx` + `components/alert-events-table.tsx` |
-| `/#/admin/telegram` | `routes/_app/admin/telegram.lazy.tsx` | `pages/admin-telegram.tsx` |
 
-- API: `api/alerts.api.ts` (`/alert-rules`, `listAlertEventsPage` → `Paginated<AlertEvent>`, `/alerts/test-telegram`); hooks `use-alerts-queries.ts` (`useAlertEventsPageQuery`, `keepPreviousData`) / `use-alerts-mutations.ts`; `AlertEventsTable` pide página a página en `/alerts` y en Todas las alertas; etiquetas `lib/alerts-labels.ts`; badges `components/alert-badges.tsx`.
+- API: `api/alerts.api.ts` (`/alert-rules`, `listAlertEventsPage` → `Paginated<AlertEvent>`); hooks `use-alerts-queries.ts` (`useAlertEventsPageQuery`, `keepPreviousData`) / `use-alerts-mutations.ts`; `AlertEventsTable` pide página a página en `/alerts` y en Todas las alertas; etiquetas `lib/alerts-labels.ts`; badges `components/alert-badges.tsx`.
 - Activar/desactivar una regla se hace con `PUT /api/alert-rules/{id}` (`is_active`); el front no usa `DELETE` ni `POST /api/alerts/evaluate`.
 - Nombres de bot: `useMyBotsQuery` de [M7](M07-BOTS-SIGNALS.md) en páginas de usuario y `useBotsQuery()` en admin.
 - Vincular Telegram: `app-shell/components/telegram-link-dialog.tsx` ([M1](M01-AUTH.md)).
@@ -269,16 +261,15 @@ Las evalúa `EvaluatePeriodicAlertsService.run()` en el paso `_evaluate_alert_ru
 - `app/modules/orders/providers/order_provider.py` — inyecta `build_evaluate_alerts_service(session)` en `create_order()`
 - `app/modules/scheduler/execution_cycle.py` — paso 5 `_evaluate_alert_rules()` (reglas periódicas, sesión propia, después de `_protect_positions`) y paso 6 `_poll_telegram()` en modo polling
 
-### Settings (`.env`)
+### Configuración
+
+Telegram (token, @usuario, chat por defecto, modo de respuestas, webhook) y el interruptor del correo viven en la BD (`notification_settings`) y se editan en `/#/admin/notifications` ([M12](M12-NOTIFICATIONS.md)). Los servicios los leen con `build_notification_settings_reader(session)`; un canal apagado no se intenta. En el `.env` quedan:
+
 ```
-TELEGRAM_BOT_TOKEN=<token>          # de @BotFather; vacío = Telegram inactivo
-TELEGRAM_DEFAULT_CHAT_ID=<chat_id>  # chat de las alertas
-TELEGRAM_BOT_USERNAME=              # @usuario del bot sin @ (enlace t.me/<bot>?start=...)
-TELEGRAM_UPDATES_MODE=off           # off | polling (desarrollo) | webhook (producción)
-TELEGRAM_WEBHOOK_SECRET=            # secret_token de setWebhook; obligatorio con webhook
-FRONTEND_URL=http://localhost:5193  # enlaces en Telegram (botón solo si es https)
+FRONTEND_URL=http://localhost:5193  # enlaces en Telegram y correos (botón de Telegram solo si es https)
 DESKTOP_NOTIFICATIONS_ENABLED=false
 ALERT_REPEAT_MINUTES=60            # antispam de precio/PnL/drawdown; 0 = avisa en cada ciclo
+SMTP_*                             # servidor de correo (sin SMTP_HOST no sale ningún correo)
 ```
 
 ## Gotchas críticos
@@ -288,7 +279,7 @@ ALERT_REPEAT_MINUTES=60            # antispam de precio/PnL/drawdown; 0 = avisa 
 - `TYPE_CHECKING` guard en `generate_signal_service.py` y `create_order_service.py` para evitar import circular en runtime
 - Los hooks siempre en `try/except` — las alertas nunca abortan el flujo de trading
 - **Webhooks a servicios internos:** una regla con `http://`, `localhost`, una IP privada o un nombre sin punto se rechaza al guardar (`ALERT_RULE_INVALID_WEBHOOK`); si el DNS cambia después hacia una IP interna, el envío se bloquea y el evento queda `failed` (log `URL bloqueada (no pública) en la regla <id>`).
-- **Telegram no responde a los botones:** revisar `TELEGRAM_UPDATES_MODE` (con `off` no se procesa nada), que en polling no haya un webhook registrado y que en webhook coincida `TELEGRAM_WEBHOOK_SECRET`.
+- **Telegram no responde a los botones:** revisar en Notificaciones que Telegram esté activo y el modo de respuestas (con "Solo enviar avisos" no se procesa nada); en polling no debe haber un webhook registrado (guardar el modo polling lo borra) y en webhook la URL debe ser pública.
 - **Polling solo en el líder:** el `offset` vive en memoria del proceso líder del scheduler; tras reiniciar, Telegram reenvía lo no confirmado (seguro: decidir es atómico y los códigos de vínculo son de un solo uso).
 - **Sin `FRONTEND_URL` https** el aviso no lleva el botón "Ver en Trading App" (Telegram rechaza enlaces a localhost).
 - El email de alerta usa `ALERT_TEMPLATE` desde `app.modules.mailer.domain.mail_template`
@@ -310,7 +301,7 @@ ALERT_REPEAT_MINUTES=60            # antispam de precio/PnL/drawdown; 0 = avisa 
 - **DNS rebinding:** entre la resolución DNS y la conexión del webhook hay una ventana (TTL 0). Riesgo residual bajo con redirects desactivados; cerrarlo del todo exige un proxy de salida que filtre IPs.
 - Alertas silenciosas: los hooks tragan cualquier excepción; si el canal está mal configurado, nadie se entera salvo por `alert_events.delivery_status = failed`.
 - Un usuario podría configurar muchas reglas: el cooldown limita cada regla a un aviso por `ALERT_REPEAT_MINUTES`, pero no hay tope de reglas por usuario.
-- **Chat del sistema como respaldo:** si el dueño no vinculó Telegram, su alerta llega a `TELEGRAM_DEFAULT_CHAT_ID` (lo ve quien administre ese chat). Dejar `TELEGRAM_DEFAULT_CHAT_ID` vacío para no enviar nada sin vínculo.
+- **Chat por defecto como respaldo:** si el dueño no vinculó Telegram, su alerta llega al chat por defecto de Notificaciones (lo ve quien administre ese chat). Dejarlo vacío para no enviar nada sin vínculo.
 - Con `ALERT_REPEAT_MINUTES` el aviso es un recordatorio periódico mientras la condición siga: una regla de precio que queda cumplida días enteros avisa cada hora.
 - Quien controle el chat de Telegram vinculado puede aprobar las señales de esa cuenta: desvincularlo desde el menú de usuario si se pierde el teléfono.
 
@@ -329,3 +320,4 @@ ALERT_REPEAT_MINUTES=60            # antispam de precio/PnL/drawdown; 0 = avisa 
 - **2026-10-20** — **Paginación en el servidor** (Fase 4): `GET /api/alert-events` acepta `page`/`page_size` opt-in y el filtro `user_id` (dueño, solo admin). `AlertEventRepository.search/count` reemplaza a `list_all`; `ListAlertEventsService.list_page`. El historial de `/alerts` y la pestaña Eventos de Todas las alertas piden página a página (antes 100/200 eventos filtrados en el navegador). Tests: `tests/alerts/test_list_alert_events_service.py`.
 - **2026-10-20** — Reglas `signal`/`error` con "Cualquier agente" (`bot_id` NULL): ahora se disparan para todos los agentes de su dueño. Antes el hook filtraba por `bot_id` y no las encontraba nunca.
 - **2026-10-23** — Se retira el grupo **Supervisión** del menú: fuera "Todas las alertas" (`/#/admin/alerts`, `pages/admin-alerts.tsx`); `AlertEventsTable` queda sin la variante admin (sin props). "Volver" en Telegram lleva a `/#/alerts`. El filtro `user_id` de `GET /api/alert-events` sigue en el backend.
+- **2026-11-26** — La configuración de Telegram sale del `.env` a la BD y la página `/#/admin/telegram` pasa a **Notificaciones** ([M12](M12-NOTIFICATIONS.md)); retirado `POST /api/alerts/test-telegram`. `telegram_api` se movió a `notifications/infrastructure/telegram_api.py` (`telegram_channel.py` lo reexporta). `SignalApprovalNotifier` y `SharedSignalNotifier` también envían por correo (`NOTICE_TEMPLATE`, `channels/signal_email_messages.py`); `FireAlertService` y `FundNoticeService` no intentan un canal apagado. `_poll_telegram` lee el modo en cada ciclo; el poller reinicia el `offset` si cambia el token.

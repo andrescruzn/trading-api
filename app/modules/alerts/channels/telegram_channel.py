@@ -17,17 +17,17 @@ from __future__ import annotations
 
 import html
 import logging
-from typing import TYPE_CHECKING, Any
-
-if TYPE_CHECKING:
-    from app.common.config.settings import Settings
+from typing import Any
 
 from app.modules.alerts.domain.alert_event_entity import AlertEvent
 from app.modules.alerts.domain.alert_rule_entity import AlertRule
+from app.modules.notifications.domain import NotificationSettings
+
+# telegram_api vive en el módulo notifications; se reexporta aquí porque
+# los servicios de alerts lo importan desde este canal.
+from app.modules.notifications.infrastructure.telegram_api import telegram_api
 
 logger = logging.getLogger(__name__)
-
-_TIMEOUT_SECONDS = 10
 
 _SEVERITY_EMOJI = {
     "info": "ℹ️",
@@ -35,18 +35,20 @@ _SEVERITY_EMOJI = {
     "critical": "🚨",
 }
 
+__all__ = ["TelegramChannel", "telegram_api"]
+
 
 class TelegramChannel:
     """
     Canal Telegram — envía mensaje via Bot API.
 
-    Requiere TELEGRAM_BOT_TOKEN y un chat (el del usuario o
-    TELEGRAM_DEFAULT_CHAT_ID).
+    Requiere Telegram activo en Administración → Notificaciones y un chat
+    (el del usuario o el chat por defecto).
     """
 
-    def __init__(self, settings: "Settings", chat_id: str | int | None = None):
-        self._token = settings.TELEGRAM_BOT_TOKEN
-        self._chat_id = chat_id or settings.TELEGRAM_DEFAULT_CHAT_ID
+    def __init__(self, settings: NotificationSettings, chat_id: str | int | None = None):
+        self._token = settings.telegram_token
+        self._chat_id = chat_id or settings.telegram_default_chat_id
 
     def send(self, event: AlertEvent, rule: AlertRule) -> bool:
         emoji = _SEVERITY_EMOJI.get(event.severity, "🔔")
@@ -60,10 +62,6 @@ class TelegramChannel:
 
         return self.call("sendMessage", {"text": text, "parse_mode": "HTML"}) is not None
 
-    def send_raw(self, text: str) -> bool:
-        """Envía texto libre — usado por el endpoint de prueba."""
-        return self.call("sendMessage", {"text": text}) is not None
-
     def call(self, method: str, payload: dict[str, Any]) -> dict[str, Any] | None:
         """
         Llama un método de la Bot API con el chat del canal.
@@ -72,37 +70,6 @@ class TelegramChannel:
             El `result` de Telegram, o None si falló (ya logueado sin el token).
         """
         if not self._token or not self._chat_id:
-            logger.warning("TelegramChannel: bot token or chat_id not configured")
+            logger.warning("TelegramChannel: Telegram inactivo o sin chat")
             return None
         return telegram_api(self._token, method, {"chat_id": self._chat_id, **payload})
-
-
-def telegram_api(token: str, method: str, payload: dict[str, Any]) -> dict[str, Any] | None:
-    """
-    POST a https://api.telegram.org/bot<token>/<method>.
-
-    Returns:
-        El campo `result` si Telegram respondió ok, o None.
-    """
-    try:
-        import httpx
-
-        resp = httpx.post(
-            f"https://api.telegram.org/bot{token}/{method}",
-            json=payload,
-            timeout=_TIMEOUT_SECONDS,
-        )
-        body = resp.json() if resp.headers.get("content-type", "").startswith("application/json") else {}
-        if resp.status_code != 200 or not body.get("ok"):
-            logger.warning(
-                "Telegram %s HTTP %s: %s",
-                method,
-                resp.status_code,
-                str(body.get("description", ""))[:200],
-            )
-            return None
-        result = body.get("result")
-        return result if isinstance(result, dict) else {"value": result}
-    except Exception as exc:
-        logger.error("Telegram %s %s", method, type(exc).__name__)
-        return None

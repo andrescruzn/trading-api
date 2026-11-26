@@ -76,6 +76,7 @@ from app.modules.alerts.providers.telegram_provider import (
     build_signal_approval_notifier,
 )
 from app.modules.users.infrastructure import SqlAlchemyUserRepository
+from app.modules.notifications.providers import build_notification_settings_reader
 
 
 class BotServiceFactory:
@@ -257,6 +258,8 @@ class BotServiceFactory:
             subscription_repo=self._subscription_repo,
             account_repo=self._account_repo,
             user_repo=SqlAlchemyUserRepository(self._session),
+            notification_settings=build_notification_settings_reader(self._session),
+            smtp_configured=bool(settings.SMTP_HOST),
         )
 
     def unsubscribe_from_bot(self) -> UnsubscribeFromBotService:

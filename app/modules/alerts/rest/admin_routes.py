@@ -7,7 +7,9 @@
 # - POST /api/alerts/evaluate       → evaluación manual de las reglas de precio
 #                                     con un precio dado (mismo antispam que el
 #                                     scheduler, que las revisa solas cada ciclo)
-# - POST /api/alerts/test-telegram  → envía mensaje de prueba a Telegram
+#
+# La prueba de Telegram pasó a POST /api/notification-settings/telegram/test
+# (módulo notifications).
 # ======================================================================
 
 from __future__ import annotations
@@ -18,11 +20,9 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from app.common.config import settings
 from app.common.http import send
 from app.common.security.jwt.role_guard import super_admin_required
 from app.extensions.db import get_db
-from app.modules.alerts.channels.telegram_channel import TelegramChannel
 from app.modules.alerts.providers import AlertServiceFactory, get_alert_factory
 
 router = APIRouter(prefix="/alerts", tags=["Alerts Admin"])
@@ -59,24 +59,3 @@ def evaluate_price_alerts(
         data={"fired": fired, "checked": report.checked, "cooldown": report.cooldown},
     )
 
-
-# ======================================================================
-# POST /api/alerts/test-telegram
-# ======================================================================
-
-@router.post("/test-telegram", status_code=200)
-def test_telegram(
-    identity: dict = Depends(super_admin_required),
-):
-    """Envía un mensaje de prueba al chat Telegram configurado."""
-    channel = TelegramChannel(settings=settings)
-    ok = channel.send_raw("Trading App: la conexión con Telegram funciona.")
-
-    if not ok:
-        return send(
-            msg="No se pudo enviar el mensaje. Verifica TELEGRAM_BOT_TOKEN y TELEGRAM_DEFAULT_CHAT_ID.",
-            status_code=502,
-            data={"ok": False},
-        )
-
-    return send(msg="Mensaje de prueba enviado exitosamente.", status_code=200, data={"ok": True})

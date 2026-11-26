@@ -422,7 +422,7 @@ def subscribe_to_bot(
     identity: dict = Depends(token_required_actual),
     factory: BotServiceFactory = Depends(get_factory),
 ):
-    """Sigue las señales de un agente compartido (idempotente; exige Telegram)."""
+    """Sigue las señales de un agente compartido (idempotente; exige un canal: correo o Telegram)."""
     result = factory.subscribe_to_bot().subscribe(
         bot_id=bot_id, user_id=int(identity["user_id"])
     )
@@ -432,7 +432,7 @@ def subscribe_to_bot(
 
     return build_success_response(
         data=_subscription_to_dict(result.data),
-        msg="Listo: te llegarán por Telegram las señales de este agente.",
+        msg="Listo: te avisaremos de las señales de este agente.",
     )
 
 

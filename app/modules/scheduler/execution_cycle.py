@@ -278,14 +278,27 @@ def _evaluate_alert_rules() -> None:
 # 6. Telegram (polling en desarrollo)
 # ======================================================================
 
+def _telegram_polling_token() -> str | None:
+    """Token del bot si Telegram está activo y en modo polling (Notificaciones)."""
+    from app.modules.notifications.providers import build_notification_settings_reader
+
+    session = SessionLocal()
+    try:
+        config = build_notification_settings_reader(session).get()
+        return config.telegram_token if config.receives_updates("polling") else None
+    finally:
+        session.close()
+
+
 def _poll_telegram() -> None:
-    if settings.TELEGRAM_UPDATES_MODE != "polling" or not settings.TELEGRAM_BOT_TOKEN:
+    token = _telegram_polling_token()
+    if not token:
         return
 
     from app.modules.alerts.channels.telegram_poller import fetch_updates
     from app.modules.alerts.providers.telegram_provider import build_telegram_update_service
 
-    for update in fetch_updates(settings.TELEGRAM_BOT_TOKEN):
+    for update in fetch_updates(token):
         session = SessionLocal()
         try:
             service = build_telegram_update_service(session)

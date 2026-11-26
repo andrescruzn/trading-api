@@ -8,7 +8,7 @@
 # - Nunca lanza excepciones — retorna None si el body no es JSON válido.
 #
 # CAMPOS REDACTADOS (en cualquier nivel de anidación, dicts y listas):
-# - Request:  password, otp_code, token, credenciales de exchange
+# - Request:  password, otp_code, token, bot_token (Telegram), credenciales de exchange
 #             (api_key, api_secret, passphrase…) y URLs de webhook
 #             (suelen llevar el token en la ruta: Slack, Discord).
 # - Response: token, access_token, otp_code (dev), enc_creds.
@@ -54,6 +54,8 @@ _REQUEST_SENSITIVE_FIELDS = frozenset({
     "otp_code",
     "token",
     "access_token",
+    "bot_token",
+    "webhook_secret",
     "api_key",
     "apikey",
     "api_secret",

@@ -3,13 +3,15 @@
 # ======================================================================
 # app/modules/alerts/providers/telegram_provider.py
 #
-# Wiring de Telegram por usuario:
-# - build_signal_approval_notifier(session): aviso con botones (hook de
-#   GenerateSignalService, lo usa BotServiceFactory).
+# Wiring de los avisos de señales (Telegram y correo) y del bot:
+# - build_signal_approval_notifier(session): señal por aprobar al dueño
+#   (hook de GenerateSignalService, lo usa BotServiceFactory).
 # - build_shared_signal_notifier(session): señales de un agente compartido
 #   a sus suscriptores (hook de GenerateSignalService).
 # - build_telegram_update_service(session): procesa mensajes y botones
-#   (webhook y polling).
+#   (webhook y polling); None si Telegram no está activo.
+#
+# La configuración de los canales sale de la BD (módulo notifications).
 #
 # NOTA:
 # - No se exporta en providers/__init__.py y los providers de orders y
@@ -32,6 +34,10 @@ from app.modules.alerts.services.telegram import (
 from app.modules.bots.infrastructure.signal_subscription_repository_impl import (
     SqlAlchemySignalSubscriptionRepository,
 )
+from app.modules.notifications.providers import (
+    build_notification_mailer,
+    build_notification_settings_reader,
+)
 from app.modules.market.infrastructure import (
     SqlAlchemySymbolRepository,
     SqlAlchemyTimeframeRepository,
@@ -47,6 +53,8 @@ def build_signal_approval_notifier(session: Session) -> SignalApprovalNotifier:
         symbol_repo=SqlAlchemySymbolRepository(session),
         timeframe_repo=SqlAlchemyTimeframeRepository(session),
         settings=settings,
+        notification_settings=build_notification_settings_reader(session),
+        mailer=build_notification_mailer(),
     )
 
 
@@ -58,13 +66,15 @@ def build_shared_signal_notifier(session: Session) -> SharedSignalNotifier:
         symbol_repo=SqlAlchemySymbolRepository(session),
         timeframe_repo=SqlAlchemyTimeframeRepository(session),
         strategy_repo=SqlAlchemyStrategyRepository(session),
-        settings=settings,
+        notification_settings=build_notification_settings_reader(session),
+        mailer=build_notification_mailer(),
     )
 
 
 def build_telegram_update_service(session: Session) -> TelegramUpdateService | None:
-    """None si no hay TELEGRAM_BOT_TOKEN (no hay a quién responder)."""
-    if not settings.TELEGRAM_BOT_TOKEN:
+    """None si Telegram no está activo en Notificaciones (no hay a quién responder)."""
+    token = build_notification_settings_reader(session).get().telegram_token
+    if not token:
         return None
 
     from app.modules.orders.providers import OrderServiceFactory
@@ -86,5 +96,5 @@ def build_telegram_update_service(session: Session) -> TelegramUpdateService | N
         user_repo=SqlAlchemyUserRepository(session),
         link_service=AuthServiceFactory(session=session).telegram_link(),
         decide=decide,
-        replier=TelegramReplier(settings.TELEGRAM_BOT_TOKEN),
+        replier=TelegramReplier(token),
     )

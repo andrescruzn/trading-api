@@ -18,6 +18,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
+from app.modules.notifications.domain import NotificationSettings
 from app.modules.bots.domain.bot_entity import Bot
 from app.modules.bots.services.subscriptions import (
     ListSharedBotsService,
@@ -73,7 +74,13 @@ def _user(chat_id: int | None = 555) -> object:
     return user
 
 
-def _subscribe_service(bot: Bot | None, exists: bool = False, chat_id: int | None = 555):
+def _subscribe_service(
+    bot: Bot | None,
+    exists: bool = False,
+    chat_id: int | None = 555,
+    email_enabled: bool = False,
+    telegram_enabled: bool = True,
+):
     bot_repo = MagicMock()
     bot_repo.get_by_id.return_value = bot
     sub_repo = MagicMock()
@@ -81,11 +88,17 @@ def _subscribe_service(bot: Bot | None, exists: bool = False, chat_id: int | Non
     sub_repo.count_by_bot_ids.return_value = {1: 4}
     user_repo = MagicMock()
     user_repo.get_by_id.return_value = _user(chat_id)
+    reader = MagicMock()
+    reader.get.return_value = NotificationSettings(
+        telegram_enabled=telegram_enabled, telegram_bot_token="TOKEN", email_enabled=email_enabled
+    )
     service = SubscribeToBotService(
         bot_repo=bot_repo,
         subscription_repo=sub_repo,
         account_repo=_account_repo(),
         user_repo=user_repo,
+        notification_settings=reader,
+        smtp_configured=True,
     )
     return service, sub_repo
 

@@ -147,7 +147,7 @@ export function AgentNewPage() {
 		isDemo
 			? { label: 'Agentes demo', href: '/demo-agents' }
 			: { label: 'Inicio', href: '/dashboard' },
-		{ label: isDemo ? 'Nuevo agente demo' : 'Nuevo agente real' },
+		{ label: isDemo ? 'Nuevo agente demo' : 'Nuevo agente' },
 	]);
 	const navigate = useNavigate();
 	const symbolsQuery = useSymbolsQuery({ is_active: true });
@@ -292,7 +292,7 @@ export function AgentNewPage() {
 		<div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
 			<div className="flex flex-col gap-1">
 				<h1 className="text-xl font-semibold">
-					{isDemo ? 'Nuevo agente demo' : 'Nuevo agente real'}
+					{isDemo ? 'Nuevo agente demo' : 'Nuevo agente'}
 				</h1>
 				<p className="text-sm text-muted-foreground">
 					Un agente vigila un símbolo, aplica una estrategia y le pide a la IA

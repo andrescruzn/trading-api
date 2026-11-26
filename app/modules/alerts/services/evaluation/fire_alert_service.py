@@ -13,9 +13,11 @@
 #
 # DESTINATARIO (dueño de la regla, `rule.user_id`):
 # - Telegram: el chat que el dueño vinculó (`users.telegram_chat_id`); si
-#   no vinculó ninguno, el chat del sistema (TELEGRAM_DEFAULT_CHAT_ID).
+#   no vinculó ninguno, el chat por defecto (Administración → Notificaciones).
 # - Email: el correo del request (si lo hay) o el del dueño. Así las
 #   alertas de hooks y del scheduler, que no tienen request, también llegan.
+# - Un canal apagado en Notificaciones (Telegram o correo) no se intenta:
+#   no cuenta como entrega fallida. La configuración se lee al disparar.
 # - Si no se puede leer el dueño, se usan los valores por defecto: el
 #   despacho nunca lanza.
 # ======================================================================
@@ -32,6 +34,7 @@ from app.modules.alerts.domain.alert_rule_entity import AlertRule
 if TYPE_CHECKING:
     from app.common.config.settings import Settings
     from app.modules.mailer.services.mailer_service import MailerService
+    from app.modules.notifications.domain import NotificationSettings, NotificationSettingsReader
     from app.modules.users.domain import User, UserRepository
 
 logger = logging.getLogger(__name__)
@@ -49,12 +52,14 @@ class FireAlertService:
         mailer: "MailerService | None" = None,
         user_email: str | None = None,
         user_repo: "UserRepository | None" = None,
+        notification_settings: "NotificationSettingsReader | None" = None,
     ):
         self._event_repo = event_repo
         self._settings = settings
         self._mailer = mailer
         self._user_email = user_email
         self._user_repo = user_repo
+        self._notification_settings = notification_settings
 
     def fire(
         self,
@@ -119,17 +124,23 @@ class FireAlertService:
         from app.modules.alerts.channels.desktop_channel import DesktopChannel
 
         channels: list = []
-        needs_owner = rule.wants_telegram() or (rule.wants_email() and not self._user_email)
+        config = self._channels_config()
+        wants_telegram = rule.wants_telegram() and config is not None and config.telegram_active
+        wants_email = (
+            rule.wants_email() and self._mailer is not None
+            and (config is None or config.email_active)
+        )
+        needs_owner = wants_telegram or (wants_email and not self._user_email)
         owner = self._owner(rule) if needs_owner else None
 
         to_email = self._user_email or (owner.email if owner else None)
-        if rule.wants_email() and self._mailer and to_email:
+        if wants_email and to_email:
             channels.append(EmailChannel(mailer=self._mailer, to_email=to_email))
 
-        if rule.wants_telegram():
-            # Sin chat vinculado, TelegramChannel usa TELEGRAM_DEFAULT_CHAT_ID
+        if wants_telegram:
+            # Sin chat vinculado, TelegramChannel usa el chat por defecto
             chat_id = owner.telegram_chat_id if owner else None
-            channels.append(TelegramChannel(settings=self._settings, chat_id=chat_id))
+            channels.append(TelegramChannel(settings=config, chat_id=chat_id))
 
         webhook_url = rule.wants_webhook()
         if webhook_url:
@@ -139,6 +150,16 @@ class FireAlertService:
             channels.append(DesktopChannel())
 
         return channels
+
+    def _channels_config(self) -> "NotificationSettings | None":
+        """Configuración de Telegram y correo; None si no se pudo leer."""
+        if self._notification_settings is None:
+            return None
+        try:
+            return self._notification_settings.get()
+        except Exception:
+            logger.exception("FireAlertService: no se pudo leer la configuración de notificaciones")
+            return None
 
     def _owner(self, rule: AlertRule) -> "User | None":
         if self._user_repo is None or rule.user_id is None:

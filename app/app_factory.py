@@ -61,6 +61,7 @@ from app.modules.alerts.rest import (
     notifications_router,
 )
 from app.modules.users.rest import audit_router, auth_router, telegram_link_router, users_router
+from app.modules.notifications.rest import notification_settings_router
 
 logger = get_logger(__name__)
 
@@ -162,6 +163,8 @@ def create_app() -> FastAPI:
         # Alerts (+ webhook de Telegram)
         alert_rules_router, alert_events_router, alerts_admin_router, telegram_webhook_router,
         notifications_router,
+        # Notificaciones (configuración de Telegram y correo)
+        notification_settings_router,
     )
     for router in api_routers:
         app.include_router(router, prefix=settings.API_PREFIX)

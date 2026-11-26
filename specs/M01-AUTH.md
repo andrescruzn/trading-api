@@ -14,7 +14,7 @@
 | Lo usan | Todos los módulos (guardas `jwt_guard` / `role_guard`: `super_admin_required`, `staff_required`, `read_scope` / `write_scope`); el shell del frontend (`app-shell`) aloja todas las páginas; [M9](M09-ALERTS.md) usa el chat de Telegram vinculado |
 | Prefijo API | `/api/users` (incluye `/api/users/me/telegram`) |
 | Frontend | `frontend/src/modules/auth`, `app-shell`, `dashboard` |
-| Última revisión | 2026-10-27 |
+| Última revisión | 2026-11-26 |
 
 ## Descripción
 
@@ -171,9 +171,9 @@ Tablas usadas: `users`, `roles`
 | `verify_otp_service.py` | Verificar OTP y emitir cookie |
 | `logout_service.py` | Revocar cookie y limpiar JTI |
 | `rotate_token_service.py` | Rotar JTI en sesión activa |
-| `get_me_service.py` | Perfil del usuario autenticado (incluye `telegram_linked`) |
+| `get_me_service.py` | Perfil del usuario autenticado (incluye `telegram_linked` y, desde 2026-11-26, `telegram_available` y `email_notifications`: canales activos en [M12](M12-NOTIFICATIONS.md)) |
 
-`app/modules/users/services/telegram/telegram_link_service.py` → `TelegramLinkService`: `create_link(user_id)` (`TELEGRAM_NOT_CONFIGURED` 503 sin `TELEGRAM_BOT_TOKEN` o `TELEGRAM_BOT_USERNAME`; devuelve `https://t.me/<bot>?start=<código>` y `expires_at`), `confirm(code, chat_id)` (lo llama el bot de Telegram, [M9](M09-ALERTS.md)), `unlink(user_id)`. Factory: `AuthServiceFactory.telegram_link()`. Repo: `get_by_telegram_chat_id`, `get_by_telegram_link_hash`.
+`app/modules/users/services/telegram/telegram_link_service.py` → `TelegramLinkService`: `create_link(user_id)` (`TELEGRAM_NOT_CONFIGURED` 503 si Telegram no está activo o sin @usuario del bot en [M12](M12-NOTIFICATIONS.md); devuelve `https://t.me/<bot>?start=<código>` y `expires_at`), `confirm(code, chat_id)` (lo llama el bot de Telegram, [M9](M09-ALERTS.md)), `unlink(user_id)`. Factory: `AuthServiceFactory.telegram_link()`. Repo: `get_by_telegram_chat_id`, `get_by_telegram_link_hash`.
 
 ### Endpoints (`/api/users/...`)
 Todas las rutas REST se montan bajo `settings.API_PREFIX` (`/api`) en `app/app_factory.py`; el router declara `prefix="/users"`. `/health` queda en la raíz.
@@ -184,7 +184,7 @@ Todas las rutas REST se montan bajo `settings.API_PREFIX` (`/api`) en `app/app_f
 | POST | `/api/users/login/otp/verify` | — |
 | POST | `/api/users/logout` | cookie |
 | POST | `/api/users/token/rotate` | cookie |
-| GET  | `/api/users/me` | cookie (incluye `telegram_linked`) |
+| GET  | `/api/users/me` | cookie (incluye `telegram_linked`, `telegram_available`, `email_notifications`) |
 | PUT  | `/api/users/me` | cookie (`{full_name}`; vacío o `null` lo borra; 404 `USER_NOT_FOUND`) |
 | POST | `/api/users` | super admin (`{email, full_name?, role_code: partner\|investor}`; 409 `USER_EMAIL_TAKEN`, 422 `USER_INVALID_EMAIL` / `USER_INVALID_ROLE`) |
 | GET  | `/api/users` | staff: super admin y socio (`id`, `email`, `full_name`, `role_code`, `role_label`, `status`, `last_login_at`; sin OTP, JTI ni Telegram) |
@@ -307,7 +307,6 @@ TRUST_PROXY_HEADERS=false
 OTP_HMAC_SECRET=               # vacío → JWT_SECRET_KEY
 OTP_MAX_FAILED_ATTEMPTS=5
 CREDENTIALS_PREVIOUS_KEYS=     # claves Fernet anteriores, separadas por comas (solo descifran)
-TELEGRAM_BOT_USERNAME=         # para el enlace de vinculación (M9)
 ```
 
 ## Tests
@@ -361,3 +360,4 @@ TELEGRAM_BOT_USERNAME=         # para el enlace de vinculación (M9)
 - **2026-10-23** — Se retira el grupo **Supervisión** del menú: quedan Fondo, Datos de mercado y Configuración. Sin agentes propios, el socio ve el botón "Ver los agentes del fondo" (`/#/admin/fund-agents`).
 - **2026-10-27** — **Auditoría ligera:** `AuditMiddleware` deja de guardar las consultas exitosas (GET/HEAD/OPTIONS < 400) y resume la respuesta (`summarize_response`: `{msg, errorCode}` en éxito; envelope redactado en errores ≤ 10 KB). Script `database/scripts/purge_http_audit.py` (`--older-than-days`, por defecto 180; `--drop-reads`; `--dry-run`). La página Auditoría ajusta su descripción y el filtro ("Cambios y errores" / "Solo consultas con error"). `audit_logs` deja de estar vacía: guarda el historial de los agentes ([M7](M07-BOTS-SIGNALS.md)). Tests de `tests/common/audit/test_audit_middleware.py` alineados.
 - **2026-10-26** — Menú: fuera **Mis cuentas** (la billetera es solo la de Binance) y nuevo **Agentes demo** en General (`StaffGuard`, nuevo en `auth/layouts/role-guard.tsx`); Inicio lista los agentes reales ([M7](M07-BOTS-SIGNALS.md)).
+- **2026-11-26** — El bot de Telegram del vínculo se configura en la BD ([M12](M12-NOTIFICATIONS.md)): `TelegramLinkService` recibe `NotificationSettingsReader` (fuera `TELEGRAM_BOT_TOKEN`/`TELEGRAM_BOT_USERNAME`); `GET /api/users/me` añade `telegram_available` y `email_notifications`. Menú: **Notificaciones** propio en Administración y **Telegram** sale de Configuración. Auditoría: `bot_token` y `webhook_secret` redactados.

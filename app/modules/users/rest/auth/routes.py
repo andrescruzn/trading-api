@@ -284,6 +284,8 @@ def get_me(
             "last_login_at": to_iso_utc(profile.last_login_at),
             "created_at": to_iso_utc(profile.created_at),
             "telegram_linked": profile.telegram_linked,
+            "telegram_available": profile.telegram_available,
+            "email_notifications": profile.email_notifications,
         },
         msg="OK",
     )

@@ -55,6 +55,10 @@ BOT_ERROR_MESSAGES: dict[str, str] = {
         "Las señales compartidas llegan por Telegram. Conéctalo desde el menú de "
         "tu usuario → Conectar Telegram y vuelve a intentarlo."
     ),
+    "SUBSCRIPTION_NO_CHANNEL": (
+        "Por ahora no hay un canal para enviarte las señales: el administrador "
+        "debe activar Telegram o el correo en Notificaciones."
+    ),
 
     # Actualizar datos del agente (POST /bots/{id}/market/sync)
     "SYMBOL_NOT_FOUND":            "No encontramos el símbolo de este agente.",

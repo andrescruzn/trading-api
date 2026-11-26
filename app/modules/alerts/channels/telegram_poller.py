@@ -5,28 +5,38 @@
 #
 # PROPÓSITO:
 # - En desarrollo Telegram no puede llamar a localhost: con
-#   TELEGRAM_UPDATES_MODE=polling el scheduler pide los updates con
-#   getUpdates en cada ciclo (solo el proceso líder).
+#   el modo de respuestas "polling" (Administración → Notificaciones) el
+#   scheduler pide los updates con getUpdates en cada ciclo (solo el
+#   proceso líder).
 #
 # NOTAS:
 # - El offset vive en memoria: tras reiniciar, Telegram reenvía lo no
 #   confirmado (≤ 24 h). Es seguro: aprobar/rechazar es atómico y los
 #   códigos de vinculación son de un solo uso.
 # - getUpdates no funciona si hay un webhook registrado (deleteWebhook).
+# - Si cambia el token (otro bot), el offset se reinicia: los update_id
+#   de un bot no sirven para otro.
 # ======================================================================
 
 from __future__ import annotations
 
+import hashlib
 from typing import Any
 
 from app.modules.alerts.channels.telegram_channel import telegram_api
 
 _offset: int | None = None
+_token_fingerprint: str | None = None
 
 
 def fetch_updates(token: str, limit: int = 50) -> list[dict[str, Any]]:
     """Updates nuevos desde el último llamado (y los confirma moviendo el offset)."""
-    global _offset
+    global _offset, _token_fingerprint
+
+    fingerprint = hashlib.sha256(token.encode("utf-8")).hexdigest()
+    if fingerprint != _token_fingerprint:
+        _offset = None
+        _token_fingerprint = fingerprint
 
     payload: dict[str, Any] = {
         "timeout": 0,

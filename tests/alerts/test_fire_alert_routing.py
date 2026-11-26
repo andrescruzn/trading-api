@@ -4,7 +4,7 @@
 # tests/alerts/test_fire_alert_routing.py
 #
 # FireAlertService: Telegram al chat vinculado del dueño de la regla o,
-# sin vínculo, al chat del sistema; correo al dueño sin request; el
+# sin vínculo, al chat por defecto (Notificaciones); correo al dueño sin request; el
 # despacho nunca lanza.
 # ======================================================================
 
@@ -15,16 +15,24 @@ from unittest.mock import MagicMock, patch
 
 from app.modules.alerts.domain.alert_rule_entity import AlertRule
 from app.modules.alerts.services.evaluation import FireAlertService
+from app.modules.notifications.domain import NotificationSettings
 
 TELEGRAM_API = "app.modules.alerts.channels.telegram_channel.telegram_api"
 
 
 def _settings() -> SimpleNamespace:
-    return SimpleNamespace(
-        TELEGRAM_BOT_TOKEN="token",
-        TELEGRAM_DEFAULT_CHAT_ID="-100999",
-        DESKTOP_NOTIFICATIONS_ENABLED=False,
+    return SimpleNamespace(DESKTOP_NOTIFICATIONS_ENABLED=False)
+
+
+def _notification_settings() -> MagicMock:
+    reader = MagicMock()
+    reader.get.return_value = NotificationSettings(
+        telegram_enabled=True,
+        telegram_bot_token="token",
+        telegram_default_chat_id="-100999",
+        email_enabled=True,
     )
+    return reader
 
 
 def _rule(channels: dict) -> AlertRule:
@@ -48,6 +56,7 @@ def _make_service(owner=None, user_repo_error: bool = False, mailer=None, user_e
         mailer=mailer,
         user_email=user_email,
         user_repo=user_repo,
+        notification_settings=_notification_settings(),
     )
     return service, event_repo, user_repo
 

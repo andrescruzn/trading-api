@@ -33,6 +33,7 @@ Explicación conceptual en lenguaje simple: [`docs/MANUAL.md`](docs/MANUAL.md). 
 | M9 — Alerts | [M09-ALERTS.md](specs/M09-ALERTS.md) | `app/modules/alerts` |
 | M10 — Billing & Managed Accounts | [M10-BILLING.md](specs/M10-BILLING.md) | 🗄️ Retirado el 2026-10-23 (lo reemplazó M11) |
 | M11 — Fondo común | [M11-FUND.md](specs/M11-FUND.md) | `app/modules/fund` · `app/modules/accounts` (billetera) |
+| M12 — Notificaciones | [M12-NOTIFICATIONS.md](specs/M12-NOTIFICATIONS.md) | `app/modules/notifications` · `frontend/src/modules/notifications` |
 
 Inicio de sesión: el usuario dirá **"comenzamos Módulo X"** o **"continuamos donde quedamos"** → leer `_ROOT.md` + la spec correspondiente antes de proponer nada. Si hay algo nuevo en el entorno (p. ej. "instalé X"), lo dirá directamente.
 
@@ -136,7 +137,7 @@ frontend/
       shared/                 api-client, envelope, DataTable, OptionSelect, StatCard, format, layouts
       app-shell/              sidebar (navSections), nav-user, breadcrumb
       auth/ · dashboard/
-      market/ · features/ · accounts/ · strategies/ · bots/ · orders/ · alerts/ · fund/   (uno por módulo M2–M11; M6 se usa desde bots; M10 retirado)
+      market/ · features/ · accounts/ · strategies/ · bots/ · orders/ · alerts/ · fund/ · notifications/   (uno por módulo M2–M12; M6 se usa desde bots; M10 retirado)
         api/<x>.api.ts · hooks/use-<x>-queries.ts · hooks/use-<x>-mutations.ts · lib/ · components/ · pages/
 ```
 

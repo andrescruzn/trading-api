@@ -37,7 +37,7 @@ type Bot = {
 	execution_mode: BotExecutionMode;
 	/** Minutos para aprobar una señal; `null` = valor global del servidor. */
 	approval_ttl_minutes: number | null;
-	/** Otros usuarios pueden seguir sus señales aprobadas (llegan por Telegram). */
+	/** Otros usuarios pueden seguir sus señales aprobadas (llegan por correo o Telegram). */
 	share_signals: boolean;
 	/** Solo agentes demo: monto simulado con el que se creó (DECIMAL como texto). */
 	demo_capital: string | null;
@@ -292,7 +292,7 @@ function listSharedBots() {
 	return api.get<SharedBot[]>('/bots/shared');
 }
 
-/** Idempotente. Exige Telegram vinculado: es el único canal de envío. */
+/** Idempotente. Exige un canal: correo activo, o Telegram activo y vinculado. */
 function subscribeToBot(id: number) {
 	return api.post<BotSubscription>(`/bots/${id}/subscription`);
 }

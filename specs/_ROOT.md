@@ -17,9 +17,10 @@ Una explicación simple de los 10 módulos del sistema, sin tecnicismos. Cada m�
 | [M9 — Alerts](M09-ALERTS.md) | ✅ Completo | 100 % | 71 % | Reglas de alerta que se revisan solas (señal, error, precio, PnL, drawdown) con antispam; avisos por email/Telegram al dueño/webhook (con guarda SSRF)/desktop; campana de notificaciones en la app; bot de Telegram por usuario para aprobar señales |
 | [M10 — Billing & Managed Accounts](M10-BILLING.md) | 🗄️ Retirado | — | — | Reemplazado por M11 el 2026-10-23 (no cuenta en el promedio) |
 | [M11 — Fondo común](M11-FUND.md) | ✅ Completo | 100 % | 75 % | Una billetera para todos: libro mayor por persona, depósitos USDT verificados contra el exchange, agentes del fondo con NAV y unidades, liquidación con entradas y salidas, comisión escalonada repartida entre propietarios y socios, retiros entre billeteras (dirección cripto, txid comprobado contra Binance, comisión de red a cargo de la persona), resumen con conciliación y avisos; el 1 % sobre el capital del agente |
-| **Promedio** | | **100 %** | **80 %** | |
+| [M12 — Notificaciones](M12-NOTIFICATIONS.md) | ✅ Completo | 100 % | 64 % | Canales de aviso configurables en la app: Telegram (bot, chat por defecto, modo de respuestas y webhook, guardados en la BD con el token cifrado) y correo (interruptor + prueba); el correo lleva los mismos avisos que Telegram |
+| **Promedio** | | **100 %** | **79 %** | |
 
-- **Alcance** = entregables del plan original hechos / planificados (M11: fases del plan del fondo común hechas, 6 de 6; M10 retirado, fuera del promedio). Las dos filas por debajo del 100 % (M2 y M5) son por los tests de services que el plan original listaba y nunca se escribieron.
+- **Alcance** = entregables del plan original hechos / planificados (M11: fases del plan del fondo común hechas, 6 de 6; M12: 7 de 7; M10 retirado, fuera del promedio). Las dos filas por debajo del 100 % (M2 y M5) son por los tests de services que el plan original listaba y nunca se escribieron.
 - **Madurez** = estimación de qué tan lista para producción está cada pieza (rúbrica abajo). Es una opinión fundamentada en el repo, no una medición.
 
 Más detalle:
@@ -112,6 +113,8 @@ Módulo 9 (Alerts) ← puede ir en paralelo con 7 u 8
 Módulo 10 (Billing) — retirado el 2026-10-23, lo reemplaza M11
     ↓
 Módulo 11 (Fondo común) ← necesita M1 (roles) + M4 (billetera); usa M7/M8 (capital de los agentes) y M9 (avisos); reemplazó a M10
+
+Módulo 12 (Notificaciones) ← solo depende de common; lo leen M1, M7, M9 (y M11 a través de M9) y el scheduler
 ```
 
 ---
@@ -191,10 +194,14 @@ Hash routing: la URL real es `/#/<ruta>`. Cada ruta vive en `frontend/src/routes
 | Público | `/login` |
 | Todos los roles | `/my-fund` (Mi saldo), `/dashboard` (inicio = lista de agentes reales), `/agents/:id`, `/alerts`, `/strategies`, `/track-record`, `/backtest`, `/market/explorer` (`/agents`, `/bots`, `/agent`, `/orders`, `/features` y `/market/candles` redirigen a `/dashboard`; `/market/symbols` a `/market/explorer`; `/portfolio` a `/dashboard`) |
 | Super admin y socio | `/demo-agents` (Agentes demo, `StaffGuard`) |
-| Solo super admin | `/agents/new?mode=live\|paper` (`ManagerGuard`) y `/admin/telegram` en el menú |
-| Super admin y socio (`_app/admin/*`; el socio sin botones de escritura) | `/admin/fund`, `/admin/wallet`, `/admin/deposits`, `/admin/fund-agents`, `/admin/fund-agents/:poolId`, `/admin/withdrawals`, `/admin/commissions`, `/admin/participants`, `/admin/fund-settings`, `/admin/symbols`, `/admin/timeframes`, `/admin/feature-sets`, `/admin/users`, `/admin/audit`, `/admin/telegram` |
+| Solo super admin | `/agents/new?mode=live\|paper` (`ManagerGuard`) |
+| Super admin y socio (`_app/admin/*`; el socio sin botones de escritura) | `/admin/fund`, `/admin/wallet`, `/admin/deposits`, `/admin/fund-agents`, `/admin/fund-agents/:poolId`, `/admin/withdrawals`, `/admin/commissions`, `/admin/participants`, `/admin/fund-settings`, `/admin/symbols`, `/admin/timeframes`, `/admin/feature-sets`, `/admin/users`, `/admin/audit`, `/admin/notifications` (`/admin/telegram` redirige ahí) |
 
 Comprar/Vender vive en el [Módulo 8 — Orders & Execution](M08-ORDERS-EXECUTION.md).
+
+Cambios del 2026-11-26 (Notificaciones):
+- `/admin/notifications` (**Notificaciones**, ítem propio de Administración; el socio en solo lectura): Telegram (token, chat por defecto, modo de respuestas, webhook) y correo (interruptor), con prueba de cada canal. **Telegram** sale de Configuración y `/admin/telegram` redirige — [M12](M12-NOTIFICATIONS.md).
+- `/dashboard` → Agentes que comparten sus señales: se puede seguir un agente sin Telegram si el correo está activo — [M7](M07-BOTS-SIGNALS.md).
 
 Cambios del 2026-10-19 (nuevas piezas dentro de páginas existentes y reorganización del menú):
 - `/agents/:id`: pestaña **Mercado** (velas e indicadores del agente, con **Actualizar datos** para descargar y recalcular a pedido). Órdenes, Símbolos, Velas e Indicadores dejan de ser páginas del usuario, y el admin pierde Descargar velas y Calcular indicadores (los endpoints siguen por API) — [M7](M07-BOTS-SIGNALS.md), [M2](M02-MARKET-DATA.md), [M3](M03-FEATURE-ENGINEERING.md), [M8](M08-ORDERS-EXECUTION.md).
@@ -251,7 +258,7 @@ Cambios del 2026-10-20 (Fase 4, administración):
 - `/admin/audit` (**Auditoría**, Configuración): registro de los cambios hechos por la API y de las peticiones que fallaron (las consultas exitosas no se guardan desde 2026-10-27), con filtros por persona, tipo de evento, fechas, ruta, cambios / consultas con error y errores; detalle en panel lateral — [M1](M01-AUTH.md). Lo que pasó con cada agente se ve en la pestaña **Historial** de su detalle ([M7](M07-BOTS-SIGNALS.md)).
 - Paginación en el servidor: Todas las órdenes (sin el tope de 500), Todos los agentes, Eventos de Todas las alertas, el historial de `/alerts` y las pestañas Señales y Órdenes del agente — [M7](M07-BOTS-SIGNALS.md), [M8](M08-ORDERS-EXECUTION.md), [M9](M09-ALERTS.md).
 
-En la UI los bots se llaman **agentes** y son el punto de entrada: el inicio es la lista de agentes **reales** (con filtro por estado), **Agentes demo** reúne los de dinero simulado, y el menú se organiza en **Operar** (Alertas) y **Explorar** (Explorar mercados, Estrategias). Todo lo que depende de un agente (órdenes, posiciones, velas, indicadores) vive dentro de su detalle, porque esos datos solo existen para agentes creados y activos. En Administración, **Fondo** reúne el fondo común (incluidos los **Agentes del fondo**, desde donde el staff abre el detalle de cualquier agente del fondo); **Datos de mercado**, los catálogos; y **Configuración** reúne lo que el admin define para el sistema (Usuarios —con el cambio de rol y de estado—, Telegram, Auditoría); las estrategias se crean y editan en Explorar → Estrategias (botones solo para el super admin). En código, tablas y API siguen siendo `bot`.
+En la UI los bots se llaman **agentes** y son el punto de entrada: el inicio es la lista de agentes **reales** (con filtro por estado), **Agentes demo** reúne los de dinero simulado, y el menú se organiza en **Operar** (Alertas) y **Explorar** (Explorar mercados, Estrategias). Todo lo que depende de un agente (órdenes, posiciones, velas, indicadores) vive dentro de su detalle, porque esos datos solo existen para agentes creados y activos. En Administración, **Fondo** reúne el fondo común (incluidos los **Agentes del fondo**, desde donde el staff abre el detalle de cualquier agente del fondo); **Datos de mercado**, los catálogos; **Notificaciones**, los canales de aviso (Telegram y correo); y **Configuración** reúne lo que el admin define para el sistema (Usuarios —con el cambio de rol y de estado—, Auditoría); las estrategias se crean y editan en Explorar → Estrategias (botones solo para el super admin). En código, tablas y API siguen siendo `bot`.
 
 ---
 

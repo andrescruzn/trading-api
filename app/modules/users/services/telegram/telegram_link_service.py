@@ -15,6 +15,11 @@
 #   3. confirm(code, chat_id): busca el código (guardado como SHA-256),
 #      guarda el chat y borra el código.
 #
+# CONFIGURACIÓN:
+# - El bot (token y @usuario) se configura en Administración →
+#   Notificaciones (tabla notification_settings). Sin Telegram activo →
+#   TELEGRAM_NOT_CONFIGURED.
+#
 # SEGURIDAD:
 # - En BD solo queda el hash del código; el código viaja una vez.
 # - Un chat solo pertenece a un usuario (UNIQUE): si ya estaba vinculado a
@@ -28,9 +33,9 @@ import secrets
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
-from app.common.config.settings import Settings
 from app.common.contracts import ServiceResult
 from app.common.utils import ensure_aware_utc, utc_now
+from app.modules.notifications.domain import NotificationSettingsReader
 from app.modules.users.domain import UserRepository
 from app.modules.users.domain.user_entity import User
 
@@ -50,12 +55,14 @@ def hash_link_code(code: str) -> str:
 class TelegramLinkService:
     """Vincula, confirma y desvincula el chat de Telegram de un usuario."""
 
-    def __init__(self, *, repo: UserRepository, settings: Settings):
+    def __init__(self, *, repo: UserRepository, notification_settings: NotificationSettingsReader):
         self._repo = repo
-        self._settings = settings
+        self._notification_settings = notification_settings
 
     def create_link(self, user_id: int) -> ServiceResult[TelegramLink]:
-        if not self._settings.TELEGRAM_BOT_TOKEN or not self._settings.TELEGRAM_BOT_USERNAME:
+        config = self._notification_settings.get()
+        bot_username = config.telegram_bot_username
+        if not config.telegram_active or not bot_username:
             return ServiceResult.fail(code="TELEGRAM_NOT_CONFIGURED", http_status=503)
 
         user = self._repo.get_by_id(int(user_id))
@@ -72,7 +79,7 @@ class TelegramLinkService:
 
         return ServiceResult.ok(
             TelegramLink(
-                link_url=f"https://t.me/{self._settings.TELEGRAM_BOT_USERNAME}?start={code}",
+                link_url=f"https://t.me/{bot_username}?start={code}",
                 expires_at=expires_at,
             )
         )

@@ -23,6 +23,7 @@ from app.modules.alerts.services.telegram.shared_signal_notifier import SharedSi
 from app.modules.bots.domain.bot_entity import Bot
 from app.modules.bots.domain.signal_entity import Signal
 from app.modules.bots.domain.signal_subscription_entity import SignalSubscription
+from app.modules.notifications.domain import NotificationSettings
 
 OWNER_ID = 7
 _TELEGRAM_API = "app.modules.alerts.services.telegram.shared_signal_notifier.telegram_api"
@@ -85,6 +86,9 @@ def _make_notifier(
     timeframe_repo.get_by_id.return_value = SimpleNamespace(code="1h")
     strategy_repo = MagicMock()
     strategy_repo.get_by_id.return_value = SimpleNamespace(name="EMA Trend Follower")
+    # Sin mailer: estos tests cubren solo Telegram
+    reader = MagicMock()
+    reader.get.return_value = NotificationSettings(telegram_enabled=True, telegram_bot_token=token)
     return SharedSignalNotifier(
         subscription_repo=sub_repo,
         account_repo=account_repo,
@@ -92,7 +96,7 @@ def _make_notifier(
         symbol_repo=symbol_repo,
         timeframe_repo=timeframe_repo,
         strategy_repo=strategy_repo,
-        settings=SimpleNamespace(TELEGRAM_BOT_TOKEN=token),
+        notification_settings=reader,
     )
 
 

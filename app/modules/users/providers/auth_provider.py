@@ -35,6 +35,7 @@ from app.modules.users.services.auth import (
     GetMeService,
 )
 from app.modules.users.services.telegram import TelegramLinkService
+from app.modules.notifications.infrastructure import SqlAlchemyNotificationSettingsRepository
 from app.modules.users.services.users import (
     InviteUserService,
     ListUsersService,
@@ -157,12 +158,19 @@ class AuthServiceFactory:
         - Usuario autenticado solicita sus propios datos
         - Alimenta el dashboard con datos reales del rol desde BD
         """
-        return GetMeService(repo=self._repo)
+        return GetMeService(
+            repo=self._repo,
+            notification_settings=SqlAlchemyNotificationSettingsRepository(self._session),
+            smtp_configured=bool(settings.SMTP_HOST),
+        )
 
 
     def telegram_link(self) -> TelegramLinkService:
         """Vincular / desvincular el chat de Telegram del usuario."""
-        return TelegramLinkService(repo=self._repo, settings=self._config)
+        return TelegramLinkService(
+            repo=self._repo,
+            notification_settings=SqlAlchemyNotificationSettingsRepository(self._session),
+        )
 
     def list_users(self) -> ListUsersService:
         """Listado de usuarios para las vistas de administración."""

@@ -413,24 +413,10 @@ class Settings:
         # --------------------------------------------------------------
         # Alerts — Canales de notificación
         # --------------------------------------------------------------
-        self.TELEGRAM_BOT_TOKEN: str = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
-        self.TELEGRAM_DEFAULT_CHAT_ID: str = os.getenv("TELEGRAM_DEFAULT_CHAT_ID", "").strip()
-
-        # Telegram por usuario (vincular chat + aprobar señales con botones)
-        # TELEGRAM_BOT_USERNAME: @usuario del bot, sin @ (para el enlace t.me/...).
-        # TELEGRAM_UPDATES_MODE: cómo llegan las respuestas de Telegram:
-        #   off      → no se procesan (solo se envían avisos)
-        #   polling  → el scheduler consulta getUpdates (desarrollo, sin URL pública)
-        #   webhook  → Telegram llama POST /api/telegram/webhook (producción)
-        # TELEGRAM_WEBHOOK_SECRET: secret_token registrado con setWebhook; el
-        #   webhook rechaza toda petición sin esa cabecera.
-        self.TELEGRAM_BOT_USERNAME: str = (
-            os.getenv("TELEGRAM_BOT_USERNAME", "").strip().lstrip("@")
-        )
-        self.TELEGRAM_UPDATES_MODE: str = (
-            os.getenv("TELEGRAM_UPDATES_MODE", "off").strip().lower()
-        )
-        self.TELEGRAM_WEBHOOK_SECRET: str = os.getenv("TELEGRAM_WEBHOOK_SECRET", "").strip()
+        # Telegram (token, @usuario, chat por defecto, modo de respuestas y
+        # secreto del webhook) y el interruptor del correo viven en la BD
+        # (notification_settings, módulo notifications): se editan en
+        # Administración → Notificaciones.
 
         # URL del frontend (enlaces en Telegram y correos)
         self.FRONTEND_URL: str = (

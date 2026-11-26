@@ -14,7 +14,7 @@
 | Lo usan | [M8](M08-ORDERS-EXECUTION.md) (órdenes por bot, ejecución de señales), [M9](M09-ALERTS.md) (hooks de señal/error), [M11](M11-FUND.md) (capital del agente del fondo vía `FundCapitalPort`), scheduler de [M2](M02-MARKET-DATA.md) (señales automáticas), dashboard de [M1](M01-AUTH.md) |
 | Prefijo API | `/api/bots`, `/api/signals` (ver [corrección de rutas](#corrección-de-rutas)) |
 | Frontend | `frontend/src/modules/bots` |
-| Última revisión | 2026-10-27 |
+| Última revisión | 2026-11-26 |
 
 ## Descripción
 
@@ -119,7 +119,7 @@ Entregables:
 | Quien sigue recibe **solo BUY/SELL aprobadas** por Telegram, sin botones ni tamaño de posición, cuenta o nombre del agente; el dueño nunca recibe este aviso | No ejecuta nada; el tamaño revela el capital y el nombre puede identificar al dueño | Copiar la orden en la cuenta del suscriptor (copy trading) |
 | `GET /bots/shared` muestra estrategia, símbolo, timeframe, modo, estado y nº de suscriptores (+ `is_subscribed`, `is_mine`); nunca nombre, cuenta ni dueño | Se elige un agente por lo que hace, no por quién es | Mostrar nombre y dueño |
 | Seguir un agente privado o inexistente → `BOT_NOT_FOUND` (404) | No revela qué agentes privados existen | 403 |
-| Seguir **exige Telegram vinculado** (`SUBSCRIPTION_TELEGRAM_REQUIRED` 422) y no se puede seguir uno propio (`SUBSCRIPTION_OWN_BOT` 422) | Telegram es el único canal de envío; los propios ya se ven en la app | Guardar la suscripción y avisar "cuando conectes" |
+| Seguir **exige un canal**: correo activo en [M12](M12-NOTIFICATIONS.md), o Telegram activo y vinculado (`SUBSCRIPTION_TELEGRAM_REQUIRED` 422); sin ningún canal activo `SUBSCRIPTION_NO_CHANNEL` 503. No se puede seguir uno propio (`SUBSCRIPTION_OWN_BOT` 422) | Las señales llegan por correo y/o Telegram; los propios ya se ven en la app | Guardar la suscripción y avisar "cuando conectes" |
 | Suscribirse y dejar de seguir son **idempotentes** (200 con `{bot_id, is_subscribed, subscribers_count}`) | Un doble clic o una pestaña vieja no es un error para la persona | 409 `SUBSCRIPTION_EXISTS` |
 | Al **apagar** Compartir señales las suscripciones **se conservan**: el hook no envía nada (mira `share_signals`) y el agente sale del listado; si se vuelve a compartir, siguen recibiendo. Dejar de seguir funciona aunque ya no se comparta | Un apagado por error no hace perder a quienes lo seguían | Borrar las suscripciones al apagar |
 | Hook `notify_subscribers` post-commit en `GenerateSignalService`, en `try/except`, solo si `share_signals` y la señal `is_actionable()` (manual, Con aprobación o Automático por igual) | Igual que las alertas: un fallo de Telegram no frena la señal | Enviar dentro de la transacción |
@@ -166,7 +166,7 @@ Entregables:
 | `signals` | WRITE | Señales generadas por bot (buy/sell/hold + precios + servicio/modelo/latencia de la IA). Decisión: `decision_status VARCHAR(16) NOT NULL DEFAULT 'not_required'` (CHECK: not_required \| pending \| executing \| executed \| rejected \| expired \| failed), `expires_at`, `decided_at` (`TIMESTAMP(6)`), `decided_by_user_id BIGINT` (FK `fk_signals_decided_by` → users; NULL = automático), `decision_channel VARCHAR(16)` (CHECK: app \| telegram \| auto), `decision_reason VARCHAR(64)`, `candle_ts TIMESTAMP(6)` + `UNIQUE uq_signals_bot_candle (bot_id, candle_ts)`, índice `idx_signals_decision_status (decision_status, expires_at)` |
 | `audit_logs` | WRITE/READ | Historial del agente (2026-10-27): `bot_id`, `user_id` (NULL = sistema), `event_type` (`BOT_CREATED` · `BOT_UPDATED` · `BOT_STATUS_CHANGED`), `ts`, `data` JSON. Ya existía (migración inicial, modelo en `app/common/audit/audit_log_model.py`); índice `idx_audit_logs_bot_ts (bot_id, ts)` |
 | `signal_subscriptions` | WRITE | Quién sigue qué agente compartido: `id`, `bot_id` (FK `fk_signal_subscriptions_bot` → bots, CASCADE), `user_id` (FK `fk_signal_subscriptions_user` → users, CASCADE), `created_at TIMESTAMP(6)`; `UNIQUE uq_signal_subscriptions_bot_user (bot_id, user_id)`, índice `idx_signal_subscriptions_user` |
-| `users` | READ | `telegram_chat_id` para exigir Telegram al suscribirse ([M1](M01-AUTH.md)) |
+| `users` | READ | `telegram_chat_id` para exigir Telegram al suscribirse si el correo está apagado ([M1](M01-AUTH.md)) |
 | `strategies` | READ | Validar al crear y construir AnalyzeService (M5) |
 | `accounts` | READ | Propiedad, estado y modo; capital (M4) |
 | `account_balances` | READ | Balance más reciente (M4) |
@@ -238,7 +238,7 @@ Provider: `app/modules/bots/providers/bot_provider.py` → `BotServiceFactory`
 2. **Caducar pendientes** — `expire_pending(utc_now())`.
 3. **Reconciliar órdenes** — `ReconcileOrdersService.run()` ([M8](M08-ORDERS-EXECUTION.md)): órdenes live abiertas, SL nativos y respuestas perdidas.
 4. **Proteger posiciones** — `ProtectPositionsService.run()` ([M8](M08-ORDERS-EXECUTION.md)).
-5. **Telegram en polling** — si `TELEGRAM_UPDATES_MODE=polling` ([M9](M09-ALERTS.md)).
+5. **Telegram en polling** — si Telegram está activo en modo `polling` ([M12](M12-NOTIFICATIONS.md), [M9](M09-ALERTS.md)).
 
 ### Settings (`app/common/config/settings.py`)
 ```
@@ -260,7 +260,7 @@ AGENT_MAX_AUTO_ANALYSES_PER_DAY=96       # análisis automáticos por usuario y 
 | POST | `/api/bots/{id}/pause` | token | Transición → paused |
 | POST | `/api/bots/{id}/stop` | token | Transición → stopped |
 | POST | `/api/bots/{id}/market/sync` | token | "Actualizar datos": descarga 500 velas del símbolo/timeframe del agente (ccxt, M2) y recalcula sus indicadores (M3). 404 si no es del usuario; rate limit 3/min por usuario (`market_sync_rate_limiter`). Devuelve `rows_fetched` y `rows_calculated` (null sin conjunto) |
-| POST | `/api/bots/{id}/subscription` | token | Seguir un agente compartido (idempotente). 404 `BOT_NOT_FOUND` si no existe o no comparte; 422 `SUBSCRIPTION_OWN_BOT` · `SUBSCRIPTION_TELEGRAM_REQUIRED`. Devuelve `{bot_id, is_subscribed, subscribers_count}` |
+| POST | `/api/bots/{id}/subscription` | token | Seguir un agente compartido (idempotente). 404 `BOT_NOT_FOUND` si no existe o no comparte; 422 `SUBSCRIPTION_OWN_BOT` · `SUBSCRIPTION_TELEGRAM_REQUIRED`; 503 `SUBSCRIPTION_NO_CHANNEL`. Devuelve `{bot_id, is_subscribed, subscribers_count}` |
 | DELETE | `/api/bots/{id}/subscription` | token | Dejar de seguir (idempotente; funciona aunque el agente ya no comparta). 404 si no hay suscripción y el agente no comparte |
 | GET | `/api/signals` | token | Lista señales (requiere `?bot_id=`; 404 si el bot no es del usuario; `limit` 1–500). Más reciente primero (`ts`, `id` desc). Paginación opt-in: con `page` (≥ 1) y `page_size` (1–100, 20 por defecto) `data` pasa a ser `{items, pagination: {total, page, page_size, total_pages}}` (`build_paginated_response`); sin `page`, la lista de siempre hasta `limit` |
 | GET | `/api/signals/pending` | token | Señales `pending` de mis agentes, con `bot_name` y `bot_mode`. `?mine=true` por defecto (también para admin); `mine=false` → admin ve todas. `limit` 1–200 (50) |
@@ -355,3 +355,4 @@ Routers registrados en `app/app_factory.py` (dentro de `api_routers`, con `prefi
 - **2026-10-26** — **Solo Binance** ([M2](M02-MARKET-DATA.md)): se quitan `BOT_EXCHANGE_ACCOUNT_MISMATCH` y el filtro de cuentas live por exchange del asistente; el buscador de símbolos busca por símbolo y clase de activo (ya no por exchange).
 - **2026-10-26** — **Agentes reales y demo lado a lado:** Inicio lista los reales (billetera de Binance) y la nueva página **Agentes demo** (`/#/demo-agents`) los de dinero simulado. Crear un demo pide solo el monto (`demo_capital`); el backend crea su cuenta de práctica interna. `POST /api/bots` sin `account_id`; `PUT` ya no cambia `mode`; fuera `TRADING_LIVE_AUTO_ENABLED`, `BOT_AUTO_LIVE_DISABLED` y `BOT_MODE_ACCOUNT_MISMATCH`. Etiquetas Real / Demo en la UI.
 - **2026-10-27** — **Historial del agente:** los servicios guardan en `audit_logs` quién creó, editó (antes → después), inició, pausó o detuvo cada agente, en el mismo commit; también el sistema (drawdown máximo → `error`; dueño desactivado → `paused`). `GET /api/bots/{id}/history` y pestaña **Historial** en el detalle. Reemplaza la trazabilidad que antes solo daba la auditoría HTTP, que ya no guarda consultas ([M1](M01-AUTH.md)).
+- **2026-11-26** — Señales compartidas también por correo ([M12](M12-NOTIFICATIONS.md)): seguir un agente ya no exige Telegram si el correo está activo (`SUBSCRIPTION_NO_CHANNEL` 503 sin ningún canal); `SharedAgentsSection` usa `email_notifications` / `telegram_available` de `GET /users/me`.

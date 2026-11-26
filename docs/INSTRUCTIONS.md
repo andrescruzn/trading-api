@@ -64,7 +64,7 @@ Paso 1 — Verificar datos base (ya vienen con los seeds)
   ---
   Paso 6 — Crear un agente
 
-  Ve a Agentes demo → Crear agente demo (o Inicio → Crear agente real):
+  Ve a Agentes demo → Crear agente demo (o Inicio → Crear agente):
   1. Símbolo: BTC/USDT.
   2. Estrategia y conjunto de indicadores (el recomendado viene marcado).
   3. Dinero: en demo, el monto a invertir (por ejemplo 10.000 USDT); en real, la billetera de

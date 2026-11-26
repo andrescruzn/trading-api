@@ -57,3 +57,12 @@ FUND_NOTICE_TEMPLATE = MailTemplate(
     subject="Novedad de tu inversión en Trading App",
     filename="fund_notice.html",
 )
+
+# Aviso genérico de las notificaciones: señal por aprobar, señal de un
+# agente que sigues y correo de prueba. `details` es una lista de pares
+# (etiqueta, valor); el asunto se reemplaza por el título del aviso.
+NOTICE_TEMPLATE = MailTemplate(
+    code="notice",
+    subject="Aviso de Trading App",
+    filename="notice.html",
+)

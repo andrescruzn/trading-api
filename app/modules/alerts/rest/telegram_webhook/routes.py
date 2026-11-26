@@ -5,12 +5,13 @@
 #
 # ENDPOINT:
 # - POST /telegram/webhook → updates del bot de Telegram (producción,
-#   TELEGRAM_UPDATES_MODE=webhook)
+#   modo de respuestas "webhook" en Administración → Notificaciones)
 #
 # SEGURIDAD:
 # - Telegram envía la cabecera X-Telegram-Bot-Api-Secret-Token con el
 #   secret_token registrado en setWebhook; se compara en tiempo constante
-#   con TELEGRAM_WEBHOOK_SECRET. Sin secreto configurado → 404 siempre.
+#   con el secreto guardado (cifrado) en notification_settings. Telegram
+#   inactivo, otro modo o sin secreto → 404 siempre.
 # - Sin sesión de usuario: la identidad sale del chat vinculado
 #   (TelegramUpdateService).
 # - Siempre 200 cuando el secreto es correcto: con otro código Telegram
@@ -18,11 +19,8 @@
 # - Fuera de la auditoría HTTP (audit_middleware): el cuerpo de /start
 #   lleva el código de vinculación.
 #
-# REGISTRO DEL WEBHOOK (una vez, lo hace el administrador):
-#   curl -X POST "https://api.telegram.org/bot<TOKEN>/setWebhook" \
-#     -d "url=https://<api>/api/telegram/webhook" \
-#     -d "secret_token=<TELEGRAM_WEBHOOK_SECRET>" \
-#     -d 'allowed_updates=["message","callback_query"]'
+# REGISTRO DEL WEBHOOK: lo hace el servidor al guardar el modo "webhook"
+# en Notificaciones (genera el secreto y llama setWebhook).
 # ======================================================================
 
 from __future__ import annotations
@@ -34,18 +32,17 @@ from typing import Any
 from fastapi import APIRouter, Body, Depends, Header
 from sqlalchemy.orm import Session
 
-from app.common.config import settings
 from app.common.http import send
 from app.extensions.db import get_db
 from app.modules.alerts.providers.telegram_provider import build_telegram_update_service
+from app.modules.notifications.providers import build_notification_settings_reader
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/telegram", tags=["Telegram"])
 
 
-def _valid_secret(received: str | None) -> bool:
-    expected = settings.TELEGRAM_WEBHOOK_SECRET
+def _valid_secret(received: str | None, expected: str | None) -> bool:
     return bool(expected) and hmac.compare_digest((received or "").encode(), expected.encode())
 
 
@@ -55,7 +52,10 @@ def telegram_webhook(
     secret_token: str | None = Header(default=None, alias="X-Telegram-Bot-Api-Secret-Token"),
     db: Session = Depends(get_db),
 ):
-    if settings.TELEGRAM_UPDATES_MODE != "webhook" or not _valid_secret(secret_token):
+    config = build_notification_settings_reader(db).get()
+    if not config.receives_updates("webhook") or not _valid_secret(
+        secret_token, config.telegram_webhook_secret
+    ):
         return send(msg="No encontrado.", status_code=404)
 
     service = build_telegram_update_service(db)

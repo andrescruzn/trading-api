@@ -57,6 +57,7 @@ from app.modules.orders.services.execution import (
     NativeStopService,
     ProtectPositionsService,
     ReconcileOrdersService,
+    SyncFundingService,
 )
 
 # Ejecutores (patrón Strategy)

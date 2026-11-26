@@ -1,5 +1,6 @@
 import {
 	IconBell,
+	IconBellCog,
 	IconBook,
 	IconCoins,
 	IconCompass,
@@ -18,7 +19,7 @@ import { NavSection } from '@/modules/app-shell/components/nav-section';
 import type { NavSectionData } from '@/modules/app-shell/components/nav-section.types';
 import { isPathActive } from '@/modules/app-shell/components/nav-section.utils';
 import { NavUser } from '@/modules/app-shell/components/nav-user';
-import { MANAGER_ROLES, STAFF_ROLES } from '@/modules/auth/lib/roles';
+import { STAFF_ROLES } from '@/modules/auth/lib/roles';
 import {
 	Sidebar,
 	SidebarContent,
@@ -106,12 +107,18 @@ const navSections: NavSectionData[] = [
 				],
 			},
 			{
+				// Telegram y correo: por dónde llegan los avisos (el socio lo ve
+				// en solo lectura).
+				title: 'Notificaciones',
+				icon: IconBellCog,
+				url: '/admin/notifications',
+			},
+			{
 				// Lo que el super admin define para todo el sistema.
 				title: 'Configuración',
 				icon: IconSettings,
 				items: [
 					{ title: 'Usuarios', url: '/admin/users' },
-					{ title: 'Telegram', url: '/admin/telegram', role: MANAGER_ROLES },
 					{ title: 'Auditoría', url: '/admin/audit' },
 				],
 			},

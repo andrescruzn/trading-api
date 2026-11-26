@@ -102,6 +102,11 @@ from app.modules.alerts.infrastructure.alert_rule_model import AlertRuleModel  #
 from app.modules.alerts.infrastructure.alert_event_model import AlertEventModel  # noqa: F401
 
 # --------------------------------------------------------------
+# Notifications module models
+# --------------------------------------------------------------
+from app.modules.notifications.infrastructure.notification_settings_model import NotificationSettingsModel  # noqa: F401
+
+# --------------------------------------------------------------
 # Tablas sin servicios todavía (el esquema las incluye; Alembic las gestiona)
 # --------------------------------------------------------------
 from app.modules.agent.infrastructure.prediction_model import PredictionModel  # noqa: F401

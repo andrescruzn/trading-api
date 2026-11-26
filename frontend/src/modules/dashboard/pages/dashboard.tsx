@@ -35,7 +35,7 @@ export function DashboardPage() {
 				{canManage && (
 					<Button render={<Link to="/agents/new" search={{ mode: 'live' }} />}>
 						<IconPlus />
-						Crear agente real
+						Crear agente
 					</Button>
 				)}
 			</div>

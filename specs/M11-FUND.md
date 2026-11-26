@@ -14,7 +14,7 @@
 | Lo usan | [M7](M07-BOTS-SIGNALS.md) (regla del 1 % sobre el capital del agente) y [M8](M08-ORDERS-EXECUTION.md) (drawdown del RiskGate) vía `FundCapitalPort`. Reemplazó a [M10](M10-BILLING.md) (retirado en la F6) |
 | Prefijo API | `/api/fund/settings`, `/api/fund/deposits`, `/api/fund/me`, `/api/fund/participants`, `/api/fund/agents`, `/api/fund/allocations`, `/api/fund/redemptions`, `/api/fund/fees`, `/api/fund/commission-shares`, `/api/fund/commissions`, `/api/fund/withdrawals`, `/api/fund/overview` |
 | Frontend | `frontend/src/modules/fund` |
-| Última revisión | 2026-10-26 |
+| Última revisión | 2026-11-26 |
 
 ## Descripción
 
@@ -131,7 +131,7 @@ Hash routing: la URL real es `/#/<ruta>`.
 | El tipo del comprobante se valida por los **primeros bytes** (PDF / PNG / JPG), no por el nombre; el nombre se guarda sin rutas | Nadie sube un HTML o un ejecutable renombrado | Confiar en la extensión |
 | Avisos: el fondo emite **eventos con código y datos** (`FundEvent`) y M9 arma los textos y los envía (`FundNoticeService`) | Los servicios no definen textos de UI (regla del repo); un solo sitio para los mensajes | Textos en los servicios del fondo |
 | Avisos **después del commit**; un error al avisar se registra y no rompe el caso de uso | Nunca se avisa de algo que no quedó guardado | Avisar dentro de la transacción |
-| Telegram solo al **chat de la persona**; sin chat vinculado, no hay Telegram | Los avisos traen montos de una persona: nunca al chat general (`TELEGRAM_DEFAULT_CHAT_ID`) | Usar `TelegramChannel`, que cae al chat general |
+| Telegram solo al **chat de la persona**; sin chat vinculado, no hay Telegram | Los avisos traen montos de una persona: nunca al chat por defecto de [M12](M12-NOTIFICATIONS.md) | Usar `TelegramChannel`, que cae al chat general |
 | Conciliación con el capital de los agentes **a costo** y la billetera **a mercado** | Es exacta cuando los agentes están liquidados y sin posiciones; la diferencia restante explica lo abierto | Marcar a mercado las posiciones de cada agente |
 | M10 se borra **sin migrar datos** (decisión del usuario: BD de desarrollo) | El fondo común cubre inversores, comisiones y aportes | Migrar a asientos de apertura |
 | El socio puede pedir salidas y retiros **suyos** y gestionar sus medios de pago (`read_only_policy.py`) | Solo lectura sobre el sistema, pero también es participante | Socio sin dinero propio |
@@ -354,3 +354,4 @@ Lista de verificación (todo debe estar en ✅ antes del primer depósito de un 
 - **2026-10-26** — **Retiros entre billeteras** (decisión legal: sin bancos): direcciones cripto como medio de pago (red de las de depósito, validación por forma, memo), mínimo y comisión de red de Binance al pedir, `POST /withdrawals/{id}/lookup` y pago con txid comprobado contra el historial de retiros de Binance (completado, misma dirección y red; si no aparece, con nota), comisión de red a cargo de la persona, aviso con recibido, comisión, red, dirección, txid y explorador; `normalize_txid` acepta `Internal transfer N`. Migración `3e1b7c9d2a54`.
 - **2026-10-23** — Fix: Comisiones y Mi saldo se caían si aún no había tabla de comisión (`data: []` tomado como tabla); `getFeeSchedule` normaliza `[]` a `null`.
 - **2026-10-26** — **Billetera única de Binance y agentes demo:** `WalletContextResolver` asegura la billetera ([M4](M04-ACCOUNTS-PORTFOLIO.md)) antes de resolverla y el gateway ya no recibe `CredentialsCipher` (las credenciales están en el `.env`). Solo los agentes reales pueden abrirse al fondo; los demo ([M7](M07-BOTS-SIGNALS.md)) operan dinero simulado. Las ramas de billetera de práctica quedan sin uso (ver Posibles mejoras).
+- **2026-11-26** — Avisos del fondo: el correo y Telegram respetan los interruptores de Notificaciones ([M12](M12-NOTIFICATIONS.md)); el token sale de la BD.

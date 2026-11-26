@@ -25,6 +25,9 @@ function AlertDialogOverlay({
 }: AlertDialogPrimitive.Backdrop.Props) {
 	return (
 		<AlertDialogPrimitive.Backdrop
+			// Base UI no pinta el backdrop de un dialog anidado (p. ej. abierto
+			// desde un Sheet): lo forzamos.
+			forceRender
 			data-slot="alert-dialog-overlay"
 			className={cn(
 				'fixed inset-0 isolate z-50 bg-black/10 duration-100 supports-backdrop-filter:backdrop-blur-xs data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0',

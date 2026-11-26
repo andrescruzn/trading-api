@@ -21,7 +21,7 @@ El esquema lo definen los **modelos ORM** (`app/modules/*/infrastructure/*_model
 | Usuarios y cuentas | `users`, `accounts`, `account_balances` |
 | Market data / ML | `candles`, `candle_features`, `datasets`, `models`, `model_runs` |
 | Ejecución de bots | `bots`, `signals`, `orders`, `fills`, `positions`, `predictions`, `portfolio_snapshots` |
-| Alertas y auditoría | `alert_rules`, `alert_events`, `audit_logs`, `system_events` |
+| Alertas, notificaciones y auditoría | `alert_rules`, `alert_events`, `notification_settings` (una fila: Telegram y correo, token cifrado), `audit_logs`, `system_events` |
 | Fondo común (M4 + M11) | `platform_wallet` (una fila), `wallet_snapshots`, `fund_settings` (una fila), `ledger_entries` (append-only), `deposit_requests`, `agent_pools`, `agent_settlements`, `unit_lots`, `allocation_orders`, `fee_schedules`, `commission_share_versions`, `redemption_requests`, `settlement_redemptions`, `commission_credits`, `payout_methods`, `withdrawal_requests`, `withdrawal_receipts` (comprobante en `MEDIUMBLOB`) |
 
 ## Valores permitidos (CHECK constraints)
@@ -44,6 +44,7 @@ users.status               : active | blocked | disabled
 alert_rules.rule_type      : pnl | drawdown | signal | error | price
 alert_events.severity      : info | warning | critical
 alert_events.delivery_status: pending | sent | failed
+notification_settings.telegram_updates_mode: off | polling | webhook
 system_events.level        : info | warning | error
 system_events.component    : market_data | execution | scheduler | api
 fee_transactions.status    : pending | charged | waived

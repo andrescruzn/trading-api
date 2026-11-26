@@ -13,6 +13,9 @@
 # - Obtiene code y name del rol desde la tabla `roles` vía el repositorio.
 # - Así el label del rol viene de la BD y no de una comparación
 #   hardcodeada en settings.
+# - Informa qué canales de aviso están disponibles (Administración →
+#   Notificaciones) para que el front sepa si hace falta conectar
+#   Telegram (p. ej. para seguir un agente compartido).
 # ======================================================================
 
 from __future__ import annotations
@@ -22,6 +25,7 @@ from datetime import datetime
 from typing import Optional
 
 from app.common.contracts import ServiceResult
+from app.modules.notifications.domain import NotificationSettingsReader
 from app.modules.users.domain import UserRepository
 
 
@@ -41,6 +45,10 @@ class UserProfilePayload:
     last_login_at: Optional[datetime]
     created_at: Optional[datetime]
     telegram_linked: bool = False
+    # El bot de Telegram está activo (se puede conectar un chat)
+    telegram_available: bool = False
+    # Los avisos por correo están activos y el servidor tiene SMTP
+    email_notifications: bool = False
 
 
 class GetMeService:
@@ -48,8 +56,16 @@ class GetMeService:
     Service para obtener el perfil del usuario autenticado.
     """
 
-    def __init__(self, *, repo: UserRepository):
+    def __init__(
+        self,
+        *,
+        repo: UserRepository,
+        notification_settings: NotificationSettingsReader | None = None,
+        smtp_configured: bool = False,
+    ):
         self._repo = repo
+        self._notification_settings = notification_settings
+        self._smtp_configured = smtp_configured
 
     def get(self, user_id: int) -> ServiceResult[UserProfilePayload]:
         """
@@ -75,7 +91,16 @@ class GetMeService:
             return ServiceResult.fail(code="ROLE_NOT_FOUND", http_status=500)
 
         # --------------------------------------------------------------
-        # 3) Mapear a payload de dominio
+        # 3) Canales de aviso disponibles
+        # --------------------------------------------------------------
+        telegram_available = email_notifications = False
+        if self._notification_settings is not None:
+            config = self._notification_settings.get()
+            telegram_available = config.telegram_active and bool(config.telegram_bot_username)
+            email_notifications = config.email_active and self._smtp_configured
+
+        # --------------------------------------------------------------
+        # 4) Mapear a payload de dominio
         # --------------------------------------------------------------
         return ServiceResult.ok(
             UserProfilePayload(
@@ -89,5 +114,7 @@ class GetMeService:
                 last_login_at=user.last_login_at,
                 created_at=user.created_at,
                 telegram_linked=user.telegram_chat_id is not None,
+                telegram_available=telegram_available,
+                email_notifications=email_notifications,
             )
         )

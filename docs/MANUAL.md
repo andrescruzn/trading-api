@@ -435,7 +435,8 @@ Explorar (explorar mercados, estrategias, track record) y, según tu rol, "Mi in
 o "Administración" (administradores). Las señales, órdenes y alertas de un agente se revisan
 dentro del propio agente, así que no hay listas aparte "de todo el sistema". Para abrir un agente
 que no es tuyo, entra a Administración → Fondo → "Agentes del fondo". "Configuración"
-reúne lo que el administrador define para todos: los usuarios (y su rol) y el canal de Telegram.
+reúne lo que el administrador define para todos: los usuarios (y su rol) y la auditoría. Los
+canales de aviso (Telegram y correo) tienen su propio ítem: Administración → "Notificaciones" (ver 4.5.7).
 Las estrategias se crean y editan en la misma página de Explorar → Estrategias: el administrador
 ve ahí los botones "Nueva estrategia" y "Editar"; el resto solo las consulta. En "Usuarios" se cambia el rol de cada persona (Usuario, Administrador o
 Inversor); nadie puede cambiar el suyo, para que la app nunca se quede sin administrador.
@@ -883,7 +884,7 @@ Hay dos tipos de agente, y conviven a la par:
 Un agente demo no se puede convertir en real ni al revés: si una estrategia funciona en demo, se
 crea un agente real nuevo con ella.
 
-Cómo crear un agente ("Crear agente real" en el inicio o "Crear agente demo" en Agentes demo):
+Cómo crear un agente ("Crear agente" en el inicio o "Crear agente demo" en Agentes demo):
 
   Paso 1 — ¿Qué quieres operar?
     Eliges el símbolo (por ejemplo BTC/USDT). Solo aparecen los que el sistema puede descargar solo.
@@ -1156,7 +1157,8 @@ Conectar Telegram (para aprobar desde el celular)
      vinculado.
   4. Vuelve a la app y pulsa "Ya lo vinculé". El menú dirá "Telegram conectado".
   Para dejar de recibir mensajes, abre el mismo diálogo y pulsa "Desvincular".
-  Si el administrador no ha configurado el bot de Telegram, la app te lo dice al generar el enlace.
+  Si el administrador no ha activado el bot de Telegram (Administración → Notificaciones), la app
+  te lo dice al generar el enlace.
 
   Cada mensaje trae la acción, el símbolo, entrada, stop loss, take profit, riesgo/beneficio,
   tamaño, el agente y la hora límite para decidir (hora de Bogotá), con los botones Aprobar y
@@ -1164,9 +1166,10 @@ Conectar Telegram (para aprobar desde el celular)
 
 Compartir las señales de un agente (y seguir las de otros)
   - El dueño de un agente puede activar "Compartir señales" en su pestaña Configuración.
-  - En Track record aparece la lista de agentes que comparten. Con Telegram conectado, pulsa
-    "Suscribirme" y recibirás sus compras y ventas aprobadas: acción, símbolo, entrada, SL, TP
-    y R/R. Es solo información: no se ejecuta nada en tu cuenta y no se ve de quién es el
+  - En Track record aparece la lista de agentes que comparten. Pulsa "Suscribirme" y recibirás
+    sus compras y ventas aprobadas por correo (si el administrador lo activó) y por Telegram (si
+    lo conectaste): acción, símbolo, entrada, SL, TP y R/R. Si el correo está apagado, primero
+    tienes que conectar Telegram. Es solo información: no se ejecuta nada en tu cuenta y no se ve de quién es el
     agente ni cuánto dinero maneja. "Dejar de seguir" lo detiene.
 
 Las protecciones (se aplican a toda orden: manual, aprobada o automática)
@@ -1391,7 +1394,7 @@ El sistema soporta 4 canales simultáneos:
   ──────────────────────────────────────────────────────────────────────────────
   Email     Envía un correo HTML usando el servidor SMTP configurado
   Telegram  Manda el aviso a TU chat de Telegram si lo conectaste (menú de usuario → Conectar
-            Telegram); si no, al chat del sistema. El mismo chat sirve para aprobar señales (ver 3.6).
+            Telegram); si no, al chat por defecto. El mismo chat sirve para aprobar señales (ver 3.6).
   (Email)   El correo llega a la dirección con la que entras a la app.
   Webhook   Hace un HTTP POST a una URL externa (Slack, Discord, IFTTT, etc.). Por seguridad
             la URL tiene que empezar por https:// y apuntar a un servicio público de internet.
@@ -1444,6 +1447,37 @@ tiene abierta una de 0,01 BTC comprada a 60.000 que hoy vale 57.000 (−30).
 
 Para no llenarte de mensajes, una regla que ya avisó espera 60 minutos antes de volver a revisarse
 (ALERT_REPEAT_MINUTES). Si la condición sigue, te lo recuerda cada hora.
+
+4.5.7 Notificaciones: encender Telegram y el correo (Módulo 12)
+─────────────────────────────────────────────────────────────────
+Por dónde salen los avisos lo decide el administrador en Administración → "Notificaciones".
+Los cambios aplican al momento, sin reiniciar el servidor. El socio ve la página sin botones.
+
+  Telegram
+    1. Crea un bot con @BotFather en Telegram y copia su token (algo como 123456789:ABC…).
+    2. En la tarjeta Telegram marca "Enviar avisos por Telegram" y pega el token. Al guardar,
+       la app comprueba el token y muestra el nombre del bot (@mi_bot). El token se guarda
+       cifrado y nunca se vuelve a mostrar: para cambiarlo, escribe uno nuevo; vacío lo conserva.
+    3. Chat por defecto (opcional): recibe las alertas de quien no conectó su Telegram.
+    4. Respuestas del bot (para los botones Aprobar/Descartar y para conectar chats):
+         - Solo enviar avisos: el bot habla pero no escucha.
+         - Consulta periódica: el servidor pregunta a Telegram cada minuto (para probar en tu
+           computador, sin dirección pública).
+         - Webhook: Telegram avisa al instante. Escribe la dirección pública de la API
+           terminada en /api/telegram/webhook (con https); la app la registra sola.
+    5. "Enviar prueba" manda un mensaje a tu chat (o al chat por defecto si no conectaste el tuyo).
+
+  Correo
+    - "Enviar avisos por correo" enciende o apaga los correos de señales por aprobar, señales de
+      agentes que sigues, alertas y avisos del fondo. El código para entrar y las invitaciones
+      salen siempre.
+    - El servidor de correo (SMTP) se configura en el servidor; si falta, la tarjeta lo avisa.
+    - "Enviar prueba a mi correo" te manda un correo para confirmar que llega.
+
+  Con el correo encendido llegan por correo los mismos avisos que por Telegram. Ejemplo: tu
+  agente de BTC propone una compra en modo Con aprobación → te llega un mensaje de Telegram con
+  los botones Aprobar/Descartar y un correo con entrada, stop loss, take profit, R/R y un botón
+  "Revisar en Trading App". Desde el correo no se aprueba: decides en la app o en Telegram.
 
 ---
 PARTE 5 — El modelo de negocio: el fondo común

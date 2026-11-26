@@ -22,6 +22,8 @@ import {
 } from '@/modules/bots/hooks/use-bots-mutations';
 import {
 	defaultAgentName,
+	isFeatureSetCompatible,
+	recommendedFeatureSet,
 	strategyRiskFraction,
 	strategyTimeframe,
 } from '@/modules/bots/lib/agent-wizard';
@@ -165,7 +167,7 @@ export function AgentNewPage() {
 		resolver: zodResolver(schema),
 		defaultValues: {
 			symbol_id: search.symbol_id ? String(search.symbol_id) : null,
-			strategy_id: null,
+			strategy_id: search.strategy_id ? String(search.strategy_id) : null,
 			feature_set_id: null,
 			demo_capital: isDemo ? '10000' : '',
 			name: '',
@@ -203,6 +205,17 @@ export function AgentNewPage() {
 	async function goNext() {
 		const valid = await form.trigger([...STEPS[step].fields]);
 		if (!valid) return;
+		// Una estrategia que llegó por la URL (recomendación de la IA) se
+		// completa al entrar a su paso: conjunto recomendado y nombre sugerido,
+		// igual que si la persona la hubiera elegido.
+		if (step === 0 && strategy && !values.feature_set_id) {
+			const compatible = (featureSetsQuery.data ?? []).filter((item) =>
+				isFeatureSetCompatible(strategy, item),
+			);
+			const recommended = recommendedFeatureSet(strategy, compatible);
+			if (recommended) form.setValue('feature_set_id', String(recommended.id));
+			suggestName(symbol, strategy);
+		}
 		if (step === 1 && !timeframe) {
 			toast.add({
 				title: 'Falta el timeframe',

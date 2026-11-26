@@ -8,6 +8,7 @@ import type {
 	TrendDirection,
 	TrendExplorerRow,
 } from '@/modules/market/api/market.api';
+import { AiRecommendationsPanel } from '@/modules/market/components/ai-recommendations-panel';
 import { useRefreshExplorerMutation } from '@/modules/market/hooks/use-market-mutations';
 import { useTrendExplorerQuery } from '@/modules/market/hooks/use-market-queries';
 import {
@@ -22,6 +23,7 @@ import {
 import { OptionSelect } from '@/modules/shared/components/option-select';
 import { PageListHeader } from '@/modules/shared/components/page-list-header';
 import {
+	formatCompactNumber,
 	formatNumber,
 	formatPercent,
 	formatPrice,
@@ -153,10 +155,34 @@ const columns: DataTableColumn<TrendExplorerRow>[] = [
 		cell: (row) => formatPercent(row.atr_pct_14, 1),
 	},
 	{
-		id: 'close',
-		header: 'Último cierre',
+		id: 'price',
+		header: 'Precio',
 		className: 'text-right tabular-nums',
-		cell: (row) => formatPrice(row.last_close),
+		// Sin datos en vivo se muestra el último cierre diario, atenuado.
+		cell: (row) =>
+			row.price !== null ? (
+				formatPrice(row.price)
+			) : (
+				<span
+					className="text-muted-foreground"
+					title="Último cierre diario: no hay precio en vivo"
+				>
+					{formatPrice(row.last_close)}
+				</span>
+			),
+	},
+	{
+		id: 'change24h',
+		header: '24 h',
+		className: 'text-right',
+		cell: (row) => <SignedPercent value={row.change_24h} />,
+	},
+	{
+		id: 'volume24h',
+		header: 'Volumen 24 h',
+		className: 'text-right tabular-nums',
+		cell: (row) =>
+			row.volume_24h === null ? '—' : `$${formatCompactNumber(row.volume_24h)}`,
 	},
 	{
 		id: 'actions',
@@ -253,6 +279,12 @@ export function ExplorerPage() {
 						apalancamiento.
 					</p>
 					<p>
+						<strong>Precio</strong>, <strong>24 h</strong> y{' '}
+						<strong>Volumen 24 h</strong> llegan en vivo de Binance y se
+						actualizan cada minuto. Si el exchange no responde, el precio
+						muestra el último cierre diario en gris.
+					</p>
+					<p>
 						Una tendencia fuerte en el pasado no garantiza que continúe: el
 						agente igual filtra cada operación con la regla del 1 % y el
 						riesgo/beneficio mínimo de 2:1.
@@ -269,6 +301,11 @@ export function ExplorerPage() {
 					options={classOptions}
 				/>
 			</div>
+
+			<AiRecommendationsPanel
+				assetClass={assetClass === ALL ? undefined : (assetClass as AssetClass)}
+				canManage={isAdmin}
+			/>
 
 			{withoutData > 0 && (
 				<p className="text-sm text-muted-foreground">

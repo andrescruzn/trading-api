@@ -196,6 +196,13 @@ backtest_rate_limiter = RateLimiter(requests_per_minute=3, window_seconds=60)
 # velas del exchange (ccxt) y recalcula indicadores.
 market_sync_rate_limiter = RateLimiter(requests_per_minute=3, window_seconds=60)
 
+# Recomendaciones de mercados de la IA por usuario y minuto: cada pedido es
+# una llamada al LLM (coste) con todo el ranking del explorador.
+recommendation_rate_limiter = RateLimiter(
+    requests_per_minute=settings.MARKET_RECOMMENDATIONS_PER_MINUTE,
+    window_seconds=60,
+)
+
 # Rate limiter moderado para endpoints generales
 default_rate_limiter = RateLimiter(requests_per_minute=60, window_seconds=60)
 

@@ -16,6 +16,7 @@ from app.modules.market.infrastructure import (
     SqlAlchemySymbolRepository,
     SqlAlchemyTimeframeRepository,
     SqlAlchemyCandleRepository,
+    CcxtTickerGateway,
 )
 from app.modules.market.services.exchanges import ListExchangesService
 from app.modules.market.services.symbols import (
@@ -124,6 +125,7 @@ class MarketServiceFactory:
             symbol_repo=self._symbol_repo,
             timeframe_repo=self._timeframe_repo,
             candle_repo=self._candle_repo,
+            ticker_gateway=CcxtTickerGateway(),
         )
 
     def refresh_explorer_candles(self) -> RefreshExplorerCandlesService:

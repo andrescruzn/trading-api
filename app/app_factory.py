@@ -44,7 +44,12 @@ from app.modules.fund.rest import (
     fund_settings_router,
 )
 from app.modules.strategies.rest import backtests_router, datasets_router, strategies_router
-from app.modules.agent.rest import agent_router, models_router, model_runs_router
+from app.modules.agent.rest import (
+    agent_router,
+    models_router,
+    model_runs_router,
+    recommendations_router,
+)
 from app.modules.bots.rest import bots_router, signals_router
 from app.modules.orders.rest import (
     orders_router,
@@ -154,8 +159,8 @@ def create_app() -> FastAPI:
         fund_fees_router, fund_payouts_router, fund_overview_router,
         # Strategies
         strategies_router, datasets_router, backtests_router,
-        # Agent (AI Agent + ML Models + Model Runs)
-        agent_router, models_router, model_runs_router,
+        # Agent (AI Agent + ML Models + Model Runs + recomendaciones de mercados)
+        agent_router, models_router, model_runs_router, recommendations_router,
         # Bots & Signals (signals_router antes: GET /signals/pending)
         bots_router, signals_router,
         # Orders & Execution (aprobar / rechazar señales)

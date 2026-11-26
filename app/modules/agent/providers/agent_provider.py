@@ -8,7 +8,8 @@
 # PATRÓN:
 # - Instancia una vez los repos al inicio.
 # - Expone métodos que retornan servicios listos para usar.
-# - Borrow de repos de otros módulos para AnalyzeService.
+# - Borrow de repos de otros módulos para AnalyzeService y para las
+#   recomendaciones de mercados (explorador de M2 + estrategias de M5).
 # ======================================================================
 
 from __future__ import annotations
@@ -17,6 +18,7 @@ from sqlalchemy.orm import Session
 
 from app.common.config import settings
 from app.modules.agent.infrastructure import (
+    SqlAlchemyMarketRecommendationRepository,
     SqlAlchemyMLModelRepository,
     SqlAlchemyModelRunRepository,
 )
@@ -26,6 +28,10 @@ from app.modules.agent.services.model_runs import (
     CreateModelRunService,
     FinishModelRunService,
     ListModelRunsService,
+)
+from app.modules.agent.services.recommendations import (
+    GenerateMarketRecommendationsService,
+    GetLatestMarketRecommendationService,
 )
 from app.modules.agent.services.models import (
     CreateModelService,
@@ -42,10 +48,12 @@ from app.modules.accounts.infrastructure import (
 )
 from app.modules.features.infrastructure import SqlAlchemyCandleFeatureRepository
 from app.modules.market.infrastructure import (
+    CcxtTickerGateway,
     SqlAlchemyCandleRepository,
     SqlAlchemySymbolRepository,
     SqlAlchemyTimeframeRepository,
 )
+from app.modules.market.services.explorer import ListTrendExplorerService
 
 
 class AgentServiceFactory:
@@ -63,6 +71,7 @@ class AgentServiceFactory:
         # Repos propios del módulo
         self._model_repo = SqlAlchemyMLModelRepository(session)
         self._run_repo = SqlAlchemyModelRunRepository(session)
+        self._recommendation_repo = SqlAlchemyMarketRecommendationRepository(session)
 
         # Repos tomados de otros módulos (borrowing)
         self._strategy_repo = SqlAlchemyStrategyRepository(session)
@@ -99,6 +108,27 @@ class AgentServiceFactory:
             max_entry_atr_distance=settings.AGENT_MAX_ENTRY_ATR_DISTANCE,
             master_prompt=settings.AGENT_MASTER_PROMPT,
         )
+
+    # ------------------------------------------------------------------
+    # Recomendaciones de mercados (explorador)
+    # ------------------------------------------------------------------
+
+    def generate_market_recommendations(self) -> GenerateMarketRecommendationsService:
+        explorer = ListTrendExplorerService(
+            symbol_repo=self._symbol_repo,
+            timeframe_repo=self._timeframe_repo,
+            candle_repo=self._candle_repo,
+            ticker_gateway=CcxtTickerGateway(),
+        )
+        return GenerateMarketRecommendationsService(
+            explorer_service=explorer,
+            strategy_repo=self._strategy_repo,
+            recommendation_repo=self._recommendation_repo,
+            llm_client=LLMClientFactory.create(settings),
+        )
+
+    def get_latest_market_recommendation(self) -> GetLatestMarketRecommendationService:
+        return GetLatestMarketRecommendationService(repo=self._recommendation_repo)
 
     # ------------------------------------------------------------------
     # ML Models

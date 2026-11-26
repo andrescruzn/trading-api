@@ -51,13 +51,18 @@ function useCandlesQuery(filters: Partial<CandleFilters>) {
 	});
 }
 
-/** Las métricas salen de velas diarias: no cambian de un minuto a otro. */
+// Precio, variación y volumen de 24 h vienen en vivo del exchange: se
+// refrescan cada minuto mientras la página está abierta.
+const EXPLORER_REFETCH_MS = 60_000;
+
+/** Ranking por tendencia (velas diarias) + datos de 24 h en vivo. */
 function useTrendExplorerQuery(filters: { asset_class?: AssetClass } = {}) {
 	return useQuery({
 		queryKey: [...EXPLORER_QUERY_KEY, filters],
 		queryFn: () => listTrendExplorer(filters),
 		placeholderData: keepPreviousData,
-		staleTime: CATALOG_STALE_TIME,
+		staleTime: EXPLORER_REFETCH_MS,
+		refetchInterval: EXPLORER_REFETCH_MS,
 	});
 }
 

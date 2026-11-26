@@ -4,12 +4,15 @@
 # app/modules/market/rest/explorer/routes.py
 #
 # ENDPOINTS:
-# - GET  /explorer          → ranking de mercados por tendencia (autenticado)
+# - GET  /explorer          → ranking de mercados por tendencia + datos de
+#                              24 h del exchange (autenticado)
 # - POST /explorer/refresh  → descarga las velas diarias (solo super admin)
 #
 # NOTAS:
-# - El GET solo lee la BD. Las velas 1d las trae el refresh (botón del
-#   admin) o el scheduler, una vez al día.
+# - Las velas 1d salen de la BD: las trae el refresh (botón del admin) o
+#   el scheduler, una vez al día. Precio, variación, volumen, máximo y
+#   mínimo de 24 h salen del exchange (caché de unos segundos); si no
+#   responde, esos campos van en null.
 # ======================================================================
 
 from __future__ import annotations
@@ -37,7 +40,7 @@ def get_factory(db: Session = Depends(get_db)) -> MarketServiceFactory:
 
 
 def _row_to_dict(row: TrendRow) -> dict:
-    s, m = row.symbol, row.metrics
+    s, m, t = row.symbol, row.metrics, row.ticker
     return {
         "symbol_id": s.id,
         "symbol": s.symbol,
@@ -56,6 +59,12 @@ def _row_to_dict(row: TrendRow) -> dict:
         "direction": m.direction if m else None,
         "strength": m.strength if m else None,
         "score": m.score if m else None,
+        "price": t.last if t else None,
+        "change_24h": t.change_24h if t else None,
+        "volume_24h": t.quote_volume_24h if t else None,
+        "high_24h": t.high_24h if t else None,
+        "low_24h": t.low_24h if t else None,
+        "ticker_ts": to_iso_utc(t.ts) if t and t.ts else None,
     }
 
 

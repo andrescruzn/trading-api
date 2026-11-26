@@ -8,6 +8,7 @@ from .exchange_repository import ExchangeRepository
 from .symbol_repository import SymbolRepository
 from .timeframe_repository import TimeframeRepository
 from .candle_repository import CandleRepository
+from .ticker_gateway import Ticker, TickerGateway
 
 __all__ = [
     "Exchange",
@@ -18,4 +19,6 @@ __all__ = [
     "SymbolRepository",
     "TimeframeRepository",
     "CandleRepository",
+    "Ticker",
+    "TickerGateway",
 ]

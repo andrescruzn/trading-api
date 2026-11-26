@@ -457,6 +457,22 @@ class Settings:
             self.SCHEDULER_RETENTION_CANDLES = 500
 
         # --------------------------------------------------------------
+        # Explorador de mercados (M2) y recomendaciones de la IA (M6)
+        # --------------------------------------------------------------
+        # EXPLORER_TICKERS_TTL_SECONDS: segundos que se reutilizan los datos
+        #   de 24 h (precio, variación, volumen) antes de volver a pedirlos
+        #   al exchange (mínimo 10). Default 30.
+        # MARKET_RECOMMENDATIONS_PER_MINUTE: pedidos de recomendaciones a la
+        #   IA por usuario y minuto; cada uno es una llamada al LLM. Default 2.
+        # --------------------------------------------------------------
+        self.EXPLORER_TICKERS_TTL_SECONDS: int = max(
+            10, _env_int("EXPLORER_TICKERS_TTL_SECONDS", 30)
+        )
+        self.MARKET_RECOMMENDATIONS_PER_MINUTE: int = max(
+            1, _env_int("MARKET_RECOMMENDATIONS_PER_MINUTE", 2)
+        )
+
+        # --------------------------------------------------------------
         # Billetera de la plataforma (fondo común, M4)
         # --------------------------------------------------------------
         # WALLET_BASE_ASSET: moneda en que se valora la billetera y se lleva

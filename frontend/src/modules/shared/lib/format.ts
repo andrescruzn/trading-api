@@ -78,6 +78,16 @@ function formatSignedPercentValue(value: Numeric, fractionDigits = 2): string {
 	return `${sign}${number.toFixed(fractionDigits).replace('.', ',')} %`;
 }
 
+/** Cifra abreviada para volúmenes: `1234567` → `1,2 M`. */
+function formatCompactNumber(value: Numeric, fractionDigits = 1): string {
+	const number = toNumber(value);
+	if (number === null) return EMPTY;
+	return number.toLocaleString(LOCALE, {
+		notation: 'compact',
+		maximumFractionDigits: fractionDigits,
+	});
+}
+
 /**
  * Fecha de la API → `Date`. Si llega sin offset (`2026-10-23T15:00:00`) se
  * asume UTC: `new Date()` la tomaría como hora local del dispositivo.
@@ -153,6 +163,7 @@ function startOfNextAppDayIso(day: string): string {
 export {
 	APP_TIME_ZONE,
 	EMPTY,
+	formatCompactNumber,
 	formatDate,
 	formatDateTime,
 	formatDateTimeSeconds,

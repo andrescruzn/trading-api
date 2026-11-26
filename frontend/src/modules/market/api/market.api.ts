@@ -52,7 +52,8 @@ type TrendDirection = 'up' | 'down' | 'sideways';
 
 /**
  * Fila del explorador de tendencia (velas 1d). Sin velas suficientes,
- * `has_data` es `false` y las métricas llegan en `null`.
+ * `has_data` es `false` y las métricas llegan en `null`. Los campos de 24 h
+ * salen del exchange en vivo: si no respondió, llegan en `null`.
  */
 type TrendExplorerRow = {
 	symbol_id: number;
@@ -78,6 +79,15 @@ type TrendExplorerRow = {
 	strength: number | null;
 	/** Fuerza con signo según la dirección: ordena el ranking. */
 	score: number | null;
+	/** Último precio del exchange (en vivo, caché de unos segundos). */
+	price: number | null;
+	/** Variación de 24 h como fracción (`0.025` = 2,5 %). */
+	change_24h: number | null;
+	/** Volumen negociado en 24 h, en la moneda de cotización (USDT). */
+	volume_24h: number | null;
+	high_24h: number | null;
+	low_24h: number | null;
+	ticker_ts: string | null;
 };
 
 type RefreshExplorerResult = {

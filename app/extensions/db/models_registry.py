@@ -79,6 +79,9 @@ from app.modules.strategies.infrastructure.dataset_model import DatasetModel  # 
 # --------------------------------------------------------------
 from app.modules.agent.infrastructure.ml_model_model import MLModelORM  # noqa: F401
 from app.modules.agent.infrastructure.model_run_model import ModelRunORM  # noqa: F401
+from app.modules.agent.infrastructure.market_recommendation_model import (  # noqa: F401
+    MarketRecommendationORM,
+)
 
 # --------------------------------------------------------------
 # Bots module models

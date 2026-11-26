@@ -47,8 +47,9 @@ export function SharedAgentsSection() {
 	const telegramAvailable = !!user?.telegram_available;
 	const telegramOn = telegramAvailable && !!user?.telegram_linked;
 	const canReceive = emailOn || telegramOn;
-	// Sin canal y sin Telegram para conectar: nadie puede recibir señales
-	const noChannel = !canReceive && !telegramAvailable;
+	// Sin canal y sin Telegram para conectar (el bot debe leer el "/start"):
+	// nadie puede recibir señales
+	const noChannel = !canReceive && !user?.telegram_linkable;
 	const sharedQuery = useSharedBotsQuery();
 	const subscribe = useSubscribeToBotMutation();
 	const unsubscribe = useUnsubscribeFromBotMutation();

@@ -60,3 +60,16 @@ class NotificationSettings:
     def receives_updates(self, mode: str) -> bool:
         """¿Telegram está activo y en ese modo de respuestas?"""
         return self.telegram_active and self.telegram_updates_mode == mode
+
+    @property
+    def telegram_linkable(self) -> bool:
+        """
+        ¿Se puede vincular un chat? Hace falta el @usuario del bot (para el
+        enlace) y que el bot lea mensajes: con el modo "off" el "/start
+        <código>" nunca se procesa y el enlace no serviría.
+        """
+        return (
+            self.telegram_active
+            and bool(self.telegram_bot_username)
+            and self.telegram_updates_mode != "off"
+        )

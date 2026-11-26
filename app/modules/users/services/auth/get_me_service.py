@@ -45,8 +45,10 @@ class UserProfilePayload:
     last_login_at: Optional[datetime]
     created_at: Optional[datetime]
     telegram_linked: bool = False
-    # El bot de Telegram está activo (se puede conectar un chat)
+    # El bot de Telegram está activo (envía avisos a los chats vinculados)
     telegram_available: bool = False
+    # El bot lee mensajes (modo de respuestas ≠ off): se puede vincular un chat
+    telegram_linkable: bool = False
     # Los avisos por correo están activos y el servidor tiene SMTP
     email_notifications: bool = False
 
@@ -93,10 +95,11 @@ class GetMeService:
         # --------------------------------------------------------------
         # 3) Canales de aviso disponibles
         # --------------------------------------------------------------
-        telegram_available = email_notifications = False
+        telegram_available = telegram_linkable = email_notifications = False
         if self._notification_settings is not None:
             config = self._notification_settings.get()
             telegram_available = config.telegram_active and bool(config.telegram_bot_username)
+            telegram_linkable = config.telegram_linkable
             email_notifications = config.email_active and self._smtp_configured
 
         # --------------------------------------------------------------
@@ -115,6 +118,7 @@ class GetMeService:
                 created_at=user.created_at,
                 telegram_linked=user.telegram_chat_id is not None,
                 telegram_available=telegram_available,
+                telegram_linkable=telegram_linkable,
                 email_notifications=email_notifications,
             )
         )

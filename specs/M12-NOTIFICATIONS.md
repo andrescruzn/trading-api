@@ -161,6 +161,7 @@ Reemplaza a `POST /api/alerts/test-telegram` (retirado).
 
 - **Clave Fernet:** el token se cifra con `CREDENTIALS_SECRET_KEY`. Si se cambia sin pasar la vieja a `CREDENTIALS_PREVIOUS_KEYS`, el token no se puede descifrar: Telegram queda inactivo (log `notification_settings: no se pudo descifrar el token`) y hay que volver a escribirlo.
 - **Polling y webhook a la vez:** `getUpdates` falla con un webhook registrado. Guardar el modo `polling` en la página borra el webhook; si se registró a mano, también.
+- **Modo de respuestas `off` = nadie puede vincular su chat:** el bot envía avisos, pero no lee el `/start <código>`. Por eso `NotificationSettings.telegram_linkable` exige modo ≠ `off`, `POST /users/me/telegram/link` responde `TELEGRAM_REPLIES_OFF` (503) y `GET /users/me` devuelve `telegram_linkable: false` (el diálogo de Telegram deshabilita «Generar enlace»). En desarrollo usar **Consulta periódica**: el `/start` se procesa en el siguiente ciclo del scheduler (≤ `SCHEDULER_INTERVAL_SECONDS`).
 - **Token nuevo = secreto nuevo:** al cambiar de bot en modo webhook se genera otro secreto y se vuelve a registrar.
 - **Sin SMTP en el `.env`** el interruptor del correo no basta: no sale ningún correo (la página muestra el aviso y `GET /users/me` devuelve `email_notifications: false`).
 
@@ -176,3 +177,4 @@ Reemplaza a `POST /api/alerts/test-telegram` (retirado).
 ## Historial
 
 - **2026-11-26** — Módulo creado: Telegram sale del `.env` a la BD (`notification_settings`, cifrado), canal Email con interruptor y prueba, página `/#/admin/notifications` (ítem propio en Administración; Telegram sale de Configuración), correo para señales por aprobar y señales compartidas, `POST /api/alerts/test-telegram` retirado.
+- **2026-11-26** — Vincular Telegram exige modo de respuestas ≠ `off` (`telegram_linkable` en la entidad y en `GET /users/me`, error `TELEGRAM_REPLIES_OFF`). El diálogo de Telegram revisa solo cada 4 s si el chat ya quedó vinculado; «Ya lo vinculé» avisa si todavía no.

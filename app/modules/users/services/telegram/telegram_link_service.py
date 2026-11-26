@@ -18,7 +18,8 @@
 # CONFIGURACIÓN:
 # - El bot (token y @usuario) se configura en Administración →
 #   Notificaciones (tabla notification_settings). Sin Telegram activo →
-#   TELEGRAM_NOT_CONFIGURED.
+#   TELEGRAM_NOT_CONFIGURED; con el modo de respuestas "off" (el bot no
+#   lee el "/start") → TELEGRAM_REPLIES_OFF.
 #
 # SEGURIDAD:
 # - En BD solo queda el hash del código; el código viaja una vez.
@@ -64,6 +65,9 @@ class TelegramLinkService:
         bot_username = config.telegram_bot_username
         if not config.telegram_active or not bot_username:
             return ServiceResult.fail(code="TELEGRAM_NOT_CONFIGURED", http_status=503)
+        # Con el modo de respuestas "off" nadie procesa el "/start <código>"
+        if not config.telegram_linkable:
+            return ServiceResult.fail(code="TELEGRAM_REPLIES_OFF", http_status=503)
 
         user = self._repo.get_by_id(int(user_id))
         if user is None:

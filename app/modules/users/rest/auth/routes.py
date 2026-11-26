@@ -285,6 +285,7 @@ def get_me(
             "created_at": to_iso_utc(profile.created_at),
             "telegram_linked": profile.telegram_linked,
             "telegram_available": profile.telegram_available,
+            "telegram_linkable": profile.telegram_linkable,
             "email_notifications": profile.email_notifications,
         },
         msg="OK",

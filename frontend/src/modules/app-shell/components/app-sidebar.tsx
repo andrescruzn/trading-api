@@ -81,6 +81,13 @@ const navSections: NavSectionData[] = [
 		role: STAFF_ROLES,
 		items: [
 			{
+				// Telegram y correo: por dónde llegan los avisos (el socio lo ve
+				// en solo lectura).
+				title: 'Notificaciones',
+				icon: IconBellCog,
+				url: '/admin/notifications',
+			},
+			{
 				// El fondo común: resumen y conciliación, el saldo de la billetera
 				// de Binance (la única: nadie la elige), depósitos, retiros y
 				// comisiones. El socio lo ve en solo lectura.
@@ -105,13 +112,6 @@ const navSections: NavSectionData[] = [
 					{ title: 'Timeframes', url: '/admin/timeframes' },
 					{ title: 'Conjuntos de indicadores', url: '/admin/feature-sets' },
 				],
-			},
-			{
-				// Telegram y correo: por dónde llegan los avisos (el socio lo ve
-				// en solo lectura).
-				title: 'Notificaciones',
-				icon: IconBellCog,
-				url: '/admin/notifications',
 			},
 			{
 				// Lo que el super admin define para todo el sistema.

@@ -7,14 +7,14 @@
 | Campo | Valor |
 |---|---|
 | Estado | ✅ Completo |
-| Avance (alcance original) | 100 % — 13/13 entregables (+ 4 de la auditoría de 2026-10-19) |
+| Avance (alcance original) | 100 % — 13/13 entregables (+ 4 de la auditoría de 2026-10-19 + recomendaciones de mercados, 2026-11-26) |
 | Madurez (estimada) | 81 % — ver [Avance](#avance) |
-| Tablas | `models`, `model_runs` (R/W); `strategies`, `accounts`, `account_balances`, `candles`, `candle_features`, `symbols`, `timeframes` (R) |
+| Tablas | `models`, `model_runs`, `market_recommendations` (R/W); `strategies`, `accounts`, `account_balances`, `candles`, `candle_features`, `symbols`, `timeframes` (R) |
 | Depende de | [M2](M02-MARKET-DATA.md), [M3](M03-FEATURE-ENGINEERING.md), [M4](M04-ACCOUNTS-PORTFOLIO.md), [M5](M05-STRATEGIES.md) |
-| Lo usan | [M7](M07-BOTS-SIGNALS.md) (`GenerateSignalService` instancia el `AnalyzeService`; también el scheduler para las señales automáticas) |
-| Prefijo API | `/api/agent`, `/api/models`, `/api/model-runs` |
-| Frontend | Sin módulo propio desde 2026-10-08: se usa desde el detalle de cada agente ([M7](M07-BOTS-SIGNALS.md), "Analizar ahora") |
-| Última revisión | 2026-10-19 (propiedad, rate limit y validación de la salida del LLM) |
+| Lo usan | [M7](M07-BOTS-SIGNALS.md) (`GenerateSignalService` instancia el `AnalyzeService`; también el scheduler para las señales automáticas) · el explorador de [M2](M02-MARKET-DATA.md) (panel de recomendaciones) |
+| Prefijo API | `/api/agent`, `/api/models`, `/api/model-runs`, `/api/recommendations` |
+| Frontend | Sin módulo propio desde 2026-10-08: se usa desde el detalle de cada agente ([M7](M07-BOTS-SIGNALS.md), "Analizar ahora") y desde Explorar mercados (panel de recomendaciones, en `frontend/src/modules/market`) |
+| Última revisión | 2026-11-26 (recomendaciones de mercados de la IA) |
 
 ## Descripción
 
@@ -27,6 +27,8 @@
 4. Verifica que la ganancia proyectada sea al menos el doble del riesgo (ratio 2:1 configurable) — si no, cancela
 5. Da un veredicto final: **APROBADA** o **RECHAZADA**, con todos los detalles de la operación
 
+**Recomendaciones de mercados (2026-11-26):** además, la IA sugiere **en qué mercados crear un agente y con qué estrategia**. Recibe el ranking del explorador ([M2](M02-MARKET-DATA.md)) con sus datos de 24 h y las estrategias disponibles ([M5](M05-STRATEGIES.md)), y devuelve de 3 a 5 recomendaciones con razonamiento y riesgos. Python descarta las que no cumplen las reglas (mercado bajista, estrategia inexistente o de otro régimen) y guarda el resultado con su historial.
+
 **Tecnología:** Usa un **pool de servicios LLM** que se van rotando (hoy Groq, Gemini de Google AI Studio y Nemotron 3 Ultra en Ollama Cloud). Cada análisis lo atiende el servicio al que le toca el turno; si falla, se prueba el siguiente en la misma petición. Los servicios y su orden se configuran con `LLM_SERVICES`.
 
 ## Páginas
@@ -35,9 +37,11 @@ Hash routing: la URL real es `/#/<ruta>`.
 
 **Páginas — Usuario (cualquier usuario autenticado):**
 - No tiene página propia. La antigua `/#/agent` (análisis puntual sin bot) redirige al inicio (`/#/dashboard`): el análisis se lanza con **Analizar ahora** en el detalle de cada agente ([M7](M07-BOTS-SIGNALS.md)), que llama a `POST /api/signals/generate` y guarda el resultado como señal. En la UI el LLM se nombra "la IA" ("agente" es el bot).
+- `/#/market/explorer` — panel **Recomendaciones de la IA** encima del ranking: la última recomendación (resumen + tarjetas con mercado, estrategia y timeframe, confianza, razonamiento y riesgos), en solo lectura.
 
 **Páginas — Administrador (solo admin):**
 - No hay página admin específica en este módulo; la gestión de modelos ML se hace vía API
+- En el panel de recomendaciones, el super admin ve **Pedir recomendaciones** (usa el filtro de clase de activo de la página) y **Crear agente** en cada tarjeta (`/#/agents/new?symbol_id=…&strategy_id=…`)
 
 ## Entregables
 
@@ -62,6 +66,7 @@ Entregables:
 - ✅ (2026-10-19) **Rate limit por usuario** (`AGENT_ANALYSES_PER_MINUTE`) en `/api/agent/analyze` y `/api/signals/generate`
 - ✅ (2026-10-19) **Validación de la salida del LLM**: niveles coherentes (`INCONSISTENT_LEVELS`), entrada cerca del precio (`ENTRY_TOO_FAR`), JSON estricto, `confidence` en [0, 1], precios finitos y > 0
 - ✅ (2026-10-19) Parámetros `risk_pct` (acotado al 1 %) y `as_of` (analizar una vela concreta); tamaño de posición y R/R en `Decimal`
+- ✅ (2026-11-26) **Recomendaciones de mercados:** tabla `market_recommendations` (migración `20c09f2944b4`), `GenerateMarketRecommendationsService` con filtro determinista, `GET /api/recommendations/markets/latest`, `POST /api/recommendations/markets` (super admin, `MARKET_RECOMMENDATIONS_PER_MINUTE`), panel en Explorar mercados y `?strategy_id=` en el asistente de agentes
 
 ## Decisiones de diseño
 
@@ -97,6 +102,13 @@ Entregables:
 | La respuesta del LLM se parsea tolerando que venga envuelta en un bloque de código markdown; un fallo de parseo se registra | Los modelos suelen envolver el JSON en markdown | Exigir JSON puro |
 | Tests con el LLM **100 % mockeado** | Rápidos, deterministas y sin coste ni red | Llamadas reales en CI |
 | `predictions` diferida a [M7](M07-BOTS-SIGNALS.md) | Requiere `bot_id` | Predicciones sin bot |
+| **Recomendaciones de mercados en M6**, no en M2 | Necesitan el explorador (M2), las estrategias (M5) y el pool LLM (M6): en `market` la dependencia iría al revés del orden de módulos | Servicio en `app/modules/market` importando `agent` |
+| La IA **solo elige entre lo válido**: candidatos = mercados con datos y no bajistas (máx. 30); estrategias = la versión más alta de cada nombre, coherente y no `trend_down`. Después un **filtro determinista** descarta toda recomendación con símbolo fuera de la lista, estrategia inexistente o régimen que no encaja (`up` → `trend_up`, `sideways` → `sideways`, `null` = cualquiera), repetidas y sin razonamiento | Igual que en el Prompt Maestro: el LLM propone, Python decide qué es válido. Evita símbolos inventados y estrategias bajistas (la app no abre cortos) | Confiar en la lista que devuelva el LLM |
+| **Historial en tabla** (`market_recommendations`) con `market_snapshot` (los datos que vio la IA) y el servicio/modelo que respondió | Todos ven la misma recomendación, sobrevive reinicios y se puede auditar por qué recomendó algo | Solo en memoria (por proceso, se pierde al reiniciar) |
+| Pedir recomendaciones: **solo super admin** + rate limit por usuario (`MARKET_RECOMMENDATIONS_PER_MINUTE`, 2/min); leer: cualquier usuario autenticado | Cada pedido es una llamada de pago con todo el ranking; crear agentes ya es acción del super admin | Todo el staff · sin límite |
+| `GET .../latest` responde `{recommendation: {...} \| null}` | `send()` convierte un `data` `None` en `[]`; el envoltorio deja un `null` explícito para "aún no hay" | Devolver `[]` y que el front lo interprete |
+| Parser genérico `llm/json_response.py` (`parse_json_object`); `AnalyzeService` conserva el suyo | Reutilizable sin tocar la firma ni el comportamiento de `AnalyzeService`, del que depende [M7](M07-BOTS-SIGNALS.md) | Refactorizar `AnalyzeService` en el mismo cambio |
+| `confidence` inválida o fuera de [0, 1] → `null`, **no** descarta la recomendación | Un número mal formado no invalida el razonamiento; el mismo criterio que en el análisis | Descartarla |
 
 ## Avance
 
@@ -106,7 +118,7 @@ Entregables:
 | Madurez | **≈ 81 %** | Funcionalidad 85 · Tests 70 · Seguridad 90 · Operación 80 |
 
 - **Funcionalidad (85):** `models` / `model_runs` son un registro (CRUD); **no hay entrenamiento ni inferencia ML** y `predictions` no se usa.
-- **Tests (70):** 20 tests de `AnalyzeService` con LLM mockeado; sin tests de las validaciones nuevas (`INCONSISTENT_LEVELS`, `ENTRY_TOO_FAR`, JSON estricto, propiedad, tope de `risk_pct`) ni de `LLMClientFactory`, `RotatingLLMClient`, clientes o REST.
+- **Tests (70):** 20 tests de `AnalyzeService` con LLM mockeado; `GenerateMarketRecommendationsService` solo se probó a mano con un LLM simulado (2026-11-26), sin archivo de tests; sin tests de las validaciones nuevas (`INCONSISTENT_LEVELS`, `ENTRY_TOO_FAR`, JSON estricto, propiedad, tope de `risk_pct`) ni de `LLMClientFactory`, `RotatingLLMClient`, clientes o REST.
 - **Seguridad (90):** las API keys (`GROQ_API_KEY`, `GEMINI_API_KEY`, `OLLAMA_API_KEY`) solo por entorno; `POST /api/agent/analyze` comprueba que la cuenta sea del usuario (antes exponía el saldo de cuentas ajenas); rate limit por usuario; salida del LLM validada antes de calcular la posición. El rate limit vive en memoria (por proceso).
 - **Operación (80):** pool con rotación, *failover* entre servicios y *timeout* por llamada; log de arranque con los servicios activos; umbrales configurables (`AGENT_MAX_ENTRY_ATR_DISTANCE`, `AGENT_ANALYSES_PER_MINUTE`). Sin *circuit breaker* (un servicio caído se sigue probando en su turno) ni métricas por servicio.
 
@@ -115,6 +127,8 @@ Entregables:
 | Prioridad | Mejora | Esfuerzo |
 |---|---|---|
 | Alta | Tests de las validaciones de la salida del LLM (`INCONSISTENT_LEVELS`, `ENTRY_TOO_FAR`, `NaN`/`Infinity`, `confidence`), de la propiedad de la cuenta y del tope de `risk_pct` | S |
+| Alta | Tests de `GenerateMarketRecommendationsService`: candidatos (sin bajistas, tope 30), estrategias (versión más alta, sin `trend_down`), filtro determinista, `RECOMMENDATION_EMPTY`, errores del LLM y commit/rollback | S |
+| Baja | Historial de recomendaciones en la UI (hoy solo la última; la tabla guarda todas) y comparar qué pasó después con los mercados recomendados | S |
 | Alta | Persistir cada análisis (prompt, respuesta, versión del modelo) para auditoría y para medir el edge; la tabla `predictions` existe y no se usa | M |
 | Media | *Circuit breaker* en el pool: sacar temporalmente un servicio tras N fallos seguidos (hoy se reintenta en cada turno y suma su *timeout*) | S |
 | Media | Métricas por servicio (latencia media, tasa de fallos) a partir de `signals.llm_*` y `reasons.llm.failed_providers` | S |
@@ -137,6 +151,7 @@ Entregables:
 |-------|--------|------|
 | `models` | WRITE | Modelos ML registrados (xgboost/lightgbm/sklearn/nn) |
 | `model_runs` | WRITE | Ejecuciones de entrenamiento con métricas y params |
+| `market_recommendations` | WRITE | Recomendaciones de mercados de la IA: `created_by_user_id` (FK `users`, `SET NULL`), `asset_class` (filtro usado, NULL = todas), `summary`, `items` (JSON validado), `market_snapshot` (JSON), `llm_provider` / `llm_model` / `llm_latency_ms`; índice por `created_at` |
 | `strategies` | READ | Para resolver estrategia en Prompt Maestro |
 | `accounts` | READ | Para obtener capital disponible |
 | `account_balances` | READ | Balance más reciente (base_currency) |
@@ -154,6 +169,7 @@ Entregables:
 |---------|-----------|-------|
 | `ml_model_model.py` | `MLModelORM` | `models` |
 | `model_run_model.py` | `ModelRunORM` | `model_runs` |
+| `market_recommendation_model.py` | `MarketRecommendationORM` | `market_recommendations` |
 
 Registrados en: `app/extensions/db/models_registry.py`
 
@@ -165,12 +181,15 @@ Registrados en: `app/extensions/db/models_registry.py`
 | `model_run_entity.py` | `ModelRun` entity (statuses: running/success/failed) |
 | `ml_model_repository.py` | ABC interface `MLModelRepository` |
 | `model_run_repository.py` | ABC interface `ModelRunRepository` |
+| `market_recommendation_entity.py` | `MarketRecommendation` + `RecommendationItem` (dataclass con `to_dict` / `from_dict`) |
+| `market_recommendation_repository.py` | ABC interface `MarketRecommendationRepository` (`create`, `get_latest`) |
 
 ### Repositorios
 | Domain (interfaz) | Infrastructure (impl) |
 |-------------------|-----------------------|
 | `domain/ml_model_repository.py` | `infrastructure/ml_model_repository_impl.py` |
 | `domain/model_run_repository.py` | `infrastructure/model_run_repository_impl.py` |
+| `domain/market_recommendation_repository.py` | `infrastructure/market_recommendation_repository_impl.py` |
 
 ### LLM Clients (`app/modules/agent/llm/`)
 | Archivo | Clase | Cubre |
@@ -182,6 +201,7 @@ Registrados en: `app/extensions/db/models_registry.py`
 | `ollama_client.py` | `OllamaLLMClient` | Ollama Cloud con SDK `ollama`: host `https://ollama.com` + `Authorization: Bearer`, `options={temperature, num_predict}`; devuelve `message.content` (el razonamiento va aparte en `message.thinking`) |
 | `rotating_client.py` | `RotatingLLMClient` | Pool: round-robin (turno por proceso) + failover; devuelve el `LLMCompletion` del que respondió con `latency_ms` de la consulta completa y `failed_providers`; si fallan todos, `LLMCallError(provider="pool")` |
 | `llm_factory.py` | `LLMClientFactory` | `create()` arma el pool según `LLM_SERVICES`; `describe()` lista los servicios activos (log de arranque en `app_factory._lifespan`) |
+| `json_response.py` | `parse_json_object` | Parser genérico de la respuesta: quita el bloque ```` ``` ````, rechaza `NaN`/`Infinity`, exige un objeto (`LLMParseError` si no). Lo usan las recomendaciones; `AnalyzeService` tiene el suyo |
 
 **Catálogo de servicios:**
 - groq → `GroqLLMClient` · `GROQ_API_KEY` · `GROQ_MODEL` (default `moonshotai/kimi-k2-instruct-0905`)
@@ -194,6 +214,15 @@ Registrados en: `app/extensions/db/models_registry.py`
 | `agent/` | `analyze_service.py` — Prompt Maestro (4 fases) |
 | `models/` | `list_models_service.py`, `get_model_service.py`, `create_model_service.py`, `update_model_service.py` |
 | `model_runs/` | `list_model_runs_service.py`, `create_model_run_service.py`, `finish_model_run_service.py` |
+| `recommendations/` | `generate_market_recommendations_service.py` (candidatos → estrategias → LLM → filtro determinista → guardar), `get_latest_market_recommendation_service.py` |
+
+### Recomendaciones de mercados (`GenerateMarketRecommendationsService.generate(user_id, asset_class)`)
+1. `ListTrendExplorerService.list(asset_class)` de [M2](M02-MARKET-DATA.md) (con tickers de 24 h). Candidatos: filas con métricas y `direction` en `up` / `sideways`, máx. 30 (`RECOMMENDATION_NO_CANDIDATES` 422 si no hay).
+2. Estrategias de [M5](M05-STRATEGIES.md): la versión más alta de cada nombre (`_version_key`), `is_valid_type()`, `is_coherent()` y no `trend_down` (`RECOMMENDATION_NO_STRATEGIES` 422 si no queda ninguna).
+3. Prompt de sistema en inglés (`_SYSTEM_PROMPT`, pide 3–5 recomendaciones y los textos en español); mensaje con secciones `=== … ===` (candidatos con métricas y 24 h; estrategias con id, tipo, régimen y timeframe). El mismo dict va a `market_snapshot`.
+4. `LLMCallError` → `RECOMMENDATION_LLM_CALL_FAILED` (502); `LLMParseError` → `RECOMMENDATION_LLM_PARSE_ERROR` (502, `meta.raw`).
+5. Filtro determinista (`_validate_items`): símbolo candidato, estrategia elegible, régimen que encaja (`_fits`), sin repetir símbolo, `reasoning` no vacío; textos recortados a 600 caracteres (`summary` a 1000), máx. 5. Ninguna válida → `RECOMMENDATION_EMPTY` (502).
+6. `repo.create(...)` + `repo.commit()` (rollback si falla).
 
 ### Prompt Maestro — 4 fases (`AnalyzeService.analyze`)
 1. **Fase 1 — Régimen:** `strategy.parameters.regime_required` vs `features.regime`. Si no coincide → RECHAZADA. `None` = acepta cualquier régimen.
@@ -208,6 +237,7 @@ Los resultados posteriores a la fase 3 (`LLM_REJECTED`, `INCONSISTENT_LEVELS`, `
 ### Provider (`app/modules/agent/providers/agent_provider.py`)
 - `AgentServiceFactory` — instancia repos propios + borrowed de strategies, accounts, features, market
 - `LLMClientFactory.create(settings)` se llama por request (respeta cambios de config en runtime)
+- `generate_market_recommendations()` arma un `ListTrendExplorerService` con los repos de market prestados y `CcxtTickerGateway()`; `get_latest_market_recommendation()` solo usa el repo propio
 
 ### Endpoints REST
 | Método | Ruta | Auth | Nota |
@@ -220,10 +250,12 @@ Los resultados posteriores a la fase 3 (`LLM_REJECTED`, `INCONSISTENT_LEVELS`, `
 | GET | `/api/model-runs` | token | Lista runs; requiere `?model_id=X` |
 | POST | `/api/model-runs` | admin | Crea run (status=running) |
 | POST | `/api/model-runs/{id}/finish` | admin | Finaliza run (success/failed + metrics) |
+| GET | `/api/recommendations/markets/latest` | token | Última recomendación: `{recommendation: {...} \| null}` |
+| POST | `/api/recommendations/markets` | super admin | Body `{asset_class?}`. Llama al LLM y guarda (201); rate limit `MARKET_RECOMMENDATIONS_PER_MINUTE` por usuario (429). Mensajes en `rest/recommendations/error_messages.py` |
 
-Routers registrados en `app/app_factory.py` (dentro de `api_routers`, con `prefix=settings.API_PREFIX`; los routers declaran `/agent`, `/models`, `/model-runs`):
+Routers registrados en `app/app_factory.py` (dentro de `api_routers`, con `prefix=settings.API_PREFIX`; los routers declaran `/agent`, `/models`, `/model-runs`, `/recommendations`):
 ```python
-from app.modules.agent.rest import agent_router, models_router, model_runs_router
+from app.modules.agent.rest import agent_router, models_router, model_runs_router, recommendations_router
 ```
 
 ### Frontend
@@ -231,6 +263,7 @@ from app.modules.agent.rest import agent_router, models_router, model_runs_route
 - El análisis se usa desde `bots/components/analyze-now-button.tsx` ([M7](M07-BOTS-SIGNALS.md)); el resultado se ve en `signal-detail-sheet.tsx`.
 - `POST /api/agent/analyze` sigue disponible en la API (sin UI).
 - `models` / `model_runs` siguen sin UI.
+- Recomendaciones: `market/components/ai-recommendations-panel.tsx` en `market/pages/explorer.tsx`, con `market/api/recommendations.api.ts` y sus hooks (detalle en [M2](M02-MARKET-DATA.md)). "Crear agente" pasa `symbol_id` y `strategy_id`; `routes/_app/agents/new.tsx` acepta `strategy_id` y `bots/pages/agent-new.tsx` lo usa por defecto y, al pasar del paso 1 al 2, completa el conjunto de indicadores recomendado y el nombre sugerido.
 
 ### Settings LLM/Agent (en `app/common/config/settings.py`)
 ```python
@@ -248,6 +281,7 @@ AGENT_MIN_RR_RATIO  # ratio R/R mínimo (default: 2.0)
 AGENT_MASTER_PROMPT # prompt del sistema configurable (env var)
 AGENT_MAX_ENTRY_ATR_DISTANCE # N × ATR(14) máximo entre entrada y último cierre (default: 1.0)
 AGENT_ANALYSES_PER_MINUTE    # análisis por usuario y minuto en /agent/analyze y /signals/generate (default: 6)
+MARKET_RECOMMENDATIONS_PER_MINUTE # pedidos de recomendaciones por usuario y minuto (default: 2, mínimo 1)
 ```
 
 ## Gotchas críticos
@@ -270,19 +304,24 @@ AGENT_ANALYSES_PER_MINUTE    # análisis por usuario y minuto en /agent/analyze 
 - `regime_required = None` acepta cualquier régimen (fase 1 no filtra).
 - **Mocks de `LLMClient`:** `complete()` devuelve un `LLMCompletion`, no un `str`. Un mock con `return_value = '{...}'` rompe con `AttributeError: 'str' object has no attribute 'text'` (ver `make_service` en `tests/agent/test_analyze_service.py`).
 - El `AnalyzeService` lo reutiliza [M7](M07-BOTS-SIGNALS.md) a través de `BotServiceFactory._build_analyze_service()`; un cambio de firma aquí rompe la generación de señales.
+- **Recomendaciones: escalas distintas.** La tendencia del explorador es diaria y las estrategias operan en 1h/4h: una recomendación es contexto para elegir mercado, no una señal. Cada operación del agente pasa igual por régimen, reglas, 1 % y 2:1 (el panel lo dice).
+- **Recomendaciones: tarda.** El POST espera al LLM (hasta `LLM_TIMEOUT_SECONDS` por servicio, más el failover); la ruta es síncrona (threadpool) y el front muestra "Analizando…".
+- **Recomendaciones: `RECOMMENDATION_EMPTY`** no es un fallo de red: la IA respondió, pero nada pasó el filtro (p. ej. inventó ids o eligió estrategias de otro régimen). El texto crudo queda en el log (`[recommendations] ninguna recomendación válida`).
+- **Recomendaciones y versiones viejas:** solo se ofrece la versión más alta de cada nombre de estrategia (no hay `is_active` en `strategies`); comparar versiones por número (`1.10.0` > `1.9.0`).
 
 ## Tests
 
 - `tests/agent/test_analyze_service.py` — 20 tests unitarios, LLM 100% mockeado
   - `TestAnalyzeDataLoading` (6), `TestRegimeFilter` (3), `TestRulesValidation` (3)
   - `TestLLMIntegration` (4), `TestRRFilter` (2), `TestPositionSizing` (1), `TestFullApprovedPath` (1)
-- **Huecos:** `LLMClientFactory`, `RotatingLLMClient`, `GroqLLMClient`, `GeminiLLMClient`, `OllamaLLMClient`, servicios de `models` / `model_runs` y rutas REST.
+- **Huecos:** `LLMClientFactory`, `RotatingLLMClient`, `GroqLLMClient`, `GeminiLLMClient`, `OllamaLLMClient`, servicios de `models` / `model_runs`, `GenerateMarketRecommendationsService` / `parse_json_object` y rutas REST.
 
 ## Riesgos
 
 - **Coste y latencia:** cada análisis es una llamada a un LLM externo; los *rate limits* de las capas gratuitas de Groq, Gemini y Ollama Cloud son el motivo del pool.
 - **Salida no determinista:** el LLM propone niveles de precio; la coherencia de niveles, la distancia máxima al precio, el filtro R/R y la fórmula de posición acotan el riesgo, pero dentro de esos márgenes el LLM sigue eligiendo dónde poner el SL y el TP.
-- **Privacidad:** el contexto de mercado y el capital se envían a los servicios externos del pool.
+- **Privacidad:** el contexto de mercado y el capital se envían a los servicios externos del pool (las recomendaciones solo envían datos públicos de mercado y la lista de estrategias, sin capital).
+- **Sesgo de seguir la recomendación:** la IA puede sugerir con confianza un mercado que luego no funciona; las recomendaciones no se evalúan después (ver Posibles mejoras).
 
 ## Historial
 
@@ -292,4 +331,5 @@ AGENT_ANALYSES_PER_MINUTE    # análisis por usuario y minuto en /agent/analyze 
 - **2026-10-08** — El prompt usa solo los indicadores del conjunto; nuevo error `AGENT_FEATURE_SET_INCOMPATIBLE`. Se retira la página `/#/agent`: el análisis vive en cada agente ("Analizar ahora").
 - **2026-10-19** — Pool de servicios LLM con rotación round-robin y failover (Groq + Gemini + Ollama Cloud) reemplaza el multi-provider de `LLM_PROVIDER`; se retira `AnthropicLLMClient`; un cliente por proveedor con su SDK oficial (`groq`, `google-genai`, `ollama`; se retira `openai`), `LLM_TIMEOUT_SECONDS` (60 s), sin reintentos del SDK y `LLM_MAX_TOKENS` 4096. Cerebras (sin capa gratuita) y OpenRouter (capa gratuita muy limitada) se probaron y se quitaron el mismo día.
 - **2026-10-19** — `complete()` devuelve `LLMCompletion` (servicio, modelo, latencia, servicios fallidos); el `AnalysisResult` y la señal de [M7](M07-BOTS-SIGNALS.md) los guardan.
+- **2026-11-26** — **Recomendaciones de mercados de la IA** en Explorar mercados: tabla `market_recommendations` (migración `20c09f2944b4`), `GenerateMarketRecommendationsService` (candidatos del explorador + estrategias → LLM → filtro determinista → historial), `GET /api/recommendations/markets/latest`, `POST /api/recommendations/markets` (super admin, `MARKET_RECOMMENDATIONS_PER_MINUTE`), parser `llm/json_response.py`, panel en el front y `?strategy_id=` en el asistente de agentes.
 - **2026-10-19** — Auditoría de seguridad: propiedad de la cuenta en `/agent/analyze` (antes exponía saldos ajenos), rate limit por usuario (`AGENT_ANALYSES_PER_MINUTE`) en `/agent/analyze` y `/signals/generate`, `risk_pct` acotado al 1 %, rechazos `INCONSISTENT_LEVELS` y `ENTRY_TOO_FAR` (`AGENT_MAX_ENTRY_ATR_DISTANCE`), JSON estricto, `confidence` en [0, 1], posición y R/R en `Decimal`, parámetro `as_of` para las señales automáticas.

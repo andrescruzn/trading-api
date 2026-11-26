@@ -7,11 +7,11 @@ Una explicación simple de los 10 módulos del sistema, sin tecnicismos. Cada m�
 | Módulo | Estado | Alcance | Madurez | Descripción |
 |--------|--------|--------:|--------:|-------------|
 | [M1 — Auth & Frontend](M01-AUTH.md) | ✅ Completo | 100 % | 84 % | Login solo por código OTP (con intentos máximos), una sesión por persona con aviso, perfil propio, roles del fondo común (super admin, socio de solo lectura, inversor), bloquear/desactivar cuentas (pausa sus agentes), auditoría visible (solo cambios y errores, con purga), defensa CSRF por Origin, auditoría sin secretos, vínculo de Telegram, frontend React (shell, dashboard) |
-| [M2 — Market Data](M02-MARKET-DATA.md) | ✅ Completo | 100 % | 86 % | Un solo exchange (Binance), símbolos (cripto + perpetuos TradFi: metales, materias primas, ETFs, acciones), velas OHLCV via ccxt, scheduler de ingesta (un solo líder por lock de MySQL) y explorador de tendencia |
+| [M2 — Market Data](M02-MARKET-DATA.md) | ✅ Completo | 100 % | 86 % | Un solo exchange (Binance), símbolos (cripto + perpetuos TradFi: metales, materias primas, ETFs, acciones), velas OHLCV via ccxt, scheduler de ingesta (un solo líder por lock de MySQL) y explorador de tendencia con datos de 24 h en vivo (precio, variación, volumen) |
 | [M3 — Feature Engineering](M03-FEATURE-ENGINEERING.md) | ✅ Completo | 100 % | 82 % | RSI, ATR, EMA, MACD, Bollinger Bands, régimen; conjuntos por enfoque (Completo/Tendencia/Rango) |
 | [M4 — Accounts & Portfolio](M04-ACCOUNTS-PORTFOLIO.md) | ✅ Completo | 100 % | 80 % | **Billetera única de Binance** (se arma sola, credenciales en el `.env`, sin "Mis cuentas" ni "Elegir billetera") sincronizada con el exchange; balances; cuentas internas de los agentes demo |
 | [M5 — Strategies](M05-STRATEGIES.md) | ✅ Completo | 100 % | 78 % | Reglas de entrada/salida, backtesting sin IA, validación tipo/régimen, datasets |
-| [M6 — AI Agent / Models](M06-AI-AGENT.md) | ✅ Completo | 100 % | 81 % | Prompt Maestro con pool de LLMs rotativo (Groq + Gemini + Ollama Cloud, con failover), salida del LLM validada, rate limit por usuario, modelos ML y model runs |
+| [M6 — AI Agent / Models](M06-AI-AGENT.md) | ✅ Completo | 100 % | 81 % | Prompt Maestro con pool de LLMs rotativo (Groq + Gemini + Ollama Cloud, con failover), salida del LLM validada, rate limit por usuario, **recomendaciones de mercados** en el explorador (dónde crear un agente y con qué estrategia, filtradas por reglas y con historial), modelos ML y model runs |
 | [M7 — Bots & Signals](M07-BOTS-SIGNALS.md) | ✅ Completo | 100 % | 81 % | **Agentes** (bots en la UI): **reales** (billetera de Binance, en Inicio) y **demo** (dinero simulado, en Agentes demo) lado a lado, asistente, señales BUY/SELL/HOLD con entry/SL/TP, **modo de ejecución** Manual / Con aprobación / Automático (señales automáticas por vela cerrada) e **historial** de cada agente (quién lo creó, editó, inició o detuvo) |
 | [M8 — Orders & Execution](M08-ORDERS-EXECUTION.md) | ✅ Completo | 100 % | 84 % | Órdenes paper/live (ccxt) con propiedad, RiskGate e idempotencia; perpetuos de Binance en live (solo largos, 1x aislado) con funding; señal → orden (aprobada o automática); SL nativo en el exchange en live + TP por ciclo del scheduler; protección SL/TP también en compras manuales y en compras que se ejecutan tarde; cancelar órdenes; reconciliación con el exchange; fills, posiciones; 350+ tests |
 | [M9 — Alerts](M09-ALERTS.md) | ✅ Completo | 100 % | 71 % | Reglas de alerta que se revisan solas (señal, error, precio, PnL, drawdown) con antispam; avisos por email/Telegram al dueño/webhook (con guarda SSRF); campana de notificaciones en la app; bot de Telegram por usuario para aprobar señales |
@@ -194,10 +194,13 @@ Hash routing: la URL real es `/#/<ruta>`. Cada ruta vive en `frontend/src/routes
 | Público | `/login` |
 | Todos los roles | `/my-fund` (Mi saldo), `/dashboard` (inicio = lista de agentes reales), `/agents/:id`, `/alerts`, `/strategies`, `/track-record`, `/backtest`, `/market/explorer` (`/agents`, `/bots`, `/agent`, `/orders`, `/features` y `/market/candles` redirigen a `/dashboard`; `/market/symbols` a `/market/explorer`; `/portfolio` a `/dashboard`) |
 | Super admin y socio | `/demo-agents` (Agentes demo, `StaffGuard`) |
-| Solo super admin | `/agents/new?mode=live\|paper` (`ManagerGuard`) |
+| Solo super admin | `/agents/new?mode=live\|paper&symbol_id=…&strategy_id=…` (`ManagerGuard`) |
 | Super admin y socio (`_app/admin/*`; el socio sin botones de escritura) | `/admin/fund`, `/admin/wallet`, `/admin/deposits`, `/admin/fund-agents`, `/admin/fund-agents/:poolId`, `/admin/withdrawals`, `/admin/commissions`, `/admin/participants`, `/admin/fund-settings`, `/admin/symbols`, `/admin/timeframes`, `/admin/feature-sets`, `/admin/users`, `/admin/audit`, `/admin/notifications` (`/admin/telegram` redirige ahí) |
 
 Comprar/Vender vive en el [Módulo 8 — Orders & Execution](M08-ORDERS-EXECUTION.md).
+
+Cambios del 2026-11-26 (Explorar mercados):
+- `/market/explorer`: columnas **Precio**, **24 h** y **Volumen 24 h** en vivo (refresco cada minuto) — [M2](M02-MARKET-DATA.md). Panel **Recomendaciones de la IA** sobre la tabla: todos ven la última; el super admin ve **Pedir recomendaciones** y **Crear agente** en cada tarjeta, que abre `/agents/new` con mercado y estrategia elegidos — [M6](M06-AI-AGENT.md).
 
 Cambios del 2026-11-26 (Notificaciones):
 - `/admin/notifications` (**Notificaciones**, ítem propio de Administración; el socio en solo lectura): Telegram (token, chat por defecto, modo de respuestas, webhook) y correo (interruptor), con prueba de cada canal. **Telegram** sale de Configuración y `/admin/telegram` redirige — [M12](M12-NOTIFICATIONS.md).

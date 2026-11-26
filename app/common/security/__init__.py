@@ -1,0 +1,60 @@
+# -*- coding: utf-8 -*-
+
+# ======================================================================
+# app/common/security/__init__.py
+#
+# Barrel exports del paquete security.
+# - NO exporta utils de input_cleaner (eso va en common/utils).
+# ======================================================================
+
+from .jwt import (
+    AuthException,
+    JwtCodecError,
+    create_access_token,
+    decode_access_token,
+    generate_jti,
+    token_required_actual,
+)
+
+from .otp import generate_numeric_otp, hash_otp, verify_otp_hash
+from .sanitization import sanitize_html
+from .rate_limiter import (
+    RateLimiter,
+    RateLimitExceeded,
+    auth_rate_limiter,
+    default_rate_limiter,
+    rate_limit_dependency,
+    check_auth_rate_limit,
+    check_email_rate_limit,
+    otp_request_rate_limiter,
+    otp_verify_rate_limiter,
+)
+
+__all__ = [
+    # JWT
+    "AuthException",
+    "JwtCodecError",
+    "create_access_token",
+    "decode_access_token",
+    "generate_jti",
+    "token_required_actual",
+
+    # OTP
+    "generate_numeric_otp",
+    "hash_otp",
+    "verify_otp_hash",
+
+    # Sanitization
+    "sanitize_html",
+
+    # Rate limiting
+    "RateLimiter",
+    "RateLimitExceeded",
+    "auth_rate_limiter",
+    "default_rate_limiter",
+    "rate_limit_dependency",
+    "check_auth_rate_limit",
+    "check_email_rate_limit",
+    "otp_request_rate_limiter",
+    "otp_verify_rate_limiter",
+]

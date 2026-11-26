@@ -1,0 +1,64 @@
+# -*- coding: utf-8 -*-
+
+from __future__ import annotations
+
+from decimal import Decimal
+from typing import Optional
+
+from app.common.contracts import ServiceResult
+from app.modules.market.domain.ccxt_exchanges import PLATFORM_EXCHANGE_NAME
+from app.modules.market.domain.exchange_repository import ExchangeRepository
+from app.modules.market.domain.symbol_entity import Symbol
+from app.modules.market.domain.symbol_repository import SymbolRepository
+
+
+class CreateSymbolService:
+    """Crea un símbolo nuevo en el exchange de la plataforma (Binance)."""
+
+    def __init__(
+        self,
+        symbol_repo: SymbolRepository,
+        exchange_repo: ExchangeRepository,
+    ):
+        self._symbol_repo = symbol_repo
+        self._exchange_repo = exchange_repo
+
+    def create(
+        self,
+        symbol: str,
+        asset_class: str,
+        base_asset: Optional[str] = None,
+        quote_asset: Optional[str] = None,
+        tick_size: Optional[Decimal] = None,
+        lot_size: Optional[Decimal] = None,
+    ) -> ServiceResult[Symbol]:
+        exchange = self._exchange_repo.get_by_name(PLATFORM_EXCHANGE_NAME)
+        if exchange is None:
+            return ServiceResult.fail(code="PLATFORM_EXCHANGE_MISSING", http_status=409)
+        exchange_id = exchange.id
+
+        # Validar asset_class
+        dummy = Symbol(id=0, exchange_id=exchange_id, symbol=symbol, asset_class=asset_class)
+        if not dummy.is_valid_asset_class():
+            return ServiceResult.fail(code="SYMBOL_INVALID_ASSET_CLASS", http_status=422)
+
+        # Verificar unicidad (exchange_id, symbol)
+        existing = self._symbol_repo.get_by_exchange_and_symbol(exchange_id, symbol)
+        if existing is not None:
+            return ServiceResult.fail(code="SYMBOL_ALREADY_EXISTS", http_status=409)
+
+        new_symbol = Symbol(
+            id=0,
+            exchange_id=exchange_id,
+            symbol=symbol,
+            asset_class=asset_class,
+            base_asset=base_asset,
+            quote_asset=quote_asset,
+            tick_size=tick_size,
+            lot_size=lot_size,
+            is_active=True,
+        )
+        created = self._symbol_repo.create(new_symbol)
+        self._symbol_repo.commit()
+
+        return ServiceResult.ok(data=created)

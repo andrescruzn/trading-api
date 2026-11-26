@@ -1,37 +1,63 @@
+# =========================
 # Python
+# =========================
 __pycache__/
 *.py[cod]
 
-# Virtual env
+# =========================
+# Virtual environment
+# =========================
 .venv/
 
-# Env vars
+# =========================
+# Environment variables
+# =========================
 .env
 .env.*
 !.env.example
+!.env.frontend.example
 
+# =========================
 # Logs
+# =========================
 *.log
 logs/
 
+# =========================
 # Tests / coverage
+# =========================
 .pytest_cache/
 .coverage*
 htmlcov/
 
+# =========================
 # Type check / lint caches
+# =========================
 .mypy_cache/
 .pyright/
 .ruff_cache/
 
-# IDEs
-.vscode/
+# =========================
+# IDEs / Editors
+# =========================
 .idea/
 
-# OS
+# =========================
+# OS files
+# =========================
 .DS_Store
 Thumbs.db
 
-# Instance folder (local-only)
-instance/*
-!instance/.gitkeep
+# =========================
+# Claude Code
+# =========================
+# settings.local.json siempre local — no commitear
+.claude/settings.local.json
+# =========================
+# Frontend (Node / Vite)
+# =========================
+node_modules/
+frontend/dist/
+frontend/src/routeTree.gen.ts
+*.tsbuildinfo
+.tanstack

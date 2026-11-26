@@ -1,0 +1,159 @@
+# -*- coding: utf-8 -*-
+
+# ======================================================================
+# app/modules/alerts/providers/alert_provider.py
+#
+# Factory para todos los servicios del módulo Alerts.
+# ======================================================================
+
+from __future__ import annotations
+
+from sqlalchemy.orm import Session
+
+from app.common.config import settings
+from app.modules.accounts.infrastructure import SqlAlchemyAccountRepository
+from app.modules.alerts.infrastructure import (
+    SqlAlchemyAlertRuleRepository,
+    SqlAlchemyAlertEventRepository,
+)
+from app.modules.alerts.services.alert_rules import (
+    CreateAlertRuleService,
+    ListAlertRulesService,
+    UpdateAlertRuleService,
+)
+from app.modules.alerts.services.alert_events import ListAlertEventsService
+from app.modules.alerts.services.evaluation import (
+    EvaluateAlertsService,
+    EvaluatePeriodicAlertsService,
+    FireAlertService,
+)
+from app.modules.alerts.services.notifications import (
+    ListNotificationsService,
+    MarkNotificationsSeenService,
+)
+from app.modules.mailer.providers.mailer_provider import build_mailer
+from app.modules.notifications.providers import build_notification_settings_reader
+from app.modules.market.infrastructure import (
+    SqlAlchemyCandleRepository,
+    SqlAlchemySymbolRepository,
+    SqlAlchemyTimeframeRepository,
+)
+from app.modules.users.infrastructure import SqlAlchemyUserRepository
+
+
+class AlertServiceFactory:
+    """
+    Factory para todos los servicios del módulo Alerts.
+
+    Instancia los repositorios propios y construye todos los servicios.
+    El mailer se construye una sola vez por request.
+    """
+
+    def __init__(self, session: Session, user_email: str | None = None):
+        self._session = session
+        self._user_email = user_email
+
+        self._rule_repo = SqlAlchemyAlertRuleRepository(session)
+        self._event_repo = SqlAlchemyAlertEventRepository(session)
+
+        # Mailer opcional — se usa solo si email está habilitado en la regla
+        self._mailer = build_mailer(settings) if settings.SMTP_HOST else None
+
+        self._fire_service = FireAlertService(
+            event_repo=self._event_repo,
+            mailer=self._mailer,
+            user_email=user_email,
+            # Dueño de la regla: su chat de Telegram y, sin request, su correo
+            user_repo=SqlAlchemyUserRepository(session),
+            # Telegram y correo encendidos / apagados en Notificaciones
+            notification_settings=build_notification_settings_reader(session),
+        )
+
+    # ------------------------------------------------------------------
+    # Alert Rules
+    # ------------------------------------------------------------------
+
+    def list_alert_rules(self) -> ListAlertRulesService:
+        return ListAlertRulesService(repo=self._rule_repo)
+
+    def create_alert_rule(self) -> CreateAlertRuleService:
+        # Import diferido: bots → alerts (hooks) importa este provider
+        from app.modules.bots.infrastructure import SqlAlchemyBotRepository
+
+        return CreateAlertRuleService(
+            repo=self._rule_repo,
+            bot_repo=SqlAlchemyBotRepository(self._session),
+            account_repo=SqlAlchemyAccountRepository(self._session),
+        )
+
+    def update_alert_rule(self) -> UpdateAlertRuleService:
+        return UpdateAlertRuleService(repo=self._rule_repo)
+
+    # ------------------------------------------------------------------
+    # Alert Events
+    # ------------------------------------------------------------------
+
+    def list_alert_events(self) -> ListAlertEventsService:
+        return ListAlertEventsService(repo=self._event_repo)
+
+    # ------------------------------------------------------------------
+    # Notificaciones en la app (campana): eventos + users.notifications_seen_at
+    # ------------------------------------------------------------------
+
+    def list_notifications(self) -> ListNotificationsService:
+        return ListNotificationsService(
+            event_repo=self._event_repo,
+            user_repo=SqlAlchemyUserRepository(self._session),
+        )
+
+    def mark_notifications_seen(self) -> MarkNotificationsSeenService:
+        return MarkNotificationsSeenService(user_repo=SqlAlchemyUserRepository(self._session))
+
+    # ------------------------------------------------------------------
+    # Evaluation
+    # ------------------------------------------------------------------
+
+    def evaluate_alerts(self) -> EvaluateAlertsService:
+        return EvaluateAlertsService(
+            rule_repo=self._rule_repo,
+            fire_service=self._fire_service,
+        )
+
+    def evaluate_periodic_alerts(self) -> EvaluatePeriodicAlertsService:
+        # Import diferido: bots y orders → alerts (hooks) importan este provider
+        from app.modules.bots.infrastructure import SqlAlchemyBotRepository
+        from app.modules.orders.infrastructure import SqlAlchemyFillRepository
+
+        return EvaluatePeriodicAlertsService(
+            rule_repo=self._rule_repo,
+            event_repo=self._event_repo,
+            fire_service=self._fire_service,
+            candle_repo=SqlAlchemyCandleRepository(self._session),
+            timeframe_repo=SqlAlchemyTimeframeRepository(self._session),
+            symbol_repo=SqlAlchemySymbolRepository(self._session),
+            bot_repo=SqlAlchemyBotRepository(self._session),
+            fill_repo=SqlAlchemyFillRepository(self._session),
+            repeat_minutes=settings.ALERT_REPEAT_MINUTES,
+        )
+
+    def fire_alert(self) -> FireAlertService:
+        return self._fire_service
+
+
+def get_alert_factory(session: Session) -> AlertServiceFactory:
+    """Dependency FastAPI para inyectar el factory en los routes."""
+    return AlertServiceFactory(session=session)
+
+
+def build_evaluate_alerts_service(session: Session) -> EvaluateAlertsService:
+    """
+    Helper para los hooks de M7/M8.
+    Construye el servicio sin user_email (no se usa para email en hooks internos).
+    """
+    factory = AlertServiceFactory(session=session)
+    return factory.evaluate_alerts()
+
+
+def build_periodic_alerts_service(session: Session) -> EvaluatePeriodicAlertsService:
+    """Helper para el scheduler: reglas de precio, P&L y drawdown en cada ciclo."""
+    return AlertServiceFactory(session=session).evaluate_periodic_alerts()

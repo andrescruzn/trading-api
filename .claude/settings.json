@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.frontend)",
+      "Edit(./.env)",
+      "Edit(./.env.frontend)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+			{
+				"matcher": "Write|Edit",
+				"hooks": [
+					{
+						"type": "command",
+						"command": "pnpm run lint --write",
+						"timeout": 60,
+						"statusMessage": "Running pnpm run lint --write..."
+					}
+				]
+			}
+		]
+  }
+}

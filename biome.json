@@ -1,0 +1,93 @@
+{
+	"$schema": "https://biomejs.dev/schemas/2.5.12/schema.json",
+	"vcs": {
+		"enabled": true,
+		"clientKind": "git",
+		"useIgnoreFile": true
+	},
+	"files": {
+		"ignoreUnknown": false,
+		"includes": [
+			"**",
+			"!**/.claude",
+			"!**/.pytest_cache",
+			"!**/.venv",
+			"!**/node_modules",
+			"!**/dist",
+			"!**/build",
+			"!**/public",
+			"!**/*.css",
+			"!**/routeTree.gen.ts",
+			"!**/*.py",
+			"!app",
+			"!database",
+			"!docs",
+			"!specs",
+			"!tests"
+		]
+	},
+	"formatter": {
+		"enabled": true,
+		"indentStyle": "tab"
+	},
+	"linter": {
+		"enabled": true,
+		"rules": {
+			"preset": "recommended",
+			"correctness": {
+				"noUnusedImports": "error",
+				"noUnusedVariables": "error",
+				"useExhaustiveDependencies": "off"
+			},
+			"suspicious": {
+				"noExplicitAny": "off",
+				"noArrayIndexKey": "off",
+				"useIterableCallbackReturn": "off",
+				"noDocumentCookie": "off"
+			},
+			"a11y": {
+				"useFocusableInteractive": "off",
+				"useSemanticElements": "off",
+				"useKeyWithClickEvents": "off",
+				"useMediaCaption": "off",
+				"noLabelWithoutControl": "off",
+				"noSvgWithoutTitle": "off",
+				"useAnchorContent": "off",
+				"useAriaPropsForRole": "off",
+				"noStaticElementInteractions": "off"
+			},
+			"security": {
+				"noDangerouslySetInnerHtml": "off"
+			},
+			"style": {
+				"noNonNullAssertion": "off",
+				"useComponentExportOnlyModules": "error"
+			}
+		}
+	},
+	"javascript": {
+		"formatter": {
+			"quoteStyle": "single"
+		}
+	},
+	"assist": {
+		"enabled": true,
+		"actions": {
+			"source": {
+				"organizeImports": "on"
+			}
+		}
+	},
+	"overrides": [
+		{
+			"includes": ["frontend/src/modules/ui/components/**"],
+			"linter": {
+				"rules": {
+					"style": {
+						"useComponentExportOnlyModules": "off"
+					}
+				}
+			}
+		}
+	]
+}

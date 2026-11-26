@@ -1,6 +1,10 @@
-from fastapi import FastAPI
+# -*- coding: utf-8 -*-
 
-from app.modules.users.rest.routes import router as meta_router
+# ======================================================================
+# app/main.py
+# Entry point (uvicorn app.main:app)
+# ======================================================================
 
-app = FastAPI(title="FastAPI Sync + MySQL")
-app.include_router(meta_router)
+from app.app_factory import create_app
+
+app = create_app()

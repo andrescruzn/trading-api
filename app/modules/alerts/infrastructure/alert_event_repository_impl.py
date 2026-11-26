@@ -1,0 +1,126 @@
+# -*- coding: utf-8 -*-
+
+# ======================================================================
+# app/modules/alerts/infrastructure/alert_event_repository_impl.py
+# ======================================================================
+
+from __future__ import annotations
+
+from datetime import datetime
+
+from sqlalchemy import func
+from sqlalchemy.orm import Query, Session
+
+from app.modules.alerts.domain.alert_event_entity import AlertEvent
+from app.modules.alerts.infrastructure.alert_event_model import AlertEventModel
+from app.extensions.db.sqlalchemy_repository import SqlAlchemyRepository
+
+
+def _to_entity(m: AlertEventModel) -> AlertEvent:
+    return AlertEvent(
+        id=m.id,
+        title=m.title,
+        severity=m.severity,
+        payload=m.payload or {},
+        delivery_status=m.delivery_status,
+        message=m.message,
+        alert_rule_id=m.alert_rule_id,
+        user_id=m.user_id,
+        bot_id=m.bot_id,
+        ts=m.ts,
+    )
+
+
+class SqlAlchemyAlertEventRepository(SqlAlchemyRepository):
+
+    def __init__(self, session: Session):
+        self._session = session
+
+    def list_by_user(
+        self,
+        user_id: int,
+        limit: int = 50,
+        from_ts: datetime | None = None,
+    ) -> list[AlertEvent]:
+        q = self._session.query(AlertEventModel).filter(
+            AlertEventModel.user_id == user_id
+        )
+        if from_ts:
+            q = q.filter(AlertEventModel.ts >= from_ts)
+        rows = q.order_by(AlertEventModel.ts.desc()).limit(limit).all()
+        return [_to_entity(r) for r in rows]
+
+    def count_by_user_after(self, user_id: int, after: datetime | None = None) -> int:
+        # COUNT sobre idx_alert_events_user_ts: el contador de la campana se
+        # pide cada minuto, no conviene traer las filas.
+        q = self._session.query(func.count(AlertEventModel.id)).filter(
+            AlertEventModel.user_id == user_id
+        )
+        if after is not None:
+            q = q.filter(AlertEventModel.ts > after)
+        return int(q.scalar() or 0)
+
+    @staticmethod
+    def _apply_filters(
+        query: Query, user_id: int | None, from_ts: datetime | None
+    ) -> Query:
+        if user_id is not None:
+            query = query.filter(AlertEventModel.user_id == user_id)
+        if from_ts is not None:
+            query = query.filter(AlertEventModel.ts >= from_ts)
+        return query
+
+    def search(
+        self,
+        user_id: int | None = None,
+        from_ts: datetime | None = None,
+        offset: int = 0,
+        limit: int = 50,
+    ) -> list[AlertEvent]:
+        query = self._apply_filters(
+            self._session.query(AlertEventModel), user_id, from_ts
+        ).order_by(AlertEventModel.ts.desc(), AlertEventModel.id.desc())
+        if offset > 0:
+            query = query.offset(offset)
+        return [_to_entity(r) for r in query.limit(limit).all()]
+
+    def count(self, user_id: int | None = None, from_ts: datetime | None = None) -> int:
+        # COUNT sobre idx_alert_events_user_ts / idx_alert_events_ts
+        query = self._apply_filters(
+            self._session.query(func.count(AlertEventModel.id)), user_id, from_ts
+        )
+        return int(query.scalar() or 0)
+
+    def get_last_by_rule(self, rule_id: int) -> AlertEvent | None:
+        row = (
+            self._session.query(AlertEventModel)
+            .filter(AlertEventModel.alert_rule_id == rule_id)
+            .order_by(AlertEventModel.ts.desc(), AlertEventModel.id.desc())
+            .first()
+        )
+        return _to_entity(row) if row else None
+
+    def create(self, event: AlertEvent) -> AlertEvent:
+        model = AlertEventModel(
+            alert_rule_id=event.alert_rule_id,
+            user_id=event.user_id,
+            bot_id=event.bot_id,
+            severity=event.severity,
+            title=event.title,
+            message=event.message,
+            payload=event.payload,
+            delivery_status=event.delivery_status,
+        )
+        self._session.add(model)
+        self._session.flush()
+        return _to_entity(model)
+
+    def update(self, event: AlertEvent) -> AlertEvent:
+        model = self._session.query(AlertEventModel).filter(
+            AlertEventModel.id == event.id
+        ).first()
+        if model is None:
+            raise ValueError(f"AlertEvent {event.id} not found")
+        model.delivery_status = event.delivery_status
+        self._session.flush()
+        return _to_entity(model)

@@ -1,65 +1,171 @@
-# TRADING FAST API
+# Trading App
 
-Backend del proyecto **Trading AI**, construido con **FastAPI** sobre **Python 3.12**, orientado a trading algorítmico, IA y backtesting, usando **MySQL 8.x** como base de datos principal.
+Aplicación **Trading App** (nombre temporal; el repo contiene la aplicación completa), construida con **FastAPI** sobre **Python 3.12**, orientada a trading algorítmico, IA y backtesting, y usa **MySQL 8.x** como base de datos principal.
 
-El proyecto está diseñado para escalar, mantener claridad arquitectónica y permitir evolución hacia MLOps, bots y ejecución en vivo.
+El repo tiene dos partes que corren por separado:
 
----
-
-## Stack tecnológico
-
-- **Lenguaje:** Python 3.12
-- **Framework API:** FastAPI
-- **ASGI Server:** Uvicorn (standard)
-- **ORM:** SQLAlchemy
-- **Driver MySQL:** PyMySQL
-- **Base de datos:** MySQL 8.x
-- **Arquitectura:** Modular / Screaming Architecture
+- **API REST headless** (`app/`): FastAPI, todas las rutas bajo `/api` (Swagger en `/docs`). No sirve páginas.
+- **Frontend** (`frontend/`): React + Vite + shadcn. Consume la API con la cookie de sesión.
 
 ---
 
-## Requisitos
+## Entorno
 
-- Python **3.12+**
-- MySQL **8.x**
-- pip actualizado
-- (Opcional) `tree` para visualizar estructura
+Crear el entorno virtual con [uv](https://docs.astral.sh/uv/):
+
+```bash
+uv venv --python 3.12
+```
+
+Activar el entorno virtual:
+
+```bash
+# macOS / Linux
+source .venv/bin/activate
+
+# Windows (PowerShell)
+.venv\Scripts\Activate.ps1
+
+# Windows (Git Bash)
+source .venv/Scripts/activate
+```
 
 ---
 
 ## Instalación
 
-### 1️⃣ Crear entorno virtual
+Instalar dependencias (`pyproject.toml` + `uv.lock`):
 
-python3.12 -m venv .venv
-source .venv/bin/activate
+```bash
+uv sync
+```
 
-### Instalar requirements
+Agregar / actualizar dependencias:
 
-pip install -r requirements.txt
+```bash
+uv add <paquete>
+uv add --dev <paquete>
+uv lock --upgrade-package <paquete>
+```
 
-### Ejecución en desarrollo
+---
 
+## Frontend
+
+Requiere **Node.js 20.12+** (recomendado 22 o 24) y **pnpm 12+** (`corepack enable` o `npm i -g pnpm`; es el único uso permitido de npm). npm y npx no funcionan en este repo: usar `pnpm`, `pnpm exec` o `pnpm dlx`. Las configs (`package.json`, `vite.config.ts`, `tsconfig*.json`, `components.json`) están en la raíz del repo y el código en `frontend/`.
+
+```bash
+pnpm install                                # dependencias
+cp .env.frontend.example .env.frontend      # variables del front (VITE_*)
+```
+
+| Variable (`.env.frontend`) | Para qué |
+|---|---|
+| `VITE_API_URL` | URL completa de la API; el front la llama directo, sin proxy. En desarrollo `http://localhost:8000/api` (usa `localhost`, no `127.0.0.1`, o la cookie no viaja). En producción, la URL pública de la API |
+
+El front **no** lee el `.env` del backend: solo `.env.frontend`.
+
+---
+
+## Base de datos y migraciones
+
+El esquema se gestiona con **Alembic** (`alembic.ini` + carpeta `database/migrations/`). La conexión se toma del `.env` (`DB_*`).
+
+El esquema completo sale de los modelos ORM: las migraciones de `database/migrations/versions/` crean todas las tablas.
+
+BD nueva desde cero:
+
+```bash
+uv run alembic upgrade head    # crea todas las tablas
+```
+
+Después, cargar los datos iniciales (roles, usuarios base, exchanges, timeframes, símbolos, estrategias de ejemplo):
+
+```bash
+uv run python -m database.seeds                      # todos (se pueden correr varias veces)
+uv run python -m database.seeds roles market_data    # solo los indicados
+uv run python -m database.seeds --list               # ver los disponibles
+```
+
+El seed `users` crea los usuarios del equipo (`andrescruznovoa@gmail.com` y `dayrondaza05@gmail.com`, rol admin) sin contraseña: el login es solo con el código que llega al correo. El seed `accounts` crea cuentas paper de ejemplo para el usuario demo; si ese usuario todavía no existe, se omite.
+
+BD que ya tenía el esquema antes de Alembic (creada con el dump; solo una vez, no ejecuta SQL):
+
+```bash
+uv run alembic stamp head
+```
+
+### Crear y aplicar una migración
+
+1. Crear o modificar el modelo ORM en `app/modules/<modulo>/infrastructure/` (si es nuevo, registrarlo en `app/extensions/db/models_registry.py`).
+
+2. Generar la migración comparando los modelos con la BD:
+
+   ```bash
+   uv run alembic revision --autogenerate -m "m11 crear tabla x"
+   ```
+
+   Crea un archivo en `database/migrations/versions/` con `upgrade()` y `downgrade()`.
+
+3. **Revisar el archivo generado antes de aplicarlo:**
+   - En tablas nuevas incluye CHECKs, comentarios y defaults del modelo. En tablas existentes **no** detecta CHECKs añadidos o quitados ni cambios de `server_default`: añadirlos a mano, p. ej. con `op.create_check_constraint(...)`.
+   - Borrar las operaciones que no deban ejecutarse.
+   - Completar el `MOTIVO:` del docstring.
+
+4. Aplicarla:
+
+   ```bash
+   uv run alembic upgrade head
+   ```
+
+### Otros comandos
+
+```bash
+uv run alembic upgrade head --sql     # ver el SQL sin ejecutarlo
+uv run alembic current                # en qué revisión está la BD
+uv run alembic history --verbose      # lista de revisiones
+uv run alembic downgrade -1           # deshacer la última
+uv run alembic check                  # ¿los modelos coinciden con la BD? (no escribe)
+```
+
+> **Importante:** si `alembic check` muestra diferencias que no vienen de tu cambio, la migración generada las incluirá todas (borrado de índices, cambios de tipo…) sobre tablas que ya funcionan. Antes de generar, alinea los modelos con la BD real: la BD es la fuente de verdad.
+
+---
+
+## Ejecución
+
+Con el entorno activado:
+
+```bash
 uvicorn app.main:app --reload
+```
 
-### Para mostrar la estructura de las carpetas instalar
+O sin activarlo, usando uv:
 
-brew install tree
+```bash
+uv run uvicorn app.main:app --reload
+```
 
-### Para mostrar la estructura de carpetas "Los asterisco de pycache reemplazarlos con guiones al piso"
+La API queda en `http://localhost:8000` (Swagger en `/docs`, rutas en `/api/*`, salud en `/health`).
 
-tree -d -a -I "**pycache**|.venv|.git|node_modules"
+En otra terminal, el frontend:
 
-### Si quieres que tree muestre archivos y carpetas, pero sin .pyc, **pycache** ni basura, usa este comando:
+```bash
+pnpm dev               # http://localhost:5193  → abre http://localhost:5193/#/login
+```
 
-tree -a -I "**pycache**|\*.pyc|.venv|.git|node_modules"
+Otros comandos del front:
 
-### Recomendado
+```bash
+pnpm check-types       # genera el árbol de rutas y revisa tipos
+pnpm lint              # biome check; con --write aplica formato e imports
+pnpm build             # build de producción en frontend/dist
+pnpm preview           # sirve el build localmente
+```
 
-tree -a -I "**pycache**|\*.pyc|.venv|.git|.DS_Store"
+### Producción
 
-### No repetirlo nunca mas
-
-alias treeclean='tree -a -I "**pycache**|\*.pyc|.venv|.git|.DS_Store|node_modules"'
-
-Luego solamente treeclean
+- Sirve `frontend/dist` como sitio estático (usa hash routing: `/#/bots`, no necesita reescrituras).
+- `VITE_API_URL` siempre es la URL completa de la API y `CORS_ORIGINS` debe incluir el origen exacto del front.
+- Recomendado: front y API en subdominios del mismo dominio (`app.midominio.com` / `api.midominio.com`), así la cookie `SameSite=Lax` funciona.
+- Si el front y la API viven en dominios distintos: `AUTH_COOKIE_SAMESITE=None` y HTTPS obligatorio.

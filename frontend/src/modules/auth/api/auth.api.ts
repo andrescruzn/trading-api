@@ -1,0 +1,89 @@
+import type { RoleCode } from '@/modules/auth/lib/roles';
+import { api } from '@/modules/shared/lib/api-client';
+
+/** `GET /users/me` — perfil del usuario autenticado. */
+type CurrentUser = {
+	id: number;
+	email: string;
+	full_name: string | null;
+	role_id: number;
+	role_code: RoleCode | null;
+	role_label: string | null;
+	status: string;
+	last_login_at: string | null;
+	created_at: string | null;
+	/** Tiene un chat de Telegram vinculado (señales por aprobar con botones). */
+	telegram_linked: boolean;
+	/** El bot de Telegram está activo en Notificaciones (envía avisos). */
+	telegram_available: boolean;
+	/** El bot lee mensajes (modo de respuestas ≠ off): se puede conectar un chat. */
+	telegram_linkable: boolean;
+	/** Los avisos por correo están activos (y el servidor tiene SMTP). */
+	email_notifications: boolean;
+};
+
+/** Enlace de un solo uso para vincular Telegram (vence en 10 minutos). */
+type TelegramLink = {
+	link_url: string;
+	expires_at: string;
+};
+
+/** Login exitoso: la sesión viaja en la cookie HttpOnly, no en el body. */
+type LoginResult = {
+	authenticated: boolean;
+	expires_at: string;
+};
+
+/** `POST /users/login`: se envió un código por correo (el login es solo por OTP). */
+type OtpRequestResult = {
+	otp_required: boolean;
+	email: string;
+	otp_expires_at: string;
+	/** Solo llega con `APP_ENV=development`. */
+	otp_code?: string;
+};
+
+function requestOtp(email: string) {
+	return api.post<OtpRequestResult>('/users/login', { email });
+}
+
+function verifyOtp(email: string, otpCode: string) {
+	return api.post<LoginResult>('/users/login/otp/verify', {
+		email,
+		otp_code: otpCode,
+	});
+}
+
+function logout() {
+	return api.post<null>('/users/logout');
+}
+
+function me() {
+	return api.get<CurrentUser>('/users/me');
+}
+
+/** Solo el nombre visible: `null` o vacío lo borra. */
+function updateProfile(fullName: string | null) {
+	return api.put<{ id: number; full_name: string | null }>('/users/me', {
+		full_name: fullName,
+	});
+}
+
+function createTelegramLink() {
+	return api.post<TelegramLink>('/users/me/telegram/link');
+}
+
+function unlinkTelegram() {
+	return api.delete<{ telegram_linked: boolean }>('/users/me/telegram');
+}
+
+export type { CurrentUser, LoginResult, OtpRequestResult, TelegramLink };
+export {
+	createTelegramLink,
+	logout,
+	me,
+	requestOtp,
+	unlinkTelegram,
+	updateProfile,
+	verifyOtp,
+};

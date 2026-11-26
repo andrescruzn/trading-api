@@ -1,0 +1,129 @@
+# app/modules/users/infrastructure/user_model.py
+# -*- coding: utf-8 -*-
+
+# ======================================================================
+# SQLAlchemy User Model
+# ----------------------------------------------------------------------
+# Modelo de persistencia que representa la tabla `users`.
+#
+# CAMBIOS CLAVE:
+# - role_id (FK a roles.id)
+# - Sin columnas de lockout (failed_attempts / login_locked_until): se
+#   eliminaron en m01; la fuerza bruta se frena con rate limit.
+# ======================================================================
+
+from sqlalchemy import (
+    BigInteger,
+    CheckConstraint,
+    Column,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    UniqueConstraint,
+    text,
+)
+from sqlalchemy.dialects.mysql import TIMESTAMP
+
+from app.extensions.db import Base, MYSQL_TABLE_OPTIONS
+
+
+class UserModel(Base):
+    """
+    Modelo SQLAlchemy para la tabla `users`.
+    """
+
+    __tablename__ = "users"
+    __table_args__ = (
+        UniqueConstraint("email", name="uq_users_email"),
+        UniqueConstraint("telegram_chat_id", name="uq_users_telegram_chat"),
+        Index("idx_users_telegram_link", "telegram_link_hash"),
+        Index("idx_users_status", "status"),
+        Index("idx_users_token_jti", "token_current_jti"),
+        Index("idx_users_otp_expires", "otp_expires_at"),
+        Index("idx_users_role_id", "role_id"),
+        CheckConstraint(
+            "`otp_created_at` IS NULL OR `otp_expires_at` IS NULL "
+            "OR `otp_expires_at` >= `otp_created_at`",
+            name="chk_users_otp_dates",
+        ),
+        CheckConstraint(
+            "`status` IN ('active', 'blocked', 'disabled')",
+            name="chk_users_status",
+        ),
+        MYSQL_TABLE_OPTIONS,
+    )
+
+    # ------------------------------------------------------------------
+    # PK
+    # ------------------------------------------------------------------
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+
+    # ------------------------------------------------------------------
+    # Identidad
+    # ------------------------------------------------------------------
+    email = Column(String(255), nullable=False)
+    full_name = Column(String(255), nullable=True)
+
+    # Sin credenciales propias: el login es solo por OTP (otp_* más abajo).
+
+    # --------------------------------------------------------------
+    # Rol (FK)
+    # --------------------------------------------------------------
+    role_id = Column(
+        BigInteger,
+        ForeignKey("roles.id", name="fk_users_role"),  # requiere RoleModel cargado en metadata
+        nullable=False,
+    )
+
+    # ------------------------------------------------------------------
+    # Estado / seguridad
+    # ------------------------------------------------------------------
+    status = Column(String(16), nullable=False, server_default=text("'active'"))
+
+    # Auditoría de acceso
+    last_login_at = Column(TIMESTAMP(fsp=6), nullable=True)
+
+    # JTI actual para invalidación/rotación de sesiones
+    token_current_jti = Column(String(64), nullable=True)
+
+    # ------------------------------------------------------------------
+    # OTP
+    # ------------------------------------------------------------------
+    otp_code = Column(String(255), nullable=True)
+    otp_created_at = Column(TIMESTAMP(fsp=6), nullable=True)
+    otp_expires_at = Column(TIMESTAMP(fsp=6), nullable=True)
+    # Intentos fallidos del código vigente: al llegar a OTP_MAX_FAILED_ATTEMPTS
+    # se invalida (frena la fuerza bruta aunque haya varios workers).
+    otp_failed_attempts = Column(Integer, nullable=False, server_default=text("0"))
+
+    # ------------------------------------------------------------------
+    # Telegram (aprobación de señales y avisos por usuario)
+    # ------------------------------------------------------------------
+    telegram_chat_id = Column(BigInteger, nullable=True, comment="Chat privado vinculado con el bot de Telegram")
+    telegram_link_hash = Column(String(64), nullable=True, comment="SHA-256 del código de vinculación de un solo uso")
+    telegram_link_expires_at = Column(TIMESTAMP(fsp=6), nullable=True)
+
+    # ------------------------------------------------------------------
+    # Notificaciones en la app (campana del header, M9)
+    # ------------------------------------------------------------------
+    notifications_seen_at = Column(
+        TIMESTAMP(fsp=6),
+        nullable=True,
+        comment="Última vez que el usuario abrió sus notificaciones; NULL = nunca (todas sin leer)",
+    )
+
+    # ------------------------------------------------------------------
+    # Auditoría
+    # ------------------------------------------------------------------
+    created_at = Column(
+        TIMESTAMP(fsp=6),
+        nullable=False,
+        server_default=text("CURRENT_TIMESTAMP(6)"),
+    )
+    updated_at = Column(
+        TIMESTAMP(fsp=6),
+        nullable=False,
+        server_default=text("CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6)"),
+        onupdate=text("CURRENT_TIMESTAMP(6)"),
+    )

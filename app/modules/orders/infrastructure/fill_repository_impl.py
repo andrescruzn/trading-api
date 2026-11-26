@@ -1,0 +1,146 @@
+# -*- coding: utf-8 -*-
+
+# ======================================================================
+# app/modules/orders/infrastructure/fill_repository_impl.py
+#
+# Implementación SQLAlchemy del repositorio de fills.
+# ======================================================================
+
+from __future__ import annotations
+
+from decimal import Decimal
+
+from sqlalchemy import func
+from sqlalchemy.orm import Session
+
+from app.modules.orders.domain.fill_entity import BotFill, Fill
+from app.modules.orders.domain.fill_repository import FillRepository
+from app.modules.orders.domain.performance import TradeFill
+from app.modules.orders.infrastructure.fill_model import FillModel
+from app.modules.orders.infrastructure.order_model import OrderModel
+from app.extensions.db.sqlalchemy_repository import SqlAlchemyRepository
+
+
+class SqlAlchemyFillRepository(SqlAlchemyRepository, FillRepository):
+    """Repositorio concreto de fills usando SQLAlchemy."""
+
+    def __init__(self, session: Session):
+        self._session = session
+
+    # ------------------------------------------------------------------
+    # Mappers ORM ↔ Dominio
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _to_domain(model: FillModel) -> Fill:
+        return Fill(
+            id=model.id,
+            order_id=model.order_id,
+            exchange_trade_id=model.exchange_trade_id,
+            qty=Decimal(str(model.qty)),
+            price=Decimal(str(model.price)),
+            fee=Decimal(str(model.fee)),
+            fee_asset=model.fee_asset,
+            ts=model.ts,
+            created_at=model.created_at,
+        )
+
+    @staticmethod
+    def _apply_domain_to_model(fill: Fill, model: FillModel) -> FillModel:
+        model.order_id          = fill.order_id
+        model.exchange_trade_id = fill.exchange_trade_id
+        model.qty               = fill.qty
+        model.price             = fill.price
+        model.fee               = fill.fee
+        model.fee_asset         = fill.fee_asset
+        model.ts                = fill.ts
+        return model
+
+    # ------------------------------------------------------------------
+    # Contrato del repositorio
+    # ------------------------------------------------------------------
+
+    def list_by_order(self, order_id: int) -> list[Fill]:
+        models = (
+            self._session.query(FillModel)
+            .filter(FillModel.order_id == order_id)
+            .order_by(FillModel.ts.asc())
+            .all()
+        )
+        return [self._to_domain(m) for m in models]
+
+    def list_by_bot(self, bot_id: int, limit: int = 200) -> list[Fill]:
+        """
+        Lista fills de un bot haciendo JOIN con orders.
+        Los fills no tienen bot_id directamente — se llega via order.bot_id.
+        """
+        models = (
+            self._session.query(FillModel)
+            .join(OrderModel, FillModel.order_id == OrderModel.id)
+            .filter(OrderModel.bot_id == bot_id)
+            .order_by(FillModel.ts.desc())
+            .limit(limit)
+            .all()
+        )
+        return [self._to_domain(m) for m in models]
+
+    def list_trade_fills_by_bots(self, bot_ids: list[int]) -> dict[int, list[TradeFill]]:
+        result: dict[int, list[TradeFill]] = {bot_id: [] for bot_id in bot_ids}
+        if not bot_ids:
+            return result
+        rows = (
+            self._session.query(FillModel, OrderModel.side, OrderModel.bot_id)
+            .join(OrderModel, FillModel.order_id == OrderModel.id)
+            .filter(OrderModel.bot_id.in_(bot_ids))
+            .order_by(FillModel.ts.asc(), FillModel.id.asc())
+            .all()
+        )
+        for model, side, bot_id in rows:
+            result.setdefault(bot_id, []).append(
+                TradeFill(
+                    side=side,
+                    qty=Decimal(str(model.qty)),
+                    price=Decimal(str(model.price)),
+                    fee=Decimal(str(model.fee or 0)),
+                    ts=model.ts,
+                )
+            )
+        return result
+
+    def list_by_bot_after(self, bot_id: int, after_fill_id: int) -> list[BotFill]:
+        rows = (
+            self._session.query(FillModel, OrderModel.side)
+            .join(OrderModel, FillModel.order_id == OrderModel.id)
+            .filter(OrderModel.bot_id == bot_id, FillModel.id > after_fill_id)
+            .order_by(FillModel.id.asc())
+            .all()
+        )
+        return [
+            BotFill(
+                id=model.id,
+                side=side,
+                qty=Decimal(str(model.qty)),
+                price=Decimal(str(model.price)),
+                fee=Decimal(str(model.fee or 0)),
+                fee_asset=model.fee_asset,
+                ts=model.ts,
+            )
+            for model, side in rows
+        ]
+
+    def max_id_by_bot(self, bot_id: int) -> int:
+        value = (
+            self._session.query(func.max(FillModel.id))
+            .join(OrderModel, FillModel.order_id == OrderModel.id)
+            .filter(OrderModel.bot_id == bot_id)
+            .scalar()
+        )
+        return int(value or 0)
+
+    def create(self, fill: Fill) -> Fill:
+        model = FillModel()
+        self._apply_domain_to_model(fill, model)
+        self._session.add(model)
+        self._session.flush()
+        self._session.refresh(model)
+        return self._to_domain(model)

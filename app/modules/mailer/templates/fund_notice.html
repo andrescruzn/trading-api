@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block content %}
+  {% if full_name %}
+  <p style="margin:0 0 12px 0;">Hola, {{ full_name }}:</p>
+  {% endif %}
+  <h2 style="margin:0 0 12px 0;">{{ title }}</h2>
+  <p style="margin:0 0 16px 0;">{{ message }}</p>
+  {% if url %}
+  <p style="margin:0;">
+    <a href="{{ url }}" style="display:inline-block;background:#111;color:#fff;text-decoration:none;padding:10px 16px;border-radius:6px;">Ver en Trading App</a>
+  </p>
+  {% endif %}
+{% endblock %}

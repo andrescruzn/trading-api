@@ -1,0 +1,79 @@
+# app/modules/users/domain/user_repository.py
+# -*- coding: utf-8 -*-
+
+# ======================================================================
+# User Repository Contract (Domain Port)
+# ----------------------------------------------------------------------
+# Patrón aplicado: Repository Pattern (Puerto / Contrato de Dominio)
+#
+# CAMBIOS:
+# - No cambia la interfaz; la entidad User incluye role_id.
+# ======================================================================
+
+from __future__ import annotations
+
+from abc import ABC, abstractmethod
+from datetime import datetime
+from typing import Optional
+
+from app.modules.users.domain.user_entity import User
+from app.common.contracts import TransactionalRepository
+
+
+class UserRepository(TransactionalRepository, ABC):
+    """
+    Contrato (interface) para persistencia/consulta de usuarios.
+    """
+
+    # ------------------------------------------------------------------
+    # Lecturas
+    # ------------------------------------------------------------------
+
+    @abstractmethod
+    def get_by_id(self, user_id: int) -> Optional[User]:
+        """Retorna un User si existe, o None si no existe."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_by_email(self, email: str) -> Optional[User]:
+        """Retorna un User si existe, o None si no existe."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_by_telegram_chat_id(self, chat_id: int) -> Optional[User]:
+        """Usuario vinculado a ese chat de Telegram, o None."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_by_telegram_link_hash(self, link_hash: str) -> Optional[User]:
+        """Usuario con ese código de vinculación pendiente, o None."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_role_info(self, role_id: int) -> Optional[dict[str, str]]:
+        """Retorna {"code", "name"} del rol, o None si no existe."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def list_all(self) -> list[User]:
+        """Todos los usuarios, ordenados por ID."""
+        raise NotImplementedError
+
+    # ------------------------------------------------------------------
+    # Escrituras
+    # ------------------------------------------------------------------
+
+    @abstractmethod
+    def create(self, user: User) -> User:
+        """Crea un usuario y retorna el persistido."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def update(self, user: User) -> User:
+        """Actualiza un usuario y retorna el actualizado."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def set_notifications_seen_at(self, user_id: int, seen_at: datetime) -> bool:
+        """Marca las notificaciones como vistas (solo esa columna). False si no existe."""
+        raise NotImplementedError

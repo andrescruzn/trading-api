@@ -1,0 +1,322 @@
+# Trading AI — Índice de módulos
+
+Una explicación simple de los 10 módulos del sistema, sin tecnicismos. Cada módulo tiene su propia spec.
+
+## Estado del proyecto
+
+| Módulo | Estado | Alcance | Madurez | Descripción |
+|--------|--------|--------:|--------:|-------------|
+| [M1 — Auth & Frontend](M01-AUTH.md) | ✅ Completo | 100 % | 84 % | Login solo por código OTP (con intentos máximos), una sesión por persona con aviso, perfil propio, roles del fondo común (super admin, socio de solo lectura, inversor), bloquear/desactivar cuentas (pausa sus agentes), auditoría visible (solo cambios y errores, con purga), defensa CSRF por Origin, auditoría sin secretos, vínculo de Telegram, frontend React (shell, dashboard) |
+| [M2 — Market Data](M02-MARKET-DATA.md) | ✅ Completo | 100 % | 86 % | Un solo exchange (Binance), símbolos (cripto + perpetuos TradFi: metales, materias primas, ETFs, acciones), velas OHLCV via ccxt, scheduler de ingesta (un solo líder por lock de MySQL) y explorador de tendencia |
+| [M3 — Feature Engineering](M03-FEATURE-ENGINEERING.md) | ✅ Completo | 100 % | 82 % | RSI, ATR, EMA, MACD, Bollinger Bands, régimen; conjuntos por enfoque (Completo/Tendencia/Rango) |
+| [M4 — Accounts & Portfolio](M04-ACCOUNTS-PORTFOLIO.md) | ✅ Completo | 100 % | 80 % | **Billetera única de Binance** (se arma sola, credenciales en el `.env`, sin "Mis cuentas" ni "Elegir billetera") sincronizada con el exchange; balances; cuentas internas de los agentes demo |
+| [M5 — Strategies](M05-STRATEGIES.md) | ✅ Completo | 100 % | 78 % | Reglas de entrada/salida, backtesting sin IA, validación tipo/régimen, datasets |
+| [M6 — AI Agent / Models](M06-AI-AGENT.md) | ✅ Completo | 100 % | 81 % | Prompt Maestro con pool de LLMs rotativo (Groq + Gemini + Ollama Cloud, con failover), salida del LLM validada, rate limit por usuario, modelos ML y model runs |
+| [M7 — Bots & Signals](M07-BOTS-SIGNALS.md) | ✅ Completo | 100 % | 81 % | **Agentes** (bots en la UI): **reales** (billetera de Binance, en Inicio) y **demo** (dinero simulado, en Agentes demo) lado a lado, asistente, señales BUY/SELL/HOLD con entry/SL/TP, **modo de ejecución** Manual / Con aprobación / Automático (señales automáticas por vela cerrada) e **historial** de cada agente (quién lo creó, editó, inició o detuvo) |
+| [M8 — Orders & Execution](M08-ORDERS-EXECUTION.md) | ✅ Completo | 100 % | 84 % | Órdenes paper/live (ccxt) con propiedad, RiskGate e idempotencia; perpetuos de Binance en live (solo largos, 1x aislado) con funding; señal → orden (aprobada o automática); SL nativo en el exchange en live + TP por ciclo del scheduler; protección SL/TP también en compras manuales y en compras que se ejecutan tarde; cancelar órdenes; reconciliación con el exchange; fills, posiciones; 350+ tests |
+| [M9 — Alerts](M09-ALERTS.md) | ✅ Completo | 100 % | 71 % | Reglas de alerta que se revisan solas (señal, error, precio, PnL, drawdown) con antispam; avisos por email/Telegram al dueño/webhook (con guarda SSRF); campana de notificaciones en la app; bot de Telegram por usuario para aprobar señales |
+| [M10 — Billing & Managed Accounts](M10-BILLING.md) | 🗄️ Retirado | — | — | Reemplazado por M11 el 2026-10-23 (no cuenta en el promedio) |
+| [M11 — Fondo común](M11-FUND.md) | ✅ Completo | 100 % | 75 % | Una billetera para todos: libro mayor por persona, depósitos USDT verificados contra el exchange, agentes del fondo con NAV y unidades, liquidación con entradas y salidas, comisión escalonada repartida entre propietarios y socios, retiros entre billeteras (dirección cripto, txid comprobado contra Binance, comisión de red a cargo de la persona), resumen con conciliación y avisos; el 1 % sobre el capital del agente |
+| [M12 — Notificaciones](M12-NOTIFICATIONS.md) | ✅ Completo | 100 % | 64 % | Canales de aviso configurables en la app: Telegram (bot, chat por defecto, modo de respuestas y webhook, guardados en la BD con el token cifrado) y correo (interruptor + prueba); el correo lleva los mismos avisos que Telegram |
+| **Promedio** | | **100 %** | **79 %** | |
+
+- **Alcance** = entregables del plan original hechos / planificados (M11: fases del plan del fondo común hechas, 6 de 6; M12: 7 de 7; M10 retirado, fuera del promedio). Las dos filas por debajo del 100 % (M2 y M5) son por los tests de services que el plan original listaba y nunca se escribieron.
+- **Madurez** = estimación de qué tan lista para producción está cada pieza (rúbrica abajo). Es una opinión fundamentada en el repo, no una medición.
+
+Más detalle:
+- Cada spec `MNN-*.md` es la **fuente de verdad de su módulo**: descripción, páginas, entregables, decisiones, avance, mejoras, detalle técnico (tablas, archivos, endpoints), gotchas y tests. (Reemplaza a los antiguos `ROADMAP.md` y `MODULES_MAP.md`.)
+- Orden de dependencias y mapa de páginas: [más abajo](#orden-de-dependencias).
+- Manual en lenguaje simple: [`MANUAL.md`](../docs/MANUAL.md)
+- Esquema de base de datos: modelos ORM + `database/migrations/versions/` (ver skill [`database`](../.claude/skills/database/SKILL.md))
+
+### Cómo usar estas specs
+- Al iniciar cada sesión: leer este archivo para saber en qué módulo estamos y luego la spec del módulo (se leen bajo demanda, no se importan en `CLAUDE.md`).
+- **Leer la spec del módulo ANTES de codear** para no pisar lo anterior (tablas, archivos y endpoints están en su sección "Detalle técnico").
+- Al terminar un módulo o una feature significativa: skill [`update-specs`](../.claude/skills/update-specs/SKILL.md) (spec, tabla de arriba y `MANUAL.md`). Las convenciones de código viven en `CLAUDE.md` y `.claude/skills/`; los bugs y notas de cada módulo, en su spec.
+
+---
+
+## Flujo completo
+
+```
+[Módulo 2: Market Data]
+   Precios históricos (velas OHLCV)
+         ↓
+[Módulo 3: Feature Engineering]
+   Indicadores técnicos + Régimen de mercado
+         ↓
+[Módulo 4: Accounts ✅]  [Módulo 5: Strategies ✅]
+   Capital disponible  +  Reglas de entrada/salida
+         ↓                        ↓
+         └──────────┬─────────────┘
+                    ↓
+         [Módulo 6: AI Agent]
+         ¿La operación es buena?
+         APROBADA / RECHAZADA
+                    ↓
+         [Módulo 7: Bots & Signals]
+         Señal: BUY / SELL / HOLD
+                    ↓
+         Modo Manual / Con aprobación / Automático
+                    ↓
+         [Módulo 8: Orders & Execution]
+         RiskGate → orden al exchange (paper o live)
+         Stop Loss nativo en el exchange (live) / Take Profit por el scheduler
+         Reconciliación de órdenes con el exchange
+                    ↓
+         [Módulo 9: Alerts]
+         Notificaciones por email, Telegram o webhook
+         (Telegram también para aprobar señales)
+```
+
+El [Módulo 1 (Auth)](M01-AUTH.md) protege el acceso a todo el sistema. Sin estar autenticado, no se puede usar ningún módulo.
+El [Módulo 11 (Fondo común)](M11-FUND.md) lleva la cuenta de cada persona: sus agentes operan sobre la billetera única con el capital del pool, y en cada liquidación se cobra la comisión sobre la ganancia que sale (reemplazó al Módulo 10, retirado).
+
+### Estado real del flujo (verificado en el código el 2026-10-19)
+
+El lazo está cerrado para los agentes que lo piden; **Manual sigue siendo el modo por defecto**. Hoy:
+
+- **Scheduler ([M2](M02-MARKET-DATA.md)):** un solo proceso líder (lock de MySQL). Cada ciclo (60 s) actualiza velas y features de los agentes `running`/`paused` y después corre el **ciclo de ejecución** (`execution_cycle.py`).
+- **Señales ([M7](M07-BOTS-SIGNALS.md)):**
+  - **Manual:** a mano con "Analizar ahora" (`POST /api/signals/generate`).
+  - **Con aprobación / Automático:** el scheduler genera **una señal por vela cerrada** para cada agente `running` (timeframe ≥ 15m, datos al día, tope diario por usuario). Una BUY/SELL aprobada por la IA queda **pendiente** hasta su vencimiento (60 min por defecto).
+- **Aprobación:** en Con aprobación la persona aprueba o descarta desde la app (detalle de la señal o tarjeta del dashboard) o desde **Telegram** con botones ([M9](M09-ALERTS.md)). Solo una decisión gana (UPDATE condicional). Al aprobar se revalida al precio actual (R/R ≥ 2:1) y se recalcula la cantidad para mantener el 1 %.
+- **Órdenes ([M8](M08-ORDERS-EXECUTION.md)):** en Automático la orden sale sola en el mismo ciclo; en Manual se crea con `POST /api/orders`. Toda orden pasa por el **RiskGate** (kill switch, valor máximo por compra, drawdown máximo; sin interruptor aparte para lo real desde el 2026-10-26) y queda guardada antes de llamar al exchange.
+- **Stop Loss / Take Profit:** la posición abierta desde una señal guarda su SL/TP. En **live** (con `ORDER_NATIVE_STOP_LOSS=true`, por defecto) el SL queda como **orden stop nativa en el exchange** (protege aunque la app esté caída) y el scheduler solo vigila el TP; antes de cualquier otra venta se cancela el SL nativo. En **paper**, o si el exchange no soporta el stop nativo, el scheduler cierra a mercado cuando una vela toca cualquiera de los dos. Sin OCO. Las posiciones de órdenes manuales no tienen protección automática.
+- **Reconciliación ([M8](M08-ORDERS-EXECUTION.md)):** en cada ciclo el scheduler sincroniza con el exchange las órdenes live `sent`/`partially_filled` de los últimos 7 días: registra lo ejecutado después (límites, SL nativo disparado, parciales), adopta el estado del exchange y marca rechazada a los 10 min una orden "sin respuesta" que el exchange no conoce. Orden del ciclo: señales automáticas → caducar → reconciliar → proteger → Telegram.
+- **Alertas ([M9](M09-ALERTS.md)):** se disparan solas con señales y órdenes (también rechazadas) y, en cada ciclo del scheduler, las de precio, PnL y drawdown (antispam `ALERT_REPEAT_MINUTES`). Llegan al Telegram y al correo del dueño de la regla y a la campana de la cabecera.
+- **Cancelar y proteger (2026-10-20):** las órdenes live abiertas se cancelan desde la app; las compras manuales a mercado pueden llevar SL/TP; una compra que se ejecuta tarde recibe su protección en la reconciliación y la señal se cierra cuando la orden termina.
+- **Pendiente:** TP nativo / OCO en el exchange y **correr** la prueba en testnet (`scripts/testnet_check.py` + `docs/TESTNET.md`). M8 tiene tests unitarios completos (`tests/orders/`), pero sin un exchange real.
+
+---
+
+## Orden de dependencias
+```
+Módulo 1 (Auth)
+    ↓
+Módulo 2 (Market Data) ← sin datos no hay nada
+    ↓
+Módulo 3 (Features) ← necesita velas
+    ↓
+Módulo 4 (Accounts) ← paralelo con 3 si se quiere
+    ↓
+Módulo 5 (Strategies) ← necesita features + accounts
+    ↓
+Módulo 6 (AI Agent) ← necesita strategies + features
+    ↓
+Módulo 7 (Bots & Signals) ← necesita agent + strategies
+    ↓
+Módulo 8 (Orders & Execution) ← necesita signals + accounts
+    ↓
+Módulo 9 (Alerts) ← puede ir en paralelo con 7 u 8
+    ↓
+Módulo 10 (Billing) — retirado el 2026-10-23, lo reemplaza M11
+    ↓
+Módulo 11 (Fondo común) ← necesita M1 (roles) + M4 (billetera); usa M7/M8 (capital de los agentes) y M9 (avisos); reemplazó a M10
+
+Módulo 12 (Notificaciones) ← solo depende de common; lo leen M1, M7, M9 (y M11 a través de M9) y el scheduler
+```
+
+---
+
+## Prioridades transversales (síntesis de las "Posibles mejoras")
+
+| # | Prioridad | Qué | Módulos |
+|---|---|---|---|
+| 1 | ~~Alta~~ → Baja | ~~Cerrar el lazo de automatización~~ **Resuelto en lo esencial (2026-10-19):** señales automáticas por vela cerrada, aprobación en app/Telegram, ejecución automática, SL nativo en el exchange en live + TP por ciclo, y reconciliación de órdenes con el exchange. **Queda:** TP nativo / OCO | [M7](M07-BOTS-SIGNALS.md), [M8](M08-ORDERS-EXECUTION.md), [M2](M02-MARKET-DATA.md) (scheduler) |
+| 2 | ~~Alta~~ ✅ | ~~Tests de órdenes y ejecución~~ **Hecho (2026-10-20):** `tests/orders/` cubre entidades, `LiveExecutor`, RiskGate, crear/cancelar, señales, protección, reconciliación y SL nativo (destaparon 6 bugs, corregidos). **Hecho también:** `tests/alerts/` (51 tests: condiciones, evaluación periódica, destinatarios, paso del scheduler, campana). **Fase 6 (2026-10-20):** `tests/market` (156), `tests/strategies` (81 nuevos), `tests/scheduler` (57: ingesta y ciclo de ejecución) y `execution_mode_rules` (23); destaparon 2 bugs, corregidos. **Queda:** rutas REST con TestClient y repositorios contra MySQL real | [M8](M08-ORDERS-EXECUTION.md), [M7](M07-BOTS-SIGNALS.md), [M2](M02-MARKET-DATA.md), [M5](M05-STRATEGIES.md), [M9](M09-ALERTS.md) |
+| 3 | ~~Alta~~ ✅ | ~~Seguridad: validar URL del webhook (SSRF) y ampliar el rate limit~~ **Resuelto (2026-10-19):** guarda SSRF del webhook y rate limit por usuario en las rutas de la IA (además: propiedad en órdenes y en `/agent/analyze`, CSRF por Origin, auditoría sin secretos) | [M9](M09-ALERTS.md), [M1](M01-AUTH.md), [M6](M06-AI-AGENT.md) |
+| 4 | Alta (parcial) | Salvaguardas para `live`. **Hecho:** tamaño máximo (`ORDER_MAX_NOTIONAL` / `max_notional`), kill switch, drawdown máximo (el "live apagado por defecto" se quitó el 2026-10-26: los agentes reales y demo conviven), idempotencia (`client_order_id`), reconciliación con el exchange y SL nativo (2026-10-19). Cancelar órdenes desde la API/UI (2026-10-20). **Pendiente:** correr la prueba en testnet (`scripts/testnet_check.py` + `docs/TESTNET.md`) antes del primer peso real | [M8](M08-ORDERS-EXECUTION.md) |
+| 5 | Media (parcial) | Scheduler: **lock hecho** (un solo líder con `GET_LOCK`); sigue recomendado sacarlo a un proceso aparte. Pendiente el relleno de huecos de velas. Detalle en [Fase 5](#fase-5--operación-e-infraestructura-posible-cambio-a-futuro-nada-implementado) (F5.1, F5.2) | [M2](M02-MARKET-DATA.md) |
+| 6 | Media (parcial) | Sincronizar balances con el exchange. **Hecho (2026-10-23):** la billetera única del fondo se sincroniza sola. **Pendiente:** las demás cuentas live. (La parte de `closing_equity` y cobros del fee era de M10, retirado) | [M4](M04-ACCOUNTS-PORTFOLIO.md) |
+| 7 | ~~Media~~ ✅ | ~~Backtesting~~ **Hecho (2026-10-20):** backtesting sin IA (`POST /api/backtests`, página Backtesting) con las mismas reglas y métricas que los agentes reales | [M5](M05-STRATEGIES.md) |
+
+### Fondo común: antes de recibir dinero real de terceros
+
+El fondo ([M11](M11-FUND.md)) está completo en código, pero **no está listo para dinero de terceros** hasta cerrar su lista [Antes de recibir dinero real de terceros](M11-FUND.md#antes-de-recibir-dinero-real-de-terceros). Sus riesgos, con impacto y mitigación, están en [Riesgos y problemas conocidos](M11-FUND.md#riesgos-y-problemas-conocidos). Las prioridades:
+
+| # | Prioridad | Qué | Riesgo |
+|---|---|---|---|
+| F1 | Crítica | Validación legal y contrato con cada inversor | R1 |
+| F2 | Crítica | Prueba de punta a punta en paper y luego testnet | R12, R18 |
+| F3 | Alta | API key de la billetera sin retiro y con lista blanca de IP; tope de dinero en el exchange | R2, R3 |
+| F4 | Alta | 2FA para super admin | R4 |
+| F5 | Alta | Alarma y bloqueo de pagos con conciliación negativa | R8 |
+| F6 | Alta | Tests unitarios de las piezas de dinero (`tests/fund/`) | R12 |
+| F7 | Media | Doble aprobación de retiros sobre un umbral | R5 |
+| F8 | Media | Scheduler en un proceso aparte con alerta si se detiene | R11 |
+| F9 | Media | Calendario de liquidaciones | R6, R7 |
+
+### Fase 5 — Operación e infraestructura (posible cambio a futuro, nada implementado)
+
+Decidido el 2026-10-20: queda documentada para más adelante. Ninguna bloquea el uso actual con **una sola instancia** de la API; se vuelven necesarias al escalar (varias instancias o workers, más agentes, dinero real 24/7). Esfuerzo: S (horas), M (1–3 días), L (una semana o más).
+
+| # | Qué | Por qué (estado hoy) | Propuesta | Esfuerzo | Módulos |
+|---|---|---|---|---|---|
+| F5.1 | **Scheduler en un proceso aparte** | Arranca en el `lifespan` de la API (`app_factory.py` → `scheduler.start()`). El lock de líder (`GET_LOCK` de MySQL) evita ciclos duplicados con varios workers, pero un reinicio o un deploy de la API detiene la ingesta, las señales automáticas y la vigilancia del TP | Entrypoint propio (`python -m app.modules.scheduler`) desplegado como servicio aparte; un setting `SCHEDULER_ENABLED=false` en la API. Mantener el lock por si se levantan dos | M | [M2](M02-MARKET-DATA.md), [M7](M07-BOTS-SIGNALS.md), [M8](M08-ORDERS-EXECUTION.md) |
+| F5.2 | **Rellenar huecos de velas** | `_should_fetch` pide solo 3 velas cuando la última está vencida, sin mirar cuántas faltan. Si el scheduler estuvo caído 10 h en 1h, quedan 7 velas sin descargar y los indicadores (EMA, ATR…) se calculan sobre una serie con huecos | Calcular las velas faltantes `ceil(elapsed / timeframe)` (con tope, p. ej. 500) y pedir ese `limit` o paginar con `since`; job de verificación que detecte huecos en la ventana de retención | S–M | [M2](M02-MARKET-DATA.md), [M3](M03-FEATURE-ENGINEERING.md) |
+| F5.3 | **Sincronizar balances con el exchange** (hecho para la billetera de la plataforma el 2026-10-23; faltan las demás cuentas) | Los balances de las cuentas se registran a mano; el equity sugerido de las cuentas gestionadas y el `closing_equity` dependen de eso | Job periódico (`fetch_balance` de ccxt) para cuentas live con credenciales, que escriba `balances` y `portfolio_snapshots` (hoy nadie la escribe); en paper, derivarlo de fills y posiciones. Ver también las prioridades 6 y 12 | M | [M4](M04-ACCOUNTS-PORTFOLIO.md), [M10](M10-BILLING.md) |
+| F5.4 | **Rate limiter compartido** | `RateLimiter` (`common/security/rate_limiter.py`) guarda la ventana en memoria del proceso: con N instancias, cada una cuenta por separado (el límite real es N veces el configurado) y se pierde al reiniciar | Backend intercambiable detrás de la misma interfaz: Redis (`INCR` + `EXPIRE` o sorted sets) o, sin infraestructura nueva, una tabla MySQL con ventana fija | M | [M1](M01-AUTH.md) (login/OTP), [M6](M06-AI-AGENT.md), [M8](M08-ORDERS-EXECUTION.md) |
+| F5.5 | **Métricas y alertas del ciclo** | Los fallos del ciclo (descarga, IA, órdenes) solo quedan en logs; un agente automático puede fallar en cada vela sin que nadie se entere | Contador de fallos consecutivos por agente; al superar N, alerta al dueño (M9, tipo `error`) y opción de pausar el agente. Endpoint o página de salud del scheduler (último ciclo, duración, fallos) | M | [M2](M02-MARKET-DATA.md), [M7](M07-BOTS-SIGNALS.md), [M9](M09-ALERTS.md) |
+| F5.6 | **Cálculo incremental de indicadores** | Con cada vela nueva, `CalculateFeaturesService` recalcula y reescribe (`bulk_upsert`) los indicadores de hasta 1.000 velas del trío símbolo/timeframe/conjunto, aunque solo cambió la última | Recalcular solo las velas posteriores a la última `candle_features`, cargando el calentamiento mínimo que pide cada indicador (p. ej. 200 velas para EMA 200). Medir antes: con pocos agentes no vale la pena | M | [M3](M03-FEATURE-ENGINEERING.md) |
+
+Orden sugerido cuando se retome: F5.2 (barato y afecta la calidad de las señales) → F5.5 → F5.1 → F5.3 → F5.4 (al pasar a varias instancias) → F5.6 (solo si el ciclo se vuelve lento).
+
+### Hoja de ruta de ingresos (propuesta, nada de esto está implementado)
+
+| # | Prioridad | Qué | Módulos |
+|---|---|---|---|
+| 8 | ~~Alta~~ ✅ (parcial) | ~~Métricas y track record~~ **Hecho (2026-10-20):** pestaña **Rendimiento** del agente (`GET /api/performance?bot_id=`: win rate, P&L, R/R real, profit factor, drawdown, operaciones cerradas) y página **Track record** para usuarios con sesión (`GET /api/performance/strategies`, anónimo y en retornos %). **Pendiente:** `portfolio_snapshots` (curva de capital con el valor de la cuenta) sigue sin escribirse | [M7](M07-BOTS-SIGNALS.md), [M8](M08-ORDERS-EXECUTION.md), [M4](M04-ACCOUNTS-PORTFOLIO.md) |
+| 9 | ~~Alta~~ ✅ | ~~Backtesting~~ **Hecho (2026-10-20)**, ver prioridad 7. Sobre historia del exchange (no sobre `datasets`, que siguen sin UI) | [M5](M05-STRATEGIES.md), [M2](M02-MARKET-DATA.md) |
+| 10 | ~~Media~~ (parcial) | **Registro por invitación** hecho (2026-10-20, `POST /api/users`). Planes SaaS con pasarela: descartados por ahora |  [M1](M01-AUTH.md), [M10](M10-BILLING.md) |
+| 11 | ~~Media~~ ✅ | ~~Señales como servicio~~ **Hecho (2026-10-20):** el dueño comparte las señales de su agente y otros lo siguen por Telegram (sin ejecutar nada) | [M9](M09-ALERTS.md), [M7](M07-BOTS-SIGNALS.md) |
+| 12 | ~~Media~~ ✅ (parcial) | **Hecho (2026-10-20):** equity sugerido desde balances, comisiones cobradas/condonadas, extracto CSV, aportes y retiros. **Pendiente:** balances sincronizados con el exchange (hoy se registran a mano) | [M10](M10-BILLING.md), [M4](M04-ACCOUNTS-PORTFOLIO.md) |
+| 13 | Baja | Marketplace de estrategias / copy-trading (más adelante, con track record verificado) | [M5](M05-STRATEGIES.md), [M7](M07-BOTS-SIGNALS.md) |
+
+> **Nota legal:** gestionar dinero de terceros (cuentas gestionadas con comisión de desempeño) y vender señales de trading pagas puede estar regulado según el país (asesoría de inversión, gestión de portafolios, licencias). Validarlo con un abogado antes de lanzar cualquiera de las rutas 10–13. Este documento no es asesoría legal.
+
+---
+
+## Arquitectura de presentación (global)
+
+Desde el 2026-10-08 la API es **headless**: FastAPI no renderiza vistas (se eliminaron `app/modules/web`, `app/templates` y `app/static`). Todas las rutas REST viven bajo `/api` (salvo `/health`) y todo error sale con el envelope `{msg, errorCode, data}`. La UI es un frontend React en [`frontend/`](../frontend/) (Vite + TanStack Router/Query + shadcn); convenciones en el skill [`frontend`](../.claude/skills/frontend/SKILL.md).
+
+**Zona horaria (desde el 2026-10-23):** la BD guarda UTC (`SET time_zone = '+00:00'` por conexión) y la API responde **toda** fecha en ISO 8601 UTC con offset (`…+00:00`) vía `to_iso_utc()` de `app.common.utils`; nunca `dt.isoformat()` directo, porque MySQL devuelve fechas sin zona y el navegador las leería como hora local. El front pinta siempre en **hora de Colombia** (`America/Bogota`, UTC-5) con los helpers de `shared/lib/format.ts` (`formatDateTime`, `formatDate`, `formatDateTimeSeconds`, `formatTimestamp`, `toTimestamp`), sin importar la zona del dispositivo; los filtros por día se envían como el inicio del día en Colombia (`startOfAppDayIso`). Telegram y los cálculos "del día" (PnL `daily`) también usan Bogotá.
+
+---
+
+## Mapa de páginas (frontend React)
+
+Hash routing: la URL real es `/#/<ruta>`. Cada ruta vive en `frontend/src/routes/` y su página en `frontend/src/modules/<modulo>/pages/`.
+
+| Rol | Páginas |
+|---|---|
+| Público | `/login` |
+| Todos los roles | `/my-fund` (Mi saldo), `/dashboard` (inicio = lista de agentes reales), `/agents/:id`, `/alerts`, `/strategies`, `/track-record`, `/backtest`, `/market/explorer` (`/agents`, `/bots`, `/agent`, `/orders`, `/features` y `/market/candles` redirigen a `/dashboard`; `/market/symbols` a `/market/explorer`; `/portfolio` a `/dashboard`) |
+| Super admin y socio | `/demo-agents` (Agentes demo, `StaffGuard`) |
+| Solo super admin | `/agents/new?mode=live\|paper` (`ManagerGuard`) |
+| Super admin y socio (`_app/admin/*`; el socio sin botones de escritura) | `/admin/fund`, `/admin/wallet`, `/admin/deposits`, `/admin/fund-agents`, `/admin/fund-agents/:poolId`, `/admin/withdrawals`, `/admin/commissions`, `/admin/participants`, `/admin/fund-settings`, `/admin/symbols`, `/admin/timeframes`, `/admin/feature-sets`, `/admin/users`, `/admin/audit`, `/admin/notifications` (`/admin/telegram` redirige ahí) |
+
+Comprar/Vender vive en el [Módulo 8 — Orders & Execution](M08-ORDERS-EXECUTION.md).
+
+Cambios del 2026-11-26 (Notificaciones):
+- `/admin/notifications` (**Notificaciones**, ítem propio de Administración; el socio en solo lectura): Telegram (token, chat por defecto, modo de respuestas, webhook) y correo (interruptor), con prueba de cada canal. **Telegram** sale de Configuración y `/admin/telegram` redirige — [M12](M12-NOTIFICATIONS.md).
+- `/dashboard` → Agentes que comparten sus señales: se puede seguir un agente sin Telegram si el correo está activo — [M7](M07-BOTS-SIGNALS.md).
+
+Cambios del 2026-10-19 (nuevas piezas dentro de páginas existentes y reorganización del menú):
+- `/agents/:id`: pestaña **Mercado** (velas e indicadores del agente, con **Actualizar datos** para descargar y recalcular a pedido). Órdenes, Símbolos, Velas e Indicadores dejan de ser páginas del usuario, y el admin pierde Descargar velas y Calcular indicadores (los endpoints siguen por API) — [M7](M07-BOTS-SIGNALS.md), [M2](M02-MARKET-DATA.md), [M3](M03-FEATURE-ENGINEERING.md), [M8](M08-ORDERS-EXECUTION.md).
+- `/dashboard`: tarjeta **Señales por aprobar** (aprobar/descartar; solo aparece si hay pendientes) — [M7](M07-BOTS-SIGNALS.md).
+- `/agents/new` (paso 4) y `/agents/:id` (pestaña Configuración): selector **Cuando la IA aprueba una operación** (Manual / Con aprobación / Automático); detalle de señal con Aprobar / Descartar y columna **Ejecución** en Señales — [M7](M07-BOTS-SIGNALS.md).
+- `/agents/:id` → Posiciones: "Protección automática: SL · TP" y, en live, "El stop loss está como orden en el exchange." — [M8](M08-ORDERS-EXECUTION.md).
+- `/agents/:id` → Configuración, en modo Con aprobación: campo **Minutos para aprobar** — [M7](M07-BOTS-SIGNALS.md).
+- Menú de usuario (todas las páginas): **Conectar Telegram** (diálogo) — [M1](M01-AUTH.md) / [M9](M09-ALERTS.md).
+
+Cambios del 2026-10-20 (Fase 3):
+- Cabecera (todas las páginas): **campana de notificaciones** con las últimas alertas y contador de no leídas — [M9](M09-ALERTS.md).
+- Menú de usuario: **Mi perfil** (cambiar el nombre) — [M1](M01-AUTH.md).
+- `/agents/:id` → Mercado: **gráfico de precio** con líneas de Entrada, SL y TP — [M7](M07-BOTS-SIGNALS.md).
+- `/alerts`: en PnL y drawdown el agente es obligatorio; textos de revisión automática — [M9](M09-ALERTS.md).
+
+Cambios del 2026-10-26 (una sola billetera y agentes demo):
+- Fuera **Mis cuentas** (`/portfolio` redirige al inicio) y el botón **Elegir / Cambiar billetera** de `/admin/wallet`: la billetera es siempre la de Binance y sus credenciales van en el `.env` — [M4](M04-ACCOUNTS-PORTFOLIO.md).
+- `/dashboard` lista solo los agentes **reales**; nuevo `/demo-agents` (**Agentes demo**) con los de dinero simulado; el asistente `/agents/new?mode=` pide el monto en los demo — [M7](M07-BOTS-SIGNALS.md).
+- Sin `TRADING_LIVE_ENABLED` ni `TRADING_LIVE_AUTO_ENABLED`: no hay variable de entorno que apague lo real — [M8](M08-ORDERS-EXECUTION.md), [M7](M07-BOTS-SIGNALS.md).
+
+Cambios del 2026-10-23 (menú):
+- Quitado el grupo **Supervisión** de Administración (`/admin/agents`, `/admin/accounts`, `/admin/orders`, `/admin/alerts` y la redirección `/admin/bots`): las señales, órdenes y alertas se ven dentro de cada agente; el staff llega a los agentes de otros desde **Agentes del fondo** — [M7](M07-BOTS-SIGNALS.md), [M4](M04-ACCOUNTS-PORTFOLIO.md), [M8](M08-ORDERS-EXECUTION.md), [M9](M09-ALERTS.md).
+
+Cambios del 2026-10-23 (fondo común, F6 — resumen, avisos y retiro de M10):
+- `/admin/fund` (**Resumen del fondo**, primera de Administración → Fondo): billetera, conciliación, capital por agente, saldos y ganancias de propietarios y socios — [M11](M11-FUND.md).
+- `/my-fund`: tarjeta **Lo que has ganado**, **Descargar extracto (CSV)** y descarga del comprobante de cada retiro pagado — [M11](M11-FUND.md).
+- `/admin/withdrawals`: comprobante al pagar (opcional) y **Adjuntar / Cambiar comprobante** — [M11](M11-FUND.md).
+- Campana, correo y Telegram: avisos de depósitos, liquidaciones y retiros — [M11](M11-FUND.md), [M9](M09-ALERTS.md).
+- Quitados `/admin/investors`, `/admin/managed-accounts`, `/admin/billing`, `/investor/dashboard` y el grupo «Inversores» del menú ([M10](M10-BILLING.md) retirado).
+
+Cambios del 2026-10-23 (fondo común, F5 — salidas, comisión y retiros):
+- `/my-fund`: botón **Retirar**, **Sacar dinero** en cada agente, salidas en cola y lo que salió con su comisión, pestañas **Retiros** (retiros y medios de pago) y **Comisión** (tabla vigente) — [M11](M11-FUND.md).
+- `/admin/withdrawals` (**Retiros**) y `/admin/commissions` (**Comisiones**), Administración → Fondo — [M11](M11-FUND.md).
+- `/admin/fund-agents/:poolId`: pestaña **Salidas en cola**; la vista previa de la liquidación muestra quién sale y la comisión — [M11](M11-FUND.md).
+
+Cambios del 2026-10-23 (fondo común, F4 — agentes del fondo):
+- `/admin/fund-agents` y `/admin/fund-agents/:poolId` (**Agentes del fondo**): abrir un agente al fondo, asignar dinero en cola y liquidar con vista previa — [M11](M11-FUND.md).
+- `/my-fund`: tarjeta **En agentes** y pestaña **Mis agentes** — [M11](M11-FUND.md).
+- Agentes de la billetera: el 1 % y el drawdown usan su capital en el fondo; sin pool no generan señales — [M7](M07-BOTS-SIGNALS.md), [M8](M08-ORDERS-EXECUTION.md).
+
+Cambios del 2026-10-23 (fondo común, F3 — libro y depósitos):
+- `/my-fund` (**Mi saldo**, menú Mi inversión, todos los roles): saldos pendiente de asignar / disponible, cómo depositar, registrar depósito, mis depósitos y movimientos — [M11](M11-FUND.md).
+- `/admin/deposits`, `/admin/participants`, `/admin/fund-settings` (Administración → Fondo): resolver depósitos y los sin reclamar, saldos por persona con devolución, reglas y redes de depósito — [M11](M11-FUND.md).
+
+Cambios del 2026-10-23 (fondo común, F2 — billetera):
+- `/admin/wallet` (**Billetera**, Administración → Fondo): saldo total, libre y en órdenes de la billetera única, activos e historial; el super admin la elige y la sincroniza — [M4](M04-ACCOUNTS-PORTFOLIO.md).
+
+Cambios del 2026-10-22 (fondo común, F1 — roles):
+- Roles **Super admin** (los propietarios), **Socio** (ve todo, no cambia nada) e **Inversor**; el rol Usuario desaparece. Todas las páginas de Administración las ve el socio, sin "Nuevo…", "Editar", Iniciar/Pausar/Detener, Analizar ahora, Nueva orden, Cancelar, Aprobar/Descartar ni cambios de modo — [M1](M01-AUTH.md).
+- `/admin/users`: invitar y cambiar rol solo a Socio o Inversor; los super admin no tienen menú — [M1](M01-AUTH.md).
+
+Cambios del 2026-10-20 (Fase 4, administración):
+- `/admin/users`: menú de acciones con **Cambiar rol** y **Activar / Bloquear / Desactivar cuenta** (bloquear o desactivar cierra su sesión y pausa sus agentes) — [M1](M01-AUTH.md).
+- `/admin/audit` (**Auditoría**, Configuración): registro de los cambios hechos por la API y de las peticiones que fallaron (las consultas exitosas no se guardan desde 2026-10-27), con filtros por persona, tipo de evento, fechas, ruta, cambios / consultas con error y errores; detalle en panel lateral — [M1](M01-AUTH.md). Lo que pasó con cada agente se ve en la pestaña **Historial** de su detalle ([M7](M07-BOTS-SIGNALS.md)).
+- Paginación en el servidor: Todas las órdenes (sin el tope de 500), Todos los agentes, Eventos de Todas las alertas, el historial de `/alerts` y las pestañas Señales y Órdenes del agente — [M7](M07-BOTS-SIGNALS.md), [M8](M08-ORDERS-EXECUTION.md), [M9](M09-ALERTS.md).
+
+En la UI los bots se llaman **agentes** y son el punto de entrada: el inicio es la lista de agentes **reales** (con filtro por estado), **Agentes demo** reúne los de dinero simulado, y el menú se organiza en **Operar** (Alertas) y **Explorar** (Explorar mercados, Estrategias). Todo lo que depende de un agente (órdenes, posiciones, velas, indicadores) vive dentro de su detalle, porque esos datos solo existen para agentes creados y activos. En Administración, **Fondo** reúne el fondo común (incluidos los **Agentes del fondo**, desde donde el staff abre el detalle de cualquier agente del fondo); **Datos de mercado**, los catálogos; **Notificaciones**, los canales de aviso (Telegram y correo); y **Configuración** reúne lo que el admin define para el sistema (Usuarios —con el cambio de rol y de estado—, Auditoría); las estrategias se crean y editan en Explorar → Estrategias (botones solo para el super admin). En código, tablas y API siguen siendo `bot`.
+
+---
+
+## Archivos de infraestructura críticos (nunca romper)
+
+Listado y cuándo tocar cada uno: skill [`backend-core`](../.claude/skills/backend-core/SKILL.md) → "Archivos de infraestructura críticos".
+
+---
+
+## Checklist al crear un módulo nuevo
+
+Checklist completo (BD → domain → infra → services → providers → REST → frontend → docs): skill [`new-module`](../.claude/skills/new-module/SKILL.md). Al cerrar: skill [`update-specs`](../.claude/skills/update-specs/SKILL.md).
+
+---
+
+## Rúbrica de madurez
+
+La **madurez** de cada módulo es la media de cuatro ejes (0–100):
+
+| Eje | 100 significa… |
+|---|---|
+| Funcionalidad | Cubre el objetivo del módulo en producción, sin carencias conocidas |
+| Tests | Servicios y rutas cubiertos; 0 = sin tests |
+| Seguridad / robustez | Auth, ownership, validación de entradas y manejo de errores completos |
+| Operación | Automatizada, configurable, con seeds/migraciones, observable |
+
+Los números son una **estimación** y deben revisarse cuando cambie el módulo (se anota la evidencia en la sección "Avance" de cada spec).
+
+## Plantilla de spec (`specs/MNN-*.md`)
+
+Cada spec sigue las mismas secciones, en este orden:
+
+1. Título `# Módulo N — Nombre ✅/📌` + enlace al índice
+2. **Ficha** (estado, avance, madurez, tablas, dependencias, prefijo API, última revisión)
+3. **Descripción** (en palabras simples + qué hace) · **Páginas** (usuario vs admin) · **Entregables**
+4. **Decisiones de diseño** (decisión · motivo · alternativa descartada)
+5. **Avance** (alcance + madurez con evidencia) · **Posibles mejoras** (prioridad y esfuerzo) · **Fuera de alcance y pendientes conocidos**
+6. **Detalle técnico** (tablas, ORM, repos, servicios, endpoints, páginas, settings) · **Gotchas críticos** · **Tests**
+7. **Riesgos** · **Historial**
+
+---
+
+## ⚠️ Nota importante — El sistema no garantiza ganancias por sí solo
+
+El bot ejecuta las reglas de las estrategias con disciplina perfecta. Pero la rentabilidad depende del **edge** (ventaja estadística) de esas estrategias.
+
+**¿Qué es el edge?**
+Una estrategia tiene edge cuando el historial de operaciones muestra que las ganancias superan las pérdidas de forma consistente. Se mide con: Win Rate, R/R real, Profit Factor y Max Drawdown.
+
+**¿Cómo se valida el edge en este sistema?**
+1. Correr el sistema en **modo paper** ([M7](M07-BOTS-SIGNALS.md) + [M8](M08-ORDERS-EXECUTION.md) sin dinero real) durante 3-6 meses
+2. Acumular 100+ operaciones por estrategia
+3. Calcular métricas reales del historial (`signals` → `orders` → `fills`)
+4. Solo pasar a live si los números son consistentemente positivos
+
+**Capital mínimo para operar en live:**
+- $5,000 → mínimo para que la Regla del 1% genere operaciones con tamaño real
+- $10,000 → razonable para demostrar resultados
+- $50,000+ → donde empieza a ser negocio real
+
+Ver [`MANUAL.md`](../docs/MANUAL.md) Parte 4 para explicación completa de edge, capital y rutas de negocio.

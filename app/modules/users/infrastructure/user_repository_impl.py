@@ -1,0 +1,200 @@
+# app/modules/users/infrastructure/user_repository_impl.py
+# -*- coding: utf-8 -*-
+
+# ======================================================================
+# SQLAlchemy User Repository Implementation (Infrastructure Adapter)
+# ----------------------------------------------------------------------
+# Patrón aplicado: Repository Pattern (Adaptador)
+#
+# FIX CRÍTICO (TIMEZONES):
+# - MySQL/SQLAlchemy suele retornar TIMESTAMP/DATETIME como "naive"
+#   (sin tzinfo).
+# - Nuestro dominio/services trabajan con "UTC aware" (timezone.utc).
+# - Normalizamos aquí para evitar errores de comparación y mantener
+#   consistencia en todo el sistema.
+# ======================================================================
+
+from __future__ import annotations
+
+from datetime import datetime, timezone
+from typing import Optional
+
+from sqlalchemy.orm import Session
+
+from app.modules.users.domain.user_entity import User
+from app.modules.users.domain.user_repository import UserRepository
+from app.modules.users.infrastructure.role_model import RoleModel
+from app.modules.users.infrastructure.user_model import UserModel
+from app.extensions.db.sqlalchemy_repository import SqlAlchemyRepository
+
+
+class SqlAlchemyUserRepository(SqlAlchemyRepository, UserRepository):
+    """
+    Repositorio concreto usando SQLAlchemy.
+
+    Responsabilidad (SRP):
+    - Ejecutar queries (infra)
+    - Mapear ORM <-> Dominio
+    - Normalizar tipos infra (ej: datetimes) a lo esperado por el dominio
+    """
+
+    def __init__(self, session: Session):
+        self._session = session
+
+    # ==================================================================
+    # Helpers (Infra): Normalización de datetimes
+    # ==================================================================
+
+    @staticmethod
+    def _as_utc_aware(dt: Optional[datetime]) -> Optional[datetime]:
+        """
+        Convierte datetime potencialmente naive -> UTC aware.
+
+        Decisión:
+        - Si dt viene sin tzinfo (naive), asumimos que representa UTC.
+          (Esto es correcto SI tu conexión/DB opera en UTC; abajo te dejo
+          el ajuste recomendado en engine).
+        """
+        if dt is None:
+            return None
+
+        # Si viene naive (lo típico con MySQL), lo marcamos como UTC.
+        if dt.tzinfo is None:
+            return dt.replace(tzinfo=timezone.utc)
+
+        # Si viene aware, lo convertimos a UTC por consistencia.
+        return dt.astimezone(timezone.utc)
+
+    # ==================================================================
+    # Mappers (Infra <-> Dominio)
+    # ==================================================================
+
+    def _to_domain(self, model: UserModel) -> User:
+        """
+        Convierte ORM -> Dominio (normalizando timestamps).
+        """
+        return User(
+            id=model.id,
+            email=model.email,
+            full_name=model.full_name,
+            role_id=model.role_id,
+            status=model.status,
+            last_login_at=self._as_utc_aware(model.last_login_at),
+            token_current_jti=model.token_current_jti,
+            otp_code=model.otp_code,
+            otp_created_at=self._as_utc_aware(model.otp_created_at),
+            otp_expires_at=self._as_utc_aware(model.otp_expires_at),
+            otp_failed_attempts=int(model.otp_failed_attempts or 0),
+            telegram_chat_id=model.telegram_chat_id,
+            telegram_link_hash=model.telegram_link_hash,
+            telegram_link_expires_at=self._as_utc_aware(model.telegram_link_expires_at),
+            notifications_seen_at=self._as_utc_aware(model.notifications_seen_at),
+            created_at=self._as_utc_aware(model.created_at),
+            updated_at=self._as_utc_aware(model.updated_at),
+        )
+
+    @staticmethod
+    def _apply_domain_to_model(user: User, model: UserModel) -> UserModel:
+        """
+        Copia Dominio -> ORM.
+
+        Decisión:
+        - created_at/updated_at NO se setean manualmente (DB manda).
+        - Guardamos datetimes tal cual vengan del dominio.
+          (Como el dominio ya opera en UTC aware, esto queda consistente)
+        """
+        model.email = user.email
+        model.full_name = user.full_name
+
+        model.role_id = user.role_id
+
+        model.status = user.status
+        model.last_login_at = user.last_login_at
+
+        model.token_current_jti = user.token_current_jti
+
+        model.otp_code = user.otp_code
+        model.otp_created_at = user.otp_created_at
+        model.otp_expires_at = user.otp_expires_at
+        model.otp_failed_attempts = user.otp_failed_attempts
+        model.telegram_chat_id = user.telegram_chat_id
+        model.telegram_link_hash = user.telegram_link_hash
+        model.telegram_link_expires_at = user.telegram_link_expires_at
+        model.notifications_seen_at = user.notifications_seen_at
+
+        return model
+
+    # ==================================================================
+    # Contract
+    # ==================================================================
+
+    def get_by_id(self, user_id: int) -> Optional[User]:
+        model: Optional[UserModel] = self._session.get(UserModel, user_id)
+        return None if model is None else self._to_domain(model)
+
+    def get_by_email(self, email: str) -> Optional[User]:
+        model: Optional[UserModel] = (
+            self._session.query(UserModel)
+            .filter(UserModel.email == email)
+            .one_or_none()
+        )
+        return None if model is None else self._to_domain(model)
+
+    def get_by_telegram_chat_id(self, chat_id: int) -> Optional[User]:
+        model: Optional[UserModel] = (
+            self._session.query(UserModel)
+            .filter(UserModel.telegram_chat_id == chat_id)
+            .one_or_none()
+        )
+        return None if model is None else self._to_domain(model)
+
+    def get_by_telegram_link_hash(self, link_hash: str) -> Optional[User]:
+        model: Optional[UserModel] = (
+            self._session.query(UserModel)
+            .filter(UserModel.telegram_link_hash == link_hash)
+            .first()
+        )
+        return None if model is None else self._to_domain(model)
+
+    def list_all(self) -> list[User]:
+        models = self._session.query(UserModel).order_by(UserModel.id).all()
+        return [self._to_domain(model) for model in models]
+
+    def get_role_info(self, role_id: int) -> Optional[dict[str, str]]:
+        role = self._session.get(RoleModel, int(role_id))
+        if role is None:
+            return None
+        return {"code": str(role.code), "name": str(role.name)}
+
+    def create(self, user: User) -> User:
+        model = UserModel()
+        self._apply_domain_to_model(user, model)
+
+        self._session.add(model)
+        self._session.flush()
+        self._session.refresh(model)
+
+        return self._to_domain(model)
+
+    def set_notifications_seen_at(self, user_id: int, seen_at: datetime) -> bool:
+        # UPDATE de una sola columna: no pisa el JTI ni el OTP si otro request
+        # los cambió entre la lectura y la escritura (la campana se usa a menudo).
+        rows = (
+            self._session.query(UserModel)
+            .filter(UserModel.id == user_id)
+            .update({UserModel.notifications_seen_at: seen_at}, synchronize_session=False)
+        )
+        self._session.flush()
+        return rows > 0
+
+    def update(self, user: User) -> User:
+        model: Optional[UserModel] = self._session.get(UserModel, user.id)
+        if model is None:
+            raise ValueError(f"User not found for update: id={user.id}")
+
+        self._apply_domain_to_model(user, model)
+
+        self._session.flush()
+        self._session.refresh(model)
+
+        return self._to_domain(model)

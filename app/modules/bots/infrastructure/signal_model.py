@@ -1,0 +1,125 @@
+# -*- coding: utf-8 -*-
+
+# ======================================================================
+# app/modules/bots/infrastructure/signal_model.py
+#
+# Modelo SQLAlchemy para la tabla `signals`.
+# Incluye las columnas de precio agregadas en la migración M07.
+# ======================================================================
+
+from sqlalchemy import (
+    BigInteger,
+    CheckConstraint,
+    Column,
+    DECIMAL,
+    ForeignKey,
+    Index,
+    Integer,
+    JSON,
+    String,
+    UniqueConstraint,
+    text,
+)
+from sqlalchemy.dialects.mysql import TIMESTAMP, TINYINT
+
+from app.extensions.db import Base, MYSQL_TABLE_OPTIONS
+
+
+class SignalModel(Base):
+    """Modelo SQLAlchemy para la tabla `signals`."""
+
+    __tablename__ = "signals"
+    __table_args__ = (
+        Index("idx_signals_bot_ts", "bot_id", "ts"),
+        CheckConstraint("`action` IN ('buy', 'sell', 'hold')", name="chk_signals_action"),
+        CheckConstraint(
+            "`confidence` IS NULL OR (`confidence` >= 0 AND `confidence` <= 1)",
+            name="chk_signals_confidence",
+        ),
+        CheckConstraint("json_valid(`reasons`)", name="chk_signals_reasons_json"),
+        CheckConstraint(
+            "`decision_status` IN ('not_required', 'pending', 'executing', 'executed', "
+            "'rejected', 'expired', 'failed')",
+            name="chk_signals_decision_status",
+        ),
+        CheckConstraint(
+            "`decision_channel` IS NULL OR `decision_channel` IN ('app', 'telegram', 'auto')",
+            name="chk_signals_decision_channel",
+        ),
+        # Una señal automática por vela y agente (idempotencia del scheduler);
+        # las manuales tienen candle_ts NULL y no chocan.
+        UniqueConstraint("bot_id", "candle_ts", name="uq_signals_bot_candle"),
+        Index("idx_signals_decision_status", "decision_status", "expires_at"),
+        MYSQL_TABLE_OPTIONS,
+    )
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    bot_id = Column(
+        BigInteger,
+        ForeignKey("bots.id", name="fk_signals_bot"),
+        nullable=False,
+    )
+    ts = Column(TIMESTAMP(fsp=6), nullable=False)
+    action = Column(String(8), nullable=False)
+
+    # Columnas de precio (M07) — nullable porque hold no tiene precios
+    entry_price   = Column(DECIMAL(30, 12), nullable=True, comment="Precio de entrada sugerido por el agente")
+    stop_loss     = Column(DECIMAL(30, 12), nullable=True, comment="Nivel de stop loss calculado")
+    take_profit   = Column(DECIMAL(30, 12), nullable=True, comment="Nivel de take profit calculado")
+    position_size = Column(
+        DECIMAL(30, 12),
+        nullable=True,
+        comment="Tamaño de posición: capital × risk_pct / |entry-SL|",
+    )
+    rr_ratio      = Column(
+        DECIMAL(10, 4),
+        nullable=True,
+        comment="Ratio Riesgo/Recompensa (TP-entry)/(entry-SL)",
+    )
+
+    # 1 = aprobada, 0 = rechazada por algún filtro (régimen, reglas o R/R)
+    approved = Column(
+        TINYINT(1),
+        nullable=False,
+        server_default=text("'1'"),
+        comment="1=aprobada por todos los filtros, 0=rechazada",
+    )
+
+    confidence    = Column(DECIMAL(6, 5), nullable=True)
+    model_version = Column(String(64), nullable=True)
+    features_hash = Column(String(128), nullable=True)
+
+    # Llamada a la IA — NULL si se rechazó antes de consultarla (régimen o reglas)
+    llm_provider   = Column(String(32), nullable=True, comment="Servicio LLM que respondió (groq, gemini, ollama)")
+    llm_model      = Column(String(128), nullable=True, comment="Modelo LLM que respondió")
+    llm_latency_ms = Column(Integer, nullable=True, comment="Duración de la consulta al LLM en ms (incluye el failover)")
+
+    # Decisión de ejecución (modo approval/auto) — ver Signal.VALID_DECISION_STATUSES
+    decision_status = Column(
+        String(16),
+        nullable=False,
+        server_default=text("'not_required'"),
+        comment="not_required | pending | executing | executed | rejected | expired | failed",
+    )
+    expires_at = Column(TIMESTAMP(fsp=6), nullable=True, comment="Límite para aprobar la señal")
+    decided_at = Column(TIMESTAMP(fsp=6), nullable=True, comment="Cuándo se aprobó o rechazó")
+    decided_by_user_id = Column(
+        BigInteger,
+        ForeignKey("users.id", name="fk_signals_decided_by"),
+        nullable=True,
+        comment="Quién decidió (NULL = ejecución automática)",
+    )
+    decision_channel = Column(String(16), nullable=True, comment="app | telegram | auto")
+    decision_reason = Column(String(64), nullable=True, comment="Código del fallo al ejecutar")
+    candle_ts = Column(
+        TIMESTAMP(fsp=6),
+        nullable=True,
+        comment="Vela que originó la señal automática (NULL en las manuales)",
+    )
+
+    reasons       = Column(JSON, nullable=False)
+    created_at    = Column(
+        TIMESTAMP(fsp=6),
+        nullable=False,
+        server_default=text("CURRENT_TIMESTAMP(6)"),
+    )

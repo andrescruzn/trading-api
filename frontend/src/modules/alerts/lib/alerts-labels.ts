@@ -1,0 +1,161 @@
+import type {
+	AlertChannels,
+	AlertDeliveryStatus,
+	AlertRuleType,
+	AlertSeverity,
+	PnlPeriod,
+	PriceOperator,
+	SignalActionFilter,
+} from '@/modules/alerts/api/alerts.api';
+import type { Bot } from '@/modules/bots/api/bots.api';
+import type { MarketSymbol } from '@/modules/market/api/market.api';
+import type { SelectOption } from '@/modules/shared/components/option-select';
+
+type BadgeVariant = 'default' | 'secondary' | 'outline' | 'destructive';
+
+const RULE_TYPE_LABELS: Record<AlertRuleType, string> = {
+	signal: 'Señal',
+	price: 'Precio',
+	pnl: 'PnL',
+	drawdown: 'Drawdown',
+	error: 'Error del agente',
+};
+
+const RULE_TYPE_VARIANTS: Record<AlertRuleType, BadgeVariant> = {
+	signal: 'default',
+	price: 'secondary',
+	pnl: 'secondary',
+	drawdown: 'outline',
+	error: 'destructive',
+};
+
+const RULE_TYPE_DESCRIPTIONS: Record<AlertRuleType, string> = {
+	signal: 'Avisa cuando un agente emite una señal aprobada.',
+	price: 'Avisa cuando el último precio del símbolo cruza el umbral.',
+	pnl: 'Avisa cuando el PnL del agente (operaciones cerradas y abiertas) llega al porcentaje de lo que invierte por operación.',
+	drawdown:
+		'Avisa cuando la caída del agente desde su mejor resultado llega al porcentaje de lo que invierte por operación.',
+	error:
+		'Avisa cuando un agente entra en error o se rechaza una de sus órdenes.',
+};
+
+/** Tipos que el sistema revisa solo, en cada ciclo (los demás avisan al ocurrir el evento). */
+const PERIODIC_RULE_TYPES: readonly AlertRuleType[] = [
+	'price',
+	'pnl',
+	'drawdown',
+];
+
+const PERIODIC_RULE_NOTE =
+	'Se revisa automáticamente cada pocos minutos. Si la condición se mantiene, el aviso se repite cada cierto tiempo, no en cada revisión.';
+
+const SIGNAL_ACTION_LABELS: Record<SignalActionFilter, string> = {
+	any: 'Cualquier señal',
+	buy: 'Solo compra',
+	sell: 'Solo venta',
+	hold: 'Solo mantener',
+};
+
+const PRICE_OPERATOR_LABELS: Record<PriceOperator, string> = {
+	lt: 'Menor que (<)',
+	lte: 'Menor o igual que (≤)',
+	gt: 'Mayor que (>)',
+	gte: 'Mayor o igual que (≥)',
+};
+
+const PNL_PERIOD_LABELS: Record<PnlPeriod, string> = {
+	daily: 'Diario',
+	total: 'Total acumulado',
+};
+
+const SEVERITY_LABELS: Record<AlertSeverity, string> = {
+	info: 'Informativa',
+	warning: 'Advertencia',
+	critical: 'Crítica',
+};
+
+const SEVERITY_VARIANTS: Record<AlertSeverity, BadgeVariant> = {
+	info: 'secondary',
+	warning: 'outline',
+	critical: 'destructive',
+};
+
+const DELIVERY_LABELS: Record<AlertDeliveryStatus, string> = {
+	pending: 'Pendiente',
+	sent: 'Enviada',
+	failed: 'Fallida',
+};
+
+const DELIVERY_VARIANTS: Record<AlertDeliveryStatus, BadgeVariant> = {
+	pending: 'outline',
+	sent: 'secondary',
+	failed: 'destructive',
+};
+
+function toOptions(labels: Record<string, string>): SelectOption[] {
+	return Object.entries(labels).map(([value, label]) => ({ value, label }));
+}
+
+const RULE_TYPE_OPTIONS = toOptions(RULE_TYPE_LABELS);
+const SIGNAL_ACTION_OPTIONS = toOptions(SIGNAL_ACTION_LABELS);
+const PRICE_OPERATOR_OPTIONS = toOptions(PRICE_OPERATOR_LABELS);
+const PNL_PERIOD_OPTIONS = toOptions(PNL_PERIOD_LABELS);
+
+/** Nombres de los canales activos, en el orden en que se muestran. */
+function describeChannels(
+	channels: AlertChannels | null | undefined,
+): string[] {
+	if (!channels) return [];
+	const names: string[] = [];
+	if (channels.email) names.push('Correo');
+	if (channels.telegram) names.push('Telegram');
+	if (channels.webhook) names.push('Webhook');
+	return names;
+}
+
+/** `BTC tendencia · BTC/USDT`: nombre del agente y su símbolo. */
+function botLabel(
+	botId: number,
+	bots: Bot[] | undefined,
+	symbols: MarketSymbol[] | undefined,
+): string {
+	const bot = bots?.find((item) => item.id === botId);
+	const symbol = bot
+		? symbols?.find((item) => item.id === bot.symbol_id)?.symbol
+		: undefined;
+	const name = bot?.name || `Agente #${botId}`;
+	return symbol ? `${name} · ${symbol}` : name;
+}
+
+function botOptions(
+	bots: Bot[] | undefined,
+	symbols: MarketSymbol[] | undefined,
+): SelectOption[] {
+	return (bots ?? []).map((bot) => ({
+		value: String(bot.id),
+		label: botLabel(bot.id, bots, symbols),
+	}));
+}
+
+export type { BadgeVariant };
+export {
+	botLabel,
+	botOptions,
+	DELIVERY_LABELS,
+	DELIVERY_VARIANTS,
+	describeChannels,
+	PERIODIC_RULE_NOTE,
+	PERIODIC_RULE_TYPES,
+	PNL_PERIOD_LABELS,
+	PNL_PERIOD_OPTIONS,
+	PRICE_OPERATOR_LABELS,
+	PRICE_OPERATOR_OPTIONS,
+	RULE_TYPE_DESCRIPTIONS,
+	RULE_TYPE_LABELS,
+	RULE_TYPE_OPTIONS,
+	RULE_TYPE_VARIANTS,
+	SEVERITY_LABELS,
+	SEVERITY_VARIANTS,
+	SIGNAL_ACTION_LABELS,
+	SIGNAL_ACTION_OPTIONS,
+};

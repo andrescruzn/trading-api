@@ -1,0 +1,233 @@
+# -*- coding: utf-8 -*-
+
+# ======================================================================
+# app/common/audit/audit_middleware.py
+#
+# PROPÓSITO:
+# - Registrar en auditoría los cambios (POST/PUT/PATCH/DELETE) y cualquier
+#   respuesta con error (>= 400), incluidas las consultas fallidas.
+# - Las consultas exitosas (GET/HEAD/OPTIONS < 400) NO se guardan: el front
+#   consulta cada 30–60 s y llenaban la tabla sin valor de auditoría.
+# - Non-blocking: el insert se lanza en un hilo daemon.
+#
+# FLUJO:
+#   1. Skip rutas excluidas (/health, /docs, /redoc, /openapi.json, /favicon)
+#   2. Leer request body (ya buffereado por BaseHTTPMiddleware)
+#   3. Ejecutar request; si es una consulta exitosa, devolverla tal cual
+#   4. Capturar response body y reconstruir la respuesta
+#   5. Extraer user_id del JWT (silencioso si falla)
+#   6. Sanitizar el request y resumir la respuesta (summarize_response)
+#   7. Resolver event_type según method+path
+#   8. Lanzar hilo daemon NON-BLOCKING → insert en BD
+# ======================================================================
+
+from __future__ import annotations
+
+import logging
+import threading
+import time
+from typing import Callable
+
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
+from starlette.responses import Response
+
+from app.common.audit.audit_repository import AuditRepository
+from app.common.audit.audit_sanitizer import (
+    MAX_BODY_BYTES,
+    sanitize_request,
+    summarize_response,
+)
+from app.common.config import settings
+from app.common.security.jwt.jwt_utils import decode_access_token
+from app.common.security.rate_limiter import client_ip
+
+logger = logging.getLogger(__name__)
+
+# ======================================================================
+# Configuración
+# ======================================================================
+
+# Rutas excluidas de auditoría. El webhook de Telegram trae el código de
+# vinculación en "/start <código>" y mensajes de terceros: no se guarda.
+_SKIP_PREFIXES = (
+    "/health", "/docs", "/redoc", "/openapi.json", "/favicon",
+    f"{settings.API_PREFIX}/telegram/webhook",
+)
+
+# Consultas: solo se auditan si fallan (status >= 400).
+_READ_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
+
+# ======================================================================
+# Mapeo de event_type
+# ======================================================================
+
+def _resolve_event_type(method: str, path: str, req_payload: dict | None) -> str:
+    """
+    Resuelve el event_type semántico según el endpoint llamado.
+
+    El login es solo por OTP: POST {API_PREFIX}/users/login siempre es una
+    solicitud de código (LOGIN_OTP_REQUEST).
+    """
+    # Normalizar path: quitar trailing slash y el prefijo común de la API
+    # (/api/users/login -> /users/login), así el mapa no depende del prefijo.
+    norm = path.rstrip("/")
+    prefix = settings.API_PREFIX
+    if prefix and (norm == prefix or norm.startswith(f"{prefix}/")):
+        norm = norm[len(prefix):] or "/"
+
+    _EVENT_MAP: dict[tuple[str, str], str] = {
+        ("POST",  "/users/login"):             "LOGIN_OTP_REQUEST",
+        ("POST",  "/users/login/otp/verify"): "VERIFY_OTP",
+        ("POST",  "/users/logout"):            "LOGOUT",
+        ("GET",   "/users/me"):                "GET_PROFILE",
+        ("POST",  "/users/token/rotate"):      "ROTATE_TOKEN",
+    }
+
+    return _EVENT_MAP.get((method, norm), "HTTP_REQUEST")
+
+
+# ======================================================================
+# Extracción de user_id desde JWT en cookie
+# ======================================================================
+
+def _extract_user_id(request: Request) -> int | None:
+    """
+    Extrae user_id del token JWT almacenado en cookie HTTP-only.
+
+    Retorna None si no hay cookie, el token es inválido, o expiró.
+    Nunca lanza excepción.
+    """
+    try:
+        token = request.cookies.get(settings.AUTH_COOKIE_NAME)
+        if not token:
+            return None
+
+        payload = decode_access_token(
+            token=token,
+            secret_key=settings.JWT_SECRET_KEY,
+            algorithm=settings.JWT_ALGORITHM,
+        )
+        sub = payload.get("sub", {})
+        if isinstance(sub, dict):
+            return sub.get("user_id")
+        return None
+    except Exception:
+        return None
+
+
+# ======================================================================
+# Middleware
+# ======================================================================
+
+class AuditMiddleware(BaseHTTPMiddleware):
+    """
+    Middleware de auditoría HTTP dinámica por año.
+
+    Registra cambios y errores en http_audit_{year} de forma non-blocking;
+    las consultas exitosas no se guardan.
+    """
+
+    def __init__(self, app, repository: AuditRepository) -> None:
+        super().__init__(app)
+        self._repo = repository
+
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        # ------------------------------------------------------------------
+        # 1. Skip rutas excluidas
+        # ------------------------------------------------------------------
+        path = request.url.path
+        if any(path.startswith(prefix) for prefix in _SKIP_PREFIXES):
+            return await call_next(request)
+
+        # ------------------------------------------------------------------
+        # 2. Leer request body (BaseHTTPMiddleware ya lo bufferiza)
+        # ------------------------------------------------------------------
+        body_bytes: bytes = await request.body()
+
+        # No auditar body de requests muy grandes (ej: uploads)
+        req_body_to_audit = body_bytes if len(body_bytes) <= MAX_BODY_BYTES else b""
+
+        # ------------------------------------------------------------------
+        # 3. Extraer metadatos del request
+        # ------------------------------------------------------------------
+        method = request.method
+        ip = _get_client_ip(request)
+        user_agent = request.headers.get("user-agent")
+        referer = request.headers.get("referer")
+
+        # ------------------------------------------------------------------
+        # 4. Ejecutar el request y medir duración
+        # ------------------------------------------------------------------
+        start_time = time.perf_counter()
+        response: Response = await call_next(request)
+        duration_ms = int((time.perf_counter() - start_time) * 1000)
+
+        # Consulta exitosa: no se audita ni se toca la respuesta
+        if method in _READ_METHODS and response.status_code < 400:
+            return response
+
+        # ------------------------------------------------------------------
+        # 5. Capturar response body y reconstruir la respuesta
+        #    (necesario porque body_iterator solo se puede leer una vez)
+        # ------------------------------------------------------------------
+        chunks = [chunk async for chunk in response.body_iterator]
+        response_body = b"".join(chunks)
+
+        rebuilt = Response(
+            content=response_body,
+            status_code=response.status_code,
+            media_type=response.media_type,
+        )
+        # Preservar headers originales (set-cookie, etc.)
+        rebuilt.raw_headers = list(response.raw_headers)
+        rebuilt.headers["content-length"] = str(len(response_body))
+
+        # ------------------------------------------------------------------
+        # 6. Extraer user_id (silencioso — falla → None)
+        # ------------------------------------------------------------------
+        user_id = _extract_user_id(request)
+
+        # ------------------------------------------------------------------
+        # 7. Sanitizar el request y resumir la respuesta
+        # ------------------------------------------------------------------
+        req_payload = sanitize_request(req_body_to_audit)
+        resp_payload = summarize_response(response_body, response.status_code)
+
+        # ------------------------------------------------------------------
+        # 8. Resolver event_type
+        # ------------------------------------------------------------------
+        event_type = _resolve_event_type(method, path, req_payload)
+
+        # ------------------------------------------------------------------
+        # 9. Insertar en BD de forma non-blocking (hilo daemon)
+        # ------------------------------------------------------------------
+        threading.Thread(
+            target=self._repo.insert,
+            kwargs=dict(
+                user_id=user_id,
+                event_type=event_type,
+                method=method,
+                path=path,
+                status_code=response.status_code,
+                ip=ip,
+                user_agent=user_agent,
+                referer=referer,
+                request_payload=req_payload,
+                response_payload=resp_payload,
+                duration_ms=duration_ms,
+            ),
+            daemon=True,
+        ).start()
+
+        return rebuilt
+
+
+# ======================================================================
+# Helper: IP real (X-Forwarded-For solo con TRUST_PROXY_HEADERS)
+# ======================================================================
+
+def _get_client_ip(request: Request) -> str | None:
+    """Extrae la IP del cliente con la misma regla que el rate limiter."""
+    ip = client_ip(request)
+    return None if ip == "unknown" else ip

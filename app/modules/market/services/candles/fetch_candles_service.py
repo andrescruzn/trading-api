@@ -1,0 +1,129 @@
+# -*- coding: utf-8 -*-
+
+from __future__ import annotations
+
+from typing import Any
+
+import ccxt
+
+from app.common.contracts import ServiceResult
+from app.modules.market.domain.candle_entity import Candle, candle_from_ccxt_row
+from app.modules.market.domain.candle_repository import CandleRepository
+from app.modules.market.domain.ccxt_exchanges import ccxt_id_for
+from app.modules.market.domain.exchange_repository import ExchangeRepository
+from app.modules.market.domain.symbol_repository import SymbolRepository
+from app.modules.market.domain.timeframe_repository import TimeframeRepository
+
+
+class FetchCandlesService:
+    """
+    Descarga velas OHLCV desde un exchange real via ccxt
+    y las almacena en la BD usando bulk_upsert.
+
+    El exchange se resuelve desde el símbolo (symbol.exchange_id).
+    """
+
+    def __init__(
+        self,
+        candle_repo: CandleRepository,
+        symbol_repo: SymbolRepository,
+        timeframe_repo: TimeframeRepository,
+        exchange_repo: ExchangeRepository,
+    ):
+        self._candle_repo = candle_repo
+        self._symbol_repo = symbol_repo
+        self._timeframe_repo = timeframe_repo
+        self._exchange_repo = exchange_repo
+
+    def fetch(
+        self,
+        symbol_id: int,
+        timeframe_id: int,
+        limit: int = 500,
+        client_cache: dict[str, Any] | None = None,
+    ) -> ServiceResult[dict]:
+        """
+        `client_cache` (opcional) reutiliza un cliente ccxt por exchange entre
+        llamadas de un mismo lote: cada cliente nuevo vuelve a cargar todos
+        los mercados del exchange (varias peticiones lentas).
+        """
+        # 1) Validar símbolo
+        symbol = self._symbol_repo.get_by_id(symbol_id)
+        if symbol is None:
+            return ServiceResult.fail(code="SYMBOL_NOT_FOUND", http_status=404)
+
+        # 2) Validar timeframe
+        tf = self._timeframe_repo.get_by_id(timeframe_id)
+        if tf is None:
+            return ServiceResult.fail(code="TIMEFRAME_NOT_FOUND", http_status=404)
+
+        # 3) Resolver exchange
+        exchange_entity = self._exchange_repo.get_by_id(symbol.exchange_id)
+        if exchange_entity is None:
+            return ServiceResult.fail(code="EXCHANGE_NOT_FOUND", http_status=404)
+
+        ccxt_id = ccxt_id_for(exchange_entity.name)
+        if ccxt_id is None:
+            return ServiceResult.fail(
+                code="EXCHANGE_NOT_SUPPORTED_CCXT",
+                http_status=422,
+                meta={"exchange": exchange_entity.name},
+            )
+
+        # 4) Descargar velas de ccxt
+        try:
+            client = client_cache.get(ccxt_id) if client_cache is not None else None
+            if client is None:
+                client = getattr(ccxt, ccxt_id)({"enableRateLimit": True})
+                if client_cache is not None:
+                    client_cache[ccxt_id] = client
+            raw: list[list] = client.fetch_ohlcv(
+                symbol.symbol,
+                timeframe=tf.code,
+                limit=limit,
+            )
+        except ccxt.BadSymbol:
+            return ServiceResult.fail(
+                code="CCXT_SYMBOL_NOT_FOUND",
+                http_status=422,
+                meta={"symbol": symbol.symbol},
+            )
+        except ccxt.NetworkError as e:
+            return ServiceResult.fail(
+                code="CCXT_NETWORK_ERROR",
+                http_status=503,
+                meta={"detail": str(e)[:200]},
+            )
+        except Exception as e:
+            return ServiceResult.fail(
+                code="CCXT_FETCH_ERROR",
+                http_status=502,
+                meta={"detail": str(e)[:200]},
+            )
+
+        if not raw:
+            return ServiceResult.fail(code="CANDLES_EMPTY_PAYLOAD", http_status=422)
+
+        # 5) Convertir a entidades Candle
+        # ccxt devuelve: [timestamp_ms, open, high, low, close, volume]
+        # Las filas inválidas (high < low, negativos, precios nulos o NaN) se descartan
+        candles: list[Candle] = [
+            candle
+            for row in raw
+            if (candle := candle_from_ccxt_row(row, symbol_id, timeframe_id)) is not None
+        ]
+
+        if not candles:
+            return ServiceResult.fail(code="CANDLES_EMPTY_PAYLOAD", http_status=422)
+
+        # 6) Persistir
+        rows_affected = self._candle_repo.bulk_upsert(candles)
+        self._candle_repo.commit()
+
+        return ServiceResult.ok(data={
+            "exchange": exchange_entity.name,
+            "symbol": symbol.symbol,
+            "timeframe": tf.code,
+            "rows_fetched": len(candles),
+            "rows_affected": rows_affected,
+        })

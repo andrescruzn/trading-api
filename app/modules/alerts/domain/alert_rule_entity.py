@@ -30,8 +30,7 @@ class AlertRule:
     {
         "email":    true | false,
         "telegram": true | false,
-        "webhook":  "https://..." | false,
-        "desktop":  true | false
+        "webhook":  "https://..." | false
     }
 
     rule_spec por tipo:
@@ -87,6 +86,3 @@ class AlertRule:
         """Sin webhook es válido; si hay uno, debe ser https y no interno (SSRF)."""
         url = self.channels.get("webhook")
         return not url or is_allowed_webhook_url(url)
-
-    def wants_desktop(self) -> bool:
-        return bool(self.channels.get("desktop"))

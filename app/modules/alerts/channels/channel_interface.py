@@ -18,7 +18,7 @@ class NotificationChannel(Protocol):
     """
     Contrato de canal de notificación.
 
-    Implementaciones: EmailChannel, TelegramChannel, WebhookChannel, DesktopChannel.
+    Implementaciones: EmailChannel, TelegramChannel, WebhookChannel.
     """
 
     def send(self, event: AlertEvent, rule: AlertRule) -> bool:

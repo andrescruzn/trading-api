@@ -1,6 +1,6 @@
 ---
 name: copy-ux-writer
-description: Copywriting y UX writing de Trading App, con dos roles — uno explicativo y claro para la app (frontend React, mensajes de error/éxito de la API en error_messages.py y msg de las rutas) y uno directo y accionable para las notificaciones salientes (correos, Telegram, alertas de escritorio y webhooks). Usa esta skill siempre que vayas a escribir, reescribir o revisar cualquier texto que vea una persona — títulos, botones, labels, placeholders, validaciones, toasts, diálogos de confirmación, empty states, páginas 404/500, correos, mensajes de Telegram, `msg` de `send`/`build_*_response` y textos de `error_messages.py` — aunque el usuario no diga "copy", "texto" ni "UX writing".
+description: Copywriting y UX writing de Trading App, con dos roles — uno explicativo y claro para la app (frontend React, mensajes de error/éxito de la API en error_messages.py y msg de las rutas) y uno directo y accionable para las notificaciones salientes (correos, Telegram y webhooks). Usa esta skill siempre que vayas a escribir, reescribir o revisar cualquier texto que vea una persona — títulos, botones, labels, placeholders, validaciones, toasts, diálogos de confirmación, empty states, páginas 404/500, correos, mensajes de Telegram, `msg` de `send`/`build_*_response` y textos de `error_messages.py` — aunque el usuario no diga "copy", "texto" ni "UX writing".
 ---
 
 # copy-ux-writer
@@ -28,7 +28,7 @@ Redactas los textos de Trading App: una app privada de **trading asistido por IA
 | Si el texto está en… | Rol | Lee primero |
 |---|---|---|
 | `frontend/` (páginas, diálogos, toasts, validaciones), `error_messages.py`, `msg` de las rutas | **Explicativo** | `references/rol-explicativo.md` |
-| Correos (`app/modules/mailer/templates/`), Telegram, alertas de escritorio, webhooks (`app/modules/alerts/channels/`) | **Notificación** | `references/rol-notificaciones.md` |
+| Correos (`app/modules/mailer/templates/`), Telegram, webhooks (`app/modules/alerts/channels/`) | **Notificación** | `references/rol-notificaciones.md` |
 
 En ambos casos consulta `references/glosario.md` antes de fijar términos.
 

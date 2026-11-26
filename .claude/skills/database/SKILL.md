@@ -127,7 +127,7 @@ uv run python -m database.seeds --list               # ver los disponibles
 | `feature_sets` | 3 conjuntos de indicadores por enfoque: Completo, Tendencia, Rango |
 | `accounts` | La billetera de Binance (cuenta live + `platform_wallet`), vía `build_platform_wallet_ensurer`; necesita `market_data` y un super admin |
 | `bots` | 2 agentes demo (paper) detenidos (oro 4h, BTC 1h), cada uno con su cuenta de práctica y 10.000 USDT |
-| `alerts` | 3 reglas de alerta demo sobre esos agentes (solo canal de escritorio) |
+| `alerts` | 3 reglas de alerta demo sobre esos agentes (sin canales externos: solo campana) |
 
 Reglas para un seed nuevo:
 - Archivo `database/seeds/<dominio>.py` con `def run(session: Session) -> SeedStats`, registrado en `SEEDS` de `database/seeds/__main__.py` respetando el orden de dependencias.

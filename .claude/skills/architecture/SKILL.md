@@ -67,7 +67,7 @@ Ya se usa en tres sitios; seguir el mismo enfoque si aparece otro caso:
 | Dónde | Contrato | Implementaciones |
 |---|---|---|
 | `agent/llm/` | `llm_client.py` | `groq_client.py`, `gemini_client.py`, `ollama_client.py` (un servicio cada uno, con el SDK oficial de su proveedor) y `rotating_client.py` (pool round-robin + failover); `llm_factory.py` arma el pool según `LLM_SERVICES` y el catálogo `llm_services.py` |
-| `alerts/channels/` | `channel_interface.py` | email, Telegram, webhook, desktop |
+| `alerts/channels/` | `channel_interface.py` | email, Telegram, webhook |
 | `orders/execution/` | ejecutor | paper (simulado) vs live (ccxt) |
 
 ## Evitar dependencias cíclicas

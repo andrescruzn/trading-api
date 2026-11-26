@@ -29,7 +29,6 @@ type AlertRuleSpec = {
 type AlertChannels = {
 	email?: boolean;
 	telegram?: boolean;
-	desktop?: boolean;
 	webhook?: string | false;
 };
 

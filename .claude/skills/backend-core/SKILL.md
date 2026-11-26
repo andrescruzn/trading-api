@@ -59,7 +59,7 @@ rest/
     error_messages.py             # STRATEGY_ERROR_MESSAGES = {code: texto UI}
 ```
 
-Módulos con piezas extra: `agent/llm/` (clientes LLM por provider), `alerts/channels/` (email, Telegram, webhook, desktop), `orders/execution/` (paper vs live con ccxt).
+Módulos con piezas extra: `agent/llm/` (clientes LLM por provider), `alerts/channels/` (email, Telegram, webhook), `orders/execution/` (paper vs live con ccxt).
 
 ## Dirección de dependencias
 

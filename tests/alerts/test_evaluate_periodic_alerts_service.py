@@ -30,7 +30,7 @@ SYMBOL = SimpleNamespace(id=3, symbol="BTC/USDT", quote_asset="USDT")
 def _rule(rule_type: str, spec: dict, rule_id: int = 1, bot_id: int | None = None) -> AlertRule:
     return AlertRule(
         id=rule_id, name=f"Regla {rule_id}", rule_type=rule_type, rule_spec=spec,
-        channels={"desktop": True}, user_id=5, bot_id=bot_id,
+        channels={}, user_id=5, bot_id=bot_id,
     )
 
 

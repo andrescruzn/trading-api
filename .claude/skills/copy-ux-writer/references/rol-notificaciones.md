@@ -1,6 +1,6 @@
 # Rol notificación: directo y accionable
 
-Para lo que el sistema envía hacia afuera: correos (`app/modules/mailer/templates/`), mensajes de Telegram, alertas de escritorio y payloads de webhook con texto (`app/modules/alerts/channels/`). La persona no está mirando la app: el mensaje tiene que entenderse completo en la vista previa del celular.
+Para lo que el sistema envía hacia afuera: correos (`app/modules/mailer/templates/`), mensajes de Telegram y payloads de webhook con texto (`app/modules/alerts/channels/`). La persona no está mirando la app: el mensaje tiene que entenderse completo en la vista previa del celular.
 
 ## Principios
 
@@ -12,7 +12,7 @@ Para lo que el sistema envía hacia afuera: correos (`app/modules/mailer/templat
 
 ## Fórmulas por pieza
 
-### Telegram / escritorio (señal)
+### Telegram (señal)
 ```
 🟢 Compra · BTC/USDT · 1h
 Entrada $61.800,00 · SL $61.250,00 · TP $62.900,00
@@ -21,7 +21,7 @@ Bot #12 · Estrategia Tendencia EMA v1.0.0
 ```
 (🔴 venta, ⚪ mantener). Sin otros emojis.
 
-### Telegram / escritorio (otros eventos)
+### Telegram (otros eventos)
 - **Precio**: `BTC/USDT cruzó $62.000,00 (sube)`.
 - **Error de bot**: `El bot #12 se detuvo: no pudimos conectar con el exchange.` + qué revisar.
 

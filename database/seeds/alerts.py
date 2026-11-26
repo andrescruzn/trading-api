@@ -9,8 +9,8 @@
 #
 # NOTAS:
 # - Requiere el seed `bots`. La regla cuyo agente falte se omite.
-# - Solo canal de escritorio: así el seed no dispara correos ni mensajes
-#   de Telegram reales.
+# - Sin canales externos: así el seed no dispara correos ni mensajes de
+#   Telegram reales; los avisos quedan solo en la campana de la app.
 # - Clave natural: (user_id, name).
 # ======================================================================
 
@@ -29,11 +29,10 @@ from database.seeds._helpers import SeedStats, get_or_create
 
 DEMO_USER_EMAIL = "andrescruznovoa@gmail.com"
 
-_DESKTOP_ONLY: dict[str, Any] = {
+_NO_CHANNELS: dict[str, Any] = {
     "email": False,
     "telegram": False,
     "webhook": False,
-    "desktop": True,
 }
 
 # (nombre de la regla, agente, rule_type, rule_spec)
@@ -72,7 +71,7 @@ def run(session: Session) -> SeedStats:
                 "bot_id": bot.id,
                 "rule_type": rule_type,
                 "rule_spec": rule_spec,
-                "channels": _DESKTOP_ONLY,
+                "channels": _NO_CHANNELS,
                 "is_active": True,
             },
             stats=stats,

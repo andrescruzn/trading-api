@@ -422,9 +422,6 @@ class Settings:
         self.FRONTEND_URL: str = (
             os.getenv("FRONTEND_URL", "http://localhost:5193").strip().rstrip("/")
         )
-        self.DESKTOP_NOTIFICATIONS_ENABLED: bool = (
-            os.getenv("DESKTOP_NOTIFICATIONS_ENABLED", "false").lower() == "true"
-        )
 
         # ALERT_REPEAT_MINUTES: antispam de las reglas que se revisan en cada
         #   ciclo del scheduler (precio, PnL, drawdown). Mientras la condición

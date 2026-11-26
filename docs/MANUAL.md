@@ -1374,7 +1374,7 @@ Una regla de alerta define QUÉ vigilar y POR DÓNDE notificar:
   ──────────────────────────────────────────────────────────────────────────────
   rule_type     El tipo de evento a monitorear (precio, señal, P&L, drawdown, error)
   rule_spec     Los parámetros concretos (umbral, símbolo, bot, etc.)
-  channels      Los canales de entrega (email, telegram, webhook, desktop)
+  channels      Los canales de entrega (email, telegram, webhook)
 
 4.5.2 Tipos de reglas disponibles
 ───────────────────────────────────
@@ -1388,7 +1388,7 @@ Una regla de alerta define QUÉ vigilar y POR DÓNDE notificar:
 
 4.5.3 Canales de entrega
 ──────────────────────────
-El sistema soporta 4 canales simultáneos:
+El sistema soporta 3 canales simultáneos (además, todo aviso queda en la campana de la app):
 
   Canal     Cómo funciona
   ──────────────────────────────────────────────────────────────────────────────
@@ -1398,7 +1398,6 @@ El sistema soporta 4 canales simultáneos:
   (Email)   El correo llega a la dirección con la que entras a la app.
   Webhook   Hace un HTTP POST a una URL externa (Slack, Discord, IFTTT, etc.). Por seguridad
             la URL tiene que empezar por https:// y apuntar a un servicio público de internet.
-  Desktop   Notificación nativa del sistema operativo (macOS, Windows, Linux)
 
 4.5.4 Disparadores automáticos (hooks)
 ──────────────────────────────────────

@@ -27,7 +27,7 @@
   - `pnl` → "Avísame si el P&L del bot baja del -5%"
   - `drawdown` → "Avísame si el drawdown supera el 10%"
   - `error` → "Avísame cuando el bot entre en error"
-- Envía las alertas por **4 canales**: Email (SMTP), Telegram (Bot API), Webhook (HTTP POST a una URL externa **pública y https**) y Desktop (notificaciones nativas macOS/Windows/Linux con plyer)
+- Envía las alertas por **3 canales**: Email (SMTP), Telegram (Bot API) y Webhook (HTTP POST a una URL externa **pública y https**). Todo aviso queda además en la campana de la app. (El canal de escritorio con plyer se retiró el 2026-11-26.)
 - Las alertas se **disparan automáticamente** cuando se genera una señal (M7) o se crea una orden (M8), también si la orden fue rechazada
 - Las reglas de **precio, PnL y drawdown se revisan solas** en cada ciclo del scheduler (cada minuto por defecto); mientras la condición siga, el aviso se repite como máximo cada `ALERT_REPEAT_MINUTES` (60 min), no en cada ciclo
 - Por **Telegram**, las alertas llegan al chat que vinculó el dueño de la regla (si no vinculó ninguno, al chat por defecto); por **correo**, a su email. Cada canal se enciende o apaga en Administración → Notificaciones ([M12](M12-NOTIFICATIONS.md))
@@ -55,7 +55,7 @@ Tablas: `alert_rules`, `alert_events`
 Entregables:
 - ✅ Domain: AlertRule entity + AlertEvent entity + Protocol repos
 - ✅ Infrastructure: ORM models + repos impl registrados en models_registry.py
-- ✅ Channels (Strategy Pattern): EmailChannel, TelegramChannel, WebhookChannel, DesktopChannel
+- ✅ Channels (Strategy Pattern): EmailChannel, TelegramChannel, WebhookChannel (DesktopChannel retirado el 2026-11-26)
 - ✅ Services: FireAlertService, EvaluateAlertsService, CRUD alert_rules, list alert_events
 - ✅ Provider: AlertServiceFactory + get_alert_factory() + build_evaluate_alerts_service()
 - ✅ REST: GET/POST/PUT/DELETE /api/alert-rules, GET /api/alert-events, POST /api/alerts/evaluate (`POST /api/alerts/test-telegram` se retiró el 2026-11-26: ver [M12](M12-NOTIFICATIONS.md))
@@ -63,7 +63,7 @@ Entregables:
 - ✅ Web UI: `/#/alerts` (usuario) — en React desde 2026-10-08 (`/#/admin/alerts` se retiró el 2026-10-23; la config de Telegram pasó a `/#/admin/notifications`, [M12](M12-NOTIFICATIONS.md), el 2026-11-26)
 - ✅ Sidebar (`app-sidebar.tsx`) con links de Alertas y Telegram
 - ✅ ALERT_TEMPLATE agregado al catálogo de mail templates
-- httpx ya instalado (v0.28.1); plyer se instala opcionalmente para desktop notifications
+- httpx ya instalado (v0.28.1)
 - ✅ (2026-10-19) **Guarda SSRF del webhook** (`app/common/security/url_guard.py`) al guardar y al enviar; reglas solo sobre agentes propios; límite de claves en los JSON
 - ✅ (2026-10-19) **Telegram endurecido**: HTML escapado, token nunca en logs, helper `telegram_api`
 - ✅ (2026-10-19) **Telegram por usuario**: `SignalApprovalNotifier` (botones), `TelegramUpdateService`, `TelegramReplier`, `telegram_messages.py`, `telegram_poller.py`, `POST /api/telegram/webhook`, `telegram_provider.py`
@@ -75,7 +75,7 @@ Entregables:
 
 | Decisión | Motivo | Alternativa descartada |
 |---|---|---|
-| Canales como **Strategy Pattern** (`NotificationChannel` Protocol: Email, Telegram, Webhook, Desktop) | Añadir un canal no toca el motor de alertas | `if channel == ...` |
+| Canales como **Strategy Pattern** (`NotificationChannel` Protocol: Email, Telegram, Webhook) | Añadir un canal no toca el motor de alertas | `if channel == ...` |
 | Despacho **fire-and-forget**: los hooks van en `try/except pass` | Una alerta fallida nunca aborta el flujo de trading | Propagar el error |
 | Hooks **post-commit** en [M7](M07-BOTS-SIGNALS.md) (`evaluate_signal_alerts`) y [M8](M08-ORDERS-EXECUTION.md) (`evaluate_order_alerts`) | Solo se alerta de lo que ya quedó persistido | Disparar antes del commit |
 | `build_evaluate_alerts_service(session)` + `TYPE_CHECKING` en M7/M8 | Evita imports circulares entre M7/M8 y M9 | Importar la factory directamente |
@@ -108,7 +108,7 @@ Entregables:
 | `SharedSignalNotifier`: mensaje **sin botones**, sin tamaño de posición, cuenta ni nombre del agente (acción, símbolo, timeframe, entrada, SL, TP, R/R y estrategia); omite al dueño y a quien no tiene chat; nunca lanza (log por suscriptor y por llamada) | Quien sigue no decide ni ejecuta nada; el tamaño revela el capital del dueño y el nombre puede identificarlo; un chat roto no corta el reparto | Reutilizar `pending_signal_text` |
 | `telegram_provider.py` no se exporta en `providers/__init__.py` y hace imports diferidos de los providers de orders y users | `orders → alerts` (hooks) importa este paquete: un import a nivel de módulo crearía un ciclo | Reorganizar los paquetes |
 | El email usa `ALERT_TEMPLATE` del catálogo del mailer (`alert.html`) | Reutiliza el servicio SMTP existente | Plantilla embebida |
-| Notificaciones de escritorio (`plyer`) **opcionales** (`DESKTOP_NOTIFICATIONS_ENABLED=false`) | Solo tiene sentido en desarrollo local | Dependencia obligatoria |
+| **Sin notificaciones de escritorio** (retiradas el 2026-11-26 junto con `plyer` y `DESKTOP_NOTIFICATIONS_ENABLED`) | Solo avisaban en la máquina del servidor: en producción no llegaban a nadie. La campana, Telegram y el correo cubren el caso | Mantener el canal opcional |
 | `super_admin_required` importado de `role_guard` (antes `admin_required`) | Convención del proyecto | — |
 
 ## Avance
@@ -119,9 +119,9 @@ Entregables:
 | Madurez | **≈ 71 %** | Funcionalidad 92 · Tests 35 · Seguridad 85 · Operación 72 |
 
 - **Funcionalidad (92):** los 5 tipos de regla se evalúan: `signal`/`error` en los hooks de M7/M8 y `price`/`pnl`/`drawdown` solos en cada ciclo del scheduler (`_evaluate_alert_rules` → `EvaluatePeriodicAlertsService`), con antispam. Telegram de alertas al chat del dueño y correo al dueño (`FireAlertService`). Las reglas `signal`/`error` con "Cualquier agente" (`bot_id` NULL) aplican a todos los agentes de su dueño (`list_active_by_type_and_bot` con subquery bots → accounts.user_id). Falta: reintentos de entregas `failed`.
-- **Tests (35):** 44 tests en `tests/alerts/` de la evaluación periódica (condiciones, servicio, antispam, ruteo de Telegram/correo, paso del scheduler) + `SharedSignalNotifier` (10) + campana (7). Sin cubrir: `url_guard`, `TelegramUpdateService`, hooks `signal`/`error` y canales email/webhook/desktop.
+- **Tests (35):** 44 tests en `tests/alerts/` de la evaluación periódica (condiciones, servicio, antispam, ruteo de Telegram/correo, paso del scheduler) + `SharedSignalNotifier` (10) + campana (7). Sin cubrir: `url_guard`, `TelegramUpdateService`, hooks `signal`/`error` y canales email/webhook.
 - **Seguridad (85):** guarda SSRF al guardar y al enviar, sin redirects; reglas solo sobre agentes propios; JSON con máximo 20 claves; HTML escapado y token fuera de los logs; webhook de Telegram con secreto. Riesgo residual de *DNS rebinding* entre la resolución y la conexión (ver [Riesgos](#riesgos)).
-- **Operación (72):** las reglas periódicas corren solas en el scheduler líder, con errores aislados por regla y un log por ciclo cuando algo se dispara o falla; polling de Telegram en desarrollo y webhook en producción (registro manual con `setWebhook`). El canal Desktop solo notifica en la máquina del servidor.
+- **Operación (72):** las reglas periódicas corren solas en el scheduler líder, con errores aislados por regla y un log por ciclo cuando algo se dispara o falla; polling de Telegram en desarrollo y webhook en producción (registro manual con `setWebhook`).
 
 ## Posibles mejoras
 
@@ -178,7 +178,6 @@ Entregables:
 | `email_channel.py` | `EmailChannel` | SMTP via MailerService |
 | `telegram_channel.py` | `TelegramChannel` (`send`, `send_raw`, `call(method, payload)`) + `telegram_api(token, method, payload)` | Bot API via httpx (timeout 10 s); devuelve el `result` o `None` |
 | `webhook_channel.py` | `WebhookChannel` | HTTP POST via httpx; `resolves_to_public_ips` antes de cada envío, sin redirects, timeout 5 s |
-| `desktop_channel.py` | `DesktopChannel` | plyer (macOS/Win/Linux) |
 | `telegram_messages.py` | `DECISION_MESSAGES`, `LINK_MESSAGES`, `BUTTON_APPROVE/REJECT/OPEN_APP`, `pending_signal_text(...)`, `shared_signal_text(...)`, `decision_text(code)`, `format_number` | Textos del bot (rol notificación) |
 | `telegram_replier.py` | `TelegramReplier` (`link_result`, `decision_result`) | Responde con `sendMessage`, `answerCallbackQuery` y `editMessageText` |
 | `telegram_poller.py` | `fetch_updates(token)` | `getUpdates` con `offset` en memoria (modo polling) |
@@ -267,7 +266,6 @@ Telegram (token, @usuario, chat por defecto, modo de respuestas, webhook) y el i
 
 ```
 FRONTEND_URL=http://localhost:5193  # enlaces en Telegram y correos (botón de Telegram solo si es https)
-DESKTOP_NOTIFICATIONS_ENABLED=false
 ALERT_REPEAT_MINUTES=60            # antispam de precio/PnL/drawdown; 0 = avisa en cada ciclo
 SMTP_*                             # servidor de correo (sin SMTP_HOST no sale ningún correo)
 ```
@@ -284,7 +282,7 @@ SMTP_*                             # servidor de correo (sin SMTP_HOST no sale n
 - **Sin `FRONTEND_URL` https** el aviso no lleva el botón "Ver en Trading App" (Telegram rechaza enlaces a localhost).
 - El email de alerta usa `ALERT_TEMPLATE` desde `app.modules.mailer.domain.mail_template`
 - Template HTML en `app/modules/mailer/templates/alert.html`
-- `httpx` ya instalado (v0.28.1) — `plyer` opcional para desktop
+- `httpx` ya instalado (v0.28.1)
 
 ## Tests
 
@@ -310,7 +308,7 @@ SMTP_*                             # servidor de correo (sin SMTP_HOST no sale n
 - **2026-03** — Módulo completado: 4 canales, reglas y eventos, hooks en M7/M8, UI `/alerts`, `/admin/alerts`, `/admin/telegram`, plantilla `ALERT_TEMPLATE`.
 - **Dependencias:** `httpx` 0.28.1 ya instalado; `plyer` opcional.
 - **2026-10-08** — API headless (/api), páginas migradas a React (frontend/).
-- **2026-10-10** — Seed `alerts`: tres reglas demo (señal y drawdown del 5 % del agente de oro, error del agente de BTC), solo canal de escritorio, idempotente por (user_id, name).
+- **2026-10-10** — Seed `alerts`: tres reglas demo (señal y drawdown del 5 % del agente de oro, error del agente de BTC), solo canal de escritorio (desde el 2026-11-26, sin canales externos), idempotente por (user_id, name).
 - **2026-10-19** — Auditoría de seguridad: guarda SSRF del webhook (`url_guard.py`: https, hosts públicos, resolución DNS al enviar, sin redirects, URL fuera de los logs; `ALERT_RULE_INVALID_WEBHOOK`), reglas solo sobre agentes propios, límite de claves en los JSON; Telegram con HTML escapado, token fuera de los logs y helper `telegram_api`.
 - **2026-10-19** — Telegram por usuario para el modo Con aprobación: `SignalApprovalNotifier` (botones `sig:a`/`sig:r`), `TelegramUpdateService`, `TelegramReplier`, `telegram_messages.py`, `telegram_poller.py` (polling en el scheduler), `POST /api/telegram/webhook` con secreto (fuera de la auditoría), `telegram_provider.py`; settings `TELEGRAM_BOT_USERNAME`, `TELEGRAM_UPDATES_MODE`, `TELEGRAM_WEBHOOK_SECRET`, `FRONTEND_URL`.
 - **2026-10-20** — Todas las alertas: columna **Dueño** (nombre y correo) y filtro por dueño en Reglas y Eventos; Telegram pasa al grupo admin **Configuración**.
@@ -321,3 +319,4 @@ SMTP_*                             # servidor de correo (sin SMTP_HOST no sale n
 - **2026-10-20** — Reglas `signal`/`error` con "Cualquier agente" (`bot_id` NULL): ahora se disparan para todos los agentes de su dueño. Antes el hook filtraba por `bot_id` y no las encontraba nunca.
 - **2026-10-23** — Se retira el grupo **Supervisión** del menú: fuera "Todas las alertas" (`/#/admin/alerts`, `pages/admin-alerts.tsx`); `AlertEventsTable` queda sin la variante admin (sin props). "Volver" en Telegram lleva a `/#/alerts`. El filtro `user_id` de `GET /api/alert-events` sigue en el backend.
 - **2026-11-26** — La configuración de Telegram sale del `.env` a la BD y la página `/#/admin/telegram` pasa a **Notificaciones** ([M12](M12-NOTIFICATIONS.md)); retirado `POST /api/alerts/test-telegram`. `telegram_api` se movió a `notifications/infrastructure/telegram_api.py` (`telegram_channel.py` lo reexporta). `SignalApprovalNotifier` y `SharedSignalNotifier` también envían por correo (`NOTICE_TEMPLATE`, `channels/signal_email_messages.py`); `FireAlertService` y `FundNoticeService` no intentan un canal apagado. `_poll_telegram` lee el modo en cada ciclo; el poller reinicia el `offset` si cambia el token.
+- **2026-11-26** — **Fuera las notificaciones de escritorio**: se borró `channels/desktop_channel.py`, `AlertRule.wants_desktop()`, el setting `DESKTOP_NOTIFICATIONS_ENABLED` y el parámetro `settings` de `FireAlertService`; el formulario de reglas ya no ofrece "Escritorio" y el seed `alerts` crea las reglas sin canales externos. Reglas viejas con `"desktop": true` en `channels` siguen funcionando: la clave se ignora y desaparece al guardarlas. Sin cambios de esquema.

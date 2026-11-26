@@ -80,7 +80,6 @@ const ruleSchema = z
 		drawdown_threshold: z.string().trim(),
 		email: z.boolean(),
 		telegram: z.boolean(),
-		desktop: z.boolean(),
 		webhook: z
 			.string()
 			.trim()
@@ -145,7 +144,6 @@ const EMPTY_VALUES: RuleFormInput = {
 	drawdown_threshold: '',
 	email: false,
 	telegram: false,
-	desktop: false,
 	webhook: '',
 };
 
@@ -229,7 +227,6 @@ export function AlertRuleFormDialog({
 				rule.rule_type === 'drawdown' ? toText(spec.threshold) : '',
 			email: !!channels.email,
 			telegram: !!channels.telegram,
-			desktop: !!channels.desktop,
 			webhook: typeof channels.webhook === 'string' ? channels.webhook : '',
 		});
 	}, [open, rule, form]);
@@ -239,7 +236,6 @@ export function AlertRuleFormDialog({
 		const channels = {
 			email: values.email,
 			telegram: values.telegram,
-			desktop: values.desktop,
 			webhook: values.webhook || (false as const),
 		};
 		const callbacks = {
@@ -557,7 +553,6 @@ export function AlertRuleFormDialog({
 										[
 											['email', 'Correo'],
 											['telegram', 'Telegram'],
-											['desktop', 'Escritorio'],
 										] as const
 									).map(([name, label]) => (
 										<Controller

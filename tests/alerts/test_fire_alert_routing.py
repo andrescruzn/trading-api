@@ -20,10 +20,6 @@ from app.modules.notifications.domain import NotificationSettings
 TELEGRAM_API = "app.modules.alerts.channels.telegram_channel.telegram_api"
 
 
-def _settings() -> SimpleNamespace:
-    return SimpleNamespace(DESKTOP_NOTIFICATIONS_ENABLED=False)
-
-
 def _notification_settings() -> MagicMock:
     reader = MagicMock()
     reader.get.return_value = NotificationSettings(
@@ -52,7 +48,6 @@ def _make_service(owner=None, user_repo_error: bool = False, mailer=None, user_e
         user_repo.get_by_id.return_value = owner
     service = FireAlertService(
         event_repo=event_repo,
-        settings=_settings(),
         mailer=mailer,
         user_email=user_email,
         user_repo=user_repo,
@@ -103,10 +98,11 @@ class TestTelegramRouting:
         assert event.delivery_status == "failed"
         event_repo.commit.assert_called_once()
 
-    def test_owner_not_loaded_when_only_desktop(self):
+    def test_owner_not_loaded_when_only_webhook(self):
         svc, _, user_repo = _make_service(owner=None)
 
-        svc.fire(rule=_rule({"desktop": True}), title="Alerta")
+        with patch("app.modules.alerts.channels.webhook_channel.WebhookChannel.send", return_value=True):
+            svc.fire(rule=_rule({"webhook": "https://example.com/hook"}), title="Alerta")
 
         user_repo.get_by_id.assert_not_called()
 

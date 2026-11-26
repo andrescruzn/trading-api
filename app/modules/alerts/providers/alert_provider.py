@@ -61,7 +61,6 @@ class AlertServiceFactory:
 
         self._fire_service = FireAlertService(
             event_repo=self._event_repo,
-            settings=settings,
             mailer=self._mailer,
             user_email=user_email,
             # Dueño de la regla: su chat de Telegram y, sin request, su correo

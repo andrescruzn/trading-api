@@ -32,7 +32,6 @@ from app.modules.alerts.domain.alert_event_repository import AlertEventRepositor
 from app.modules.alerts.domain.alert_rule_entity import AlertRule
 
 if TYPE_CHECKING:
-    from app.common.config.settings import Settings
     from app.modules.mailer.services.mailer_service import MailerService
     from app.modules.notifications.domain import NotificationSettings, NotificationSettingsReader
     from app.modules.users.domain import User, UserRepository
@@ -48,14 +47,12 @@ class FireAlertService:
     def __init__(
         self,
         event_repo: AlertEventRepository,
-        settings: "Settings",
         mailer: "MailerService | None" = None,
         user_email: str | None = None,
         user_repo: "UserRepository | None" = None,
         notification_settings: "NotificationSettingsReader | None" = None,
     ):
         self._event_repo = event_repo
-        self._settings = settings
         self._mailer = mailer
         self._user_email = user_email
         self._user_repo = user_repo
@@ -121,7 +118,6 @@ class FireAlertService:
         from app.modules.alerts.channels.email_channel import EmailChannel
         from app.modules.alerts.channels.telegram_channel import TelegramChannel
         from app.modules.alerts.channels.webhook_channel import WebhookChannel
-        from app.modules.alerts.channels.desktop_channel import DesktopChannel
 
         channels: list = []
         config = self._channels_config()
@@ -145,9 +141,6 @@ class FireAlertService:
         webhook_url = rule.wants_webhook()
         if webhook_url:
             channels.append(WebhookChannel(url=webhook_url))
-
-        if rule.wants_desktop() and self._settings.DESKTOP_NOTIFICATIONS_ENABLED:
-            channels.append(DesktopChannel())
 
         return channels
 

@@ -109,7 +109,6 @@ function describeChannels(
 	const names: string[] = [];
 	if (channels.email) names.push('Correo');
 	if (channels.telegram) names.push('Telegram');
-	if (channels.desktop) names.push('Escritorio');
 	if (channels.webhook) names.push('Webhook');
 	return names;
 }

@@ -490,6 +490,16 @@ Qué mide cada columna:
 - **30 días / 90 días:** cuánto subió o bajó el precio.
 - **Volatilidad:** cuánto se mueve el precio en un día normal (ATR). Más volatilidad = stop loss
   más lejano = posición más pequeña con la regla del 1 %.
+- **Precio:** el último precio en Binance, en vivo. Si Binance no responde, se ve en gris el
+  cierre del último día.
+- **24 h:** cuánto subió o bajó el precio en las últimas 24 horas.
+- **Volumen 24 h:** cuánto dinero se negoció en ese mercado en las últimas 24 horas (en USDT,
+  abreviado: "980 k" = 980.000, "1200 M" = 1.200 millones, "45 mil M" = 45.000 millones). Más
+  volumen = mercado más líquido: las órdenes se
+  llenan al precio esperado.
+
+Precio, 24 h y Volumen 24 h se actualizan solos cada minuto mientras tienes la página abierta.
+Las demás columnas salen de velas diarias y cambian una vez al día.
 
 Ejemplo: el oro con ADX 32, eficiencia 45 % y +12 % en 90 días tiene fuerza ≈ 29 y sale arriba.
 BTC con ADX 15 sale como Lateral aunque haya subido 3 %: no tiene fuerza.
@@ -506,6 +516,36 @@ para traerlos en el momento (tarda unos segundos por mercado la primera vez).
 Importante: que un mercado haya tenido tendencia no garantiza que siga. El explorador sirve para
 elegir dónde operar. Cada operación la sigue filtrando el agente con el régimen, la regla del 1 % y
 el riesgo/beneficio mínimo de 2:1.
+
+Recomendaciones de la IA
+────────────────────────
+Encima de la tabla está el panel "Recomendaciones de la IA". La IA lee el ranking completo (con
+los datos de 24 h) y las estrategias disponibles, y te sugiere de 3 a 5 mercados donde crear un
+agente ahora, cada uno con:
+- la estrategia que encaja con ese mercado y su timeframe (por ejemplo, "Tendencia Metales · 4h");
+- qué tan segura está (confianza, de 0 % a 100 %);
+- por qué lo recomienda y qué podría salir mal (riesgos).
+
+Arriba aparece además un resumen corto de cómo ve el mercado en general.
+
+Cómo se usa:
+1. (Solo super admin) Elige la clase de activo en el filtro si quieres limitarla, por ejemplo
+   Metales, y pulsa "Pedir recomendaciones". Tarda hasta un minuto.
+2. Revisa las tarjetas. Pulsa "Crear agente" en la que te convenza: el asistente se abre con el
+   mercado y la estrategia ya elegidos; solo te falta revisar y confirmar.
+3. Todos los demás (socios e inversores) ven la última recomendación, sin los botones.
+
+Las reglas no las pone la IA: el sistema solo le deja elegir mercados alcistas o laterales (la
+app solo abre compras) y estrategias que operan en ese tipo de mercado. Si la IA sugiere algo
+fuera de eso (un mercado bajista, una estrategia que no existe o una de tendencia en un mercado
+lateral), esa sugerencia se descarta antes de mostrarse. Cada pedido queda guardado, con lo que
+vio la IA y qué modelo respondió.
+
+Ejemplo: el oro sale alcista con fuerza 29, +0,8 % en 24 h y 2.000 millones de volumen. La IA lo
+recomienda con "Tendencia Metales · 4h" y confianza 70 %, y avisa del riesgo: "un dato de
+inflación puede cortar la tendencia". Al crear el agente, cada operación pasa igual por el filtro
+de régimen, las reglas de la estrategia, la regla del 1 % y el mínimo de 2:1. La recomendación
+ayuda a elegir dónde operar; no es una señal de compra.
 
 3.0.2 Módulo 4 — La billetera de la plataforma (fondo común)
 ──────────────────────────────────────────────────────────────
@@ -765,6 +805,9 @@ devuelve un veredicto: APROBADA o RECHAZADA. Solo ve los indicadores del conjunt
 No tiene una página propia: se usa desde el detalle de cada agente con el botón "Analizar ahora"
 (ver 3.4), o sola en cada vela cerrada para los agentes en modo Con aprobación o Automático
 (ver 3.6). Para controlar el costo, cada persona puede pedir como máximo 6 análisis por minuto.
+
+La IA también da **recomendaciones de mercados** en Explorar mercados: en qué mercado crear un
+agente y con qué estrategia (ver 3.0.1). El super admin puede pedir como máximo 2 por minuto.
 
 Internamente aplica el Prompt Maestro con 4 fases en secuencia:
 

@@ -14,7 +14,7 @@
 | Lo usan | [M3](M03-FEATURE-ENGINEERING.md), [M5](M05-STRATEGIES.md), [M6](M06-AI-AGENT.md), [M7](M07-BOTS-SIGNALS.md), [M8](M08-ORDERS-EXECUTION.md) y el scheduler (que además corre el ciclo de ejecución de [M7](M07-BOTS-SIGNALS.md)/[M8](M08-ORDERS-EXECUTION.md)) |
 | Prefijo API | `/api/exchanges`, `/api/symbols`, `/api/timeframes`, `/api/candles`, `/api/explorer` |
 | Frontend | `frontend/src/modules/market` |
-| Última revisión | 2026-10-26 |
+| Última revisión | 2026-11-26 (datos de 24 h en vivo en el explorador) |
 
 ## Descripción
 
@@ -25,7 +25,7 @@
 - Registra los **símbolos** de Binance como BTC/USDT o ETH/USDT, y también **perpetuos TradFi** de Binance que siguen el precio del oro, la plata, el petróleo, el gas, el cobre, ETFs (SPY, QQQ) y acciones (NVDA, TSLA, AAPL): `XAU/USDT:USDT`.
 - Registra los **timeframes** (marcos de tiempo) como 1 minuto, 5 minutos, 1 hora, 1 día, etc.
 - Almacena **velas OHLCV**: cada vela es un resumen del precio en un período de tiempo (precio de apertura, precio más alto, precio más bajo, precio de cierre y volumen negociado)
-- **Explorador de tendencia:** ordena los mercados por la fuerza de su tendencia en velas diarias para elegir dónde crear agentes.
+- **Explorador de tendencia:** ordena los mercados por la fuerza de su tendencia en velas diarias para elegir dónde crear agentes. Desde el 2026-11-26 cada fila trae además **datos de 24 h en vivo** de Binance (precio, variación, volumen) y la página muestra las **recomendaciones de la IA** ([M6](M06-AI-AGENT.md)).
 
 **Por qué importa:** sin este módulo no hay datos para analizar. Además mantiene las velas al día de forma automática para los bots activos (ver [Scheduler](#scheduler-ingesta-automática)).
 
@@ -34,7 +34,7 @@
 Hash routing: la URL real es `/#/<ruta>`.
 
 **Usuario (todos los roles):**
-- `/#/market/explorer` — "Explorar mercados": ranking por fuerza de tendencia (velas 1d) con filtro por clase de activo y "Crear agente" (abre el asistente con el símbolo elegido). Los admin ven además "Actualizar datos"
+- `/#/market/explorer` — "Explorar mercados": ranking por fuerza de tendencia (velas 1d) con filtro por clase de activo y "Crear agente" (abre el asistente con el símbolo elegido). Columnas **Precio**, **24 h** y **Volumen 24 h** en vivo (se refrescan cada minuto; sin exchange, Precio cae al último cierre diario en gris). Encima de la tabla, el panel **Recomendaciones de la IA** ([M6](M06-AI-AGENT.md)): todos ven la última; el super admin ve "Pedir recomendaciones" y "Crear agente" en cada tarjeta (abre el asistente con mercado y estrategia elegidos). Los admin ven además "Actualizar datos"
 - Las velas del símbolo y timeframe de cada agente se ven en su pestaña **Mercado** (`/#/agents/:id`, [M7](M07-BOTS-SIGNALS.md)): solo existen velas para agentes activos, así que no hay visor suelto para el usuario. `/#/market/symbols` redirige a `/#/market/explorer` y `/#/market/candles` al inicio (`/#/dashboard`).
 
 **Admin:**
@@ -57,6 +57,7 @@ Entregables:
 - ✅ Perpetuos TradFi (metales, materias primas, ETFs, acciones) vía ccxt en Binance; clases de activo `commodity` e `index` (2026-10-10)
 - ✅ Explorador de tendencia: `GET /api/explorer`, `POST /api/explorer/refresh` y página `/#/market/explorer` (2026-10-10)
 - ✅ (2026-10-20) `FetchCandleHistoryService`: últimas N velas del exchange por páginas (1000 por llamada), **sin guardarlas** y sin la vela en formación; lo usa el backtesting de [M5](M05-STRATEGIES.md)
+- ✅ (2026-11-26) **Datos de 24 h en vivo en el explorador:** `TickerGateway` / `CcxtTickerGateway` (precio, variación, volumen, máximo y mínimo de 24 h con caché `EXPLORER_TICKERS_TTL_SECONDS`), campos nuevos en `GET /api/explorer` y columnas Precio · 24 h · Volumen 24 h con refresco cada minuto
 - ✅ (2026-10-26) **Solo Binance:** `PLATFORM_EXCHANGE_NAME`, `CCXT_EXCHANGE_MAP` con solo `binance`, sin `POST/PUT /api/exchanges` ni página de exchanges; símbolos y cuentas nuevos siempre en Binance; migración `9869015f140f`
 
 ## Decisiones de diseño
@@ -72,6 +73,8 @@ Entregables:
 | Metales, materias primas, ETFs y acciones como **perpetuos TradFi** de Binance (`XAU/USDT:USDT`) | Datos y ejecución en el mismo sitio, 24/7, con el mismo código ccxt: ccxt elige el mercado por el símbolo unificado | Proveedor de datos aparte (yfinance, Twelve Data) + bróker: más código, horarios de mercado y sin ejecución |
 | ~~Perpetuos solo en paper~~ → desde el 2026-10-26 **también en live**, solo largos a 1x y margen aislado ([M8](M08-ORDERS-EXECUTION.md)); `is_perpetual()` sigue marcando dónde aplica esa lógica | Decisión del negocio: operar todos los mercados de Binance | Mantenerlos en paper |
 | Explorador calculado al vuelo desde `candles` (1d), sin tabla nueva | ~40 símbolos × 250 velas: barato y siempre coherente con las velas | Tabla de métricas precalculadas |
+| Datos de 24 h del explorador **en vivo y sin guardar** (`fetch_tickers` de ccxt), con caché en memoria por símbolo (`EXPLORER_TICKERS_TTL_SECONDS`, 30 s) y un cliente ccxt por proceso | Son datos de vista: nadie los usa después. La caché evita multiplicar llamadas cuando varias personas miran la página, y el cliente único evita repetir `load_markets` (spot + futuros, varias peticiones lentas) | Tabla de tickers alimentada por el scheduler · cliente nuevo por request |
+| Si el exchange no responde, el explorador **se devuelve igual** con los campos de 24 h en `null` | El ranking sale de la BD y sigue siendo útil; un fallo de red no debe dejar la página vacía | Error 502 en todo el endpoint |
 | `strength` = min(ADX/50, 1) × eficiencia de Kaufman (30 d); ADX < 20 → lateral | Exige fuerza y limpieza del movimiento a la vez; comparable entre activos de precios muy distintos | Solo rendimiento %: premia saltos puntuales |
 | `timeframes` guarda `seconds` y usa PK `SMALLINT` | El scheduler decide si una vela "venció" comparando segundos | Calcular segundos desde el código del timeframe |
 | Datetimes de MySQL se normalizan a UTC con `_as_utc_aware()` | MySQL devuelve datetimes naive | Trabajar con naive y asumir UTC |
@@ -100,6 +103,7 @@ Entregables:
 |---|---|---|
 | Baja | UI para la carga manual `POST /api/candles/ingest` (hoy solo por API, igual que `/api/candles/fetch`; el usuario descarga desde su agente) | S |
 | Media | Ejecutar el scheduler en un proceso/worker dedicado: el *lock* ya evita que corra varias veces (2026-10-19), pero sigue siendo un hilo dentro del proceso web y comparte su CPU con las peticiones | M |
+| Media | Tests de `CcxtTickerGateway` (separación spot/perpetuos, caché TTL, `percentage` → fracción, símbolos que Binance ya no lista, fallo del exchange → `{}`) y del `ticker` en `ListTrendExplorerService` | S |
 | Media | Tests de `SchedulerLock` y de los repositorios con BD (`bulk_upsert`, `delete_beyond_retention`); tests de rutas con TestClient (`execution_cycle` ya cubierto, 2026-10-20) | S |
 | Media | Detección y relleno de huecos: el ciclo incremental pide solo 3 velas, así que una caída del servidor de más de 3 timeframes deja velas faltantes | M |
 | Media | La retención por defecto (500 velas) limita el histórico disponible para datasets/backtesting de [M5](M05-STRATEGIES.md); separar retención operativa de histórico | M |
@@ -109,7 +113,7 @@ Entregables:
 
 ## Fuera de alcance y pendientes conocidos
 
-- Datos en tiempo real por WebSocket (solo velas por polling).
+- Datos en tiempo real por WebSocket (velas por polling; los datos de 24 h del explorador también, cada minuto desde el front).
 - Order book, trades y ticks (solo OHLCV).
 
 ## Detalle técnico
@@ -146,6 +150,7 @@ Registrados en: `app/extensions/db/models_registry.py`
 | `domain/symbol_repository.py` | `infrastructure/symbol_repository_impl.py` |
 | `domain/timeframe_repository.py` | `infrastructure/timeframe_repository_impl.py` |
 | `domain/candle_repository.py` | `infrastructure/candle_repository_impl.py` |
+| `domain/ticker_gateway.py` (`Ticker`, `TickerGateway`; no es repositorio: lee el exchange) | `infrastructure/ccxt_ticker_gateway.py` (`CcxtTickerGateway`) |
 
 ### Servicios (`app/modules/market/services/`)
 | Subdir | Servicios |
@@ -154,7 +159,9 @@ Registrados en: `app/extensions/db/models_registry.py`
 | `symbols/` | `list_symbols_service.py`, `create_symbol_service.py`, `update_symbol_service.py` |
 | `timeframes/` | `list_timeframes_service.py`, `create_timeframe_service.py` |
 | `candles/` | `list_candles_service.py`, `ingest_candles_service.py`, `fetch_candles_service.py` (acepta `client_cache` para reutilizar el cliente ccxt en lotes) |
-| `explorer/` | `trend_metrics.py` (función pura: ADX, eficiencia, ATR %, rendimientos, dirección, fuerza), `list_trend_explorer_service.py`, `refresh_explorer_candles_service.py` |
+| `explorer/` | `trend_metrics.py` (función pura: ADX, eficiencia, ATR %, rendimientos, dirección, fuerza), `list_trend_explorer_service.py` (recibe un `ticker_gateway` opcional; `TrendRow.ticker`), `refresh_explorer_candles_service.py` |
+
+`ListTrendExplorerService` también lo usa [M6](M06-AI-AGENT.md) (`GenerateMarketRecommendationsService`) para armar los candidatos que recibe la IA.
 
 Provider: `app/modules/market/providers/market_provider.py` → `MarketServiceFactory`
 
@@ -172,7 +179,7 @@ Provider: `app/modules/market/providers/market_provider.py` → `MarketServiceFa
 | GET | `/api/candles` | token | Params: symbol_id, timeframe_id, from_ts, to_ts, limit (max 1000) |
 | POST | `/api/candles/ingest` | admin | Bulk upsert de velas (max 5000 rows por request) |
 | POST | `/api/candles/fetch` | admin | Descarga OHLCV del exchange con ccxt |
-| GET | `/api/explorer` | token | Ranking por tendencia (velas 1d). Filtro: asset_class. Solo símbolos activos con `supports_auto_fetch` |
+| GET | `/api/explorer` | token | Ranking por tendencia (velas 1d). Filtro: asset_class. Solo símbolos activos con `supports_auto_fetch`. Cada fila trae además `price`, `change_24h` (fracción), `volume_24h` (USDT), `high_24h`, `low_24h`, `ticker_ts` del exchange, o `null` si no respondió |
 | POST | `/api/explorer/refresh` | admin | Descarga velas 1d de todos esos símbolos (incluida la del día en curso) |
 
 Routers registrados en `app/app_factory.py` (dentro de `api_routers`, montados con `prefix=settings.API_PREFIX`):
@@ -183,13 +190,15 @@ from app.modules.market.rest import exchanges_router, symbols_router, timeframes
 ### Frontend (`frontend/src/modules/market/`)
 | Ruta | Archivo de ruta | Página |
 |-----|----------|----|
-| `/#/market/explorer` | `routes/_app/market/explorer.lazy.tsx` | `pages/explorer.tsx` (`useTrendExplorerQuery`, `useRefreshExplorerMutation`) |
+| `/#/market/explorer` | `routes/_app/market/explorer.lazy.tsx` | `pages/explorer.tsx` (`useTrendExplorerQuery` con `refetchInterval` de 60 s, `useRefreshExplorerMutation`) + `components/ai-recommendations-panel.tsx` (recomendaciones de [M6](M06-AI-AGENT.md)) |
 | `/#/market/symbols`, `/#/market/candles` | `routes/_app/market/{symbols,candles}.tsx` | Redirecciones (a `/market/explorer` y `/dashboard`) |
 | `/#/admin/exchanges` | `routes/_app/admin/exchanges.tsx` | Redirección a `/admin/symbols` (página quitada el 2026-10-26) |
 | `/#/admin/symbols` | `routes/_app/admin/symbols.lazy.tsx` | `pages/admin-symbols.tsx` + `components/symbol-form-dialog.tsx` |
 | `/#/admin/timeframes` | `routes/_app/admin/timeframes.lazy.tsx` | `pages/admin-timeframes.tsx` |
 | — (pestaña Mercado de `/#/agents/:id`, [M7](M07-BOTS-SIGNALS.md)) | — | `components/candles-table.tsx` (`CandlesTable`) |
 
+- Recomendaciones de la IA: `api/recommendations.api.ts`, `hooks/use-recommendation-queries.ts` (`useLatestRecommendationQuery`) y `hooks/use-recommendation-mutations.ts` (`useGenerateRecommendationsMutation`). Viven en `market` porque solo se muestran en el explorador; el backend es de [M6](M06-AI-AGENT.md).
+- Volumen abreviado con `formatCompactNumber` (`shared/lib/format.ts`, `es-CO`: `980000` → `980 k`, `1234567` → `1,2 M`, `1.2e9` → `1200 M`, `45e9` → `45 mil M`).
 - API: `api/market.api.ts`; queries `hooks/use-market-queries.ts` (`useSymbolsQuery`, `useTimeframesQuery`, `useCandlesQuery`, reutilizadas por dashboard, features, bots, orders…); mutations `hooks/use-market-mutations.ts`; etiquetas `lib/market-labels.ts`.
 - Las páginas admin están bajo `_app/admin.tsx` (`AdminGuardLayout`: sin rol admin → `/dashboard`); la API responde 403 a quien no es admin.
 
@@ -225,6 +234,11 @@ SCHEDULER_ENABLED=true              # false para tests / entorno manual (default
 SCHEDULER_INTERVAL_SECONDS=60       # segundos entre ciclos (default: 60)
 SCHEDULER_RETENTION_CANDLES=500     # velas a conservar por par (default: 500)
 ```
+Explorador (datos de 24 h, no los toca el scheduler):
+```
+EXPLORER_TICKERS_TTL_SECONDS=30     # segundos que se reutilizan precio/variación/volumen de 24 h (mínimo 10)
+```
+
 Explorador: `scheduler_runner` llama a `refresh_explorer()` al arrancar y luego cada 24 h (`time.monotonic`), aparte de `run_cycle()` porque necesita datos de todos los símbolos aunque no haya agentes. Sin `force` solo descarga los símbolos cuya última vela 1d tiene un día o más.
 
 Desde 2026-10-19, después de `run_cycle()` el scheduler corre `run_execution_cycle()`: **genera señales** para los agentes en modo Con aprobación / Automático, ejecuta las automáticas, caduca las pendientes, sincroniza con el exchange las órdenes live abiertas (reconciliación) y cierra posiciones por stop loss / take profit ([M7](M07-BOTS-SIGNALS.md), [M8](M08-ORDERS-EXECUTION.md)). Los agentes en modo Manual siguen como antes: el scheduler solo les mantiene velas y features.
@@ -244,6 +258,10 @@ Desde 2026-10-19, después de `run_cycle()` el scheduler corre `run_execution_cy
 
 - **Filas del exchange con precio nulo o NaN** (corregido el 2026-10-20): `Decimal(str(None))` y las comparaciones con `Decimal('NaN')` lanzan `InvalidOperation`. Antes, una sola fila así hacía fallar la descarga entera del par (y en el scheduler el par quedaba sin velas nuevas). Ahora la conversión vive en `candle_from_ccxt_row()` (`domain/candle_entity.py`, la usan `FetchCandlesService` y `FetchCandleHistoryService`) y descarta esas filas, e `is_valid_ohlcv()` exige valores finitos.
 - `is_valid_ohlcv()` no comprueba que `open`/`close` estén entre `low` y `high` (solo high ≥ low y no negativos).
+- **Tickers: spot y perpetuos no van juntos.** `fetch_tickers` de ccxt lanza `BadRequest ("symbols must be of the same type")` si una llamada mezcla `BTC/USDT` y `XAU/USDT:USDT`; `CcxtTickerGateway` hace una llamada por tipo (con `is_perpetual()`). La de perpetuos descarga todos los tickers USDⓈ-M de Binance y ccxt filtra los pedidos.
+- **Tickers: `percentage` viene en %** (2.5 = +2,5 %), no en fracción; el gateway lo divide entre 100 para que `change_24h` siga la convención de `ret_30d`.
+- **Tickers: un símbolo que Binance dejó de listar** haría fallar el lote entero; el gateway filtra contra `load_markets()` antes de pedirlos.
+- **Tickers siempre de producción:** el cliente público del explorador ignora `LIVE_USE_SANDBOX` (son precios de referencia).
 
 ### Patrones clave M2
 - `Decimal(str(model.tick_size))` — para convertir NUMERIC a Decimal sin errores float
@@ -268,7 +286,7 @@ Desde el 2026-10-20. Unitarios sin BD ni red: repositorios `MagicMock`, cliente 
 
 `execution_mode_rules` (de [M7](M07-BOTS-SIGNALS.md)) está en `tests/bots/test_execution_mode_rules.py` (23 tests).
 
-**Sin cubrir:** rutas REST (TestClient), repositorios contra MySQL (`bulk_upsert`, `delete_beyond_retention`, `get_latest_ts`), `SchedulerLock`, `scheduler_runner` y `refresh_explorer()` (envoltorio con logs).
+**Sin cubrir:** rutas REST (TestClient), repositorios contra MySQL (`bulk_upsert`, `delete_beyond_retention`, `get_latest_ts`), `SchedulerLock`, `scheduler_runner`, `refresh_explorer()` (envoltorio con logs) y `CcxtTickerGateway` (los 28 tests del explorador siguen pasando: el `ticker_gateway` es opcional).
 
 ## Riesgos
 
@@ -290,4 +308,5 @@ Desde el 2026-10-20. Unitarios sin BD ni red: repositorios `MagicMock`, cliente 
 - **2026-10-19** — Velas centradas en el agente: Símbolos y Velas salen del menú del usuario (las velas se ven en la pestaña **Mercado** del agente, con "Actualizar datos"); se retira la página admin "Descargar velas" (el endpoint queda solo por API); la tabla se extrae a `components/candles-table.tsx`. Datos de mercado (admin) queda en Exchanges · Símbolos · Timeframes · Conjuntos de indicadores.
 - **2026-10-20** — `FetchCandleHistoryService` (historia paginada del exchange sin guardar) para el backtesting.
 - **2026-10-26** — **Solo Binance:** la plataforma opera con un único exchange. Sin alta ni edición de exchanges (API y página), símbolos y cuentas siempre en Binance, seeds solo con Binance (31 símbolos) y migración `9869015f140f` que desactiva los demás exchanges y sus símbolos.
+- **2026-11-26** — Explorador con **datos de 24 h en vivo** (`TickerGateway` / `CcxtTickerGateway`, caché `EXPLORER_TICKERS_TTL_SECONDS`): columnas Precio · 24 h · Volumen 24 h con refresco cada minuto; si el exchange no responde, el ranking sale igual. La página suma el panel de **recomendaciones de la IA** ([M6](M06-AI-AGENT.md)).
 - **2026-10-20** — Tests unitarios de M2 y del scheduler (`tests/market/`, `tests/scheduler/`: 213 tests). Destaparon un bug, corregido: una fila del exchange con precio nulo o NaN lanzaba `InvalidOperation` y tumbaba la descarga del par; ahora se descarta (`candle_from_ccxt_row`, `is_valid_ohlcv` con valores finitos).

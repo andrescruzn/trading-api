@@ -1,4 +1,10 @@
-import { IconAlertTriangle, IconFlask, IconWallet } from '@tabler/icons-react';
+import {
+	IconAlertTriangle,
+	IconFlask,
+	IconWallet,
+	IconWalletOff,
+} from '@tabler/icons-react';
+import { Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import type { BotMode } from '@/modules/bots/api/bots.api';
 import { formatNumber } from '@/modules/shared/lib/format';
@@ -22,6 +28,8 @@ type MoneyStepProps = {
 	currency: string;
 	/** El símbolo es un perpetuo: en real opera en la billetera de Futuros. */
 	perpetual?: boolean;
+	/** Solo real: por qué la billetera de Binance no está lista (bloquea crear). */
+	walletIssue?: string | null;
 	/** Solo demo: monto escrito (texto del input). */
 	capital?: string;
 	onCapitalChange?: (value: string) => void;
@@ -59,6 +67,7 @@ export function MoneyStep({
 	mode,
 	currency,
 	perpetual = false,
+	walletIssue,
 	capital = '',
 	onCapitalChange,
 	capitalError,
@@ -74,6 +83,18 @@ export function MoneyStep({
 					dinero que le asignes desde Administración → Fondo → Agentes del
 					fondo: sin asignación no genera señales.
 				</Explainer>
+				{walletIssue && (
+					<Alert variant="destructive">
+						<IconWalletOff />
+						<AlertTitle>La billetera de Binance no está lista</AlertTitle>
+						<AlertDescription>
+							{walletIssue} Hasta entonces no puedes crear agentes reales.{' '}
+							<Link to="/admin/wallet" className="font-medium underline">
+								Ir a Billetera
+							</Link>
+						</AlertDescription>
+					</Alert>
+				)}
 				<Alert variant="destructive">
 					<IconAlertTriangle />
 					<AlertTitle>Este agente usa dinero real</AlertTitle>

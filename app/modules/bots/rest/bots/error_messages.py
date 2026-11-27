@@ -23,7 +23,19 @@ BOT_ERROR_MESSAGES: dict[str, str] = {
         "No pudimos preparar la billetera de Binance. Revisa que Binance esté en el catálogo "
         "de exchanges y que haya un super admin activo."
     ),
-    "BOT_INVALID_RISK_PCT":        "El riesgo por operación debe ser mayor que 0 % y como máximo 1 % del capital.",
+    "BOT_WALLET_NOT_CONFIGURED": (
+        "La billetera de Binance aún no está conectada: faltan la API key y el secret en el "
+        "servidor. Pide a quien lo administra que los cargue y reinicie la API."
+    ),
+    "BOT_WALLET_AUTH_FAILED": (
+        "Binance rechazó la API key en la última sincronización. Revisa la API key y sus "
+        "permisos, y vuelve a sincronizar desde la página Billetera."
+    ),
+    "BOT_WALLET_NOT_VERIFIED": (
+        "La billetera de Binance aún no se ha sincronizado. Pulsa Sincronizar ahora en la "
+        "página Billetera y vuelve a intentarlo."
+    ),
+    "BOT_INVALID_RISK_PCT":       "El riesgo por operación debe ser mayor que 0 % y como máximo 1 % del capital.",
     "BOT_MUST_BE_STOPPED_TO_EDIT": "Detén el agente antes de cambiar su configuración.",
     "BOT_INVALID_STATUS":          "El estado no es válido. Elige Activo, Pausado, Detenido o Error.",
     "BOT_INVALID_TRANSITION": (

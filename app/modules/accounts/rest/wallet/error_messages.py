@@ -34,4 +34,14 @@ WALLET_ERROR_MESSAGES: dict[str, str] = {
     "WALLET_SYNC_FAILED": (
         "El exchange no devolvió el saldo. Inténtalo de nuevo en unos minutos."
     ),
+
+    # Billetera lista para agentes reales (GET /wallet → live_block_msg)
+    "WALLET_UNAVAILABLE": (
+        "No pudimos preparar la billetera de Binance. Revisa que Binance esté en el catálogo "
+        "de exchanges y que haya un super admin activo."
+    ),
+    "WALLET_NOT_VERIFIED": (
+        "La billetera de Binance aún no se ha sincronizado. Pulsa Sincronizar ahora en la "
+        "página Billetera para confirmar que la API key funciona."
+    ),
 }

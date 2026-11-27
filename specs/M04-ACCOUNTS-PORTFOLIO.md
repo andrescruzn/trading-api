@@ -14,7 +14,7 @@
 | Lo usan | [M6](M06-AI-AGENT.md) (capital disponible), [M7](M07-BOTS-SIGNALS.md) (billetera de los agentes reales y cuenta de práctica interna de los demo), [M8](M08-ORDERS-EXECUTION.md) (cliente del `LiveExecutor`), [M11](M11-FUND.md) (billetera única del fondo común) |
 | Prefijo API | `/api/wallet` (desde el 2026-10-26 ya no existe `/api/accounts`) |
 | Frontend | `frontend/src/modules/accounts` |
-| Última revisión | 2026-10-26 |
+| Última revisión | 2026-11-27 |
 
 ## Descripción
 
@@ -137,14 +137,14 @@ Entregables:
 |--------|-----------|
 | `wallet/` | `ensure_platform_wallet_service.py` (`EnsurePlatformWalletService.ensure()` → cuenta de la billetera o `None` si falta Binance o un super admin; `PLATFORM_WALLET_ACCOUNT_NAME`), `get_wallet_service.py` (`GetWalletService.get()` → `WalletOverview` con `credentials_configured`, `list_snapshots`), `sync_wallet_service.py` |
 
-Provider: `app/modules/accounts/providers/account_provider.py` → `AccountServiceFactory` (`ensure_platform_wallet`, `get_wallet`, `sync_wallet`) + `get_account_factory(session)` + `build_platform_wallet_ensurer(session)` (lo usan bots, fondo y seeds). El dueño de la cuenta de la billetera se resuelve con el primer super admin activo (`SqlAlchemyUserRepository`, import diferido).
+Provider: `app/modules/accounts/providers/account_provider.py` → `AccountServiceFactory` (`ensure_platform_wallet`, `get_wallet`, `sync_wallet`) + `get_account_factory(session)` + `build_platform_wallet_ensurer(session)` (lo usan bots, fondo y seeds) + `build_live_wallet_checker(session)` (`CheckLiveWalletService` en `services/wallet/check_live_wallet_service.py`: `check()` → cuenta de la billetera o 409 `WALLET_CREDENTIALS_MISSING` / `WALLET_UNAVAILABLE` / `WALLET_EXCHANGE_AUTH_FAILED` / `WALLET_NOT_VERIFIED`; lo usa bots al crear e iniciar agentes reales). La regla es pura: `domain/platform_wallet_rules.py` → `live_block_code(credentials_configured, wallet)`, compartida con `GetWalletService`. El dueño de la cuenta de la billetera se resuelve con el primer super admin activo (`SqlAlchemyUserRepository`, import diferido).
 
 Credenciales: `exchange_client.platform_credentials_configured()` y `build_authenticated_client(account, exchange_repo)` leen `settings.BINANCE_API_KEY` / `BINANCE_API_SECRET`.
 
 ### Endpoints REST
 | Método | Ruta | Auth | Nota |
 |--------|------|------|------|
-| GET | `/api/wallet` | staff | Asegura la billetera y devuelve `{configured, wallet, account, latest_snapshot}`; `configured` = hay credenciales en el `.env` y billetera; `wallet.last_sync_error_msg` ya en español |
+| GET | `/api/wallet` | staff | Asegura la billetera y devuelve `{configured, live_ready, live_block_msg, wallet, account, latest_snapshot}`; `configured` = hay credenciales en el `.env` y billetera; `live_ready` = se pueden crear e iniciar agentes reales (`live_block_code`), si no `live_block_msg` explica por qué; `wallet.last_sync_error_msg` ya en español |
 | POST | `/api/wallet/sync` | super admin | Lee el saldo ahora (404 `WALLET_NOT_CONFIGURED` si faltan las credenciales; 422 configuración; 502 `WALLET_EXCHANGE_AUTH_FAILED` / `WALLET_SYNC_FAILED`; 503 `WALLET_EXCHANGE_UNAVAILABLE`) |
 | GET | `/api/wallet/snapshots` | staff | `limit` 1–500, de la más reciente a la más antigua |
 
@@ -166,7 +166,7 @@ Settings: `BINANCE_API_KEY` / `BINANCE_API_SECRET` (vacías = billetera sin cone
 
 ## Gotchas críticos
 
-- **Sin `BINANCE_API_KEY` / `BINANCE_API_SECRET`** la página Billetera muestra "aún no está conectada", el scheduler omite la sincronización (log en debug) y toda orden de un agente real falla con `EXCHANGE_CREDENTIALS_MISSING`. Tras ponerlas hay que reiniciar la API.
+- **Sin `BINANCE_API_KEY` / `BINANCE_API_SECRET`** la página Billetera muestra "aún no está conectada", el scheduler omite la sincronización (log en debug) y no se puede crear ni iniciar un agente real (`BOT_WALLET_NOT_CONFIGURED`, desde 2026-11-27; antes se creaba y cada orden fallaba con `EXCHANGE_CREDENTIALS_MISSING`). Tras ponerlas hay que reiniciar la API **y sincronizar** (o esperar al scheduler): sin una sincronización correcta responde `BOT_WALLET_NOT_VERIFIED`, y si Binance rechazó las llaves, `BOT_WALLET_AUTH_FAILED` hasta que una nueva sincronización salga bien.
 - **Sin super admin activo o sin la fila Binance en `exchanges`**, `EnsurePlatformWalletService` no puede crear la billetera (devuelve `None`): crear un agente real responde `BOT_WALLET_UNAVAILABLE` (409).
 - **Datos anteriores al 2026-10-26:** las cuentas creadas en "Mis cuentas" quedan en la BD sin uso (y sus `enc_creds`, sin leer). Lo recomendado es limpiar la BD y correr los seeds.
 - Los balances son inmutables: para "corregir" uno se registra un snapshot nuevo.
@@ -195,4 +195,5 @@ Settings: `BINANCE_API_KEY` / `BINANCE_API_SECRET` (vacías = billetera sin cone
 - **2026-10-23** — Se retira el grupo **Supervisión** del menú: fuera la página "Todas las cuentas" (`/#/admin/accounts`, `pages/admin-accounts.tsx`). `GET /api/accounts` sigue igual.
 - **2026-10-26** — **Solo Binance:** las cuentas ya no eligen exchange (sin `exchange_id` en crear/editar, sin selector ni columna Exchange en Mis cuentas); se crean siempre en Binance. La migración `9869015f140f` pasa las existentes a Binance. La billetera suma solo Funding de Binance.
 - **2026-10-26** — La billetera suma también la billetera de **Futuros USDⓈ-M** (`future`): ahí está el margen de los perpetuos en live ([M8](M08-ORDERS-EXECUTION.md)); el total y la conciliación del fondo lo incluyen (a mercado: el saldo de Futuros incluye lo no realizado).
+- **2026-11-27** — **Billetera lista para agentes reales:** `live_block_code` + `CheckLiveWalletService` (`build_live_wallet_checker`); `GET /api/wallet` suma `live_ready` y `live_block_msg`; textos nuevos `WALLET_UNAVAILABLE` y `WALLET_NOT_VERIFIED`.
 - **2026-10-26** — **Una sola billetera, la de Binance:** credenciales en el `.env` (`BINANCE_API_KEY` / `BINANCE_API_SECRET`), la billetera se arma sola (`EnsurePlatformWalletService`), fuera `PUT /api/wallet` y el botón "Elegir billetera". Se retiran "Mis cuentas" (`/#/portfolio` redirige al inicio), `/api/accounts`, los balances manuales y sus 36 tests. `accounts` queda interna: billetera + cuenta de práctica de cada agente demo ([M7](M07-BOTS-SIGNALS.md)).

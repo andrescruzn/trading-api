@@ -148,7 +148,7 @@ class BotServiceFactory:
 
     def create_bot(self) -> CreateBotService:
         # Import diferido: accounts arma su factory (y ccxt) solo si se crea un agente
-        from app.modules.accounts.providers import build_platform_wallet_ensurer
+        from app.modules.accounts.providers import build_live_wallet_checker
 
         return CreateBotService(
             repo=self._bot_repo,
@@ -158,7 +158,7 @@ class BotServiceFactory:
             symbol_repo=self._symbol_repo,
             timeframe_repo=self._timeframe_repo,
             feature_set_repo=self._feature_set_repo,
-            ensure_wallet=build_platform_wallet_ensurer(self._session).ensure,
+            check_live_wallet=build_live_wallet_checker(self._session).check,
             history_repo=self._history_repo,
         )
 
@@ -171,10 +171,14 @@ class BotServiceFactory:
         )
 
     def update_bot_status(self) -> UpdateBotStatusService:
+        # Import diferido: accounts (y ccxt) solo se carga al cambiar de estado
+        from app.modules.accounts.providers import build_live_wallet_checker
+
         return UpdateBotStatusService(
             repo=self._bot_repo,
             account_repo=self._account_repo,
             history_repo=self._history_repo,
+            check_live_wallet=build_live_wallet_checker(self._session).check,
         )
 
     def list_bot_history(self) -> ListBotHistoryService:

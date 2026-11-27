@@ -11,11 +11,12 @@ const WALLET_SNAPSHOTS_QUERY_KEY = ['wallet-snapshots'] as const;
 // que la página muestre la foto nueva sin recargar.
 const WALLET_REFETCH_MS = 60_000;
 
-function useWalletQuery() {
+function useWalletQuery({ enabled = true }: { enabled?: boolean } = {}) {
 	return useQuery({
 		queryKey: WALLET_QUERY_KEY,
 		queryFn: getWallet,
 		refetchInterval: WALLET_REFETCH_MS,
+		enabled,
 	});
 }
 

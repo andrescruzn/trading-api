@@ -9,6 +9,7 @@ import { getRouteApi, Link, useNavigate } from '@tanstack/react-router';
 import { type ReactNode, useMemo, useState } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
+import { useWalletQuery } from '@/modules/accounts/hooks/use-wallet-queries';
 import { usePageBreadcrumb } from '@/modules/app-shell/hooks/use-page-breadcrumb';
 import type { BotMode } from '@/modules/bots/api/bots.api';
 import { MoneyStep } from '@/modules/bots/components/agent-wizard/money-step';
@@ -196,6 +197,13 @@ export function AgentNewPage() {
 		: null;
 	const riskFraction = strategy ? strategyRiskFraction(strategy) : null;
 	const isSubmitting = createMutation.isPending || transitionMutation.isPending;
+	// Un agente real necesita la billetera de Binance lista (llaves y una
+	// sincronización OK); el backend también lo valida al crear e iniciar.
+	const walletQuery = useWalletQuery({ enabled: !isDemo });
+	const walletIssue =
+		!isDemo && walletQuery.data && !walletQuery.data.live_ready
+			? walletQuery.data.live_block_msg
+			: null;
 
 	function suggestName(nextSymbol = symbol, nextStrategy = strategy) {
 		if (nameTouched) return;
@@ -393,6 +401,7 @@ export function AgentNewPage() {
 										mode={mode}
 										currency={currency}
 										perpetual={perpetual}
+										walletIssue={walletIssue}
 										capital={field.value}
 										onCapitalChange={field.onChange}
 										capitalError={fieldState.error?.message}
@@ -540,12 +549,19 @@ export function AgentNewPage() {
 							</Button>
 						)}
 						{step < STEPS.length - 1 ? (
-							<Button onClick={goNext}>
+							<Button
+								onClick={goNext}
+								disabled={step === 2 && walletIssue !== null}
+							>
 								Continuar
 								<IconArrowRight />
 							</Button>
 						) : (
-							<Button type="submit" form="agent-form" disabled={isSubmitting}>
+							<Button
+								type="submit"
+								form="agent-form"
+								disabled={isSubmitting || walletIssue !== null}
+							>
 								{isSubmitting ? (
 									<IconLoader2 className="animate-spin" />
 								) : (

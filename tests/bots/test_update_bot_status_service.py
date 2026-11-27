@@ -21,6 +21,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from app.common.contracts import ServiceResult
 from app.modules.bots.domain.bot_entity import Bot
 from app.modules.bots.services.bots.update_bot_status_service import (
     UpdateBotStatusService,
@@ -56,7 +57,10 @@ def make_service(bot: Bot | None = None):
     mock_repo.update.side_effect = lambda b: b
 
     service = UpdateBotStatusService(
-        repo=mock_repo, account_repo=MagicMock(), history_repo=MagicMock()
+        repo=mock_repo,
+        account_repo=MagicMock(),
+        history_repo=MagicMock(),
+        check_live_wallet=lambda: ServiceResult.ok(data=MagicMock()),
     )
     tx_repo = mock_repo  # commit()/rollback() viven en el repositorio
     return service, mock_repo, tx_repo

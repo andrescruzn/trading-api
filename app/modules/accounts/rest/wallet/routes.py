@@ -103,6 +103,13 @@ def _snapshot_to_dict(s: WalletSnapshot) -> dict[str, Any]:
 def _overview_to_dict(o: WalletOverview) -> dict[str, Any]:
     return {
         "configured":      o.credentials_configured and o.wallet is not None,
+        # Lista para crear o iniciar agentes reales; si no, el motivo para la UI
+        "live_ready":      o.live_block_code is None,
+        "live_block_msg":  (
+            WALLET_ERROR_MESSAGES.get(o.live_block_code, o.live_block_code)
+            if o.live_block_code
+            else None
+        ),
         "wallet":          _wallet_to_dict(o.wallet) if o.wallet else None,
         "account":         _account_to_dict(o.account),
         "latest_snapshot": _snapshot_to_dict(o.latest_snapshot) if o.latest_snapshot else None,

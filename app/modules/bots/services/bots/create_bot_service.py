@@ -12,7 +12,7 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any, Callable
+from typing import Any
 
 from app.common.contracts import ServiceResult
 from app.common.utils import utc_now
@@ -29,6 +29,7 @@ from app.modules.bots.services.bots.execution_mode_rules import check_execution_
 from app.modules.features.domain.feature_set_repository import FeatureSetRepository
 from app.modules.features.domain.indicator_catalog import is_compatible, outputs_for
 from app.modules.bots.services.bots.live_perpetual_rule import perpetual_taken_by_other
+from app.modules.bots.services.bots.live_wallet_rule import LiveWalletChecker, check_live_wallet
 from app.modules.market.domain.ccxt_exchanges import is_perpetual
 from app.modules.market.domain.symbol_repository import SymbolRepository
 from app.modules.market.domain.timeframe_repository import TimeframeRepository
@@ -45,8 +46,9 @@ class CreateBotService:
     Reglas de negocio:
     - Estrategia, símbolo activo, timeframe y conjunto de indicadores deben
       existir (sin esto la BD respondería con un 500).
-    - Agente real (`live`): siempre sobre la billetera única de Binance
-      (se asegura aquí); no lleva monto: su capital sale de su pool en el
+    - Agente real (`live`): siempre sobre la billetera única de Binance,
+      que debe estar lista (llaves en el `.env` y sincronizada sin rechazo:
+      live_wallet_rule.py); no lleva monto: su capital sale de su pool en el
       fondo. Un perpetuo (`XAU/USDT:USDT`) en real: uno solo por símbolo
       (Binance une la posición y el funding del símbolo).
     - Agente demo (`paper`): exige un monto > 0. Se le crea una cuenta de
@@ -68,7 +70,7 @@ class CreateBotService:
         symbol_repo: SymbolRepository,
         timeframe_repo: TimeframeRepository,
         feature_set_repo: FeatureSetRepository,
-        ensure_wallet: Callable[[], Account | None],
+        check_live_wallet: LiveWalletChecker,
         history_repo: BotHistoryRepository,
     ):
         self._repo = repo
@@ -78,7 +80,7 @@ class CreateBotService:
         self._symbol_repo = symbol_repo
         self._timeframe_repo = timeframe_repo
         self._feature_set_repo = feature_set_repo
-        self._ensure_wallet = ensure_wallet
+        self._check_live_wallet = check_live_wallet
         self._history_repo = history_repo
 
     def create(
@@ -156,9 +158,10 @@ class CreateBotService:
         # Dinero: billetera de Binance (real) o cuenta de práctica (demo)
         # ------------------------------------------------------------------
         if mode == "live":
-            wallet_account = self._ensure_wallet()
-            if wallet_account is None:
-                return ServiceResult.fail(code="BOT_WALLET_UNAVAILABLE", http_status=409)
+            wallet_check = check_live_wallet(self._check_live_wallet)
+            if not wallet_check.success:
+                return wallet_check
+            wallet_account = wallet_check.data
             if is_perpetual(symbol.symbol) and perpetual_taken_by_other(
                 self._repo, account_id=wallet_account.id, symbol_id=symbol.id
             ):

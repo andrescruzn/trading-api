@@ -574,7 +574,8 @@ Para empezar (quien administra el servidor):
      retiros se hacen a mano desde Binance).
   2. Ponla en el archivo .env del servidor (BINANCE_API_KEY y BINANCE_API_SECRET) y reinicia la
      API. Mientras falte, la página Billetera dice "La billetera de Binance aún no está conectada".
-  3. En Billetera, pulsa "Sincronizar ahora" para ver el saldo de inmediato.
+  3. En Billetera, pulsa "Sincronizar ahora" para ver el saldo de inmediato. Hasta que una
+     sincronización salga bien no se pueden crear ni iniciar agentes reales.
 
   Ejemplo: la billetera tiene 1.000 USDT libres, 200 USDT en una orden y 0,01 BTC a 60.000.
   Saldo total = 1.000 + 200 + 600 = 1.800 USDT · Saldo libre = 1.600 · En órdenes = 200.
@@ -999,6 +1000,10 @@ Transiciones válidas:
 
 Reglas que el sistema hace cumplir al crear un agente:
   - Un agente demo necesita un monto mayor que 0; un agente real no lleva monto.
+  - Un agente real solo se crea (y solo se inicia o reanuda) si la billetera de Binance está
+    lista: la API key está cargada en el servidor y la última sincronización la aceptó. Si no,
+    el asistente lo avisa en el paso "Con qué dinero" con un enlace a Billetera; ahí pulsas
+    "Sincronizar ahora" y vuelves a intentarlo.
   - El tipo (real o demo) no se cambia después.
   - El conjunto de indicadores tiene que calcular todo lo que pide la estrategia.
   - Nunca más del 1 % del capital por operación.

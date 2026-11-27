@@ -26,6 +26,7 @@ from app.modules.accounts.infrastructure import (
 from app.modules.accounts.infrastructure.ccxt_wallet_gateway import CcxtWalletGateway
 from app.modules.accounts.infrastructure.exchange_client import platform_credentials_configured
 from app.modules.accounts.services.wallet import (
+    CheckLiveWalletService,
     EnsurePlatformWalletService,
     GetWalletService,
     SyncWalletService,
@@ -55,6 +56,15 @@ def build_platform_wallet_ensurer(session: Session) -> EnsurePlatformWalletServi
         exchange_repo=SqlAlchemyExchangeRepository(session),
         owner_resolver=_first_super_admin_id(session),
         base_asset=settings.WALLET_BASE_ASSET,
+    )
+
+
+def build_live_wallet_checker(session: Session) -> CheckLiveWalletService:
+    """Revisión de la billetera antes de crear o iniciar un agente real (módulo bots)."""
+    return CheckLiveWalletService(
+        wallet_repo=SqlAlchemyPlatformWalletRepository(session),
+        ensure=build_platform_wallet_ensurer(session),
+        credentials_configured=platform_credentials_configured(),
     )
 
 

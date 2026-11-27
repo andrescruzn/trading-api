@@ -17,6 +17,7 @@ from app.modules.bots.domain.bot_history import BOT_STATUS_CHANGED, status_chang
 from app.modules.bots.domain.bot_history_repository import BotHistoryRepository
 from app.modules.bots.domain.bot_repository import BotRepository
 from app.modules.bots.services.bots.bot_access import find_accessible_bot
+from app.modules.bots.services.bots.live_wallet_rule import LiveWalletChecker, check_live_wallet
 
 
 class UpdateBotStatusService:
@@ -36,6 +37,9 @@ class UpdateBotStatusService:
     - Al pasar a 'error'    → no se modifica started_at ni stopped_at.
     - Queda en el historial quién lo cambió (BOT_STATUS_CHANGED), en el
       mismo commit.
+    - Un agente real solo pasa a 'running' (iniciar o reanudar) si la
+      billetera de Binance está lista (live_wallet_rule.py). Pausar o
+      detener nunca se bloquea.
     """
 
     def __init__(
@@ -43,10 +47,12 @@ class UpdateBotStatusService:
         repo: BotRepository,
         account_repo: AccountRepository,
         history_repo: BotHistoryRepository,
+        check_live_wallet: LiveWalletChecker,
     ):
         self._repo = repo
         self._account_repo = account_repo
         self._history_repo = history_repo
+        self._check_live_wallet = check_live_wallet
 
     def transition(
         self,
@@ -72,6 +78,11 @@ class UpdateBotStatusService:
                 http_status=409,
                 meta={"current": bot.status, "requested": new_status},
             )
+
+        if new_status == "running" and bot.mode == "live":
+            wallet_check = check_live_wallet(self._check_live_wallet)
+            if not wallet_check.success:
+                return wallet_check
 
         now = utc_now()
 

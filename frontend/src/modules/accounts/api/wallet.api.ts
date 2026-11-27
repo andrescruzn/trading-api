@@ -55,6 +55,10 @@ type WalletAccount = {
 type WalletOverview = {
 	/** `false` = faltan las credenciales de Binance en el servidor. */
 	configured: boolean;
+	/** `true` = se pueden crear e iniciar agentes reales (llaves y sincronización OK). */
+	live_ready: boolean;
+	/** Si no está lista: por qué y qué hacer (ya en español). */
+	live_block_msg: string | null;
 	wallet: PlatformWallet | null;
 	account: WalletAccount | null;
 	latest_snapshot: WalletSnapshot | null;

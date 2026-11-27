@@ -23,6 +23,7 @@ from app.common.contracts import ServiceResult
 from app.modules.accounts.domain.account_entity import Account
 from app.modules.accounts.domain.account_repository import AccountRepository
 from app.modules.accounts.domain.platform_wallet_entity import PlatformWallet
+from app.modules.accounts.domain.platform_wallet_rules import live_block_code
 from app.modules.accounts.domain.platform_wallet_repository import (
     PlatformWalletRepository,
     WalletSnapshotRepository,
@@ -39,6 +40,8 @@ class WalletOverview:
     account: Account | None
     latest_snapshot: WalletSnapshot | None
     credentials_configured: bool
+    # Por qué no se puede crear ni iniciar un agente real (None = lista)
+    live_block_code: str | None = None
 
 
 class GetWalletService:
@@ -61,9 +64,10 @@ class GetWalletService:
     def get(self) -> ServiceResult[WalletOverview]:
         self._ensure.ensure()
         wallet = self._wallet_repo.get()
+        block_code = live_block_code(self._credentials_configured, wallet)
         if wallet is None:
             return ServiceResult.ok(
-                WalletOverview(None, None, None, self._credentials_configured)
+                WalletOverview(None, None, None, self._credentials_configured, block_code)
             )
         return ServiceResult.ok(
             WalletOverview(
@@ -71,6 +75,7 @@ class GetWalletService:
                 account=self._account_repo.get_by_id(wallet.account_id),
                 latest_snapshot=self._snapshot_repo.get_latest(wallet.account_id),
                 credentials_configured=self._credentials_configured,
+                live_block_code=block_code,
             )
         )
 

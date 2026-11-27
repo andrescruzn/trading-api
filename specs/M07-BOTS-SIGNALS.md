@@ -14,7 +14,7 @@
 | Lo usan | [M8](M08-ORDERS-EXECUTION.md) (órdenes por bot, ejecución de señales), [M9](M09-ALERTS.md) (hooks de señal/error), [M11](M11-FUND.md) (capital del agente del fondo vía `FundCapitalPort`), scheduler de [M2](M02-MARKET-DATA.md) (señales automáticas), dashboard de [M1](M01-AUTH.md) |
 | Prefijo API | `/api/bots`, `/api/signals` (ver [corrección de rutas](#corrección-de-rutas)) |
 | Frontend | `frontend/src/modules/bots` |
-| Última revisión | 2026-11-26 |
+| Última revisión | 2026-11-27 |
 
 ## Descripción
 
@@ -23,7 +23,7 @@
 **Qué hace:**
 - **Dos tipos de agente que conviven (2026-10-26):** **reales** (`mode = live`), que operan la billetera única de Binance con el capital que les da el fondo ([M11](M11-FUND.md)) y se ven en **Inicio**, y **demo** (`mode = paper`), con dinero simulado: al crearlos solo se escribe el **monto a invertir**, no tocan la billetera ni el fondo y se ven en **Agentes demo**. No hay variable de entorno que apague los reales.
 - Crea **agentes** (tabla `bots`) con nombre + tipo (real o demo) + símbolo + estrategia + conjunto de indicadores + parámetros de riesgo + modo de ejecución. El cliente no elige cuenta: un real queda sobre la cuenta de la billetera de Binance y un demo sobre una cuenta de práctica interna nueva ("Demo · <nombre>") con el monto como balance inicial.
-- Valida al crear: que existan las referencias, el monto del demo (> 0 y ≤ 1.000.000.000; prohibido en un real), que el conjunto de indicadores cubra las reglas de la estrategia, la regla del 1 % y las reglas del modo de ejecución. Real o demo no se cambia después.
+- Valida al crear: que existan las referencias, el monto del demo (> 0 y ≤ 1.000.000.000; prohibido en un real), que el conjunto de indicadores cubra las reglas de la estrategia, la regla del 1 % y las reglas del modo de ejecución. Un **real** exige además la billetera de Binance lista: llaves en el `.env` y una sincronización que no las rechazó (ver Gotchas); la misma revisión se hace al iniciarlo o reanudarlo. Real o demo no se cambia después.
 - Los agentes se activan (`start`), pausan (`pause`) y detienen (`stop`) con una máquina de estados.
 - Un usuario solo ve y opera **sus** agentes (propiedad por cuenta); el admin ve todos.
 - **Manual:** la señal se genera con "Analizar ahora" y la orden la crea la persona.
@@ -222,7 +222,7 @@ Todos los servicios que reciben un `bot_id` aceptan `owner_id` (`None` = admin o
 
 `check_execution_mode`: `BOT_INVALID_EXECUTION_MODE` · `BOT_INVALID_APPROVAL_TTL` · `BOT_TIMEFRAME_TOO_SHORT_FOR_AUTOMATION` (422). `UpdateBotService` lo vuelve a correr en cada `PUT` (con el timeframe del bot).
 
-`CreateBotService` (2026-10-26): recibe `requester_user_id` y `demo_capital` (sin `account_id`); en real llama a `ensure_wallet` (`build_platform_wallet_ensurer`, [M4](M04-ACCOUNTS-PORTFOLIO.md)) y aplica `BOT_PERPETUAL_LIVE_TAKEN` (409) sobre la billetera; en demo crea la cuenta de práctica y su balance (`AccountBalanceRepository`) en la misma transacción. Códigos nuevos: `BOT_INVALID_DEMO_CAPITAL`, `BOT_DEMO_CAPITAL_ONLY_DEMO` (422), `BOT_WALLET_UNAVAILABLE` (409). `services/bots/demo_capital.py` → `attach_demo_capital` completa `Bot.demo_capital` (solo presentación) en `GetBotService` y `ListBotsService`.
+`CreateBotService` (2026-10-26): recibe `requester_user_id` y `demo_capital` (sin `account_id`); en real llama a `check_live_wallet` (desde 2026-11-27; antes `ensure_wallet`) con `build_live_wallet_checker` ([M4](M04-ACCOUNTS-PORTFOLIO.md)); `UpdateBotStatusService` recibe el mismo checker y aplica `BOT_PERPETUAL_LIVE_TAKEN` (409) sobre la billetera; en demo crea la cuenta de práctica y su balance (`AccountBalanceRepository`) en la misma transacción. Códigos nuevos: `BOT_INVALID_DEMO_CAPITAL`, `BOT_DEMO_CAPITAL_ONLY_DEMO` (422), `BOT_WALLET_UNAVAILABLE` (409). `services/bots/demo_capital.py` → `attach_demo_capital` completa `Bot.demo_capital` (solo presentación) en `GetBotService` y `ListBotsService`.
 
 Provider: `app/modules/bots/providers/bot_provider.py` → `BotServiceFactory`
 - Repos propios: `SqlAlchemyBotRepository`, `SqlAlchemySignalRepository`
@@ -297,6 +297,7 @@ Routers registrados en `app/app_factory.py` (dentro de `api_routers`, con `prefi
 
 ## Gotchas críticos
 
+- **Billetera lista para agentes reales (2026-11-27):** antes se podía crear e iniciar un agente real sin `BINANCE_API_KEY` / `BINANCE_API_SECRET` y cada orden fallaba después con `EXCHANGE_CREDENTIALS_MISSING`. Ahora `CreateBotService` (rama `live`) y `UpdateBotStatusService` (→ `running` con `mode = live`) llaman a `check_live_wallet` (`services/bots/live_wallet_rule.py`), que usa `build_live_wallet_checker` de [M4](M04-ACCOUNTS-PORTFOLIO.md) y responde 409: `BOT_WALLET_NOT_CONFIGURED` (faltan las llaves), `BOT_WALLET_UNAVAILABLE` (no se pudo armar la billetera), `BOT_WALLET_AUTH_FAILED` (la última sincronización dio `WALLET_EXCHANGE_AUTH_FAILED` / `WALLET_CREDENTIALS_MISSING`) y `BOT_WALLET_NOT_VERIFIED` (nunca se sincronizó). No llama a Binance: usa `platform_wallet`. Un fallo de red en la última sincronización no bloquea. Pausar y detener nunca se bloquean. En el front, el paso "Con qué dinero" de un agente real lee `GET /api/wallet` (`live_ready`, `live_block_msg`), muestra la alerta con enlace a Billetera y deshabilita Continuar y Crear agente.
 - **Perpetuos en live (2026-10-26):** se permiten, pero **uno por cuenta y símbolo** (`BOT_PERPETUAL_LIVE_TAKEN` 409, `live_perpetual_rule.perpetual_taken_by_other`, cuenta cualquier estado): Binance une la posición y el funding del símbolo. El asistente acepta `?symbol_id=` (desde Explorar mercados) y, con una cuenta live y un perpetuo, avisa que opera en la billetera de Futuros a 1x y solo comprando (`AccountStep perpetual`).
 - **Tamaño a 1x:** `AnalyzeService` recorta `position_size` a `capital / entrada` (nunca más nocional que el capital); con un stop muy cerca el riesgo real queda por debajo del 1 %.
 - **Seed `bots`:** dos agentes demo (paper) detenidos para el super admin ("Oro — tendencia 4h" con Tendencia Metales y "BTC — tendencia 1h" con EMA Trend Follower, conjunto Tendencia), cada uno con su cuenta de práctica "Demo · <nombre>" y 10.000 USDT, idempotente por (user_id, nombre de la cuenta) y (account_id, name). Quedan en `manual`.
@@ -316,7 +317,7 @@ Routers registrados en `app/app_factory.py` (dentro de `api_routers`, con `prefi
 ## Tests
 
 - `tests/bots/test_bot_entity.py` — 22 tests (máquina de estados, is_active, risk_params)
-- `tests/bots/test_update_bot_status_service.py` — 16 tests (transiciones, timestamps, repo.commit); desde 2026-10-27 el servicio recibe `history_repo` (mock)
+- `tests/bots/test_update_bot_status_service.py` — 16 tests (transiciones, timestamps, repo.commit); desde 2026-10-27 el servicio recibe `history_repo` (mock) y desde 2026-11-27 `check_live_wallet` (lambda que devuelve ok); los bloqueos de la billetera aún no tienen tests
 - `tests/bots/test_generate_signal_service.py` — 17 tests (validaciones, dirección, campos); el 2026-10-19 se ajustó la llamada esperada a `analyze` (`risk_pct`, `as_of`)
 - `tests/bots/test_signal_subscription_services.py` — 14 tests (listado público, `is_mine`/`is_subscribed`/conteo, privado → 404, propio, Telegram, idempotencia, dejar de seguir tras apagar)
 - `tests/bots/test_generate_signal_shared_hook.py` — 7 tests (`notify_subscribers` solo con agente compartido y BUY/SELL aprobada, después del commit; fallo tragado)
@@ -353,6 +354,7 @@ Routers registrados en `app/app_factory.py` (dentro de `api_routers`, con `prefi
 - **2026-10-26** — **Live = mismo exchange que la cuenta:** `CreateBotService` y `UpdateBotService` (al pasar a live) devuelven `BOT_EXCHANGE_ACCOUNT_MISMATCH` (422) si el símbolo es de otro exchange que la cuenta. El asistente solo ofrece las cuentas live del exchange del símbolo y explica las ocultas. Respaldo en [M8](M08-ORDERS-EXECUTION.md) para los agentes ya creados (`ORDER_EXCHANGE_MISMATCH` en compras live).
 - **2026-10-26** — **Perpetuos en live**: fuera `BOT_PERPETUAL_LIVE_NOT_SUPPORTED`; un agente live por perpetuo y cuenta (`BOT_PERPETUAL_LIVE_TAKEN`); el tamaño de la posición no supera el capital (1x); el asistente ya no oculta las cuentas live y avisa de la billetera de Futuros.
 - **2026-10-26** — **Solo Binance** ([M2](M02-MARKET-DATA.md)): se quitan `BOT_EXCHANGE_ACCOUNT_MISMATCH` y el filtro de cuentas live por exchange del asistente; el buscador de símbolos busca por símbolo y clase de activo (ya no por exchange).
+- **2026-11-27** — **Sin billetera lista no hay agente real:** crear, iniciar o reanudar un agente real exige llaves de Binance en el `.env` y una sincronización que no las rechazó (`BOT_WALLET_NOT_CONFIGURED`, `BOT_WALLET_AUTH_FAILED`, `BOT_WALLET_NOT_VERIFIED`, 409). El asistente avisa en el paso del dinero y no deja continuar.
 - **2026-10-26** — **Agentes reales y demo lado a lado:** Inicio lista los reales (billetera de Binance) y la nueva página **Agentes demo** (`/#/demo-agents`) los de dinero simulado. Crear un demo pide solo el monto (`demo_capital`); el backend crea su cuenta de práctica interna. `POST /api/bots` sin `account_id`; `PUT` ya no cambia `mode`; fuera `TRADING_LIVE_AUTO_ENABLED`, `BOT_AUTO_LIVE_DISABLED` y `BOT_MODE_ACCOUNT_MISMATCH`. Etiquetas Real / Demo en la UI.
 - **2026-10-27** — **Historial del agente:** los servicios guardan en `audit_logs` quién creó, editó (antes → después), inició, pausó o detuvo cada agente, en el mismo commit; también el sistema (drawdown máximo → `error`; dueño desactivado → `paused`). `GET /api/bots/{id}/history` y pestaña **Historial** en el detalle. Reemplaza la trazabilidad que antes solo daba la auditoría HTTP, que ya no guarda consultas ([M1](M01-AUTH.md)).
 - **2026-11-26** — Señales compartidas también por correo ([M12](M12-NOTIFICATIONS.md)): seguir un agente ya no exige Telegram si el correo está activo (`SUBSCRIPTION_NO_CHANNEL` 503 sin ningún canal); `SharedAgentsSection` usa `email_notifications` / `telegram_available` de `GET /users/me`.

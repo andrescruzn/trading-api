@@ -1,6 +1,6 @@
 import {
-	IconAlertTriangle,
 	IconFlask,
+	IconInfoCircle,
 	IconWallet,
 	IconWalletOff,
 } from '@tabler/icons-react';
@@ -95,9 +95,9 @@ export function MoneyStep({
 						</AlertDescription>
 					</Alert>
 				)}
-				<Alert variant="destructive">
-					<IconAlertTriangle />
-					<AlertTitle>Este agente usa dinero real</AlertTitle>
+				<Alert>
+					<IconInfoCircle />
+					<AlertTitle>Este agente opera con dinero real</AlertTitle>
 					<AlertDescription>
 						Sus órdenes se envían a Binance. Si quieres probar la estrategia
 						primero, crea un agente demo.

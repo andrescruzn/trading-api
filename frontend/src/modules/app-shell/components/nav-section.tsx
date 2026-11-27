@@ -49,6 +49,8 @@ function getVisibleItems(user: CurrentUser | null, items: NavItem[]) {
 type NavSectionProps = NavSectionData & {
 	openItem: string | null;
 	onOpenItemChange: (title: string | null) => void;
+	/** Ítem que la página declara en su miga (ver `getDeclaredNavUrl`); manda sobre `activePaths`. */
+	declaredUrl: string | null;
 };
 
 export function NavSection({
@@ -57,6 +59,7 @@ export function NavSection({
 	items,
 	openItem,
 	onOpenItemChange,
+	declaredUrl,
 }: NavSectionProps) {
 	const { user } = useAuth();
 	const { setOpenMobile } = useSidebar();
@@ -66,6 +69,19 @@ export function NavSection({
 	const visibleItems = isVisible(user, role)
 		? getVisibleItems(user, items)
 		: [];
+
+	function isUrlActive(url?: string) {
+		if (declaredUrl) return url === declaredUrl;
+		return isPathActive(pathname, url);
+	}
+
+	function isItemActive(item: NavItem) {
+		if (declaredUrl) return item.url === declaredUrl;
+		return (
+			isPathActive(pathname, item.url) ||
+			!!item.activePaths?.some((path) => isPathActive(pathname, path))
+		);
+	}
 
 	if (visibleItems.length === 0) return null;
 
@@ -89,7 +105,7 @@ export function NavSection({
 									<SidebarMenuButton
 										tooltip={item.title}
 										isActive={item.items.some((subItem) =>
-											isPathActive(pathname, subItem.url),
+											isUrlActive(subItem.url),
 										)}
 									/>
 								}
@@ -103,7 +119,7 @@ export function NavSection({
 									{item.items.map((subItem) => (
 										<SidebarMenuSubItem key={subItem.title}>
 											<SidebarMenuSubButton
-												isActive={isPathActive(pathname, subItem.url)}
+												isActive={isUrlActive(subItem.url)}
 												render={
 													<Link
 														to={subItem.url}
@@ -122,12 +138,7 @@ export function NavSection({
 						<SidebarMenuItem key={item.title}>
 							<SidebarMenuButton
 								tooltip={item.title}
-								isActive={
-									isPathActive(pathname, item.url) ||
-									!!item.activePaths?.some((path) =>
-										isPathActive(pathname, path),
-									)
-								}
+								isActive={isItemActive(item)}
 								render={
 									<Link
 										to={item.url ?? '#'}

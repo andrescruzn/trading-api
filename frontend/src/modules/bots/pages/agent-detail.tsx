@@ -469,13 +469,18 @@ export function AgentDetailPage() {
 	const bot = botQuery.data;
 
 	// Los agentes reales cuelgan de Inicio; los de dinero simulado, de
-	// "Agentes demo".
-	usePageBreadcrumb([
-		bot?.mode === 'paper'
-			? { label: 'Agentes demo', href: '/demo-agents' }
-			: { label: 'Inicio', href: '/dashboard' },
-		{ label: bot ? describeBot(bot) : 'Agente' },
-	]);
+	// "Agentes demo". La raíz también decide el ítem marcado del sidebar, así
+	// que no se declara hasta saber el modo.
+	usePageBreadcrumb(
+		bot
+			? [
+					bot.mode === 'paper'
+						? { label: 'Agentes demo', href: '/demo-agents' }
+						: { label: 'Inicio', href: '/dashboard' },
+					{ label: describeBot(bot) },
+				]
+			: [{ label: 'Agente' }],
+	);
 
 	if (botQuery.isLoading) {
 		return (

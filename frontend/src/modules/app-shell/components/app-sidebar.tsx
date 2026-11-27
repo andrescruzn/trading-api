@@ -17,8 +17,12 @@ import { useEffect, useState } from 'react';
 import { AppBrand } from '@/modules/app-shell/components/app-brand';
 import { NavSection } from '@/modules/app-shell/components/nav-section';
 import type { NavSectionData } from '@/modules/app-shell/components/nav-section.types';
-import { isPathActive } from '@/modules/app-shell/components/nav-section.utils';
+import {
+	getDeclaredNavUrl,
+	isPathActive,
+} from '@/modules/app-shell/components/nav-section.utils';
 import { NavUser } from '@/modules/app-shell/components/nav-user';
+import { useBreadcrumbContext } from '@/modules/app-shell/hooks/use-breadcrumb-context';
 import { STAFF_ROLES } from '@/modules/auth/lib/roles';
 import {
 	Sidebar,
@@ -35,9 +39,10 @@ import {
 const navSections: NavSectionData[] = [
 	{
 		label: 'General',
-		// El inicio es la lista de agentes reales (billetera de Binance): queda
-		// marcado también dentro de uno. Los de dinero simulado van aparte y
-		// conviven con los reales.
+		// El inicio es la lista de agentes reales (billetera de Binance). Los de
+		// dinero simulado van aparte y conviven con los reales. Reales y demo
+		// comparten `/agents/:id`: el ítem marcado lo decide la raíz de la miga
+		// (`getDeclaredNavUrl`); `activePaths` solo cubre la carga inicial.
 		items: [
 			{
 				title: 'Inicio',
@@ -126,12 +131,15 @@ const navSections: NavSectionData[] = [
 	},
 ];
 
-function getActiveParentTitle(pathname: string) {
+function getActiveParentTitle(pathname: string, declaredUrl: string | null) {
 	for (const section of navSections) {
 		for (const item of section.items) {
-			if (item.items?.some((subItem) => isPathActive(pathname, subItem.url))) {
-				return item.title;
-			}
+			const hasActiveSubItem = item.items?.some((subItem) =>
+				declaredUrl
+					? subItem.url === declaredUrl
+					: isPathActive(pathname, subItem.url),
+			);
+			if (hasActiveSubItem) return item.title;
 		}
 	}
 	return null;
@@ -141,7 +149,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 	const pathname = useRouterState({
 		select: (state) => state.location.pathname,
 	});
-	const activeParentTitle = getActiveParentTitle(pathname);
+	const { items: breadcrumbItems } = useBreadcrumbContext();
+	const declaredUrl = getDeclaredNavUrl(
+		navSections,
+		pathname,
+		breadcrumbItems[0]?.href,
+	);
+	const activeParentTitle = getActiveParentTitle(pathname, declaredUrl);
 	const [openItem, setOpenItem] = useState<string | null>(activeParentTitle);
 
 	// Al navegar, solo queda abierto el acordeón que contiene el link activo.
@@ -161,6 +175,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 						{...section}
 						openItem={openItem}
 						onOpenItemChange={setOpenItem}
+						declaredUrl={declaredUrl}
 					/>
 				))}
 			</SidebarContent>
